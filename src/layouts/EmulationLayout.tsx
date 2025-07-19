@@ -59,11 +59,6 @@ const EmulationLayout: React.FC = () => {
           <ListItemIcon><ClassIcon /></ListItemIcon>
           <ListItemText primary="Xuất điểm thi đua" />
         </ListItemButton>
-
-        <ListItemButton onClick={() => navigate('/emulation/report')}>
-          <ListItemIcon><ClassIcon /></ListItemIcon>
-          <ListItemText primary="Xuất file tổng hợp" />
-        </ListItemButton>
       </List>
 
       {/* Spacer đẩy nút quay về xuống cuối */}

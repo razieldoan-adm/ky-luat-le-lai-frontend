@@ -36,7 +36,6 @@ import EnterViolationScoresPage from './pages/emulation/ClassViolationScoresPage
 import EnterClassHygieneScorePage from './pages/emulation/ClassHygieneScorePage';
 import EnterClassAttendanceSummaryPage from './pages/emulation/ClassAttendanceSummaryPage';
 import EnterClassLineUpSummaryPage from './pages/emulation/ClassLineUpSummaryPage';
-
 import WeeklyScoresPage from './pages/emulation/WeeklyScoresPage';
 
 function AppContent() {
