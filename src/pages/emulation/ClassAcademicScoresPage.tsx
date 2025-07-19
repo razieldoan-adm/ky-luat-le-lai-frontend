@@ -29,7 +29,7 @@ export default function ClassAcademicScoresPage() {
   const [maxScores, setMaxScores] = useState<{ [key: string]: number }>({});
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [isEditable, setIsEditable] = useState(false);
-  const [isUpdateMode, setIsUpdateMode] = useState(false);
+  const [_isUpdateMode, setIsUpdateMode] = useState(false);
 
   // 🔰 Load settings + weeks ban đầu
   useEffect(() => {
