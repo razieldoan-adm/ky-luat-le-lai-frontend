@@ -36,7 +36,7 @@ import EnterViolationScoresPage from './pages/emulation/ClassViolationScoresPage
 import EnterClassHygieneScorePage from './pages/emulation/ClassHygieneScorePage';
 import EnterClassAttendanceSummaryPage from './pages/emulation/ClassAttendanceSummaryPage';
 import EnterClassLineUpSummaryPage from './pages/emulation/ClassLineUpSummaryPage';
-import ReportsPage from './pages/emulation/ReportsPage';
+
 import WeeklyScoresPage from './pages/emulation/WeeklyScoresPage';
 
 function AppContent() {
@@ -78,7 +78,6 @@ function AppContent() {
           <Route path="class-hygiene-score" element={<EnterClassHygieneScorePage />} />
           <Route path="class-attendance-summaries" element={<EnterClassAttendanceSummaryPage />} />
           <Route path="class-lineup-summaries" element={<EnterClassLineUpSummaryPage />} />
-          <Route path="report" element={<ReportsPage />} />
           <Route path="weekly-scores" element={<WeeklyScoresPage />} />
         </Route>
                     {/* Violation routes */}

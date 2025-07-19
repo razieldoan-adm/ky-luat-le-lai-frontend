@@ -27,7 +27,7 @@ interface AcademicWeek {
 export default function ClassDisciplineTotalPage() {
   const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<AcademicWeek | null>(null);
-  const [violations, setViolations] = useState<Violation[]>([]);
+  const [_violations, setViolations] = useState<Violation[]>([]);
   const [totalScores, setTotalScores] = useState<{ className: string, total: number }[]>([]);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
