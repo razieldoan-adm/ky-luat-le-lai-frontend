@@ -1,19 +1,12 @@
 import axios from 'axios';
 
 const instance = axios.create({
-  baseURL: 'https://ky-luat-le-lai-backend-production.up.railway.app',
-  // Nếu backend của bạn cần gửi credentials (cookie, JWT trong cookie)
-  // uncomment dòng sau:
-  // withCredentials: true,
-
+  baseURL: 'https://ky-luat-le-lai-backend-production.up.railway.app/api',
   headers: {
     'Content-Type': 'application/json',
-    // Nếu dùng token auth, thêm Authorization ở đây:
-    // 'Authorization': `Bearer ${token}`
   },
 });
 
-// Optional: interceptors để log hoặc handle error chung
 instance.interceptors.response.use(
   (response) => response,
   (error) => {
