@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const instance = axios.create({
-  baseURL: 'https://ky-luat-le-lai-backend-production.up.railway.app/api',
+  baseURL: 'https://ky-luat-le-lai-backend-production.up.railway.app',
   headers: {
     'Content-Type': 'application/json',
   },
