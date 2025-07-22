@@ -1,18 +1,8 @@
 import axios from 'axios';
 
 const instance = axios.create({
-  baseURL: 'https://ky-luat-le-lai-backend-production.up.railway.app',
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: import.meta.env.VITE_BACKEND_URL, // Sử dụng biến môi trường backend
+  // withCredentials: true, // nếu backend yêu cầu cookie hoặc token
 });
-
-instance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error('API error:', error.response || error.message);
-    return Promise.reject(error);
-  }
-);
 
 export default instance;
