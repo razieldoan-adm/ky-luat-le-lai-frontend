@@ -34,10 +34,10 @@ export default function Dashboard() {
   const fetchCounts = async () => {
     try {
       const [clsRes, multiRes, vioRes, unhandledRes] = await Promise.all([
-        axios.get('/api/classes/count'),
-        axios.get('/api/violations/students/multiple-violations/count'),
-        axios.get('/api/violations/count'),
-        axios.get('/api/violations/unhandled/count'),
+        axios.get('/classes/count'),
+        axios.get('/violations/students/multiple-violations/count'),
+        axios.get('/violations/count'),
+        axios.get('/violations/unhandled/count'),
       ]);
 
       setClassCount(clsRes.data.count);
@@ -52,8 +52,8 @@ export default function Dashboard() {
   const fetchClassRanks = async () => {
     try {
       const [topRes, bottomRes] = await Promise.all([
-        axios.get('/api/class-rank/weekscores/top-continuous'),
-        axios.get('/api/class-rank/weekscores/bottom-continuous'),
+        axios.get('/class-rank/weekscores/top-continuous'),
+        axios.get('/class-rank/weekscores/bottom-continuous'),
       ]);
 
       setTopClasses(topRes.data);
@@ -65,7 +65,7 @@ export default function Dashboard() {
 
   const fetchTop1EachGrade = async () => {
     try {
-      const res = await axios.get('/api/class-rank/weekscores/top1-current-week');
+      const res = await axios.get('/class-rank/weekscores/top1-current-week');
       setTop1EachGrade(res.data);
     } catch (err) {
       console.error('Lỗi khi lấy top1 mỗi khối:', err);
