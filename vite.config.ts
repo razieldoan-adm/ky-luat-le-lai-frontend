@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
   proxy: {
     '/api': {
-      target: 'http://localhost:5000', // cổng backend của bạn
+      target: 'https://ky-luat-le-lai-backend-production.up.railway.app', // cổng backend của bạn
       changeOrigin: true,
       secure: false,
     },
