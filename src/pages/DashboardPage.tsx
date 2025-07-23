@@ -34,10 +34,10 @@ export default function Dashboard() {
   const fetchCounts = async () => {
     try {
       const [clsRes, multiRes, vioRes, unhandledRes] = await Promise.all([
-        axios.get('/classes/count'),
-        axios.get('/violations/students/multiple-violations/count'),
-        axios.get('/violations/count'),
-        axios.get('/violations/unhandled/count'),
+        axios.get('/api/classes/count'),
+        axios.get('/api/violations/students/multiple-violations/count'),
+        axios.get('/api/violations/count'),
+        axios.get('/api/violations/unhandled/count'),
       ]);
 
       setClassCount(clsRes.data.count);
