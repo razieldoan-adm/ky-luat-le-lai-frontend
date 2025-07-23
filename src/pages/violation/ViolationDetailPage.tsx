@@ -21,7 +21,7 @@ import {
   Paper
 } from '@mui/material';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../api/api';
 
 interface Violation {
   _id: string;
@@ -62,7 +62,7 @@ const ViolationDetailPage = () => {
 
   const fetchSettings = async () => {
     try {
-      const res = await axios.get('/api/settings');
+      const res = await api.get('/api/settings');
       if (res.data?.maxConductScore) {
         setMaxConductScore(res.data.maxConductScore);
       }
@@ -73,7 +73,7 @@ const ViolationDetailPage = () => {
 
   const fetchViolations = async () => {
     try {
-      const res = await axios.get(
+      const res = await api.get(
         `/api/violations/${encodeURIComponent(name || '')}?className=${encodeURIComponent(className)}`
       );
       setViolations(res.data);
@@ -85,7 +85,7 @@ const ViolationDetailPage = () => {
 
   const fetchRules = async () => {
     try {
-      const res = await axios.get('/api/rules');
+      const res = await api.get('/api/rules');
       setRules(res.data);
     } catch (err) {
       console.error('Lỗi khi lấy rules:', err);
@@ -103,7 +103,7 @@ const ViolationDetailPage = () => {
 
     try {
       // Lấy danh sách tuần học
-      const weeksRes = await axios.get('/api/academic-weeks/study-weeks');
+      const weeksRes = await api.get('/api/academic-weeks/study-weeks');
       const weeks = weeksRes.data;
       const now = new Date();
 
@@ -117,7 +117,7 @@ const ViolationDetailPage = () => {
       const weekNumber = currentWeek ? currentWeek.weekNumber : null;
 
       // Lấy số lần vi phạm để tự động gán handlingMethod
-      const res = await axios.get(
+      const res = await api.get(
         `/api/violations/${encodeURIComponent(name)}?className=${encodeURIComponent(className)}`
       );
       const sameViolations = res.data.filter(
@@ -127,7 +127,7 @@ const ViolationDetailPage = () => {
       const autoHandlingMethod = getHandlingMethodByRepeatCount(repeatCount);
 
       // Ghi nhận vi phạm mới
-      await axios.post('/api/violations', {
+      await api.post('/api/violations', {
         name,
         className,
         description: selectedRule.title,
@@ -151,7 +151,7 @@ const ViolationDetailPage = () => {
   };
   const handleMarkAsHandled = async (id: string) => {
   try {
-    await axios.patch(`/api/violations/${id}/handle`);
+    await api.patch(`/api/violations/${id}/handle`);
     setSnackbarMessage('Đã xử lý vi phạm thành công!');
     setSnackbarSeverity('success');
     fetchViolations(); // refresh list
@@ -166,7 +166,7 @@ const ViolationDetailPage = () => {
 
   const handleDeleteViolation = async (id: string) => {
     try {
-      await axios.delete(`/api/violations/${id}`);
+      await api.delete(`/api/violations/${id}`);
       setViolations((prev) => prev.filter((v) => v._id !== id));
       setSnackbarMessage('Xoá vi phạm thành công!');
       setSnackbarSeverity('success');

@@ -9,7 +9,7 @@ import {
   Paper,
   Stack
 } from '@mui/material';
-import axios from 'axios';
+import api from '../../api/api';
 
 interface Settings {
   maxConductScore: number;
@@ -47,7 +47,7 @@ export default function AdminSettingPage() {
 
   const fetchSettings = async () => {
     try {
-      const res = await axios.get('/api/settings');
+      const res = await api.get('/api/settings');
       setSettings(res.data);
     } catch (err) {
       console.error('Lỗi khi lấy settings:', err);
@@ -83,7 +83,7 @@ export default function AdminSettingPage() {
 
   const handleSave = async () => {
     try {
-      await axios.put('/api/settings', settings);
+      await api.put('/api/settings', settings);
       setSnackbar({ open: true, message: 'Đã lưu cấu hình hệ thống.', severity: 'success' });
     } catch (err) {
       console.error('Lỗi khi lưu settings:', err);

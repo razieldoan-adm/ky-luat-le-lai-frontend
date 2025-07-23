@@ -1,6 +1,6 @@
 // src/pages/LoginPage.tsx
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../api/api";
 import { useNavigate } from "react-router-dom";
 import {
   Container,
@@ -29,7 +29,7 @@ export default function LoginPage() {
   }, [user, navigate]);
   const handleLogin = async () => {
     try {
-      const res = await axios.post('/api/auth/login', {
+      const res = await api.post('/api/auth/login', {
         username: username.trim(),
         password: password.trim()
       });

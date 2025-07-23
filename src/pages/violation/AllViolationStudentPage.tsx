@@ -19,7 +19,7 @@ import {
   Snackbar,
   Alert
 } from '@mui/material';
-import axios from 'axios';
+import api from '../../api/api';
 import dayjs from 'dayjs';
 
 interface Violation {
@@ -61,7 +61,7 @@ export default function AllViolationStudentPage() {
 
   const fetchViolations = async () => {
     try {
-      const res = await axios.get('/api/violations/all/all-student');
+      const res = await api.get('/api/violations/all/all-student');
       setViolations(res.data);
       setFiltered(res.data);
     } catch (err) {
@@ -71,7 +71,7 @@ export default function AllViolationStudentPage() {
 
   const fetchClasses = async () => {
     try {
-      const res = await axios.get('/api/classes');
+      const res = await api.get('/api/classes');
       const validClasses = res.data.filter((cls: any) => cls.teacher).map((cls: any) => cls.className);
       setClassList(validClasses);
     } catch (err) {
@@ -80,7 +80,7 @@ export default function AllViolationStudentPage() {
   };
   const fetchRules = async () => {
   try {
-    const res = await axios.get('/api/rules');
+    const res = await api.get('/api/rules');
     setRules(res.data);
   } catch (err) {
     console.error('Lỗi khi lấy rules:', err);
@@ -98,7 +98,7 @@ export default function AllViolationStudentPage() {
   const handleDeleteViolation = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn xoá vi phạm này không?')) return;
     try {
-      await axios.delete(`/api/violations/${id}`);
+      await api.delete(`/api/violations/${id}`);
       fetchViolations();
     } catch (error) {
       console.error('Lỗi khi xoá vi phạm:', error);
@@ -107,7 +107,7 @@ export default function AllViolationStudentPage() {
 
   const handleMarkHandled = async (id: string) => {
     try {
-      await axios.patch(`/api/violations/${id}/handle`);
+      await api.patch(`/api/violations/${id}/handle`);
       fetchViolations();
     } catch (error) {
       console.error('Lỗi khi xử lý vi phạm:', error);
@@ -117,7 +117,7 @@ export default function AllViolationStudentPage() {
   const handleSaveEdit = async () => {
     if (!violationBeingEdited) return;
     try {
-      await axios.put(`/api/violations/${violationBeingEdited._id}`, violationBeingEdited);
+      await api.put(`/api/violations/${violationBeingEdited._id}`, violationBeingEdited);
       setSnackbar({ open: true, message: 'Cập nhật thành công', severity: 'success' });
       setEditDialogOpen(false);
       fetchViolations();

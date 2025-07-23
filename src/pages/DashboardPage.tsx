@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Box, Typography, Card, CardContent, Stack, List, ListItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
-import api from '../api/axios';
+import api from '../api/api';
 
 
 import SchoolIcon from '@mui/icons-material/School';

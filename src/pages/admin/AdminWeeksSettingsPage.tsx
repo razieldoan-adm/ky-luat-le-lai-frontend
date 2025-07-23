@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../../api/api';
 import { Box, Paper, Typography, Button, Checkbox } from '@mui/material';
 
 type AcademicWeek = {
@@ -18,7 +18,7 @@ const AdminWeeksSettingsPage = () => {
   }, []);
 
   const fetchWeeks = async () => {
-    const res = await axios.get('/api/academic-weeks');
+    const res = await api.get('/api/academic-weeks');
     setWeeks(res.data);
   };
 
@@ -31,20 +31,20 @@ const AdminWeeksSettingsPage = () => {
   };
 
   const generateWeeks = async () => {
-    await axios.post('/api/academic-weeks/generate');
+    await api.post('/api/academic-weeks/generate');
     fetchWeeks();
   };
 
   const deleteAllWeeks = async () => {
     if (confirm('Bạn có chắc muốn xoá toàn bộ tuần học không?')) {
-      await axios.delete('/api/academic-weeks');
+      await api.delete('/api/academic-weeks');
       fetchWeeks();
     }
   };
 
   const saveChanges = async () => {
     try {
-      const res = await axios.put('/api/academic-weeks/bulk', weeks);
+      const res = await api.put('/api/academic-weeks/bulk', weeks);
       alert(res.data.message);
       setEditMode(false);
       fetchWeeks();

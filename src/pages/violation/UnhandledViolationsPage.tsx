@@ -14,7 +14,7 @@ import {
   Chip,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../api/api';
 
 interface StudentViolation {
   name: string;
@@ -29,7 +29,7 @@ const UnhandledViolationsPage = () => {
   useEffect(() => {
     const fetchUnhandledStudents = async () => {
       try {
-        const res = await axios.get('/api/violations/unhandled/students');
+        const res = await api.get('/api/violations/unhandled/students');
         setStudents(res.data);
       } catch (err) {
         console.error('Lỗi khi lấy danh sách học sinh chưa xử lý:', err);

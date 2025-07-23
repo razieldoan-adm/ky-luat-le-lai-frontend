@@ -7,7 +7,7 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DoneIcon from '@mui/icons-material/Done';
-import axios from 'axios';
+import api from '../../api/api';
 
 interface ClassType {
   className: string;
@@ -65,7 +65,7 @@ export default function ClassAcademicScoresPage() {
 
   const fetchSettings = async () => {
     try {
-      const res = await axios.get('/api/settings');
+      const res = await api.get('/api/settings');
       setMaxScores(res.data.maxClassAcademicScoresByGrade || {});
     } catch (err) {
       console.error('Lỗi khi lấy settings:', err);
@@ -74,7 +74,7 @@ export default function ClassAcademicScoresPage() {
 
   const fetchWeeks = async () => {
     try {
-      const res = await axios.get('/api/academic-weeks/study-weeks');
+      const res = await api.get('/api/academic-weeks/study-weeks');
       setWeeks(res.data);
     } catch (err) {
       console.error('Lỗi khi lấy weeks:', err);
@@ -98,7 +98,7 @@ export default function ClassAcademicScoresPage() {
 
   const fetchClasses = async (generated: ClassType[]) => {
     try {
-      const res = await axios.get('/api/classes/with-teacher');
+      const res = await api.get('/api/classes/with-teacher');
       const existing = res.data;
 
       const merged = generated.map(cls => {
@@ -117,7 +117,7 @@ export default function ClassAcademicScoresPage() {
 
   const fetchScoresForWeek = async (weekNumber: number, currentClassList: ClassType[]) => {
     try {
-      const res = await axios.get('/api/class-academic-scores', { params: { weekNumber } });
+      const res = await api.get('/api/class-academic-scores', { params: { weekNumber } });
       const data = res.data;
 
       if (data.length === 0) {
@@ -152,7 +152,7 @@ export default function ClassAcademicScoresPage() {
       setIsUpdateMode(true);
     } else {
       try {
-        await axios.put('/api/class-academic-scores', {
+        await api.put('/api/class-academic-scores', {
           weekNumber: selectedWeekNumber,
           scores: classList.map(c => ({
             className: c.className,

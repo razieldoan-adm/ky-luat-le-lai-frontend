@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../api/api';
 import {
   Box, Typography, TextField, Button, MenuItem, Stack, Snackbar, Alert, Backdrop, CircularProgress
 } from '@mui/material';
@@ -32,7 +32,7 @@ export default function ClassAttendanceSummaryPage() {
   const fetchWeeks = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('/api/academic-weeks/study-weeks');
+      const res = await api.get('/api/academic-weeks/study-weeks');
       setWeekList(res.data);
       const initialWeek = res.data[0];
       setSelectedWeek(initialWeek);
@@ -59,7 +59,7 @@ export default function ClassAttendanceSummaryPage() {
     });
 
     try {
-      const res = await axios.get('/api/class-attendance-summaries', { params: { weekNumber } });
+      const res = await api.get('/api/class-attendance-summaries', { params: { weekNumber } });
       res.data.forEach((cls: any) => {
         const target = initial[cls.grade].find(c => c.className === cls.className);
         if (target) {
@@ -107,7 +107,7 @@ export default function ClassAttendanceSummaryPage() {
         )
       };
 
-      await axios.post('/api/class-attendance-summaries', payload);
+      await api.post('/api/class-attendance-summaries', payload);
       setSnackbar({ open: true, message: 'Đã lưu điểm chuyên cần thành công!', severity: 'success' });
     } catch (err) {
       console.error('Save error:', err);

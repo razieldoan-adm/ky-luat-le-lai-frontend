@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from "../api/api";
 import {
   Box, Typography, MenuItem, Select, FormControl, InputLabel,
   Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Stack
@@ -31,13 +31,13 @@ export default function ViewFullClassSummary() {
   }, []);
   
   const fetchWeeks = async () => {
-    const res = await axios.get('/api/academic-weeks/study-weeks');
+    const res = await api.get('/api/academic-weeks/study-weeks');
     setWeeks(res.data);
     setSelectedWeek(res.data[0]);
   };
   const fetchClasses = async () => {
   try {
-    const res = await axios.get('/api/classes'); // endpoint thực tế của bạn
+    const res = await api.get('/api/classes'); // endpoint thực tế của bạn
     const validClasses = res.data
       .filter((cls: any) => cls.teacher) // nếu bạn chỉ muốn lớp có giáo viên
       .map((cls: any) => cls.className);
@@ -55,9 +55,9 @@ export default function ViewFullClassSummary() {
 
     try {
       const [hRes, aRes, lRes] = await Promise.all([
-        axios.get('/api/class-hygiene-scores/by-week-and-class', { params: { weekNumber, className: selectedClass } }),
-        axios.get('/api/class-attendance-summaries/by-week-and-class', { params: { weekNumber, className: selectedClass } }),
-        axios.get('/api/class-lineup-summaries/by-week-and-class', { params: { weekNumber, className: selectedClass } }),
+        api.get('/api/class-hygiene-scores/by-week-and-class', { params: { weekNumber, className: selectedClass } }),
+        api.get('/api/class-attendance-summaries/by-week-and-class', { params: { weekNumber, className: selectedClass } }),
+        api.get('/api/class-lineup-summaries/by-week-and-class', { params: { weekNumber, className: selectedClass } }),
       ]);
 
       setHygiene(hRes.data[0] || {});

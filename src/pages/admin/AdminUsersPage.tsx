@@ -7,7 +7,7 @@ import {
 import type { AlertColor } from '@mui/material'; // ✅ import type-only
 
 import { Delete, Edit, Add } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../../api/api';
 
 interface User {
   _id: string;
@@ -45,7 +45,7 @@ export default function AdminUsersPage() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('/api/userRoutes', getAuthHeader());
+      const res = await api.get('/api/userRoutes', getAuthHeader());
       setUsers(res.data);
     } catch (err) {
       console.error(err);
@@ -57,7 +57,7 @@ export default function AdminUsersPage() {
 
   const handleCreate = async () => {
     try {
-      await axios.post('/api/userRoutes', newUser, getAuthHeader());
+      await api.post('/api/userRoutes', newUser, getAuthHeader());
       showSnackbar('Tạo user thành công', 'success');
       setOpenCreate(false);
       setNewUser({ username: '', password: '', role: 'student' });
@@ -71,7 +71,7 @@ export default function AdminUsersPage() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn xoá?')) return;
     try {
-      await axios.delete(`/api/userRoutes/${id}`, getAuthHeader());
+      await api.delete(`/api/userRoutes/${id}`, getAuthHeader());
       showSnackbar('Đã xoá user', 'success');
       fetchUsers();
     } catch (err) {
@@ -83,7 +83,7 @@ export default function AdminUsersPage() {
   const handleEditRole = async () => {
     if (!editUser) return;
     try {
-      await axios.put(`/api/userRoutes/${editUser._id}`, { role: editUser.role }, getAuthHeader());
+      await api.put(`/api/userRoutes/${editUser._id}`, { role: editUser.role }, getAuthHeader());
       showSnackbar('Đã cập nhật role', 'success');
       setOpenEdit(false);
       setEditUser(null);

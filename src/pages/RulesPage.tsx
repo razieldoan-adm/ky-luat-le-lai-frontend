@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from "../api/api";
 import {
   Box, Typography, Table, TableHead, TableRow,
   TableCell, TableBody
@@ -16,7 +16,7 @@ const RulesPage: React.FC = () => {
   const [rules, setRules] = useState<Rule[]>([]);
 
   const fetchRules = async () => {
-    const res = await axios.get('/api/rules');
+    const res = await api.get('/api/rules');
     setRules(res.data);
   };
 

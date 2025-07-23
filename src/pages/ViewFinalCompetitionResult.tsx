@@ -3,7 +3,7 @@ import {
   Box, Typography, MenuItem, FormControl, Select,
   Table, TableHead, TableRow, TableCell, TableBody, CircularProgress
 } from '@mui/material';
-import axios from 'axios';
+import api from "../api/api";
 
 export default function ViewFinalCompetitionResult() {
   const [weeks, setWeeks] = useState<any[]>([]);
@@ -21,7 +21,7 @@ export default function ViewFinalCompetitionResult() {
 
   const fetchWeeks = async () => {
     try {
-      const res = await axios.get('/api/academic-weeks/study-weeks');
+      const res = await api.get('/api/academic-weeks/study-weeks');
       setWeeks(res.data);
       if (res.data.length > 0) setSelectedWeek(res.data[0]);
     } catch (err) {
@@ -32,7 +32,7 @@ export default function ViewFinalCompetitionResult() {
   const fetchResults = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('/api/class-weekly-scores', {
+      const res = await api.get('/api/class-weekly-scores', {
         params: { weekNumber: selectedWeek.weekNumber },
       });
       // Sắp xếp theo tên lớp thay vì theo tổng điểm

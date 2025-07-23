@@ -4,7 +4,7 @@ import {
   Table, TableHead, TableBody, TableRow, TableCell,
   Paper, Stack, Snackbar, Alert
 } from '@mui/material';
-import axios from 'axios';
+import api from '../../api/api';
 import dayjs from 'dayjs';
 
 interface Violation {
@@ -37,7 +37,7 @@ export default function ClassDisciplineTotalPage() {
 
   const fetchWeeks = async () => {
     try {
-      const res = await axios.get('/api/academic-weeks/study-weeks');
+      const res = await api.get('/api/academic-weeks/study-weeks');
       setWeekList(res.data);
     } catch (err) {
       console.error('Lỗi khi lấy tuần:', err);
@@ -51,7 +51,7 @@ export default function ClassDisciplineTotalPage() {
     }
 
     try {
-      const res = await axios.get('/api/violations/all/all-student');
+      const res = await api.get('/api/violations/all/all-student');
       const data: Violation[] = res.data;
 
       const filtered = data.filter(v => v.weekNumber === selectedWeek.weekNumber);
@@ -82,7 +82,7 @@ export default function ClassDisciplineTotalPage() {
 
     try {
       for (const score of totalScores) {
-        await axios.post('/api/class-violation-scores', {
+        await api.post('/api/class-violation-scores', {
           className: score.className,
           weekNumber: selectedWeek.weekNumber,
           totalScore: score.total,

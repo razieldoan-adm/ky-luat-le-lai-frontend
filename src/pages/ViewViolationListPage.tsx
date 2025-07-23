@@ -13,7 +13,7 @@ import {
   Paper,
   Stack
 } from '@mui/material';
-import axios from 'axios';
+import api from "../api/api";
 import dayjs from 'dayjs';
 
 interface Violation {
@@ -58,7 +58,7 @@ export default function ViewViolationStudentByClassPage() {
 
   const fetchViolations = async () => {
     try {
-      const res = await axios.get('/api/violations/all/all-student');
+      const res = await api.get('/api/violations/all/all-student');
       setViolations(res.data);
     } catch (err) {
       console.error('Lỗi khi lấy dữ liệu vi phạm:', err);
@@ -67,7 +67,7 @@ export default function ViewViolationStudentByClassPage() {
 
   const fetchClasses = async () => {
     try {
-      const res = await axios.get('/api/classes');
+      const res = await api.get('/api/classes');
       const validClasses = res.data.filter((cls: any) => cls.teacher).map((cls: any) => cls.className);
       setClassList(validClasses);
     } catch (err) {
@@ -77,7 +77,7 @@ export default function ViewViolationStudentByClassPage() {
 
   const fetchRules = async () => {
     try {
-      const res = await axios.get('/api/rules');
+      const res = await api.get('/api/rules');
       setRules(res.data);
     } catch (err) {
       console.error('Lỗi khi lấy rules:', err);
@@ -86,7 +86,7 @@ export default function ViewViolationStudentByClassPage() {
 
   const fetchWeeks = async () => {
     try {
-      const res = await axios.get('/api/academic-weeks/study-weeks');
+      const res = await api.get('/api/academic-weeks/study-weeks');
       setWeekList(res.data);
     } catch (err) {
       console.error('Lỗi khi lấy danh sách tuần:', err);

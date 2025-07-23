@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../api/api';
 
 export interface Week {
   _id: string;
@@ -47,7 +47,7 @@ export default function useWeeklyScores() {
   // 🗓️ Fetch academic weeks
   const fetchWeeks = async () => {
     try {
-      const res = await axios.get('/api/academic-weeks/study-weeks');
+      const res = await api.get('/api/academic-weeks/study-weeks');
       setWeeks(res.data);
       if (res.data.length > 0) setSelectedWeek(res.data[0]);
     } catch (err) {
@@ -58,7 +58,7 @@ export default function useWeeklyScores() {
   // 👨‍🏫 Fetch classes with homeroom teacher
   const fetchClassesWithTeacher = async () => {
     try {
-      const res = await axios.get('/api/classes/with-teacher');
+      const res = await api.get('/api/classes/with-teacher');
       setClassesWithTeacher(res.data);
     } catch (err) {
       console.error('Lỗi khi load classes with teacher:', err);
@@ -90,7 +90,7 @@ export default function useWeeklyScores() {
       // ⚠️ Always ensure classesWithTeacher is ready
       if (classesWithTeacher.length === 0) await fetchClassesWithTeacher();
 
-      const res = await axios.get('/api/class-weekly-scores', { params: { weekNumber } });
+      const res = await api.get('/api/class-weekly-scores', { params: { weekNumber } });
       const merged = mergeScoresWithClasses(classesWithTeacher, res.data);
 
       setScores(merged);
@@ -109,7 +109,7 @@ export default function useWeeklyScores() {
       setLoading(true);
       if (classesWithTeacher.length === 0) await fetchClassesWithTeacher();
 
-      const res = await axios.post('/api/class-weekly-scores/calculate', { weekNumber });
+      const res = await api.post('/api/class-weekly-scores/calculate', { weekNumber });
       const merged = mergeScoresWithClasses(classesWithTeacher, res.data);
 
       setScores(merged);
@@ -128,7 +128,7 @@ export default function useWeeklyScores() {
       setLoading(true);
       if (classesWithTeacher.length === 0) await fetchClassesWithTeacher();
 
-      const res = await axios.post('/api/class-weekly-scores/calculate-total-rank', { weekNumber });
+      const res = await api.post('/api/class-weekly-scores/calculate-total-rank', { weekNumber });
       const merged = mergeScoresWithClasses(classesWithTeacher, res.data);
 
       setScores(merged);
@@ -144,7 +144,7 @@ export default function useWeeklyScores() {
   // 💾 Save scores
   const saveScores = async (weekNumber: number, scoresToSave: WeeklyScore[]) => {
     try {
-      await axios.post('/api/class-weekly-scores', {
+      await api.post('/api/class-weekly-scores', {
         weekNumber,
         scores: scoresToSave,
       });

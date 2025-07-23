@@ -11,7 +11,7 @@ import {
   TableCell,
   TableBody,
 } from '@mui/material';
-import axios from 'axios';
+import api from '../../api/api';
 
 interface ClassType {
   className: string;
@@ -37,7 +37,7 @@ const AddClassPage = () => {
 
   const fetchExistingClasses = async () => {
     try {
-      const res = await axios.get('/api/classes');
+      const res = await api.get('/api/classes');
       const existing = res.data;
 
       // Ghép teacher từ backend vào danh sách đã định nghĩa sẵn
@@ -65,7 +65,7 @@ const AddClassPage = () => {
     }
 
     try {
-      await axios.post('/api/classes', {
+      await api.post('/api/classes', {
         className: classItem.className,
         teacher: classItem.teacher.trim(),
       });

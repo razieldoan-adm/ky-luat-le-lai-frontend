@@ -3,7 +3,7 @@ import {
   Box, Typography, Table, TableHead, TableRow, TableCell, TableBody,
   Button, TextField, Stack
 } from '@mui/material';
-import axios from 'axios';
+import api from '../../api/api';;
 
 interface Rule {
   _id: string;
@@ -18,7 +18,7 @@ export default function AdminRulesPage() {
   const [editedRule, setEditedRule] = useState<Partial<Rule>>({});
 
   const fetchRules = async () => {
-    const res = await axios.get('/api/rules', {
+    const res = await api.get('/api/rules', {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     });
     setRules(res.data);
@@ -30,14 +30,14 @@ export default function AdminRulesPage() {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn xóa?')) return;
-    await axios.delete(`/api/rules/${id}`, {
+    await api.delete(`/api/rules/${id}`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     });
     fetchRules();
   };
 
   const handleSave = async (id: string) => {
-    await axios.put(`/api/rules/${id}`, editedRule, {
+    await api.put(`/api/rules/${id}`, editedRule, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     });
     setEditingId(null);
@@ -51,7 +51,7 @@ export default function AdminRulesPage() {
     const formData = new FormData();
     formData.append('file', file);
 
-    await axios.post('/api/rules/import', formData, {
+    await api.post('/api/rules/import', formData, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token')}`,
         'Content-Type': 'multipart/form-data'

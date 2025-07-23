@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../api/api';
 import {
   Box, Typography, TextField, Button, MenuItem, Stack, Snackbar, Alert, Backdrop, CircularProgress
 } from '@mui/material';
@@ -42,7 +42,7 @@ export default function ClassLineUpSummaryPage() {
 
   const fetchSettings = async () => {
     try {
-      const res = await axios.get('/api/settings');
+      const res = await api.get('/api/settings');
       setRankingPoint(res.data.disciplinePointDeduction?.ranking || 10);
     } catch (err) {
       console.error('Error fetching settings:', err);
@@ -52,7 +52,7 @@ export default function ClassLineUpSummaryPage() {
   const fetchWeeks = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('/api/academic-weeks/study-weeks');
+      const res = await api.get('/api/academic-weeks/study-weeks');
       setWeekList(res.data);
       const initialWeek = res.data[0];
       setSelectedWeek(initialWeek);
@@ -79,7 +79,7 @@ export default function ClassLineUpSummaryPage() {
     });
 
     try {
-      const res = await axios.get('/api/class-lineup-summaries', { params: { weekNumber } });
+      const res = await api.get('/api/class-lineup-summaries', { params: { weekNumber } });
       res.data.forEach((cls: any) => {
         const target = initial[cls.grade].find(c => c.className === cls.className);
         if (target) {
@@ -130,7 +130,7 @@ export default function ClassLineUpSummaryPage() {
         )
       };
 
-      await axios.post('/api/class-lineup-summaries', payload);
+      await api.post('/api/class-lineup-summaries', payload);
       setSnackbar({ open: true, message: 'Đã lưu điểm xếp hàng thành công!', severity: 'success' });
     } catch (err) {
       console.error('Save error:', err);

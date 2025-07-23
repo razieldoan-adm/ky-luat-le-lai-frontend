@@ -3,7 +3,7 @@ import {
   Box, Typography, TextField, Button, Paper, Table, TableHead, TableRow, TableCell,
   TableBody, MenuItem, Stack, Checkbox, Snackbar, Alert
 } from '@mui/material';
-import axios from 'axios';
+import api from '../../api/api';
 
 interface ClassType {
   className: string;
@@ -28,7 +28,7 @@ export default function ClassHygieneScorePage() {
 
   const fetchSettings = async () => {
     try {
-      const res = await axios.get('/api/settings');
+      const res = await api.get('/api/settings');
       setHygienePoint(res.data.disciplinePointDeduction?.hygiene || 5);
     } catch (err) {
       console.error('Lỗi khi lấy settings:', err);
@@ -37,7 +37,7 @@ export default function ClassHygieneScorePage() {
 
   const fetchWeeks = async () => {
     try {
-      const res = await axios.get('/api/academic-weeks/study-weeks');
+      const res = await api.get('/api/academic-weeks/study-weeks');
       setWeekList(res.data);
       if (res.data.length > 0) {
         setSelectedWeek(res.data[0]);
@@ -63,7 +63,7 @@ export default function ClassHygieneScorePage() {
     });
 
     try {
-      const res = await axios.get('/api/class-hygiene-scores', { params: { weekNumber } });
+      const res = await api.get('/api/class-hygiene-scores', { params: { weekNumber } });
 
       // ✅ Nếu tuần đã có dữ liệu thì ghi đè
       res.data.forEach((cls: any) => {
@@ -103,7 +103,7 @@ export default function ClassHygieneScorePage() {
         )
       };
 
-      await axios.post('/api/class-hygiene-scores', payload);
+      await api.post('/api/class-hygiene-scores', payload);
       setSnackbar({ open: true, message: 'Đã lưu điểm vệ sinh thành công!', severity: 'success' });
 
     } catch (err) {
