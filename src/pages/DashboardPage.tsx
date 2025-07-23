@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Box, Typography, Card, CardContent, Stack, List, ListItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
 import axios from 'axios';
+import api from '../api/axios';
 
 import SchoolIcon from '@mui/icons-material/School';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
@@ -34,10 +35,10 @@ export default function Dashboard() {
   const fetchCounts = async () => {
     try {
       const [clsRes, multiRes, vioRes, unhandledRes] = await Promise.all([
-        axios.get('/api/classes/count'),
-        axios.get('/api/violations/students/multiple-violations/count'),
-        axios.get('/api/violations/count'),
-        axios.get('/api/violations/unhandled/count'),
+        api.get('/api/classes/count'),
+        api.get('/api/violations/students/multiple-violations/count'),
+        api.get('/api/violations/count'),
+        api.get('/api/violations/unhandled/count'),
       ]);
 
       setClassCount(clsRes.data.count);
@@ -52,8 +53,8 @@ export default function Dashboard() {
   const fetchClassRanks = async () => {
     try {
       const [topRes, bottomRes] = await Promise.all([
-        axios.get('/api/class-rank/weekscores/top-continuous'),
-        axios.get('/api/class-rank/weekscores/bottom-continuous'),
+        api.get('/api/class-rank/weekscores/top-continuous'),
+        api.get('/api/class-rank/weekscores/bottom-continuous'),
       ]);
 
       setTopClasses(topRes.data);
@@ -65,7 +66,7 @@ export default function Dashboard() {
 
   const fetchTop1EachGrade = async () => {
     try {
-      const res = await axios.get('/api/class-rank/weekscores/top1-current-week');
+      const res = await api.get('/api/class-rank/weekscores/top1-current-week');
       setTop1EachGrade(res.data);
     } catch (err) {
       console.error('Lỗi khi lấy top1 mỗi khối:', err);
