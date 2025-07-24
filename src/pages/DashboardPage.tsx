@@ -55,8 +55,7 @@ export default function Dashboard() {
       const [topRes, bottomRes] = await Promise.all([
         api.get('/api/class-rank/weekscores/top-continuous'),
         api.get('/api/class-rank/weekscores/bottom-continuous'),
-        api.get('/class-rank/weekscores/top-continuous'),
-        api.get('/class-rank/weekscores/bottom-continuous'),
+   
 
       ]);
 

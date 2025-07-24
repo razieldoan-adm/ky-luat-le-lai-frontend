@@ -12,7 +12,7 @@ import {
   Stack,
   MenuItem,
 } from '@mui/material';
-
+import api from '../../api/api'
 interface StudentSuggestion {
   name: string;
   className: string;
@@ -53,11 +53,17 @@ export default function RecordViolationPage() {
 
   // Lấy danh sách lớp có GVCN
   useEffect(() => {
-    fetch('/api/classes/with-teacher')
-      .then((res) => res.json())
-      .then((data) => setClassOptions(data))
-      .catch((err) => console.error('Lỗi khi lấy danh sách lớp:', err));
-  }, []);
+  const fetchClasses = async () => {
+    try {
+      const res = await api.get('/api/classes/with-teacher');
+      setClassOptions(res.data);
+    } catch (err) {
+      console.error('Lỗi khi lấy danh sách lớp:', err);
+    }
+  };
+
+  fetchClasses();
+}, []);
 
   const handleManualSubmit = () => {
     if (!name.trim() || !className.trim()) return;
