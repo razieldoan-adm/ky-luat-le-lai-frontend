@@ -1,7 +1,7 @@
 // src/pages/LoginPage.tsx
 import { useState, useEffect } from "react";
 import api from "../api/api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   Container,
   Box,
@@ -10,7 +10,6 @@ import {
   Typography,
   Paper
 } from "@mui/material";
-
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginPage() {
@@ -19,14 +18,16 @@ export default function LoginPage() {
   const { user } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
   useEffect(() => {
     if (user) {
-      // user đã login, redirect về trang phù hợp
+      // Đã đăng nhập, điều hướng theo role
       if (user.role === "admin") navigate("/admin");
       else if (user.role === "teacher") navigate("/teacher");
       else navigate("/student");
     }
   }, [user, navigate]);
+
   const handleLogin = async () => {
     try {
       const res = await api.post('/api/auth/login', {
@@ -39,9 +40,9 @@ export default function LoginPage() {
         role: res.data.role
       };
 
-      login(userData, res.data.token); // gọi hàm context để set user & token
+      login(userData, res.data.token); // Cập nhật context
 
-      // Redirect theo role
+      // Điều hướng theo vai trò
       if (res.data.role === "admin") navigate("/admin");
       else if (res.data.role === "teacher") navigate("/teacher");
       else navigate("/student");
@@ -79,6 +80,13 @@ export default function LoginPage() {
           >
             Đăng nhập
           </Button>
+
+          {/* 🆕 Nút quay về dashboard */}
+          <Typography variant="body2" align="center" sx={{ mt: 2 }}>
+            <Link to="/dashboard" style={{ textDecoration: 'none', color: '#1976d2' }}>
+              ← Quay về bảng điều khiển
+            </Link>
+          </Typography>
         </Box>
       </Paper>
     </Container>
