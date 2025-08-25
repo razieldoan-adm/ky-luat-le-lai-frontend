@@ -40,7 +40,6 @@ const AddClassPage = () => {
       const res = await api.get('/api/classes');
       const existing = res.data;
 
-      // Ghép teacher từ backend vào danh sách đã định nghĩa sẵn
       setClassList((prev) =>
         prev.map((cls) => {
           const found = existing.find((e: ClassType) => e.className === cls.className);
@@ -58,21 +57,19 @@ const AddClassPage = () => {
     setClassList(newList);
   };
 
-  const handleSave = async (classItem: ClassType) => {
-    if (!classItem.teacher.trim()) {
-      alert('Vui lòng nhập tên GVCN');
-      return;
-    }
-
+  // Lưu toàn bộ danh sách
+  const handleSaveAll = async () => {
     try {
-      await api.post('/api/classes', {
-        className: classItem.className,
-        teacher: classItem.teacher.trim(),
-      });
-      alert(`Đã lưu lớp ${classItem.className}`);
+      for (const classItem of classList) {
+        await api.post('/api/classes', {
+          className: classItem.className,
+          teacher: classItem.teacher.trim(), // Cho phép rỗng
+        });
+      }
+      alert('Đã lưu toàn bộ danh sách GVCN');
     } catch (err) {
       console.error('Lỗi khi lưu:', err);
-      alert(`Lưu lớp ${classItem.className} thất bại`);
+      alert('Lưu thất bại');
     }
   };
 
@@ -90,7 +87,6 @@ const AddClassPage = () => {
               <TableCell><strong>STT</strong></TableCell>
               <TableCell><strong>Lớp</strong></TableCell>
               <TableCell><strong>GVCN</strong></TableCell>
-              <TableCell><strong>Xác nhận</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -103,13 +99,14 @@ const AddClassPage = () => {
                     size="small"
                     variant="outlined"
                     value={cls.teacher}
-                    onChange={(e) => handleTeacherChange(classList.findIndex(c => c.className === cls.className), e.target.value)}
+                    placeholder="(Có thể để trống)"
+                    onChange={(e) =>
+                      handleTeacherChange(
+                        classList.findIndex(c => c.className === cls.className),
+                        e.target.value
+                      )
+                    }
                   />
-                </TableCell>
-                <TableCell>
-                  <Button variant="contained" size="small" onClick={() => handleSave(cls)}>
-                    Lưu
-                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -130,6 +127,13 @@ const AddClassPage = () => {
         {renderTable(7)}
         {renderTable(8)}
         {renderTable(9)}
+      </Box>
+
+      {/* Nút lưu tất cả */}
+      <Box sx={{ marginTop: 3 }}>
+        <Button variant="contained" color="primary" onClick={handleSaveAll}>
+          Lưu tất cả
+        </Button>
       </Box>
     </Box>
   );
