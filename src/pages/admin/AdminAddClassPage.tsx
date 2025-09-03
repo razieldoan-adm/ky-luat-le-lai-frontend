@@ -62,14 +62,16 @@ const AddClassPage = () => {
   };
 
   const handleSaveAll = async () => {
-    try {
-      for (const classItem of classList) { await api.post('/api/classes', { className: classItem.className, teacher: classItem.teacher.trim(), // Cho phép rỗng });
-      alert('Đã lưu danh sách lớp thành công');
-    } catch (err) {
-      console.error('Lỗi khi lưu:', err);
-      alert('Lưu thất bại');
+  try {
+    for (const classItem of classList) {
+      await api.post('/api/classes', classItem);
     }
-  };
+    alert('Đã lưu danh sách lớp thành công');
+  } catch (err) {
+    console.error('Lỗi khi lưu:', err);
+    alert('Lưu thất bại');
+  }
+};
 
   const renderTable = (grade: number) => {
     const classes = classList.filter(cls =>
