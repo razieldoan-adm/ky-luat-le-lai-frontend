@@ -63,7 +63,7 @@ const AddClassPage = () => {
 
   const handleSaveAll = async () => {
     try {
-      await api.post('/api/classes/saveAll', classList);
+      await api.post('/api/classes/', classList);
       alert('Đã lưu danh sách lớp thành công');
     } catch (err) {
       console.error('Lỗi khi lưu:', err);
