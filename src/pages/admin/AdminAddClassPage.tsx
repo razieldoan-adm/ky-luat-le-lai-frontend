@@ -18,18 +18,8 @@ interface ClassType {
   teacher: string;
 }
 
-const generateClassList = () => {
-  const result: ClassType[] = [];
-  for (let grade = 6; grade <= 9; grade++) {
-    for (let i = 1; i <= 10; i++) {
-      result.push({ className: `${grade}A${i}`, teacher: '' });
-    }
-  }
-  return result;
-};
-
 const AddClassPage = () => {
-  const [classList, setClassList] = useState<ClassType[]>(generateClassList());
+  const [classList, setClassList] = useState<ClassType[]>([]);
 
   useEffect(() => {
     fetchExistingClasses();
@@ -38,14 +28,7 @@ const AddClassPage = () => {
   const fetchExistingClasses = async () => {
     try {
       const res = await api.get('/api/classes');
-      const existing = res.data;
-
-      setClassList((prev) =>
-        prev.map((cls) => {
-          const found = existing.find((e: ClassType) => e.className === cls.className);
-          return found ? { ...cls, teacher: found.teacher } : cls;
-        })
-      );
+      setClassList(res.data); // dữ liệu từ DB có dạng [{ className, teacher }]
     } catch (err) {
       console.error('Lỗi khi tải danh sách lớp:', err);
     }
@@ -57,16 +40,31 @@ const AddClassPage = () => {
     setClassList(newList);
   };
 
-  // Lưu toàn bộ danh sách
+  const handleAddClass = (grade: number) => {
+    const sameGrade = classList.filter(cls =>
+      cls.className.startsWith(`${grade}A`)
+    );
+    const nextIndex =
+      sameGrade.length > 0
+        ? Math.max(
+            ...sameGrade.map(c =>
+              parseInt(c.className.replace(`${grade}A`, ''))
+            )
+          ) + 1
+        : 1;
+
+    const newClass = { className: `${grade}A${nextIndex}`, teacher: '' };
+    setClassList(prev => [...prev, newClass]);
+  };
+
+  const handleDeleteClass = (className: string) => {
+    setClassList(prev => prev.filter(c => c.className !== className));
+  };
+
   const handleSaveAll = async () => {
     try {
-      for (const classItem of classList) {
-        await api.post('/api/classes', {
-          className: classItem.className,
-          teacher: classItem.teacher.trim(), // Cho phép rỗng
-        });
-      }
-      alert('Đã lưu toàn bộ danh sách GVCN');
+      await api.post('/api/classes/saveAll', classList);
+      alert('Đã lưu danh sách lớp thành công');
     } catch (err) {
       console.error('Lỗi khi lưu:', err);
       alert('Lưu thất bại');
@@ -74,10 +72,12 @@ const AddClassPage = () => {
   };
 
   const renderTable = (grade: number) => {
-    const classes = classList.filter((cls) => cls.className.startsWith(`${grade}`));
+    const classes = classList.filter(cls =>
+      cls.className.startsWith(`${grade}A`)
+    );
 
     return (
-      <Box sx={{ flex: 1 }}>
+      <Box sx={{ flex: 1, minWidth: 350 }}>
         <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
           Khối {grade}
         </Typography>
@@ -87,6 +87,7 @@ const AddClassPage = () => {
               <TableCell><strong>STT</strong></TableCell>
               <TableCell><strong>Lớp</strong></TableCell>
               <TableCell><strong>GVCN</strong></TableCell>
+              <TableCell><strong>Xoá</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -108,8 +109,29 @@ const AddClassPage = () => {
                     }
                   />
                 </TableCell>
+                <TableCell>
+                  <Button
+                    color="error"
+                    onClick={() => handleDeleteClass(cls.className)}
+                  >
+                    _
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
+
+            {/* Dòng thêm lớp */}
+            <TableRow>
+              <TableCell colSpan={4} align="center">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={() => handleAddClass(grade)}
+                >
+                  + Thêm lớp
+                </Button>
+              </TableCell>
+            </TableRow>
           </TableBody>
         </Table>
       </Box>
@@ -129,7 +151,6 @@ const AddClassPage = () => {
         {renderTable(9)}
       </Box>
 
-      {/* Nút lưu tất cả */}
       <Box sx={{ marginTop: 3 }}>
         <Button variant="contained" color="primary" onClick={handleSaveAll}>
           Lưu tất cả
