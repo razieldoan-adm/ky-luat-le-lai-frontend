@@ -49,17 +49,37 @@ export default function ViewViolationStudentByClassPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [totalPoint, setTotalPoint] = useState(0);
 
+  // Lấy danh sách lớp, rules, weeks
   useEffect(() => {
-    fetchViolations();
     fetchClasses();
     fetchRules();
     fetchWeeks();
   }, []);
 
+  // Khi weekList đã có, mới fetch violations để gắn weekNumber
+  useEffect(() => {
+    if (weekList.length > 0) {
+      fetchViolations();
+    }
+  }, [weekList]);
+
   const fetchViolations = async () => {
     try {
       const res = await api.get('/api/violations/all/all-student');
-      setViolations(res.data);
+      const rawData = res.data;
+
+      // ✅ Gắn weekNumber cho từng vi phạm dựa trên time
+      const dataWithWeek = rawData.map((v: any) => {
+        const violationDate = new Date(v.time);
+        const matchedWeek = weekList.find(
+          (w) =>
+            violationDate >= new Date(w.startDate) &&
+            violationDate <= new Date(w.endDate)
+        );
+        return { ...v, weekNumber: matchedWeek?.weekNumber || null };
+      });
+
+      setViolations(dataWithWeek);
     } catch (err) {
       console.error('Lỗi khi lấy dữ liệu vi phạm:', err);
     }
@@ -68,7 +88,9 @@ export default function ViewViolationStudentByClassPage() {
   const fetchClasses = async () => {
     try {
       const res = await api.get('/api/classes');
-      const validClasses = res.data.filter((cls: any) => cls.teacher).map((cls: any) => cls.className);
+      const validClasses = res.data
+        .filter((cls: any) => cls.teacher)
+        .map((cls: any) => cls.className);
       setClassList(validClasses);
     } catch (err) {
       console.error('Lỗi khi lấy danh sách lớp:', err);
@@ -140,7 +162,13 @@ export default function ViewViolationStudentByClassPage() {
         Danh sách vi phạm học sinh theo lớp
       </Typography>
 
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center" flexWrap="wrap" sx={{ mb: 2 }}>
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        spacing={2}
+        alignItems="center"
+        flexWrap="wrap"
+        sx={{ mb: 2 }}
+      >
         <TextField
           label="Chọn lớp"
           select
@@ -150,7 +178,9 @@ export default function ViewViolationStudentByClassPage() {
         >
           <MenuItem value="">-- Chọn lớp --</MenuItem>
           {classList.map((cls) => (
-            <MenuItem key={cls} value={cls}>{cls}</MenuItem>
+            <MenuItem key={cls} value={cls}>
+              {cls}
+            </MenuItem>
           ))}
         </TextField>
 
@@ -169,7 +199,9 @@ export default function ViewViolationStudentByClassPage() {
           ))}
         </TextField>
 
-        <Button variant="contained" onClick={applyFilters}>Áp dụng</Button>
+        <Button variant="contained" onClick={applyFilters}>
+          Áp dụng
+        </Button>
       </Stack>
 
       <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
@@ -177,7 +209,10 @@ export default function ViewViolationStudentByClassPage() {
       </Typography>
 
       {/* ✅ Bảng danh sách vi phạm chi tiết */}
-      <Paper elevation={3} sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mb: 4 }}>
+      <Paper
+        elevation={3}
+        sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mb: 4 }}
+      >
         <Table size="small">
           <TableHead>
             <TableRow sx={{ backgroundColor: '#87cafe' }}>
@@ -193,56 +228,4 @@ export default function ViewViolationStudentByClassPage() {
             {filtered.length > 0 ? (
               filtered.map((v, i) => (
                 <TableRow key={v._id}>
-                  <TableCell>{i + 1}</TableCell>
-                  <TableCell>{v.name}</TableCell>
-                  <TableCell>{v.className}</TableCell>
-                  <TableCell>{v.description}</TableCell>
-                  <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
-                  <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} align="center">Không có dữ liệu.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </Paper>
-
-      {/* ✅ Bảng học sinh vi phạm nhiều lần */}
-      <Typography variant="h6" sx={{ color: 'red', mb: 1 }}>
-        Danh sách học sinh vi phạm từ 3 lần trở lên trong tuần
-      </Typography>
-
-      <Paper elevation={3} sx={{ width: '100%', overflowX: 'auto', borderRadius: 3 }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ backgroundColor: '#ffcccc' }}>
-              <TableCell>STT</TableCell>
-              <TableCell>Họ tên</TableCell>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Số lần vi phạm</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {repeatStudents.length > 0 ? (
-              repeatStudents.map((s, i) => (
-                <TableRow key={s.name}>
-                  <TableCell>{i + 1}</TableCell>
-                  <TableCell>{s.name}</TableCell>
-                  <TableCell>{s.className}</TableCell>
-                  <TableCell>{s.count}</TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={4} align="center">Không có học sinh vi phạm từ 3 lần.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </Paper>
-    </Box>
-  );
-}
+                  <TableCell>{i + 1}</TableCell
