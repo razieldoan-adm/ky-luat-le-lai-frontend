@@ -35,23 +35,25 @@ export default function ViewFinalCompetitionResult() {
       const res = await api.get('/api/class-weekly-scores', {
         params: { weekNumber: selectedWeek.weekNumber },
       });
-      // Sắp xếp theo tên lớp thay vì theo tổng điểm
+
+      // Sắp xếp theo tên lớp (ví dụ: 10A1, 10A2...)
       const sorted = res.data.sort((a: any, b: any) => {
-  const extractNumber = (s: string) => {
-    const match = s.match(/\d+$/);
-    return match ? parseInt(match[0], 10) : 0;
-  };
-  const extractPrefix = (s: string) => s.replace(/\d+$/, '');
+        const extractNumber = (s: string) => {
+          const match = s.match(/\d+$/);
+          return match ? parseInt(match[0], 10) : 0;
+        };
+        const extractPrefix = (s: string) => s.replace(/\d+$/, '');
 
-  const prefixA = extractPrefix(a.className);
-  const prefixB = extractPrefix(b.className);
+        const prefixA = extractPrefix(a.className);
+        const prefixB = extractPrefix(b.className);
 
-  if (prefixA !== prefixB) {
-    return prefixA.localeCompare(prefixB);
-  }
+        if (prefixA !== prefixB) {
+          return prefixA.localeCompare(prefixB);
+        }
 
-  return extractNumber(a.className) - extractNumber(b.className);
-});
+        return extractNumber(a.className) - extractNumber(b.className);
+      });
+
       setResults(sorted);
     } catch (err) {
       console.error('Lỗi khi lấy kết quả thi đua:', err);
@@ -87,11 +89,11 @@ export default function ViewFinalCompetitionResult() {
             <TableRow>
               <TableCell align="center">STT</TableCell>
               <TableCell align="center">Lớp</TableCell>
-              <TableCell align="center">Điểm SĐB</TableCell>
-              <TableCell align="center">Điểm kỷ luật</TableCell>
-              <TableCell align="center">Điểm vệ sinh</TableCell>
-              <TableCell align="center">Điểm chuyên cần</TableCell>
-              <TableCell align="center">Điểm xếp hàng</TableCell>
+              <TableCell align="center">Học tập</TableCell>
+              <TableCell align="center">Kỷ luật</TableCell>
+              <TableCell align="center">Vệ sinh</TableCell>
+              <TableCell align="center">Chuyên cần</TableCell>
+              <TableCell align="center">Xếp hàng</TableCell>
               <TableCell align="center">Tổng</TableCell>
               <TableCell align="center">Xếp hạng</TableCell>
             </TableRow>
