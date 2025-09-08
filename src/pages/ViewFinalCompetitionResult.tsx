@@ -36,21 +36,17 @@ export default function ViewFinalCompetitionResult() {
         params: { weekNumber: selectedWeek.weekNumber },
       });
 
-      // Sắp xếp theo tên lớp (ví dụ: 10A1, 10A2...)
+      // Sắp xếp lớp cho gọn gàng
       const sorted = res.data.sort((a: any, b: any) => {
         const extractNumber = (s: string) => {
           const match = s.match(/\d+$/);
           return match ? parseInt(match[0], 10) : 0;
         };
         const extractPrefix = (s: string) => s.replace(/\d+$/, '');
-
         const prefixA = extractPrefix(a.className);
         const prefixB = extractPrefix(b.className);
 
-        if (prefixA !== prefixB) {
-          return prefixA.localeCompare(prefixB);
-        }
-
+        if (prefixA !== prefixB) return prefixA.localeCompare(prefixB);
         return extractNumber(a.className) - extractNumber(b.className);
       });
 
@@ -81,35 +77,45 @@ export default function ViewFinalCompetitionResult() {
         </Select>
       </FormControl>
 
+      {/* Hiển thị tổng số lớp */}
+      <Typography variant="subtitle1" sx={{ mb: 1 }}>
+        Tổng số lớp: {results.length}
+      </Typography>
+
       {loading ? (
         <CircularProgress />
       ) : (
-        <Table size="small">
+        <Table size="small" sx={{ border: "1px solid #000" }}>
           <TableHead>
             <TableRow>
-              <TableCell align="center">STT</TableCell>
-              <TableCell align="center">Lớp</TableCell>
-              <TableCell align="center">Học tập</TableCell>
-              <TableCell align="center">Kỷ luật</TableCell>
-              <TableCell align="center">Vệ sinh</TableCell>
-              <TableCell align="center">Chuyên cần</TableCell>
-              <TableCell align="center">Xếp hàng</TableCell>
-              <TableCell align="center">Tổng</TableCell>
-              <TableCell align="center">Xếp hạng</TableCell>
+              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>STT</TableCell>
+              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Lớp</TableCell>
+              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Học tập</TableCell>
+              <TableCell align="center" colSpan={4} sx={{ border: "1px solid #000" }}>Nề nếp</TableCell>
+              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Tổng điểm Nề nếp</TableCell>
+              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Tổng</TableCell>
+              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Xếp hạng</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell align="center" sx={{ border: "1px solid #000" }}>Kỷ luật</TableCell>
+              <TableCell align="center" sx={{ border: "1px solid #000" }}>Vệ sinh</TableCell>
+              <TableCell align="center" sx={{ border: "1px solid #000" }}>Chuyên cần</TableCell>
+              <TableCell align="center" sx={{ border: "1px solid #000" }}>Xếp hàng</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {results.map((r, idx) => (
               <TableRow key={idx}>
-                <TableCell align="center">{idx + 1}</TableCell>
-                <TableCell align="center">{r.className}</TableCell>
-                <TableCell align="center">{r.academicScore}</TableCell>
-                <TableCell align="center">{r.disciplineScore}</TableCell>
-                <TableCell align="center">{r.hygieneScore}</TableCell>
-                <TableCell align="center">{r.attendanceScore}</TableCell>
-                <TableCell align="center">{r.lineUpScore}</TableCell>
-                <TableCell align="center">{r.totalScore}</TableCell>
-                <TableCell align="center">{r.rank}</TableCell>
+                <TableCell align="center" sx={{ border: "1px solid #000" }}>{idx + 1}</TableCell>
+                <TableCell align="center" sx={{ border: "1px solid #000" }}>{r.className}</TableCell>
+                <TableCell align="center" sx={{ border: "1px solid #000" }}>{r.academicScore}</TableCell>
+                <TableCell align="center" sx={{ border: "1px solid #000" }}>{r.disciplineScore}</TableCell>
+                <TableCell align="center" sx={{ border: "1px solid #000" }}>{r.hygieneScore}</TableCell>
+                <TableCell align="center" sx={{ border: "1px solid #000" }}>{r.attendanceScore}</TableCell>
+                <TableCell align="center" sx={{ border: "1px solid #000" }}>{r.lineUpScore}</TableCell>
+                <TableCell align="center" sx={{ border: "1px solid #000" }}>{r.totalNeNepscore}</TableCell>
+                <TableCell align="center" sx={{ border: "1px solid #000" }}>{r.totalScore}</TableCell>
+                <TableCell align="center" sx={{ border: "1px solid #000" }}>{r.rank}</TableCell>
               </TableRow>
             ))}
           </TableBody>
