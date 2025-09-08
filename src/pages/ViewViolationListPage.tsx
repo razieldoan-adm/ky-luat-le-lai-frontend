@@ -228,4 +228,67 @@ export default function ViewViolationStudentByClassPage() {
             {filtered.length > 0 ? (
               filtered.map((v, i) => (
                 <TableRow key={v._id}>
-                  <TableCell>{i + 1}</TableCell
+                  <TableCell>{i + 1}</TableCell>
+                  <TableCell>{v.name}</TableCell>
+                  <TableCell>{v.className}</TableCell>
+                  <TableCell>{v.description}</TableCell>
+                  <TableCell>
+                    {rules.find((r) => r.title === v.description)?.point || 0}
+                  </TableCell>
+                  <TableCell>
+                    {v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  Không có dữ liệu.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Paper>
+
+      {/* ✅ Bảng học sinh vi phạm nhiều lần */}
+      <Typography variant="h6" sx={{ color: 'red', mb: 1 }}>
+        Danh sách học sinh vi phạm từ 3 lần trở lên trong tuần
+      </Typography>
+
+      <Paper
+        elevation={3}
+        sx={{ width: '100%', overflowX: 'auto', borderRadius: 3 }}
+      >
+        <Table size="small">
+          <TableHead>
+            <TableRow sx={{ backgroundColor: '#ffcccc' }}>
+              <TableCell>STT</TableCell>
+              <TableCell>Họ tên</TableCell>
+              <TableCell>Lớp</TableCell>
+              <TableCell>Số lần vi phạm</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {repeatStudents.length > 0 ? (
+              repeatStudents.map((s, i) => (
+                <TableRow key={s.name}>
+                  <TableCell>{i + 1}</TableCell>
+                  <TableCell>{s.name}</TableCell>
+                  <TableCell>{s.className}</TableCell>
+                  <TableCell>{s.count}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={4} align="center">
+                  Không có học sinh vi phạm từ 3 lần.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Paper>
+    </Box>
+  );
+}
