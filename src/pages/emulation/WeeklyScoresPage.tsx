@@ -2,9 +2,11 @@ import { useEffect } from 'react';
 import {
   Box, Typography, TextField, Button, Paper,
   Table, TableHead, TableRow, TableCell, TableBody,
-  MenuItem, Stack,  Backdrop, CircularProgress
+  MenuItem, Stack, Backdrop, CircularProgress
 } from '@mui/material';
 import useWeeklyScores from './useWeeklyScores';
+
+const DISCIPLINE_MAX = 100; // điểm nền nếp tối đa
 
 export default function WeeklyScoresPage() {
   const {
@@ -14,34 +16,49 @@ export default function WeeklyScoresPage() {
     scores,
     loading,
     fetchScores,
-    calculateScores,
-    calculateTotalAndRank,
+    setScores,
     saveScores,
   } = useWeeklyScores();
 
-  // 🏁 Load scores on first render if selectedWeek exists
+  // 🏁 Load dữ liệu khi chọn tuần
   useEffect(() => {
     if (selectedWeek) {
       fetchScores(selectedWeek.weekNumber);
     }
   }, [selectedWeek]);
 
-  const handleCalculate = async () => {
-    if (selectedWeek) {
-      await calculateScores(selectedWeek.weekNumber);
-    }
-  };
+  // 👉 Tính lại điểm và xếp hạng
+  const handleCalculate = () => {
+    const updated = scores.map((cls) => {
+      // Tổng điểm nề nếp
+      const totalNeNep = Math.max(
+        0,
+        DISCIPLINE_MAX - (cls.violationScore + cls.hygieneScore + cls.attendanceScore + cls.lineUpScore)
+      );
 
-  const handleCalculateTotalAndRank = async () => {
-    if (selectedWeek) {
-      await calculateTotalAndRank(selectedWeek.weekNumber);
-    }
+      // Tổng điểm cuối
+      const totalScore = cls.academicScore + cls.bonusScore + totalNeNep;
+
+      return {
+        ...cls,
+        totalNeNep,
+        totalScore,
+      };
+    });
+
+    // Xếp hạng theo tổng điểm
+    const ranked = [...updated].sort((a, b) => b.totalScore - a.totalScore);
+    ranked.forEach((cls, idx) => {
+      updated.find(c => c.className === cls.className)!.rank = idx + 1;
+    });
+
+    setScores(updated);
   };
 
   const handleSave = async () => {
     if (selectedWeek) {
       await saveScores(selectedWeek.weekNumber, scores);
-      alert('Đã lưu dữ liệu tuần thành công!');
+      alert('✅ Đã lưu dữ liệu tuần thành công!');
     }
   };
 
@@ -82,10 +99,7 @@ export default function WeeklyScoresPage() {
           🔄 Xem lại
         </Button>
         <Button variant="contained" color="primary" onClick={handleCalculate}>
-          📥 Lấy dữ liệu
-        </Button>
-        <Button variant="contained" color="warning" onClick={handleCalculateTotalAndRank}>
-          ➕ Tính tổng & xếp hạng
+          ➕ Tính điểm & xếp hạng
         </Button>
         <Button variant="contained" color="success" onClick={handleSave}>
           💾 Lưu
@@ -97,11 +111,13 @@ export default function WeeklyScoresPage() {
           <TableRow>
             <TableCell>STT</TableCell>
             <TableCell>Lớp</TableCell>
-            <TableCell>Điểm SĐB</TableCell>
-            <TableCell>Điểm kỷ luật</TableCell>
+            <TableCell>Điểm học tập</TableCell>
+            <TableCell>Điểm thưởng</TableCell>
+            <TableCell>Điểm vi phạm</TableCell>
             <TableCell>Điểm vệ sinh</TableCell>
             <TableCell>Điểm chuyên cần</TableCell>
             <TableCell>Điểm xếp hàng</TableCell>
+            <TableCell>Tổng điểm nề nếp</TableCell>
             <TableCell>Tổng</TableCell>
             <TableCell>Xếp hạng</TableCell>
           </TableRow>
@@ -112,18 +128,20 @@ export default function WeeklyScoresPage() {
               <TableCell align="center">{idx + 1}</TableCell>
               <TableCell align="center">{cls.className}</TableCell>
               <TableCell align="center">{cls.academicScore}</TableCell>
-              <TableCell align="center">{cls.disciplineScore}</TableCell>
+              <TableCell align="center">{cls.bonusScore}</TableCell>
+              <TableCell align="center">{cls.violationScore}</TableCell>
               <TableCell align="center">{cls.hygieneScore}</TableCell>
               <TableCell align="center">{cls.attendanceScore}</TableCell>
               <TableCell align="center">{cls.lineUpScore}</TableCell>
+              <TableCell align="center">{cls.totalNeNep}</TableCell>
               <TableCell align="center">{cls.totalScore}</TableCell>
-              <TableCell align="center">{cls.rank === 0 ? '-' : cls.rank}</TableCell>
+              <TableCell align="center">{cls.rank || '-'}</TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
 
-      {/* ✅ Loading Backdrop */}
+      {/* ✅ Loading overlay */}
       <Backdrop open={loading} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <CircularProgress color="inherit" />
       </Backdrop>
