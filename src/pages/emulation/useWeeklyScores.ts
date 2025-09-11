@@ -10,6 +10,7 @@ export interface WeeklyScore {
   discipline: number;
   totalViolation: number;
   totalScore: number;
+  bonusScore: number;
 }
 
 /**
