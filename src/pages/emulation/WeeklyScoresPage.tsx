@@ -5,7 +5,6 @@ import {
   MenuItem, Stack, Backdrop, CircularProgress
 } from '@mui/material';
 import useWeeklyScores from './useWeeklyScores';
-import type { WeeklyScore } from './useWeeklyScores'; // ✅ fix lỗi TS6133
 
 
 export default function WeeklyScoresPage() {
