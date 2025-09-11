@@ -64,26 +64,26 @@ export default function ViewViolationStudentByClassPage() {
   }, [weekList]);
 
   const fetchViolations = async () => {
-    try {
-      const res = await api.get('/api/violations/all/all-student');
-      const rawData = res.data;
+  try {
+    const res = await api.get('/api/violations/all/all-student');
+    const rawData = res.data;
 
-      // ✅ Gắn weekNumber cho từng vi phạm dựa trên time
-      const dataWithWeek = rawData.map((v: any) => {
-        const violationDate = new Date(v.time);
-        const matchedWeek = weekList.find(
-          (w) =>
-            violationDate >= new Date(w.startDate) &&
-            violationDate <= new Date(w.endDate)
-        );
-        return { ...v, weekNumber: matchedWeek?.weekNumber || null };
-      });
+    // ✅ Gắn weekNumber cho từng vi phạm dựa trên time (dùng dayjs để so sánh chính xác theo ngày)
+    const dataWithWeek = rawData.map((v: any) => {
+      const violationDate = dayjs(v.time).startOf('day'); // chuẩn hóa ngày vi phạm
+      const matchedWeek = weekList.find(
+        (w) =>
+          violationDate.isSameOrAfter(dayjs(w.startDate).startOf('day')) &&
+          violationDate.isSameOrBefore(dayjs(w.endDate).endOf('day'))
+      );
+      return { ...v, weekNumber: matchedWeek?.weekNumber || null };
+    });
 
-      setViolations(dataWithWeek);
-    } catch (err) {
-      console.error('Lỗi khi lấy dữ liệu vi phạm:', err);
-    }
-  };
+    setViolations(dataWithWeek);
+  } catch (err) {
+    console.error('Lỗi khi lấy dữ liệu vi phạm:', err);
+  }
+};
 
   const fetchClasses = async () => {
     try {
