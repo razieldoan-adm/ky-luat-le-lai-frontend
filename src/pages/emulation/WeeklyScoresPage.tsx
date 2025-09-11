@@ -1,112 +1,91 @@
-// src/pages/emulation/WeeklyScoresPage.tsx
 import React, { useState } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Typography,
-  Box,
-  Select,
-  MenuItem,
-} from "@mui/material";
-import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
-import useWeeklyScores from "./useWeeklyScores";
+import axios from "axios";
 
-const WeeklyScoresPage: React.FC = () => {
-  const { scores, weeks, selectedWeek, setSelectedWeek } = useWeeklyScores();
-  const [week, setWeek] = useState(selectedWeek);
+const WEEK_MAX_DISCIPLINE = 100; // Max kỷ luật để tính tổng nề nếp
 
-  // xử lý khi chọn tuần
-  const handleWeekChange = (event: any) => {
-    const value = event.target.value;
-    setWeek(value);
-    setSelectedWeek(value);
+export default function WeeklyScorePage() {
+  const [weekNumber, setWeekNumber] = useState(1);
+  const [scores, setScores] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  const loadData = async () => {
+    try {
+      const res = await axios.get(`/api/class-weekly-scores?weekNumber=${weekNumber}`);
+      setScores(res.data);
+      setLoaded(true);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  // Tính toán thêm cột "Tổng điểm Nề nếp", "Tổng", "Xếp hạng"
-  const computedScores = scores.map((cls) => {
-    const discipline = cls.disciplineScore ?? 0;
-    const hygiene = cls.hygieneScore ?? 0;
-    const diligence = cls.diligenceScore ?? 0;
-    const lineup = cls.lineupScore ?? 0;
-    const academic = cls.academicScore ?? 0;
+  const saveData = async () => {
+    // Tính toán tổng nề nếp và tổng để xếp hạng
+    const newScores = scores.map(s => {
+      const totalViolation = WEEK_MAX_DISCIPLINE - (s.violationScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
+      const totalScore = totalViolation + s.academicScore + s.bonusScore;
+      return { ...s, totalViolation, totalScore };
+    });
 
-    const totalNeNep = discipline + hygiene + diligence + lineup;
-    const total = academic + totalNeNep;
-
-    return {
-      ...cls,
-      totalNeNep,
-      total,
-    };
-  });
-
-  // Sắp xếp theo Tổng để gán xếp hạng
-  const sortedScores = [...computedScores].sort((a, b) => b.total - a.total);
-  sortedScores.forEach((cls, index) => {
-    cls.rank = index + 1;
-  });
+    // Lưu lại CSDL
+    try {
+      await axios.post("/api/class-weekly-scores/save", {
+        weekNumber,
+        scores: newScores
+      });
+      alert("Saved successfully!");
+      setScores(newScores);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
-    <Box p={3}>
-      <Typography variant="h6" fontWeight="bold" gutterBottom display="flex" alignItems="center">
-        <EmojiEventsIcon sx={{ mr: 1, color: "gold" }} />
-        Kết quả thi đua toàn trường theo tuần
-      </Typography>
+    <div style={{ padding: 20 }}>
+      <h2>Điểm tuần {weekNumber}</h2>
+      <div style={{ marginBottom: 10 }}>
+        Tuần:{" "}
+        <input
+          type="number"
+          value={weekNumber}
+          min={1}
+          onChange={e => setWeekNumber(Number(e.target.value))}
+        />
+      </div>
+      <button onClick={loadData} disabled={loaded}>Load dữ liệu</button>
+      <button onClick={saveData} style={{ marginLeft: 10 }}>Save dữ liệu</button>
 
-      {/* Chọn tuần */}
-      <Select value={week} onChange={handleWeekChange} size="small" sx={{ mb: 2, minWidth: 120 }}>
-        {weeks.map((w) => (
-          <MenuItem key={w} value={w}>
-            Tuần {w}
-          </MenuItem>
-        ))}
-      </Select>
-
-      <Typography variant="body2" sx={{ mb: 1 }}>
-        Tổng số lớp: {scores.length}
-      </Typography>
-
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell align="center">STT</TableCell>
-              <TableCell align="center">Lớp</TableCell>
-              <TableCell align="center">Học tập</TableCell>
-              <TableCell align="center">Kỷ luật</TableCell>
-              <TableCell align="center">Vệ sinh</TableCell>
-              <TableCell align="center">Chuyên cần</TableCell>
-              <TableCell align="center">Xếp hàng</TableCell>
-              <TableCell align="center">Tổng điểm Nề nếp</TableCell>
-              <TableCell align="center">Tổng</TableCell>
-              <TableCell align="center">Xếp hạng</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {sortedScores.map((cls, idx) => (
-              <TableRow key={cls.className}>
-                <TableCell align="center">{idx + 1}</TableCell>
-                <TableCell align="center">{cls.className}</TableCell>
-                <TableCell align="center">{cls.academicScore}</TableCell>
-                <TableCell align="center">{cls.disciplineScore}</TableCell>
-                <TableCell align="center">{cls.hygieneScore}</TableCell>
-                <TableCell align="center">{cls.diligenceScore}</TableCell>
-                <TableCell align="center">{cls.lineupScore}</TableCell>
-                <TableCell align="center">{cls.totalNeNep}</TableCell>
-                <TableCell align="center">{cls.total}</TableCell>
-                <TableCell align="center">{cls.rank}</TableCell>
-              </TableRow>
+      {scores.length > 0 && (
+        <table border="1" cellPadding="5" style={{ marginTop: 20, borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th>Lớp</th>
+              <th>Kỷ luật</th>
+              <th>Vệ sinh</th>
+              <th>Chuyên cần</th>
+              <th>Xếp hàng</th>
+              <th>Điểm học tập</th>
+              <th>Điểm thưởng</th>
+              <th>Tổng nề nếp</th>
+              <th>Tổng để xếp hạng</th>
+            </tr>
+          </thead>
+          <tbody>
+            {scores.map((s, idx) => (
+              <tr key={idx}>
+                <td>{s.className}</td>
+                <td>{s.violationScore}</td>
+                <td>{s.hygieneScore}</td>
+                <td>{s.attendanceScore}</td>
+                <td>{s.lineUpScore}</td>
+                <td>{s.academicScore}</td>
+                <td>{s.bonusScore}</td>
+                <td>{s.totalViolation}</td>
+                <td>{s.totalScore}</td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
+          </tbody>
+        </table>
+      )}
+    </div>
   );
-};
-
-export default WeeklyScoresPage;
+}
