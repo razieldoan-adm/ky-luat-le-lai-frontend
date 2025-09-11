@@ -11,7 +11,10 @@ export interface WeeklyScore {
   totalScore: number;
 }
 
-export const useWeeklyScores = () => {
+/**
+ * Custom hook load điểm tuần theo week number.
+ */
+export const useWeeklyScores = (week: number) => {
   const [scores, setScores] = useState<WeeklyScore[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,11 +22,18 @@ export const useWeeklyScores = () => {
   const fetchScores = async () => {
     setLoading(true);
     try {
-      const response = await axios.get<WeeklyScore[]>('/api/weekly-scores'); // backend API
-      setScores(response.data);
+      const response = await axios.get(`/api/class-violation-scores/week/${week}`);
+      if (Array.isArray(response.data)) {
+        setScores(response.data);
+      } else {
+        console.error('API trả về không phải array:', response.data);
+        setScores([]);
+      }
       setError(null);
     } catch (err: any) {
+      console.error('Lỗi khi fetch tuần:', err);
       setError(err.message || 'Failed to load weekly scores');
+      setScores([]);
     } finally {
       setLoading(false);
     }
@@ -31,7 +41,7 @@ export const useWeeklyScores = () => {
 
   useEffect(() => {
     fetchScores();
-  }, []);
+  }, [week]);
 
   return { scores, loading, error, refetch: fetchScores };
 };
