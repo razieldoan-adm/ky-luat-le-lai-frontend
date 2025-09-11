@@ -8,6 +8,7 @@ export interface WeeklyScore {
   hygiene: number;
   attendance: number;
   discipline: number;
+  totalViolation: number;
   totalScore: number;
 }
 
