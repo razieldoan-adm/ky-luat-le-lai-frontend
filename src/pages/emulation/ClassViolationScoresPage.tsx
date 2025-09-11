@@ -80,48 +80,53 @@ export default function ClassDisciplineTotalPage() {
     }
   };
 
-  const handleLoadData = async () => {
+import dayjs from "dayjs";
+
+const handleLoadData = async () => {
   if (!selectedWeek) {
-    setSnackbar({ open: true, message: 'Vui lòng chọn tuần.', severity: 'error' });
+    setSnackbar({ open: true, message: "Vui lòng chọn tuần.", severity: "error" });
     return;
   }
 
   try {
-    const res = await api.get('/api/violations/all/all-student');
+    const res = await api.get("/api/violations/all/all-student");
     const data: Violation[] = res.data;
 
-    // lọc vi phạm theo khoảng thời gian của tuần đã chọn
+    // Lọc theo khoảng thời gian của tuần
+    const start = dayjs(selectedWeek.startDate).startOf("day");
+    const end = dayjs(selectedWeek.endDate).endOf("day");
+
     const filtered = data.filter(v => {
-      const violationDate = new Date(v.time);
-      return (
-        violationDate >= new Date(selectedWeek.startDate) &&
-        violationDate <= new Date(selectedWeek.endDate)
-      );
+      const t = dayjs(v.time);
+      return t.isAfter(start) && t.isBefore(end);
     });
 
-    // gom dữ liệu theo lớp
+    // Gán dữ liệu penalties cho từng lớp
     const newTableData = classList.map(cls => {
       const penalties = filtered
         .filter(v => v.className === cls.className)
         .map(v => v.penalty);
 
+      const penaltiesString = penalties.join(", ");
+
       return {
         className: cls.className,
         homeroomTeacher: cls.homeroomTeacher,
         penalties,
-        penaltiesString: penalties.join(', '),
-        total: penalties.reduce((acc, p) => acc + (Number(p) || 0), 0),
+        penaltiesString,
+        total: penalties.reduce((sum, p) => sum + p, 0),
         count: penalties.length,
       };
     });
 
     setTableData(newTableData);
-    setSnackbar({ open: true, message: 'Đã load dữ liệu vi phạm.', severity: 'success' });
+    setSnackbar({ open: true, message: "Đã load dữ liệu vi phạm.", severity: "success" });
   } catch (err) {
-    console.error('Lỗi khi load vi phạm:', err);
-    setSnackbar({ open: true, message: 'Lỗi khi tải dữ liệu.', severity: 'error' });
+    console.error("Lỗi khi load vi phạm:", err);
+    setSnackbar({ open: true, message: "Lỗi khi tải dữ liệu.", severity: "error" });
   }
 };
+
 
 
   const handleCalculateTotals = () => {
