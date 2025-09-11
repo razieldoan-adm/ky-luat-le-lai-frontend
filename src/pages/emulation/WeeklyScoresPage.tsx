@@ -4,7 +4,7 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody,
   MenuItem, Stack, Backdrop, CircularProgress
 } from '@mui/material';
-import useWeeklyScores, { WeeklyScore } from './useWeeklyScores';
+import useWeeklyScores, { type WeeklyScore } from './useWeeklyScores';
 
 export default function WeeklyScoresPage() {
   const {
@@ -20,15 +20,12 @@ export default function WeeklyScoresPage() {
     updateScores,
   } = useWeeklyScores();
 
-  // 🏁 Load scores khi chọn tuần
+  // 🏁 Load scores on first render if selectedWeek exists
   useEffect(() => {
     if (selectedWeek) {
       fetchScores(selectedWeek.weekNumber);
     }
   }, [selectedWeek]);
-
-  // ✅ Kiểm tra tuần đã có dữ liệu hay chưa
-  const hasExistingData = scores.some((s: WeeklyScore) => s._id);
 
   const handleCalculate = async () => {
     if (selectedWeek) {
@@ -42,17 +39,16 @@ export default function WeeklyScoresPage() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSaveOrUpdate = async () => {
     if (selectedWeek) {
-      await saveScores(selectedWeek.weekNumber, scores);
-      alert('✅ Đã lưu dữ liệu tuần thành công!');
-    }
-  };
-
-  const handleUpdate = async () => {
-    if (selectedWeek) {
-      await updateScores(selectedWeek.weekNumber, scores);
-      alert('♻️ Đã cập nhật dữ liệu tuần thành công!');
+      const hasExisting = scores.some(s => s._id); // ✅ nếu có _id nghĩa là đã có trong DB
+      if (hasExisting) {
+        await updateScores(selectedWeek.weekNumber, scores);
+        alert('✅ Đã cập nhật dữ liệu tuần thành công!');
+      } else {
+        await saveScores(selectedWeek.weekNumber, scores);
+        alert('💾 Đã lưu dữ liệu tuần thành công!');
+      }
     }
   };
 
@@ -98,17 +94,9 @@ export default function WeeklyScoresPage() {
         <Button variant="contained" color="warning" onClick={handleCalculateTotalAndRank}>
           ➕ Tính tổng & xếp hạng
         </Button>
-
-        {/* ✅ Hiển thị Save hoặc Update tùy theo trạng thái */}
-        {!hasExistingData ? (
-          <Button variant="contained" color="success" onClick={handleSave}>
-            💾 Save
-          </Button>
-        ) : (
-          <Button variant="contained" color="secondary" onClick={handleUpdate}>
-            ♻️ Update
-          </Button>
-        )}
+        <Button variant="contained" color="success" onClick={handleSaveOrUpdate}>
+          💾 Lưu / Cập nhật
+        </Button>
       </Stack>
 
       <Table component={Paper}>
@@ -117,11 +105,12 @@ export default function WeeklyScoresPage() {
             <TableCell>STT</TableCell>
             <TableCell>Lớp</TableCell>
             <TableCell>Điểm học tập</TableCell>
+            <TableCell>Điểm thưởng</TableCell>
             <TableCell>Điểm vệ sinh</TableCell>
             <TableCell>Điểm chuyên cần</TableCell>
             <TableCell>Điểm xếp hàng</TableCell>
-            <TableCell>Tổng lỗi nề nếp</TableCell>
-            <TableCell>Tổng điểm</TableCell>
+            <TableCell>Tổng vi phạm</TableCell>
+            <TableCell>Tổng</TableCell>
             <TableCell>Xếp hạng</TableCell>
           </TableRow>
         </TableHead>
@@ -131,6 +120,7 @@ export default function WeeklyScoresPage() {
               <TableCell align="center">{idx + 1}</TableCell>
               <TableCell align="center">{cls.className}</TableCell>
               <TableCell align="center">{cls.academicScore}</TableCell>
+              <TableCell align="center">{cls.bonusScore ?? 0}</TableCell>
               <TableCell align="center">{cls.hygieneScore}</TableCell>
               <TableCell align="center">{cls.attendanceScore}</TableCell>
               <TableCell align="center">{cls.lineUpScore}</TableCell>
