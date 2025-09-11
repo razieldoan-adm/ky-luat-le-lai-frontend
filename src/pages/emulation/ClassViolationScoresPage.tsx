@@ -24,6 +24,7 @@ interface Violation {
   className: string;
   penalty: number;
   weekNumber: number;
+  time: string;
 }
 
 export default function ClassDisciplineTotalPage() {
