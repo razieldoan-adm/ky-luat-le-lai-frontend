@@ -9,17 +9,17 @@ export interface Week {
 }
 
 export interface WeeklyScore {
-  _id?: string;               // ID từ backend
+  _id?: string;
   className: string;
   grade: string;
-  academicScore: number;      // điểm học tập
-  hygieneScore: number;       // điểm vệ sinh
-  attendanceScore: number;    // điểm chuyên cần
-  lineUpScore: number;        // điểm xếp hàng
-  totalViolation: number;     // tổng điểm vi phạm
-  totalScore: number;         // điểm tổng (hoc tập + thưởng + nền nếp)
+  academicScore: number;
+  hygieneScore: number;
+  attendanceScore: number;
+  lineUpScore: number;
+  totalViolation: number;
+  totalScore: number;
   rank: number;
-  bonusScore?: number;        // ✅ bổ sung cột điểm thưởng
+  bonusScore?: number;
 }
 
 export interface ClassType {
@@ -35,7 +35,6 @@ export default function useWeeklyScores() {
   const [classesWithTeacher, setClassesWithTeacher] = useState<ClassType[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // 🚀 Load weeks & classes on mount
   useEffect(() => {
     const init = async () => {
       setLoading(true);
@@ -46,7 +45,6 @@ export default function useWeeklyScores() {
     init();
   }, []);
 
-  // 🗓️ Fetch academic weeks
   const fetchWeeks = async () => {
     try {
       const res = await api.get('/api/academic-weeks/study-weeks');
@@ -57,7 +55,6 @@ export default function useWeeklyScores() {
     }
   };
 
-  // 👨‍🏫 Fetch classes with homeroom teacher
   const fetchClassesWithTeacher = async () => {
     try {
       const res = await api.get('/api/classes/with-teacher');
@@ -67,7 +64,6 @@ export default function useWeeklyScores() {
     }
   };
 
-  // 🔧 Merge classesWithTeacher with scores data
   const mergeScoresWithClasses = (classes: ClassType[], scores: WeeklyScore[]) => {
     return classes.map(cls => {
       const found = scores.find(s => s.className === cls.className);
@@ -86,7 +82,6 @@ export default function useWeeklyScores() {
     });
   };
 
-  // 📊 Fetch weekly scores & merge
   const fetchScores = async (weekNumber: number) => {
     try {
       setLoading(true);
@@ -105,7 +100,6 @@ export default function useWeeklyScores() {
     }
   };
 
-  // 🔢 Calculate scores
   const calculateScores = async (weekNumber: number) => {
     try {
       setLoading(true);
@@ -124,7 +118,6 @@ export default function useWeeklyScores() {
     }
   };
 
-  // ➕ Calculate total & rank
   const calculateTotalAndRank = async (weekNumber: number) => {
     try {
       setLoading(true);
@@ -144,19 +137,16 @@ export default function useWeeklyScores() {
   };
 
   // 💾 Save scores (chỉ khi chưa có dữ liệu)
-  const saveScores = async (weekNumber: number, scoresToSave: WeeklyScore[]) => {
+  const saveScores = async (scoresToSave: WeeklyScore[]) => {
     try {
-      await api.post('/api/class-weekly-scores', {
-        weekNumber,
-        scores: scoresToSave,
-      });
+      await api.post('/api/class-weekly-scores', { scores: scoresToSave });
     } catch (err) {
       console.error('Lỗi khi save scores:', err);
     }
   };
 
   // 🔄 Update scores (khi đã có dữ liệu)
-  const updateScores = async (weekNumber: number, scoresToUpdate: WeeklyScore[]) => {
+  const updateScores = async (scoresToUpdate: WeeklyScore[]) => {
     try {
       await Promise.all(
         scoresToUpdate.map(score =>
