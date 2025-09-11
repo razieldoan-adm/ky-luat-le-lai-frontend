@@ -1,10 +1,8 @@
 // src/pages/emulation/WeeklyScoresPage.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 
-const WEEK_MAX_DISCIPLINE = 100; // Giá trị tối đa để tính tổng nề nếp
-
-// Interface chuẩn cho WeeklyScore
+// Interface WeeklyScore
 interface WeeklyScore {
   className: string;
   grade: string;
@@ -20,18 +18,38 @@ interface WeeklyScore {
   rank?: number;
 }
 
+// Interface Setting
+interface Setting {
+  disciplineMax: number; // max điểm kỷ luật
+}
+
 export default function WeeklyScoresPage() {
   const [weekNumber, setWeekNumber] = useState<number>(1);
+  const [weeks, setWeeks] = useState<number[]>([1, 2, 3, 4]); // ví dụ tuần có sẵn
   const [scores, setScores] = useState<WeeklyScore[]>([]);
   const [loaded, setLoaded] = useState<boolean>(false);
+  const [disciplineMax, setDisciplineMax] = useState<number>(100);
 
-  // Load dữ liệu từ backend
+  // Lấy setting từ backend
+  useEffect(() => {
+    const fetchSetting = async () => {
+      try {
+        const res = await axios.get<Setting>("/api/settings");
+        setDisciplineMax(res.data.disciplineMax ?? 100);
+      } catch (err) {
+        console.error(err);
+        alert("Không thể load setting, dùng mặc định 100");
+      }
+    };
+    fetchSetting();
+  }, []);
+
+  // Load dữ liệu tuần
   const loadData = async () => {
     try {
       const res = await axios.get<WeeklyScore[]>(
         `/api/class-weekly-scores?weekNumber=${weekNumber}`
       );
-      // Điền giá trị default nếu undefined
       const filledScores = res.data.map((s) => ({
         ...s,
         totalViolation: s.totalViolation ?? 0,
@@ -48,16 +66,15 @@ export default function WeeklyScoresPage() {
   // Save dữ liệu + tính tổng + auto xếp hạng
   const saveData = async () => {
     try {
-      // Tính tổng nề nếp và tổng để xếp hạng
       let newScores: WeeklyScore[] = scores.map((s) => {
         const totalViolation =
-          WEEK_MAX_DISCIPLINE -
+          disciplineMax -
           (s.violationScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
         const totalScore = totalViolation + s.academicScore + s.bonusScore;
         return { ...s, totalViolation, totalScore };
       });
 
-      // Tự động xếp hạng theo grade
+      // Nhóm theo grade và xếp hạng
       const grouped: { [grade: string]: WeeklyScore[] } = {};
       newScores.forEach((s) => {
         if (!grouped[s.grade]) grouped[s.grade] = [];
@@ -69,10 +86,8 @@ export default function WeeklyScoresPage() {
         grouped[grade].forEach((s, i) => (s.rank = i + 1));
       });
 
-      // Flatten lại mảng
       newScores = Object.values(grouped).flat();
 
-      // Gửi lên backend
       await axios.post("/api/class-weekly-scores/save", {
         weekNumber,
         scores: newScores,
@@ -86,18 +101,31 @@ export default function WeeklyScoresPage() {
     }
   };
 
+  // Nhóm scores theo grade để hiển thị
+  const groupedScores: { [grade: string]: WeeklyScore[] } = {};
+  scores.forEach((s) => {
+    if (!groupedScores[s.grade]) groupedScores[s.grade] = [];
+    groupedScores[s.grade].push(s);
+  });
+
   return (
     <div style={{ padding: 20 }}>
       <h2>Điểm tuần {weekNumber}</h2>
+
       <div style={{ marginBottom: 10 }}>
         Tuần:{" "}
-        <input
-          type="number"
-          min={1}
+        <select
           value={weekNumber}
           onChange={(e) => setWeekNumber(Number(e.target.value))}
-        />
+        >
+          {weeks.map((w) => (
+            <option key={w} value={w}>
+              Tuần {w}
+            </option>
+          ))}
+        </select>
       </div>
+
       <button onClick={loadData} disabled={loaded}>
         Load dữ liệu
       </button>
@@ -105,44 +133,47 @@ export default function WeeklyScoresPage() {
         Save dữ liệu
       </button>
 
-      {scores.length > 0 && (
-        <table
-          border={1}
-          cellPadding={5}
-          style={{ marginTop: 20, borderCollapse: "collapse" }}
-        >
-          <thead>
-            <tr>
-              <th>Lớp</th>
-              <th>Kỷ luật</th>
-              <th>Vệ sinh</th>
-              <th>Chuyên cần</th>
-              <th>Xếp hàng</th>
-              <th>Điểm học tập</th>
-              <th>Điểm thưởng</th>
-              <th>Tổng nề nếp</th>
-              <th>Tổng để xếp hạng</th>
-              <th>Thứ hạng</th>
-            </tr>
-          </thead>
-          <tbody>
-            {scores.map((s, idx) => (
-              <tr key={idx}>
-                <td>{s.className}</td>
-                <td>{s.violationScore}</td>
-                <td>{s.hygieneScore}</td>
-                <td>{s.attendanceScore}</td>
-                <td>{s.lineUpScore}</td>
-                <td>{s.academicScore}</td>
-                <td>{s.bonusScore}</td>
-                <td>{s.totalViolation}</td>
-                <td>{s.totalScore}</td>
-                <td>{s.rank}</td>
+      {Object.keys(groupedScores).map((grade) => (
+        <div key={grade} style={{ marginTop: 30 }}>
+          <h3>Khối {grade}</h3>
+          <table
+            border={1}
+            cellPadding={5}
+            style={{ borderCollapse: "collapse", width: "100%" }}
+          >
+            <thead>
+              <tr>
+                <th>Lớp</th>
+                <th>Kỷ luật</th>
+                <th>Vệ sinh</th>
+                <th>Chuyên cần</th>
+                <th>Xếp hàng</th>
+                <th>Điểm học tập</th>
+                <th>Điểm thưởng</th>
+                <th>Tổng nề nếp</th>
+                <th>Tổng để xếp hạng</th>
+                <th>Thứ hạng</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody>
+              {groupedScores[grade].map((s, idx) => (
+                <tr key={idx}>
+                  <td>{s.className}</td>
+                  <td>{s.violationScore}</td>
+                  <td>{s.hygieneScore}</td>
+                  <td>{s.attendanceScore}</td>
+                  <td>{s.lineUpScore}</td>
+                  <td>{s.academicScore}</td>
+                  <td>{s.bonusScore}</td>
+                  <td>{s.totalViolation}</td>
+                  <td>{s.totalScore}</td>
+                  <td>{s.rank}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
     </div>
   );
 }
