@@ -86,8 +86,6 @@ export default function ClassDisciplineTotalPage() {
     }
   };
 
-import dayjs from "dayjs";
-
 const handleLoadData = async () => {
   if (!selectedWeek) {
     setSnackbar({ open: true, message: "Vui lòng chọn tuần.", severity: "error" });
