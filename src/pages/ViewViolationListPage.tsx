@@ -138,24 +138,26 @@ export default function ViewViolationStudentByClassPage() {
     setTotalPoint(total);
 
     // ✅ Tìm học sinh vi phạm từ 3 lần trở lên
-    const countMap: { [key: string]: { count: number; className: string } } = {};
-    data.forEach((v) => {
-      if (!countMap[v.name]) {
-        countMap[v.name] = { count: 1, className: v.className };
-      } else {
-        countMap[v.name].count += 1;
-      }
-    });
+    const countMap: { [key: string]: { count: number; className: string; displayName: string } } = {};
+data.forEach((v) => {
+  const normalized = v.name.trim().toLowerCase(); // chuẩn hóa để tránh phân biệt hoa/thường
+  if (!countMap[normalized]) {
+    countMap[normalized] = { count: 1, className: v.className, displayName: v.name };
+  } else {
+    countMap[normalized].count += 1;
+  }
+});
 
-    const repeated = Object.entries(countMap)
-      .filter(([_, val]) => val.count >= 3)
-      .map(([name, val]) => ({
-        name,
-        count: val.count,
-        className: val.className,
-      }));
+const repeated = Object.values(countMap)
+  .filter((val) => val.count >= 3)
+  .map((val) => ({
+    name: val.displayName, // vẫn hiển thị tên gốc
+    count: val.count,
+    className: val.className,
+  }));
 
-    setRepeatStudents(repeated);
+setRepeatStudents(repeated);
+
   };
 
   return (
