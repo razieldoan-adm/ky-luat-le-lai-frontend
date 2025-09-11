@@ -4,7 +4,8 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody,
   MenuItem, Stack, Backdrop, CircularProgress
 } from '@mui/material';
-import useWeeklyScores, { type WeeklyScore } from './useWeeklyScores';
+import useWeeklyScores from './useWeeklyScores';
+import type { WeeklyScore } from './useWeeklyScores';
 
 export default function WeeklyScoresPage() {
   const {
@@ -20,7 +21,6 @@ export default function WeeklyScoresPage() {
     updateScores,
   } = useWeeklyScores();
 
-  // 🏁 Load scores on first render if selectedWeek exists
   useEffect(() => {
     if (selectedWeek) {
       fetchScores(selectedWeek.weekNumber);
@@ -41,12 +41,12 @@ export default function WeeklyScoresPage() {
 
   const handleSaveOrUpdate = async () => {
     if (selectedWeek) {
-      const hasExisting = scores.some(s => s._id); // ✅ nếu có _id nghĩa là đã có trong DB
+      const hasExisting = scores.some(s => s._id);
       if (hasExisting) {
-        await updateScores(selectedWeek.weekNumber, scores);
+        await updateScores(scores);
         alert('✅ Đã cập nhật dữ liệu tuần thành công!');
       } else {
-        await saveScores(selectedWeek.weekNumber, scores);
+        await saveScores(scores);
         alert('💾 Đã lưu dữ liệu tuần thành công!');
       }
     }
@@ -132,7 +132,6 @@ export default function WeeklyScoresPage() {
         </TableBody>
       </Table>
 
-      {/* ✅ Loading Backdrop */}
       <Backdrop open={loading} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <CircularProgress color="inherit" />
       </Backdrop>
