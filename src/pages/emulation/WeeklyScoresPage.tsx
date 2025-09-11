@@ -1,74 +1,111 @@
-import React, { useState } from 'react';
-import { useWeeklyScores } from './useWeeklyScores';
+// src/pages/emulation/WeeklyScoresPage.tsx
+import React, { useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Typography,
+  Box,
+  Select,
+  MenuItem,
+} from "@mui/material";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import useWeeklyScores from "./useWeeklyScores";
 
 const WeeklyScoresPage: React.FC = () => {
-  const [selectedWeek, setSelectedWeek] = useState<number>(1);
-  const { scores, loading, error, refetch } = useWeeklyScores(selectedWeek);
+  const { scores, weeks, selectedWeek, setSelectedWeek } = useWeeklyScores();
+  const [week, setWeek] = useState(selectedWeek);
 
-  const handleWeekChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedWeek(Number(e.target.value));
+  // xử lý khi chọn tuần
+  const handleWeekChange = (event: any) => {
+    const value = event.target.value;
+    setWeek(value);
+    setSelectedWeek(value);
   };
 
+  // Tính toán thêm cột "Tổng điểm Nề nếp", "Tổng", "Xếp hạng"
+  const computedScores = scores.map((cls) => {
+    const discipline = cls.disciplineScore ?? 0;
+    const hygiene = cls.hygieneScore ?? 0;
+    const diligence = cls.diligenceScore ?? 0;
+    const lineup = cls.lineupScore ?? 0;
+    const academic = cls.academicScore ?? 0;
+
+    const totalNeNep = discipline + hygiene + diligence + lineup;
+    const total = academic + totalNeNep;
+
+    return {
+      ...cls,
+      totalNeNep,
+      total,
+    };
+  });
+
+  // Sắp xếp theo Tổng để gán xếp hạng
+  const sortedScores = [...computedScores].sort((a, b) => b.total - a.total);
+  sortedScores.forEach((cls, index) => {
+    cls.rank = index + 1;
+  });
+
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>Weekly Scores</h1>
+    <Box p={3}>
+      <Typography variant="h6" fontWeight="bold" gutterBottom display="flex" alignItems="center">
+        <EmojiEventsIcon sx={{ mr: 1, color: "gold" }} />
+        Kết quả thi đua toàn trường theo tuần
+      </Typography>
 
-      {/* Dropdown chọn tuần */}
-      <div style={{ marginBottom: '20px' }}>
-        <label>
-          Chọn tuần:{' '}
-          <select value={selectedWeek} onChange={handleWeekChange}>
-            {Array.from({ length: 52 }, (_, i) => i + 1).map((week) => (
-              <option key={week} value={week}>
-                Tuần {week}
-              </option>
+      {/* Chọn tuần */}
+      <Select value={week} onChange={handleWeekChange} size="small" sx={{ mb: 2, minWidth: 120 }}>
+        {weeks.map((w) => (
+          <MenuItem key={w} value={w}>
+            Tuần {w}
+          </MenuItem>
+        ))}
+      </Select>
+
+      <Typography variant="body2" sx={{ mb: 1 }}>
+        Tổng số lớp: {scores.length}
+      </Typography>
+
+      <TableContainer component={Paper}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell align="center">STT</TableCell>
+              <TableCell align="center">Lớp</TableCell>
+              <TableCell align="center">Học tập</TableCell>
+              <TableCell align="center">Kỷ luật</TableCell>
+              <TableCell align="center">Vệ sinh</TableCell>
+              <TableCell align="center">Chuyên cần</TableCell>
+              <TableCell align="center">Xếp hàng</TableCell>
+              <TableCell align="center">Tổng điểm Nề nếp</TableCell>
+              <TableCell align="center">Tổng</TableCell>
+              <TableCell align="center">Xếp hạng</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {sortedScores.map((cls, idx) => (
+              <TableRow key={cls.className}>
+                <TableCell align="center">{idx + 1}</TableCell>
+                <TableCell align="center">{cls.className}</TableCell>
+                <TableCell align="center">{cls.academicScore}</TableCell>
+                <TableCell align="center">{cls.disciplineScore}</TableCell>
+                <TableCell align="center">{cls.hygieneScore}</TableCell>
+                <TableCell align="center">{cls.diligenceScore}</TableCell>
+                <TableCell align="center">{cls.lineupScore}</TableCell>
+                <TableCell align="center">{cls.totalNeNep}</TableCell>
+                <TableCell align="center">{cls.total}</TableCell>
+                <TableCell align="center">{cls.rank}</TableCell>
+              </TableRow>
             ))}
-          </select>
-        </label>
-      </div>
-
-      {/* Loading / Error / No data */}
-      {loading && <div>Loading weekly scores...</div>}
-      {error && (
-        <div>
-          Lỗi: {error}{' '}
-          <button onClick={refetch} style={{ marginLeft: '10px' }}>
-            Thử lại
-          </button>
-        </div>
-      )}
-      {!loading && !error && scores.length === 0 && <div>Không có dữ liệu cho tuần {selectedWeek}</div>}
-
-      {/* Table */}
-      {!loading && !error && scores.length > 0 && (
-        <table border={1} cellPadding={6} style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <thead>
-            <tr>
-              <th>Student</th>
-              <th>Class</th>
-              <th>Week</th>
-              <th>Hygiene</th>
-              <th>Attendance</th>
-              <th>Discipline</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {scores.map((score, index) => (
-              <tr key={index}>
-                <td>{score.studentName}</td>
-                <td>{score.className}</td>
-                <td>{score.week}</td>
-                <td>{score.hygiene}</td>
-                <td>{score.attendance}</td>
-                <td>{score.discipline}</td>
-                <td>{score.totalScore}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
   );
 };
 
