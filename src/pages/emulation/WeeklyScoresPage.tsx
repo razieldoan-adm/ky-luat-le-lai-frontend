@@ -1,4 +1,3 @@
-// src/pages/emulation/WeeklyScoresPage.tsx
 import { useEffect, useState } from "react";
 import axios from "axios";
 
@@ -20,12 +19,12 @@ interface WeeklyScore {
 
 // Interface Setting
 interface Setting {
-  disciplineMax: number; // max điểm kỷ luật
+  disciplineMax: number;
 }
 
 export default function WeeklyScoresPage() {
   const [weekNumber, setWeekNumber] = useState<number>(1);
-  const [weeks, setWeeks] = useState<number[]>([1, 2, 3, 4]); // ví dụ tuần có sẵn
+  const weeks: number[] = [1, 2, 3, 4]; // Chỉ dùng để render dropdown, không cần setWeeks
   const [scores, setScores] = useState<WeeklyScore[]>([]);
   const [loaded, setLoaded] = useState<boolean>(false);
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
@@ -157,7 +156,12 @@ export default function WeeklyScoresPage() {
             </thead>
             <tbody>
               {groupedScores[grade].map((s, idx) => (
-                <tr key={idx}>
+                <tr
+                  key={idx}
+                  style={{
+                    backgroundColor: s.rank === 1 ? "#d4edda" : "transparent", // highlight lớp đứng đầu
+                  }}
+                >
                   <td>{s.className}</td>
                   <td>{s.violationScore}</td>
                   <td>{s.hygieneScore}</td>
