@@ -15,7 +15,8 @@ import {
 } from '@mui/material';
 import api from "../api/api";
 import dayjs from 'dayjs';
-
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 interface Violation {
   _id: string;
   name: string;
@@ -48,7 +49,8 @@ export default function ViewViolationStudentByClassPage() {
   const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [totalPoint, setTotalPoint] = useState(0);
-
+  dayjs.extend(isSameOrAfter);
+  dayjs.extend(isSameOrBefore);
   // Lấy danh sách lớp, rules, weeks
   useEffect(() => {
     fetchClasses();
