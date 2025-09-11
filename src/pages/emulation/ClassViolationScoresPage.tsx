@@ -5,7 +5,12 @@ import {
   Paper, Stack, Snackbar, Alert
 } from '@mui/material';
 import dayjs from "dayjs";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import api from '../../api/api';
+
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 
 interface AcademicWeek {
   _id: string;
