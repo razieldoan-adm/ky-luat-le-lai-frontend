@@ -19,25 +19,40 @@ export default function WeeklyScorePage() {
   };
 
   const saveData = async () => {
-    // Tính toán tổng nề nếp và tổng để xếp hạng
-    const newScores = scores.map(s => {
-      const totalViolation = WEEK_MAX_DISCIPLINE - (s.violationScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
-      const totalScore = totalViolation + s.academicScore + s.bonusScore;
-      return { ...s, totalViolation, totalScore };
-    });
+  // Tính tổng nề nếp và tổng để xếp hạng
+  let newScores = scores.map(s => {
+    const totalViolation = WEEK_MAX_DISCIPLINE - (s.violationScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
+    const totalScore = totalViolation + s.academicScore + s.bonusScore;
+    return { ...s, totalViolation, totalScore };
+  });
 
-    // Lưu lại CSDL
-    try {
-      await axios.post("/api/class-weekly-scores/save", {
-        weekNumber,
-        scores: newScores
-      });
-      alert("Saved successfully!");
-      setScores(newScores);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  // Tự động xếp hạng theo grade
+  const grouped = {};
+  newScores.forEach(s => {
+    if (!grouped[s.grade]) grouped[s.grade] = [];
+    grouped[s.grade].push(s);
+  });
+
+  Object.keys(grouped).forEach(grade => {
+    grouped[grade].sort((a, b) => b.totalScore - a.totalScore);
+    grouped[grade].forEach((s, i) => s.rank = i + 1);
+  });
+
+  // Flatten lại mảng scores
+  newScores = Object.values(grouped).flat();
+
+  // Lưu lại CSDL
+  try {
+    await axios.post("/api/class-weekly-scores/save", {
+      weekNumber,
+      scores: newScores
+    });
+    alert("Saved successfully!");
+    setScores(newScores);
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   return (
     <div style={{ padding: 20 }}>
