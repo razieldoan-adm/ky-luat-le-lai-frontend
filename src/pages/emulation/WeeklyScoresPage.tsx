@@ -1,140 +1,112 @@
-import { useEffect } from 'react';
+// src/pages/emulation/WeeklyScoresPage.tsx
+import React, { useState } from "react";
 import {
-  Box, Typography, TextField, Button, Paper,
-  Table, TableHead, TableRow, TableCell, TableBody,
-  MenuItem, Stack, Backdrop, CircularProgress
-} from '@mui/material';
-import useWeeklyScores from './useWeeklyScores';
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Typography,
+  Box,
+  Select,
+  MenuItem,
+} from "@mui/material";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import useWeeklyScores from "./useWeeklyScores";
 
+const WeeklyScoresPage: React.FC = () => {
+  const { scores, weeks, selectedWeek, setSelectedWeek } = useWeeklyScores();
+  const [week, setWeek] = useState(selectedWeek);
 
-export default function WeeklyScoresPage() {
-  const {
-    weeks,
-    selectedWeek,
-    setSelectedWeek,
-    scores,
-    loading,
-    fetchScores,
-    calculateScores,
-    calculateTotalAndRank,
-    saveScores,
-    updateScores,
-  } = useWeeklyScores();
-
-  useEffect(() => {
-    if (selectedWeek) {
-      fetchScores(selectedWeek.weekNumber);
-    }
-  }, [selectedWeek]);
-
-  const handleCalculate = async () => {
-    if (selectedWeek) {
-      await calculateScores(selectedWeek.weekNumber);
-    }
+  // xử lý khi chọn tuần
+  const handleWeekChange = (event: any) => {
+    const value = event.target.value;
+    setWeek(value);
+    setSelectedWeek(value);
   };
 
-  const handleCalculateTotalAndRank = async () => {
-    if (selectedWeek) {
-      await calculateTotalAndRank(selectedWeek.weekNumber);
-    }
-  };
+  // Tính toán thêm cột "Tổng điểm Nề nếp", "Tổng", "Xếp hạng"
+  const computedScores = scores.map((cls) => {
+    const discipline = cls.disciplineScore ?? 0;
+    const hygiene = cls.hygieneScore ?? 0;
+    const diligence = cls.diligenceScore ?? 0;
+    const lineup = cls.lineupScore ?? 0;
+    const academic = cls.academicScore ?? 0;
 
-  const handleSaveOrUpdate = async () => {
-    if (selectedWeek) {
-      const hasExisting = scores.some(s => s._id);
-      if (hasExisting) {
-        await updateScores(scores);
-        alert('✅ Đã cập nhật dữ liệu tuần thành công!');
-      } else {
-        await saveScores(scores);
-        alert('💾 Đã lưu dữ liệu tuần thành công!');
-      }
-    }
-  };
+    const totalNeNep = discipline + hygiene + diligence + lineup;
+    const total = academic + totalNeNep;
 
-  const getRowStyle = (rank: number) => {
-    switch (rank) {
-      case 1: return { backgroundColor: '#ffe082' };
-      case 2: return { backgroundColor: '#b2ebf2' };
-      case 3: return { backgroundColor: '#c8e6c9' };
-      default: return {};
-    }
-  };
+    return {
+      ...cls,
+      totalNeNep,
+      total,
+    };
+  });
+
+  // Sắp xếp theo Tổng để gán xếp hạng
+  const sortedScores = [...computedScores].sort((a, b) => b.total - a.total);
+  sortedScores.forEach((cls, index) => {
+    cls.rank = index + 1;
+  });
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        📊 Điểm Thi Đua Tuần
+    <Box p={3}>
+      <Typography variant="h6" fontWeight="bold" gutterBottom display="flex" alignItems="center">
+        <EmojiEventsIcon sx={{ mr: 1, color: "gold" }} />
+        Kết quả thi đua toàn trường theo tuần
       </Typography>
 
-      <Stack direction="row" spacing={2} mb={2} alignItems="center">
-        <TextField
-          select
-          label="Chọn tuần"
-          value={selectedWeek?._id || ''}
-          onChange={(e) => {
-            const week = weeks.find(w => w._id === e.target.value) || null;
-            setSelectedWeek(week);
-          }}
-          sx={{ width: 150 }}
-        >
-          {weeks.map(w => (
-            <MenuItem key={w._id} value={w._id}>
-              Tuần {w.weekNumber}
-            </MenuItem>
-          ))}
-        </TextField>
+      {/* Chọn tuần */}
+      <Select value={week} onChange={handleWeekChange} size="small" sx={{ mb: 2, minWidth: 120 }}>
+        {weeks.map((w) => (
+          <MenuItem key={w} value={w}>
+            Tuần {w}
+          </MenuItem>
+        ))}
+      </Select>
 
-        <Button variant="outlined" onClick={() => selectedWeek && fetchScores(selectedWeek.weekNumber)}>
-          🔄 Xem lại
-        </Button>
-        <Button variant="contained" color="primary" onClick={handleCalculate}>
-          📥 Lấy dữ liệu
-        </Button>
-        <Button variant="contained" color="warning" onClick={handleCalculateTotalAndRank}>
-          ➕ Tính tổng & xếp hạng
-        </Button>
-        <Button variant="contained" color="success" onClick={handleSaveOrUpdate}>
-          💾 Lưu / Cập nhật
-        </Button>
-      </Stack>
+      <Typography variant="body2" sx={{ mb: 1 }}>
+        Tổng số lớp: {scores.length}
+      </Typography>
 
-      <Table component={Paper}>
-        <TableHead>
-          <TableRow>
-            <TableCell>STT</TableCell>
-            <TableCell>Lớp</TableCell>
-            <TableCell>Điểm học tập</TableCell>
-            <TableCell>Điểm thưởng</TableCell>
-            <TableCell>Điểm vệ sinh</TableCell>
-            <TableCell>Điểm chuyên cần</TableCell>
-            <TableCell>Điểm xếp hàng</TableCell>
-            <TableCell>Tổng vi phạm</TableCell>
-            <TableCell>Tổng</TableCell>
-            <TableCell>Xếp hạng</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {scores.map((cls, idx) => (
-            <TableRow key={cls.className} sx={getRowStyle(cls.rank)}>
-              <TableCell align="center">{idx + 1}</TableCell>
-              <TableCell align="center">{cls.className}</TableCell>
-              <TableCell align="center">{cls.academicScore}</TableCell>
-              <TableCell align="center">{cls.bonusScore ?? 0}</TableCell>
-              <TableCell align="center">{cls.hygieneScore}</TableCell>
-              <TableCell align="center">{cls.attendanceScore}</TableCell>
-              <TableCell align="center">{cls.lineUpScore}</TableCell>
-              <TableCell align="center">{cls.totalViolation}</TableCell>
-              <TableCell align="center">{cls.totalScore}</TableCell>
-              <TableCell align="center">{cls.rank === 0 ? '-' : cls.rank}</TableCell>
+      <TableContainer component={Paper}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell align="center">STT</TableCell>
+              <TableCell align="center">Lớp</TableCell>
+              <TableCell align="center">Học tập</TableCell>
+              <TableCell align="center">Kỷ luật</TableCell>
+              <TableCell align="center">Vệ sinh</TableCell>
+              <TableCell align="center">Chuyên cần</TableCell>
+              <TableCell align="center">Xếp hàng</TableCell>
+              <TableCell align="center">Tổng điểm Nề nếp</TableCell>
+              <TableCell align="center">Tổng</TableCell>
+              <TableCell align="center">Xếp hạng</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      <Backdrop open={loading} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-        <CircularProgress color="inherit" />
-      </Backdrop>
+          </TableHead>
+          <TableBody>
+            {sortedScores.map((cls, idx) => (
+              <TableRow key={cls.className}>
+                <TableCell align="center">{idx + 1}</TableCell>
+                <TableCell align="center">{cls.className}</TableCell>
+                <TableCell align="center">{cls.academicScore}</TableCell>
+                <TableCell align="center">{cls.disciplineScore}</TableCell>
+                <TableCell align="center">{cls.hygieneScore}</TableCell>
+                <TableCell align="center">{cls.diligenceScore}</TableCell>
+                <TableCell align="center">{cls.lineupScore}</TableCell>
+                <TableCell align="center">{cls.totalNeNep}</TableCell>
+                <TableCell align="center">{cls.total}</TableCell>
+                <TableCell align="center">{cls.rank}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Box>
   );
-}
+};
+
+export default WeeklyScoresPage;
