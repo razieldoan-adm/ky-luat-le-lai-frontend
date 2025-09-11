@@ -13,6 +13,7 @@ export interface WeeklyScore {
 
 /**
  * Custom hook load điểm tuần theo week number.
+ * Giữ nguyên dữ liệu load từ CSDL, không tính toán lại.
  */
 export const useWeeklyScores = (week: number) => {
   const [scores, setScores] = useState<WeeklyScore[]>([]);
