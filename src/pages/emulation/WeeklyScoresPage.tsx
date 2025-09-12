@@ -12,7 +12,7 @@ import {
   Paper,
   Typography,
 } from "@mui/material";
-import api from '../../api/api';
+
 
 
 interface Week {
