@@ -16,19 +16,14 @@ const WeeklyScoresPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   // Lấy danh sách tuần
-  useEffect(() => {
-    fetch("https://ky-luat-le-lai-backend.onrender.com/api/weeks")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setWeeks(data);
-          if (data.length > 0) setSelectedWeek(data[data.length - 1]); // chọn tuần mới nhất
-        } else {
-          setWeeks([]);
-        }
-      })
-      .catch(() => setWeeks([]));
-  }, []);
+    const fetchWeeks = async () => {
+    try {
+      const res = await api.get('/api/academic-weeks/study-weeks');
+      setWeekList(res.data);
+    } catch (err) {
+      console.error('Lỗi khi lấy tuần:', err);
+    }
+  };
 
   // Lấy dữ liệu điểm theo tuần
   useEffect(() => {
