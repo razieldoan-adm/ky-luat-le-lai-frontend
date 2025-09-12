@@ -31,7 +31,7 @@ export default function WeeklyScoresPage() {
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
   const [scores, setScores] = useState<WeeklyScore[]>([]);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [hasData, setHasData] = useState(false);
+  const [hasData] = useState(false);
  
 
   useEffect(() => {
