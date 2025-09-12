@@ -4,7 +4,7 @@ import {
   Table, TableHead, TableRow, TableCell, TableBody,
   MenuItem, Stack, Snackbar, Alert
 } from '@mui/material';
-import axios from 'axios';
+import api from '../../api/api';
 import ExcelJS from 'exceljs';
 
 interface Week {
@@ -40,7 +40,7 @@ export default function WeeklyScoresPage() {
 
   const fetchWeeks = async () => {
     try {
-      const res = await axios.get('/api/academic-weeks/study-weeks');
+      const res = await api.get('/api/academic-weeks/study-weeks');
       setWeeks(res.data);
       if (res.data.length > 0) {
         setSelectedWeek(res.data[0]);
@@ -53,7 +53,7 @@ export default function WeeklyScoresPage() {
   const fetchScores = async () => {
     if (!selectedWeek) return;
     try {
-      const res = await axios.get('/api/class-weekly-scores', {
+      const res = await api.get('/api/class-weekly-scores', {
         params: { weekNumber: selectedWeek.weekNumber }
       });
       if (res.data.length === 0) {
