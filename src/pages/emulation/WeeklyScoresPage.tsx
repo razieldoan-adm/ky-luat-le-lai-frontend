@@ -14,14 +14,22 @@ interface Week {
   endDate: string;
 }
 
+interface ClassInfo {
+  _id: string;
+  className: string;
+  grade: string;
+}
+
 interface WeeklyScore {
   className: string;
   grade: string;
   academicScore: number;
+  bonusScore: number;
   disciplineScore: number;
   hygieneScore: number;
   attendanceScore: number;
   lineUpScore: number;
+  totalViolation: number;
   totalScore: number;
   rank: number;
 }
@@ -29,24 +37,44 @@ interface WeeklyScore {
 export default function WeeklyScoresPage() {
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
+  const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [scores, setScores] = useState<WeeklyScore[]>([]);
+  const [disciplineMax, setDisciplineMax] = useState<number>(100); // lấy từ settings
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({
     open: false, message: '', severity: 'success'
   });
 
   useEffect(() => {
     fetchWeeks();
+    fetchClasses();
+    fetchDisciplineMax();
   }, []);
 
   const fetchWeeks = async () => {
     try {
       const res = await api.get('/api/academic-weeks/study-weeks');
       setWeeks(res.data);
-      if (res.data.length > 0) {
-        setSelectedWeek(res.data[0]);
-      }
+      if (res.data.length > 0) setSelectedWeek(res.data[0]);
     } catch (err) {
       console.error('Lỗi khi lấy weeks:', err);
+    }
+  };
+
+  const fetchClasses = async () => {
+    try {
+      const res = await api.get('/api/classes');
+      setClasses(res.data);
+    } catch (err) {
+      console.error('Lỗi khi lấy classes:', err);
+    }
+  };
+
+  const fetchDisciplineMax = async () => {
+    try {
+      const res = await api.get('/api/settings');
+      setDisciplineMax(res.data.disciplineMax || 100);
+    } catch (err) {
+      console.error('Không load được settings:', err);
     }
   };
 
@@ -56,41 +84,54 @@ export default function WeeklyScoresPage() {
       const res = await api.get('/api/class-weekly-scores', {
         params: { weekNumber: selectedWeek.weekNumber }
       });
+
+      let loadedScores: WeeklyScore[] = res.data || [];
+
+      // Ghép với danh sách lớp, lớp nào chưa có thì gán mặc định
+      const merged = classes.map(cls => {
+        const found = loadedScores.find(s => s.className === cls.className);
+        return found || {
+          className: cls.className,
+          grade: cls.grade,
+          academicScore: 0,
+          bonusScore: 0,
+          disciplineScore: 0,
+          hygieneScore: 0,
+          attendanceScore: 0,
+          lineUpScore: 0,
+          totalViolation: 0,
+          totalScore: 0,
+          rank: 0
+        };
+      });
+
+      setScores(merged);
+
       if (res.data.length === 0) {
-        setScores([]);
-        setSnackbar({ open: true, message: 'Chưa có dữ liệu tuần này. Bấm "Lấy dữ liệu" để tính.', severity: 'info' });
-      } else {
-        setScores(res.data);
+        setSnackbar({ open: true, message: 'Chưa có dữ liệu tuần này. Bạn có thể nhập và tính mới.', severity: 'info' });
       }
     } catch (err) {
       console.error('Lỗi khi load scores:', err);
     }
   };
 
-  const handleCalculate = async () => {
-    if (!selectedWeek) return;
-    try {
-      const res = await api.post('/api/class-weekly-scores/calculate', {
-        weekNumber: selectedWeek.weekNumber
-      });
-      setScores(res.data);
-      setSnackbar({ open: true, message: 'Đã tính xong dữ liệu. Bấm "Tính tổng & xếp hạng" tiếp theo.', severity: 'success' });
-    } catch (err) {
-      console.error('Lỗi khi calculate:', err);
-    }
-  };
+  const calculateTotals = () => {
+    const updated = scores.map(s => {
+      const totalViolation =
+        (disciplineMax - s.disciplineScore) +
+        s.hygieneScore +
+        s.attendanceScore +
+        s.lineUpScore;
 
-  const handleCalculateTotalAndRank = async () => {
-    if (!selectedWeek) return;
-    try {
-      const res = await api.post('/api/class-weekly-scores/calculate-total-rank', {
-        weekNumber: selectedWeek.weekNumber
-      });
-      setScores(res.data);
-      setSnackbar({ open: true, message: 'Đã tính tổng & xếp hạng.', severity: 'success' });
-    } catch (err) {
-      console.error('Lỗi khi calculate total & rank:', err);
-    }
+      const totalScore = s.academicScore + s.bonusScore + totalViolation;
+      return { ...s, totalViolation, totalScore };
+    });
+
+    updated.sort((a, b) => b.totalScore - a.totalScore);
+    updated.forEach((s, idx) => { s.rank = idx + 1; });
+
+    setScores([...updated]);
+    setSnackbar({ open: true, message: 'Đã tính tổng & xếp hạng.', severity: 'success' });
   };
 
   const handleSave = async () => {
@@ -111,12 +152,14 @@ export default function WeeklyScoresPage() {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Tổng hợp thi đua');
 
-    // Ghi tiêu đề
-    sheet.mergeCells('A1:G1');
+    sheet.mergeCells('A1:K1');
     sheet.getCell('A1').value = `BẢNG XẾP LOẠI THI ĐUA - TUẦN ${selectedWeek.weekNumber}`;
     sheet.getCell('A1').alignment = { horizontal: 'center' };
 
-    const header = ["Lớp", "SĐB", "Kỷ luật", "Chuyên cần", "Vệ sinh", "Tổng", "Hạng"];
+    const header = [
+      "Lớp", "SĐB", "Điểm thưởng", "Kỷ luật", "Vệ sinh",
+      "Chuyên cần", "Xếp hàng", "Tổng nề nếp", "Tổng", "Hạng"
+    ];
     sheet.addRow([]);
     sheet.addRow(header);
 
@@ -124,11 +167,14 @@ export default function WeeklyScoresPage() {
       sheet.addRow([
         cls.className,
         cls.academicScore,
+        cls.bonusScore,
         cls.disciplineScore,
-        cls.attendanceScore,
         cls.hygieneScore,
+        cls.attendanceScore,
+        cls.lineUpScore,
+        cls.totalViolation,
         cls.totalScore,
-        cls.rank === 0 ? 'Không' : cls.rank,
+        cls.rank
       ]);
     });
 
@@ -177,10 +223,9 @@ export default function WeeklyScoresPage() {
         </TextField>
 
         <Button variant="outlined" onClick={fetchScores}>🔄 Tải dữ liệu</Button>
-        <Button variant="contained" color="primary" onClick={handleCalculate}>📥 Lấy dữ liệu</Button>
-        <Button variant="contained" color="warning" onClick={handleCalculateTotalAndRank}>➕ Tính tổng & xếp hạng</Button>
+        <Button variant="contained" color="warning" onClick={calculateTotals}>➕ Tính tổng & xếp hạng</Button>
         <Button variant="contained" color="success" onClick={handleSave}>💾 Lưu</Button>
-        <Button variant="contained" color="success" onClick={handleExport}>Xuất file thi đua</Button>
+        <Button variant="contained" color="success" onClick={handleExport}>📤 Xuất Excel</Button>
       </Stack>
 
       <Table component={Paper}>
@@ -188,11 +233,13 @@ export default function WeeklyScoresPage() {
           <TableRow>
             <TableCell>STT</TableCell>
             <TableCell>Lớp</TableCell>
-            <TableCell>Điểm SĐB</TableCell>
-            <TableCell>Điểm kỷ luật</TableCell>
-            <TableCell>Điểm vệ sinh</TableCell>
-            <TableCell>Điểm chuyên cần</TableCell>
-            <TableCell>Điểm xếp hàng</TableCell>
+            <TableCell>SĐB</TableCell>
+            <TableCell>Điểm thưởng</TableCell>
+            <TableCell>Kỷ luật</TableCell>
+            <TableCell>Vệ sinh</TableCell>
+            <TableCell>Chuyên cần</TableCell>
+            <TableCell>Xếp hàng</TableCell>
+            <TableCell>Tổng nề nếp</TableCell>
             <TableCell>Tổng</TableCell>
             <TableCell>Xếp hạng</TableCell>
           </TableRow>
@@ -203,10 +250,12 @@ export default function WeeklyScoresPage() {
               <TableCell align="center">{idx + 1}</TableCell>
               <TableCell align="center">{cls.className}</TableCell>
               <TableCell align="center">{cls.academicScore}</TableCell>
+              <TableCell align="center">{cls.bonusScore}</TableCell>
               <TableCell align="center">{cls.disciplineScore}</TableCell>
               <TableCell align="center">{cls.hygieneScore}</TableCell>
               <TableCell align="center">{cls.attendanceScore}</TableCell>
               <TableCell align="center">{cls.lineUpScore}</TableCell>
+              <TableCell align="center">{cls.totalViolation}</TableCell>
               <TableCell align="center">{cls.totalScore}</TableCell>
               <TableCell align="center">{cls.rank}</TableCell>
             </TableRow>
