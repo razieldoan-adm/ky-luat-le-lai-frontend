@@ -1,24 +1,21 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
-} from "@/components/ui/card";
-import {
+  Typography,
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
-  TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import {
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { motion } from "framer-motion";
+  MenuItem,
+  FormControl,
+  InputLabel,
+  CircularProgress,
+  Paper,
+} from "@mui/material";
 
 type ClassScore = {
   _id: string;
@@ -29,6 +26,8 @@ type ClassScore = {
   violationScore: number;  // ❌ Điểm kỷ luật
   hygieneScore: number;    // Vệ sinh
   diligenceScore: number;  // Chuyên cần
+  totalViolation?: number; // tính toán frontend
+  totalScore?: number;     // tính toán frontend
 };
 
 export default function WeeklyScoresPage() {
@@ -56,8 +55,8 @@ export default function WeeklyScoresPage() {
     fetchScores();
   }, [week]);
 
-  // Tính toán điểm tổng dựa trên số liệu từ CSDL
-  const processed = data.map((cls) => {
+  // Tính toán trên frontend
+  const processed: ClassScore[] = data.map((cls) => {
     const totalViolation = cls.violationScore;
     const totalScore =
       cls.academicScore +
@@ -69,84 +68,83 @@ export default function WeeklyScoresPage() {
     return { ...cls, totalViolation, totalScore };
   });
 
-  // Sắp xếp theo grade -> điểm giảm dần
+  // Gom nhóm theo khối
   const grouped: Record<string, ClassScore[]> = {};
   processed.forEach((cls) => {
     if (!grouped[cls.grade]) grouped[cls.grade] = [];
     grouped[cls.grade].push(cls);
   });
   Object.keys(grouped).forEach((g) => {
-    grouped[g].sort((a, b) => b.totalScore - a.totalScore);
+    grouped[g].sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
   });
 
   return (
-    <div className="p-6">
-      <motion.h1
-        className="text-2xl font-bold mb-4"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+    <div style={{ padding: "24px" }}>
+      <Typography variant="h4" gutterBottom>
         Bảng điểm thi đua tuần
-      </motion.h1>
+      </Typography>
 
       {/* Dropdown chọn tuần */}
-      <div className="mb-6">
-        <Select onValueChange={(v) => setWeek(Number(v))} defaultValue={String(week)}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Chọn tuần" />
-          </SelectTrigger>
-          <SelectContent>
-            {Array.from({ length: 20 }, (_, i) => (
-              <SelectItem key={i + 1} value={String(i + 1)}>
-                Tuần {i + 1}
-              </SelectItem>
-            ))}
-          </SelectContent>
+      <FormControl style={{ minWidth: 200, marginBottom: 24 }}>
+        <InputLabel>Chọn tuần</InputLabel>
+        <Select
+          value={week}
+          onChange={(e) => setWeek(Number(e.target.value))}
+        >
+          {Array.from({ length: 20 }, (_, i) => (
+            <MenuItem key={i + 1} value={i + 1}>
+              Tuần {i + 1}
+            </MenuItem>
+          ))}
         </Select>
-      </div>
+      </FormControl>
 
       {loading ? (
-        <p>Đang tải dữ liệu...</p>
+        <CircularProgress />
       ) : (
         Object.keys(grouped).map((grade) => (
-          <Card key={grade} className="mb-6 shadow-md">
+          <Card key={grade} style={{ marginBottom: 24 }}>
             <CardContent>
-              <h2 className="text-xl font-semibold mb-4">
+              <Typography variant="h6" gutterBottom>
                 Khối {grade}
-              </h2>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Lớp</TableHead>
-                    <TableHead>SĐB</TableHead>
-                    <TableHead>Điểm thưởng</TableHead>
-                    <TableHead>Vệ sinh</TableHead>
-                    <TableHead>Chuyên cần</TableHead>
-                    <TableHead>Vi phạm</TableHead>
-                    <TableHead>Tổng điểm</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {grouped[grade].map((cls, idx) => (
-                    <TableRow
-                      key={cls._id}
-                      className={idx === 0 ? "bg-green-100" : ""}
-                    >
-                      <TableCell>{cls.className}</TableCell>
-                      <TableCell>{cls.academicScore}</TableCell>
-                      <TableCell>{cls.bonusScore}</TableCell>
-                      <TableCell>{cls.hygieneScore}</TableCell>
-                      <TableCell>{cls.diligenceScore}</TableCell>
-                      <TableCell className="text-red-500 font-semibold">
-                        -{cls.totalViolation}
-                      </TableCell>
-                      <TableCell className="font-bold">
-                        {cls.totalScore}
-                      </TableCell>
+              </Typography>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Lớp</TableCell>
+                      <TableCell>SĐB</TableCell>
+                      <TableCell>Điểm thưởng</TableCell>
+                      <TableCell>Vệ sinh</TableCell>
+                      <TableCell>Chuyên cần</TableCell>
+                      <TableCell>Vi phạm</TableCell>
+                      <TableCell>Tổng điểm</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHead>
+                  <TableBody>
+                    {grouped[grade].map((cls, idx) => (
+                      <TableRow
+                        key={cls._id}
+                        style={{
+                          backgroundColor: idx === 0 ? "#d1f7d1" : "inherit",
+                        }}
+                      >
+                        <TableCell>{cls.className}</TableCell>
+                        <TableCell>{cls.academicScore}</TableCell>
+                        <TableCell>{cls.bonusScore}</TableCell>
+                        <TableCell>{cls.hygieneScore}</TableCell>
+                        <TableCell>{cls.diligenceScore}</TableCell>
+                        <TableCell style={{ color: "red", fontWeight: 600 }}>
+                          -{cls.totalViolation}
+                        </TableCell>
+                        <TableCell style={{ fontWeight: "bold" }}>
+                          {cls.totalScore}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </CardContent>
           </Card>
         ))
