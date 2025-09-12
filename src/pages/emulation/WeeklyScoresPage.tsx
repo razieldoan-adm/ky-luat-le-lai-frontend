@@ -31,8 +31,7 @@ export default function WeeklyScoresPage() {
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
   const [scores, setScores] = useState<WeeklyScore[]>([]);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [setHasData] = useState(false);
- 
+  const [hasData, setHasData] = useState(false);   // ✅ fix hasData
 
   useEffect(() => {
     fetchWeeks();
@@ -42,7 +41,9 @@ export default function WeeklyScoresPage() {
     try {
       const res = await axios.get('/api/academic-weeks/study-weeks');
       setWeeks(res.data);
-      if (res.data.length > 0) setSelectedWeek(res.data[0]);
+      if (res.data.length > 0) {
+        setSelectedWeek(res.data[0]);
+      }
     } catch (err) {
       console.error('Lỗi khi lấy weeks:', err);
     }
@@ -112,7 +113,7 @@ export default function WeeklyScoresPage() {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Tổng hợp thi đua');
     if (!selectedWeek) throw new Error('Chưa chọn tuần');
-     
+
     // Tiêu đề
     sheet.mergeCells('A1:G1');
     sheet.getCell('A1').value = 'LIÊN ĐỘI THCS LÊ LAI';
@@ -193,8 +194,6 @@ export default function WeeklyScoresPage() {
     window.URL.revokeObjectURL(url);
   };
 
-
-
   const getRowStyle = (rank: number) => {
     switch (rank) {
       case 1: return { backgroundColor: '#ffe082' };
@@ -231,51 +230,4 @@ export default function WeeklyScoresPage() {
         </TextField>
 
         <Button variant="outlined" onClick={fetchScores}>🔄 Tải dữ liệu</Button>
-        <Button variant="contained" color="primary" onClick={handleCalculate}>📥 Lấy dữ liệu</Button>
-        <Button variant="contained" color="warning" onClick={handleCalculateTotalAndRank}>➕ Tính tổng & xếp hạng</Button>
-        <Button variant="contained" color="success" onClick={handleSave}>💾 Lưu</Button>
-        <Button variant="contained" color="success" onClick={handleExport}>Xuất file thi đua</Button>
-      </Stack>
-
-      <Table component={Paper}>
-        <TableHead>
-          <TableRow>
-            <TableCell>STT</TableCell>
-            <TableCell>Lớp</TableCell>
-            <TableCell>Điểm SĐB</TableCell>
-            <TableCell>Điểm kỷ luật</TableCell>
-            <TableCell>Điểm vệ sinh</TableCell>
-            <TableCell>Điểm chuyên cần</TableCell>
-            <TableCell>Điểm xếp hàng</TableCell>
-            <TableCell>Tổng</TableCell>
-            <TableCell>Xếp hạng</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {scores.map((cls, idx) => (
-            <TableRow key={cls.className} sx={getRowStyle(cls.rank)}>
-              <TableCell align="center">{idx + 1}</TableCell>
-              <TableCell align="center">{cls.className}</TableCell>
-              <TableCell align="center">{cls.academicScore}</TableCell>
-              <TableCell align="center">{cls.disciplineScore}</TableCell>
-              <TableCell align="center">{cls.hygieneScore}</TableCell>
-              <TableCell align="center">{cls.attendanceScore}</TableCell>
-              <TableCell align="center">{cls.lineUpScore}</TableCell>
-              <TableCell align="center">{cls.totalScore}</TableCell>
-              <TableCell align="center">{cls.rank}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity={snackbar.severity as any}>{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
-  );
-}
+        <Button variant="contained" color="primary" onClick={handleCalcula
