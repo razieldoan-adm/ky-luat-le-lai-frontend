@@ -31,7 +31,7 @@ export default function WeeklyScoresPage() {
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
   const [scores, setScores] = useState<WeeklyScore[]>([]);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [hasData, setHasData] = useState(false);
+ 
 
   useEffect(() => {
     fetchWeeks();
@@ -192,12 +192,7 @@ export default function WeeklyScoresPage() {
     window.URL.revokeObjectURL(url);
   };
 
-  // Grouped scores
-  const groupedScores = scores.reduce((groups: any, score) => {
-    if (!groups[score.grade]) groups[score.grade] = [];
-    groups[score.grade].push(score);
-    return groups;
-  }, {});
+
 
   const getRowStyle = (rank: number) => {
     switch (rank) {
