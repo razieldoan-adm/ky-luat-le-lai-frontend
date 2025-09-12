@@ -1,183 +1,153 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+import React, { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Trophy } from "lucide-react";
 
-// Interface WeeklyScore
-interface WeeklyScore {
+type ClassScore = {
   className: string;
   grade: string;
-  weekNumber: number;
   academicScore: number;
-  violationScore: number;
-  hygieneScore: number;
-  attendanceScore: number;
-  lineUpScore: number;
   bonusScore: number;
-  totalViolation: number;
-  totalScore: number;
-  rank?: number;
-}
+  violationScore: number;
+  cleanlinessScore: number;
+  attendanceScore: number;
+  lineScore: number;
+  totalDiscipline: number;
+  finalScore: number;
+  rank: number;
+};
 
-// Interface Setting
-interface Setting {
-  disciplineMax: number;
-}
+type GradeData = {
+  [grade: string]: ClassScore[];
+};
 
-export default function WeeklyScoresPage() {
-  const [weekNumber, setWeekNumber] = useState<number>(1);
-  const weeks: number[] = [1, 2, 3, 4]; // Chỉ dùng để render dropdown, không cần setWeeks
-  const [scores, setScores] = useState<WeeklyScore[]>([]);
-  const [loaded, setLoaded] = useState<boolean>(false);
-  const [disciplineMax, setDisciplineMax] = useState<number>(100);
+const WeeklyScoresPage: React.FC = () => {
+  const [week, setWeek] = useState<string>("1");
+  const [data, setData] = useState<GradeData>({});
+  const [loading, setLoading] = useState<boolean>(false);
 
-  // Lấy setting từ backend
+  // Load data từ backend
   useEffect(() => {
-    const fetchSetting = async () => {
+    const fetchData = async () => {
+      setLoading(true);
       try {
-        const res = await axios.get<Setting>("/api/settings");
-        setDisciplineMax(res.data.disciplineMax ?? 100);
-      } catch (err) {
-        console.error(err);
-        alert("Không thể load setting, dùng mặc định 100");
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/class-violation-scores/week/${week}`
+        );
+        if (!res.ok) throw new Error("Lỗi khi tải dữ liệu");
+        const json = await res.json();
+        setData(json);
+      } catch (error) {
+        console.error(error);
+        setData({});
+      } finally {
+        setLoading(false);
       }
     };
-    fetchSetting();
-  }, []);
-
-  // Load dữ liệu tuần
-  const loadData = async () => {
-    try {
-      const res = await axios.get<WeeklyScore[]>(
-        `/api/class-weekly-scores?weekNumber=${weekNumber}`
-      );
-      const filledScores = res.data.map((s) => ({
-        ...s,
-        totalViolation: s.totalViolation ?? 0,
-        totalScore: s.totalScore ?? 0,
-      }));
-      setScores(filledScores);
-      setLoaded(true);
-    } catch (err) {
-      console.error(err);
-      alert("Lỗi khi load dữ liệu!");
-    }
-  };
-
-  // Save dữ liệu + tính tổng + auto xếp hạng
-  const saveData = async () => {
-    try {
-      let newScores: WeeklyScore[] = scores.map((s) => {
-        const totalViolation =
-          disciplineMax -
-          (s.violationScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
-        const totalScore = totalViolation + s.academicScore + s.bonusScore;
-        return { ...s, totalViolation, totalScore };
-      });
-
-      // Nhóm theo grade và xếp hạng
-      const grouped: { [grade: string]: WeeklyScore[] } = {};
-      newScores.forEach((s) => {
-        if (!grouped[s.grade]) grouped[s.grade] = [];
-        grouped[s.grade].push(s);
-      });
-
-      Object.keys(grouped).forEach((grade) => {
-        grouped[grade].sort((a, b) => b.totalScore - a.totalScore);
-        grouped[grade].forEach((s, i) => (s.rank = i + 1));
-      });
-
-      newScores = Object.values(grouped).flat();
-
-      await axios.post("/api/class-weekly-scores/save", {
-        weekNumber,
-        scores: newScores,
-      });
-
-      setScores(newScores);
-      alert("Đã lưu dữ liệu thành công!");
-    } catch (err) {
-      console.error(err);
-      alert("Lỗi khi lưu dữ liệu!");
-    }
-  };
-
-  // Nhóm scores theo grade để hiển thị
-  const groupedScores: { [grade: string]: WeeklyScore[] } = {};
-  scores.forEach((s) => {
-    if (!groupedScores[s.grade]) groupedScores[s.grade] = [];
-    groupedScores[s.grade].push(s);
-  });
+    fetchData();
+  }, [week]);
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Điểm tuần {weekNumber}</h2>
+    <div className="p-6">
+      <Card className="shadow-lg">
+        <CardContent>
+          <div className="flex items-center mb-4 space-x-3">
+            <Trophy className="text-yellow-500 w-7 h-7" />
+            <h2 className="text-xl font-bold">
+              Kết quả thi đua toàn trường theo tuần
+            </h2>
+          </div>
 
-      <div style={{ marginBottom: 10 }}>
-        Tuần:{" "}
-        <select
-          value={weekNumber}
-          onChange={(e) => setWeekNumber(Number(e.target.value))}
-        >
-          {weeks.map((w) => (
-            <option key={w} value={w}>
-              Tuần {w}
-            </option>
-          ))}
-        </select>
-      </div>
+          {/* Dropdown chọn tuần */}
+          <div className="mb-6 w-40">
+            <Select value={week} onValueChange={setWeek}>
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn tuần" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 20 }, (_, i) => (
+                  <SelectItem key={i + 1} value={(i + 1).toString()}>
+                    Tuần {i + 1}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      <button onClick={loadData} disabled={loaded}>
-        Load dữ liệu
-      </button>
-      <button onClick={saveData} style={{ marginLeft: 10 }}>
-        Save dữ liệu
-      </button>
+          {loading ? (
+            <p>Đang tải dữ liệu...</p>
+          ) : (
+            Object.keys(data).map((grade) => (
+              <div key={grade} className="mb-10">
+                <h3 className="text-lg font-semibold mb-2">
+                  Khối {grade} ({data[grade].length} lớp)
+                </h3>
 
-      {Object.keys(groupedScores).map((grade) => (
-        <div key={grade} style={{ marginTop: 30 }}>
-          <h3>Khối {grade}</h3>
-          <table
-            border={1}
-            cellPadding={5}
-            style={{ borderCollapse: "collapse", width: "100%" }}
-          >
-            <thead>
-              <tr>
-                <th>Lớp</th>
-                <th>Kỷ luật</th>
-                <th>Vệ sinh</th>
-                <th>Chuyên cần</th>
-                <th>Xếp hàng</th>
-                <th>Điểm học tập</th>
-                <th>Điểm thưởng</th>
-                <th>Tổng nề nếp</th>
-                <th>Tổng để xếp hạng</th>
-                <th>Thứ hạng</th>
-              </tr>
-            </thead>
-            <tbody>
-              {groupedScores[grade].map((s, idx) => (
-                <tr
-                  key={idx}
-                  style={{
-                    backgroundColor: s.rank === 1 ? "#d4edda" : "transparent", // highlight lớp đứng đầu
-                  }}
-                >
-                  <td>{s.className}</td>
-                  <td>{s.violationScore}</td>
-                  <td>{s.hygieneScore}</td>
-                  <td>{s.attendanceScore}</td>
-                  <td>{s.lineUpScore}</td>
-                  <td>{s.academicScore}</td>
-                  <td>{s.bonusScore}</td>
-                  <td>{s.totalViolation}</td>
-                  <td>{s.totalScore}</td>
-                  <td>{s.rank}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
+                <Table className="border">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>STT</TableHead>
+                      <TableHead>Lớp</TableHead>
+                      <TableHead>Học tập</TableHead>
+                      <TableHead>Điểm thưởng</TableHead>
+                      <TableHead>Kỷ luật</TableHead>
+                      <TableHead>Vệ sinh</TableHead>
+                      <TableHead>Chuyên cần</TableHead>
+                      <TableHead>Xếp hàng</TableHead>
+                      <TableHead>Tổng điểm Nề nếp</TableHead>
+                      <TableHead>Tổng kết</TableHead>
+                      <TableHead>Xếp hạng</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data[grade].map((cls, idx) => (
+                      <TableRow
+                        key={cls.className}
+                        className={
+                          cls.rank === 1
+                            ? "bg-yellow-100 font-bold"
+                            : ""
+                        }
+                      >
+                        <TableCell>{idx + 1}</TableCell>
+                        <TableCell>{cls.className}</TableCell>
+                        <TableCell>{cls.academicScore}</TableCell>
+                        <TableCell>{cls.bonusScore}</TableCell>
+                        <TableCell>{cls.violationScore}</TableCell>
+                        <TableCell>{cls.cleanlinessScore}</TableCell>
+                        <TableCell>{cls.attendanceScore}</TableCell>
+                        <TableCell>{cls.lineScore}</TableCell>
+                        <TableCell>{cls.totalDiscipline}</TableCell>
+                        <TableCell>{cls.finalScore}</TableCell>
+                        <TableCell>{cls.rank}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
-}
+};
+
+export default WeeklyScoresPage;
