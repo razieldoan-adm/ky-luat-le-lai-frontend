@@ -13,7 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 
-
+import api from '../../api/api';
 
 interface Week {
   weekNumber: number;
@@ -38,7 +38,7 @@ const WeeklyScoresPage: React.FC = () => {
   // lấy danh sách tuần
   const fetchWeeks = async () => {
     try {
-      const res = await fetch(`/api/academic-weeks/study-weeks`);
+      const res = await api.get(`/api/academic-weeks/study-weeks`);
       const data = await res.json();
       console.log("Weeks API trả về:", data);
 
@@ -55,7 +55,7 @@ const WeeklyScoresPage: React.FC = () => {
   // lấy điểm theo tuần
   const fetchScores = async (week: number) => {
     try {
-      const res = await fetch(`/api/class-violation-scores/week/${week}`);
+      const res = await api.get(`/api/class-violation-scores/week/${week}`);
       const data = await res.json();
       console.log("Scores API trả về:", data);
 
