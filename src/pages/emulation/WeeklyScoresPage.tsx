@@ -11,9 +11,9 @@ import {
   TableRow,
   Paper,
   Typography,
+  CircularProgress,
 } from "@mui/material";
-
-import api from '../../api/api';
+import api from "../../api/api"; // ⚠️ chỉnh lại đường dẫn nếu file api của bạn nằm chỗ khác
 
 interface Week {
   weekNumber: number;
@@ -34,38 +34,42 @@ const WeeklyScoresPage: React.FC = () => {
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
   const [scores, setScores] = useState<ClassScore[]>([]);
+  const [loading, setLoading] = useState(false);
 
   // lấy danh sách tuần
   const fetchWeeks = async () => {
     try {
-      const res = await api.get(`/api/academic-weeks/study-weeks`);
-      const data = await res.json();
-      console.log("Weeks API trả về:", data);
+      const res = await api.get("/api/academic-weeks/study-weeks");
+      console.log("Weeks API:", res.data);
 
-      if (Array.isArray(data)) {
-        setWeeks(data);
+      if (Array.isArray(res.data)) {
+        setWeeks(res.data);
       } else {
         setWeeks([]);
       }
     } catch (err) {
       console.error("Lỗi khi lấy tuần:", err);
+      setWeeks([]);
     }
   };
 
   // lấy điểm theo tuần
   const fetchScores = async (week: number) => {
     try {
+      setLoading(true);
       const res = await api.get(`/api/class-violation-scores/week/${week}`);
-      const data = await res.json();
-      console.log("Scores API trả về:", data);
+      console.log("Scores API:", res.data);
 
-      if (Array.isArray(data)) {
-        setScores(data);
+      if (Array.isArray(res.data)) {
+        setScores(res.data);
       } else {
         setScores([]);
       }
     } catch (err) {
       console.error("Lỗi khi lấy điểm:", err);
+      setScores([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -104,30 +108,34 @@ const WeeklyScoresPage: React.FC = () => {
         </Select>
       </FormControl>
 
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Lớp</TableCell>
-            <TableCell>Khối</TableCell>
-            <TableCell>Điểm học tập</TableCell>
-            <TableCell>Điểm thưởng</TableCell>
-            <TableCell>Điểm kỷ luật</TableCell>
-            <TableCell>Tổng</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {scores.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell>{row.className}</TableCell>
-              <TableCell>{row.grade}</TableCell>
-              <TableCell>{row.academicScore}</TableCell>
-              <TableCell>{row.bonusScore}</TableCell>
-              <TableCell>{row.violationScore}</TableCell>
-              <TableCell>{row.totalScore}</TableCell>
+      {loading ? (
+        <CircularProgress />
+      ) : (
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Lớp</TableCell>
+              <TableCell>Khối</TableCell>
+              <TableCell>Điểm học tập</TableCell>
+              <TableCell>Điểm thưởng</TableCell>
+              <TableCell>Điểm kỷ luật</TableCell>
+              <TableCell>Tổng</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            {scores.map((row, index) => (
+              <TableRow key={index}>
+                <TableCell>{row.className}</TableCell>
+                <TableCell>{row.grade}</TableCell>
+                <TableCell>{row.academicScore}</TableCell>
+                <TableCell>{row.bonusScore}</TableCell>
+                <TableCell>{row.violationScore}</TableCell>
+                <TableCell>{row.totalScore}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
     </Paper>
   );
 };
