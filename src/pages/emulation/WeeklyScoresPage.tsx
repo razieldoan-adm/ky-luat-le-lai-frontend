@@ -1,30 +1,6 @@
-import { useEffect, useState } from "react";
-import {
-  Container,
-  Typography,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Paper,
-  Box,
-} from "@mui/material";
-import axios from "axios";
+import React, { useEffect, useState } from "react";
 
-interface Week {
-  _id: string;
-  weekNumber: number;
-  startDate: string;
-  endDate: string;
-}
-
-interface ClassScore {
-  _id: string;
+interface WeeklyScore {
   className: string;
   grade: string;
   academicScore: number;
@@ -34,132 +10,97 @@ interface ClassScore {
 }
 
 const WeeklyScoresPage: React.FC = () => {
-  const [weeks, setWeeks] = useState<Week[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
-  const [scores, setScores] = useState<ClassScore[]>([]);
+  const [weeks, setWeeks] = useState<number[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number>(1);
+  const [scores, setScores] = useState<WeeklyScore[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Gọi API lấy danh sách tuần
+  // Lấy danh sách tuần
   useEffect(() => {
-    const fetchWeeks = async () => {
-      try {
-        const res = await axios.get<Week[]>("/api/academic-weeks/study-weeks");
-        setWeeks(res.data);
-        if (res.data.length > 0) {
-          setSelectedWeek(res.data[0].weekNumber); // mặc định chọn tuần đầu tiên
+    fetch("https://ky-luat-le-lai-backend.onrender.com/api/weeks")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setWeeks(data);
+          if (data.length > 0) setSelectedWeek(data[data.length - 1]); // chọn tuần mới nhất
+        } else {
+          setWeeks([]);
         }
-      } catch (err) {
-        console.error("Lỗi tải tuần:", err);
-      }
-    };
-    fetchWeeks();
+      })
+      .catch(() => setWeeks([]));
   }, []);
 
-  // Khi đổi tuần → gọi API lấy điểm
+  // Lấy dữ liệu điểm theo tuần
   useEffect(() => {
     if (!selectedWeek) return;
-    const fetchScores = async () => {
-      setLoading(true);
-      try {
-        const res = await axios.get<ClassScore[]>(
-          `/api/class-violation-scores/week/${selectedWeek}`
-        );
-        setScores(res.data);
-      } catch (err) {
-        console.error("Lỗi tải điểm:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchScores();
+    setLoading(true);
+    fetch(
+      `https://ky-luat-le-lai-backend.onrender.com/api/class-violation-scores/week/${selectedWeek}`
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("API trả về:", data); // debug
+        if (Array.isArray(data)) {
+          setScores(data);
+        } else {
+          setScores([]); // tránh lỗi .map
+        }
+      })
+      .catch(() => setScores([]))
+      .finally(() => setLoading(false));
   }, [selectedWeek]);
 
-  // Gom nhóm theo khối
-  const groupedScores = scores.reduce<Record<string, ClassScore[]>>((acc, item) => {
-    if (!acc[item.grade]) acc[item.grade] = [];
-    acc[item.grade].push(item);
-    return acc;
-  }, {});
-
-  // Xác định lớp đứng đầu mỗi khối
-  const topClassByGrade: Record<string, string> = {};
-  Object.keys(groupedScores).forEach((grade) => {
-    const sorted = [...groupedScores[grade]].sort(
-      (a, b) => b.totalScore - a.totalScore
-    );
-    if (sorted.length > 0) {
-      topClassByGrade[grade] = sorted[0].className;
-    }
-  });
-
   return (
-    <Container>
-      <Typography variant="h4" gutterBottom>
-        Bảng điểm tuần
-      </Typography>
+    <div style={{ padding: "20px" }}>
+      <h2>Bảng điểm tuần</h2>
 
       {/* Dropdown chọn tuần */}
-      <FormControl fullWidth sx={{ mb: 3 }}>
-        <InputLabel id="week-select-label">Chọn tuần</InputLabel>
-        <Select
-          labelId="week-select-label"
-          value={selectedWeek}
-          label="Chọn tuần"
-          onChange={(e) => setSelectedWeek(e.target.value as number)}
-        >
-          {weeks.map((w) => (
-            <MenuItem key={w._id} value={w.weekNumber}>
-              Tuần {w.weekNumber} ({new Date(w.startDate).toLocaleDateString()} -{" "}
-              {new Date(w.endDate).toLocaleDateString()})
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <select
+        value={selectedWeek}
+        onChange={(e) => setSelectedWeek(Number(e.target.value))}
+      >
+        {weeks.map((w) => (
+          <option key={w} value={w}>
+            Tuần {w}
+          </option>
+        ))}
+      </select>
 
       {loading ? (
-        <Typography>Đang tải dữ liệu...</Typography>
+        <p>Đang tải dữ liệu...</p>
       ) : (
-        Object.keys(groupedScores).map((grade) => (
-          <Box key={grade} sx={{ mb: 4 }}>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Khối {grade}
-            </Typography>
-            <Paper>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Lớp</TableCell>
-                    <TableCell align="right">Điểm học tập</TableCell>
-                    <TableCell align="right">Điểm thưởng</TableCell>
-                    <TableCell align="right">Điểm kỷ luật</TableCell>
-                    <TableCell align="right">Tổng điểm</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {groupedScores[grade].map((row) => (
-                    <TableRow
-                      key={row._id}
-                      sx={{
-                        backgroundColor:
-                          row.className === topClassByGrade[grade]
-                            ? "rgba(255, 223, 186, 0.5)"
-                            : "inherit",
-                      }}
-                    >
-                      <TableCell>{row.className}</TableCell>
-                      <TableCell align="right">{row.academicScore}</TableCell>
-                      <TableCell align="right">{row.bonusScore}</TableCell>
-                      <TableCell align="right">{row.violationScore}</TableCell>
-                      <TableCell align="right">{row.totalScore}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
-          </Box>
-        ))
+        <table border={1} cellPadding={8} style={{ marginTop: "20px" }}>
+          <thead>
+            <tr>
+              <th>Lớp</th>
+              <th>Khối</th>
+              <th>Điểm học tập</th>
+              <th>Điểm thưởng</th>
+              <th>Điểm vi phạm</th>
+              <th>Tổng điểm</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.isArray(scores) && scores.length > 0 ? (
+              scores.map((s, idx) => (
+                <tr key={idx}>
+                  <td>{s.className}</td>
+                  <td>{s.grade}</td>
+                  <td>{s.academicScore}</td>
+                  <td>{s.bonusScore}</td>
+                  <td>{s.violationScore}</td>
+                  <td>{s.totalScore}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={6}>Không có dữ liệu</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       )}
-    </Container>
+    </div>
   );
 };
 
