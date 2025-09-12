@@ -13,7 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 import api from '../../api/api';
-const API_BASE = "https://ky-luat-le-lai-backend.onrender.com";
+
 
 interface Week {
   weekNumber: number;
