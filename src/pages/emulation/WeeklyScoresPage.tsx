@@ -2,23 +2,20 @@ import React, { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
-} from "@/components/ui/card";
-import {
+  Typography,
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
+  MenuItem,
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
-  TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Trophy } from "lucide-react";
+  Paper,
+  FormControl,
+  InputLabel,
+} from "@mui/material";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 
 type ClassScore = {
   className: string;
@@ -43,7 +40,7 @@ const WeeklyScoresPage: React.FC = () => {
   const [data, setData] = useState<GradeData>({});
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Load data từ backend
+  // Load dữ liệu từ backend
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -65,82 +62,80 @@ const WeeklyScoresPage: React.FC = () => {
   }, [week]);
 
   return (
-    <div className="p-6">
-      <Card className="shadow-lg">
+    <div style={{ padding: "24px" }}>
+      <Card>
         <CardContent>
-          <div className="flex items-center mb-4 space-x-3">
-            <Trophy className="text-yellow-500 w-7 h-7" />
-            <h2 className="text-xl font-bold">
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
+            <EmojiEventsIcon style={{ color: "#fbc02d", marginRight: 8 }} />
+            <Typography variant="h6" fontWeight="bold">
               Kết quả thi đua toàn trường theo tuần
-            </h2>
+            </Typography>
           </div>
 
           {/* Dropdown chọn tuần */}
-          <div className="mb-6 w-40">
-            <Select value={week} onValueChange={setWeek}>
-              <SelectTrigger>
-                <SelectValue placeholder="Chọn tuần" />
-              </SelectTrigger>
-              <SelectContent>
-                {Array.from({ length: 20 }, (_, i) => (
-                  <SelectItem key={i + 1} value={(i + 1).toString()}>
-                    Tuần {i + 1}
-                  </SelectItem>
-                ))}
-              </SelectContent>
+          <FormControl style={{ width: 120, marginBottom: 24 }}>
+            <InputLabel>Tuần</InputLabel>
+            <Select value={week} onChange={(e) => setWeek(e.target.value)}>
+              {Array.from({ length: 20 }, (_, i) => (
+                <MenuItem key={i + 1} value={(i + 1).toString()}>
+                  Tuần {i + 1}
+                </MenuItem>
+              ))}
             </Select>
-          </div>
+          </FormControl>
 
           {loading ? (
-            <p>Đang tải dữ liệu...</p>
+            <Typography>Đang tải dữ liệu...</Typography>
           ) : (
             Object.keys(data).map((grade) => (
-              <div key={grade} className="mb-10">
-                <h3 className="text-lg font-semibold mb-2">
+              <div key={grade} style={{ marginBottom: 32 }}>
+                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                   Khối {grade} ({data[grade].length} lớp)
-                </h3>
+                </Typography>
 
-                <Table className="border">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>STT</TableHead>
-                      <TableHead>Lớp</TableHead>
-                      <TableHead>Học tập</TableHead>
-                      <TableHead>Điểm thưởng</TableHead>
-                      <TableHead>Kỷ luật</TableHead>
-                      <TableHead>Vệ sinh</TableHead>
-                      <TableHead>Chuyên cần</TableHead>
-                      <TableHead>Xếp hàng</TableHead>
-                      <TableHead>Tổng điểm Nề nếp</TableHead>
-                      <TableHead>Tổng kết</TableHead>
-                      <TableHead>Xếp hạng</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data[grade].map((cls, idx) => (
-                      <TableRow
-                        key={cls.className}
-                        className={
-                          cls.rank === 1
-                            ? "bg-yellow-100 font-bold"
-                            : ""
-                        }
-                      >
-                        <TableCell>{idx + 1}</TableCell>
-                        <TableCell>{cls.className}</TableCell>
-                        <TableCell>{cls.academicScore}</TableCell>
-                        <TableCell>{cls.bonusScore}</TableCell>
-                        <TableCell>{cls.violationScore}</TableCell>
-                        <TableCell>{cls.cleanlinessScore}</TableCell>
-                        <TableCell>{cls.attendanceScore}</TableCell>
-                        <TableCell>{cls.lineScore}</TableCell>
-                        <TableCell>{cls.totalDiscipline}</TableCell>
-                        <TableCell>{cls.finalScore}</TableCell>
-                        <TableCell>{cls.rank}</TableCell>
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>STT</TableCell>
+                        <TableCell>Lớp</TableCell>
+                        <TableCell>Học tập</TableCell>
+                        <TableCell>Điểm thưởng</TableCell>
+                        <TableCell>Kỷ luật</TableCell>
+                        <TableCell>Vệ sinh</TableCell>
+                        <TableCell>Chuyên cần</TableCell>
+                        <TableCell>Xếp hàng</TableCell>
+                        <TableCell>Tổng điểm Nề nếp</TableCell>
+                        <TableCell>Tổng kết</TableCell>
+                        <TableCell>Xếp hạng</TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHead>
+                    <TableBody>
+                      {data[grade].map((cls, idx) => (
+                        <TableRow
+                          key={cls.className}
+                          style={{
+                            backgroundColor: cls.rank === 1 ? "#fff9c4" : "inherit",
+                            fontWeight: cls.rank === 1 ? "bold" as any : "normal",
+                          }}
+                        >
+                          <TableCell>{idx + 1}</TableCell>
+                          <TableCell>{cls.className}</TableCell>
+                          <TableCell>{cls.academicScore}</TableCell>
+                          <TableCell>{cls.bonusScore}</TableCell>
+                          <TableCell>{cls.violationScore}</TableCell>
+                          <TableCell>{cls.cleanlinessScore}</TableCell>
+                          <TableCell>{cls.attendanceScore}</TableCell>
+                          <TableCell>{cls.lineScore}</TableCell>
+                          <TableCell>{cls.totalDiscipline}</TableCell>
+                          <TableCell>{cls.finalScore}</TableCell>
+                          <TableCell>{cls.rank}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               </div>
             ))
           )}
