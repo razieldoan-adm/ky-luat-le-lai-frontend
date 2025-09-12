@@ -1,121 +1,166 @@
 import { useEffect, useState } from "react";
 import {
-  Card,
-  CardContent,
+  Container,
   Typography,
-  FormControl,
-  InputLabel,
   Select,
   MenuItem,
+  FormControl,
+  InputLabel,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
   TableHead,
   TableRow,
+  TableCell,
+  TableBody,
   Paper,
-  CircularProgress,
+  Box,
 } from "@mui/material";
+import axios from "axios";
+
+interface Week {
+  _id: string;
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+}
 
 interface ClassScore {
+  _id: string;
   className: string;
-  totalScore: number;
-  rank: number;
-}
-
-interface GradeGroup {
   grade: string;
-  classes: ClassScore[];
+  academicScore: number;
+  bonusScore: number;
+  violationScore: number;
+  totalScore: number;
 }
 
-export default function WeeklyScoresPage() {
-  const [week, setWeek] = useState<number>(1);
-  const [scores, setScores] = useState<GradeGroup[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+const WeeklyScoresPage: React.FC = () => {
+  const [weeks, setWeeks] = useState<Week[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  const [scores, setScores] = useState<ClassScore[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const fetchScores = async (weekNumber: number) => {
-    try {
-      setLoading(true);
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/class-violation-scores/week/${weekNumber}`
-      );
-      const data = await res.json();
-      setScores(data);
-    } catch (err) {
-      console.error("Error fetching scores:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Gọi API lấy danh sách tuần
   useEffect(() => {
-    fetchScores(week);
-  }, [week]);
+    const fetchWeeks = async () => {
+      try {
+        const res = await axios.get<Week[]>("/api/academic-weeks/study-weeks");
+        setWeeks(res.data);
+        if (res.data.length > 0) {
+          setSelectedWeek(res.data[0].weekNumber); // mặc định chọn tuần đầu tiên
+        }
+      } catch (err) {
+        console.error("Lỗi tải tuần:", err);
+      }
+    };
+    fetchWeeks();
+  }, []);
+
+  // Khi đổi tuần → gọi API lấy điểm
+  useEffect(() => {
+    if (!selectedWeek) return;
+    const fetchScores = async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get<ClassScore[]>(
+          `/api/class-violation-scores/week/${selectedWeek}`
+        );
+        setScores(res.data);
+      } catch (err) {
+        console.error("Lỗi tải điểm:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchScores();
+  }, [selectedWeek]);
+
+  // Gom nhóm theo khối
+  const groupedScores = scores.reduce<Record<string, ClassScore[]>>((acc, item) => {
+    if (!acc[item.grade]) acc[item.grade] = [];
+    acc[item.grade].push(item);
+    return acc;
+  }, {});
+
+  // Xác định lớp đứng đầu mỗi khối
+  const topClassByGrade: Record<string, string> = {};
+  Object.keys(groupedScores).forEach((grade) => {
+    const sorted = [...groupedScores[grade]].sort(
+      (a, b) => b.totalScore - a.totalScore
+    );
+    if (sorted.length > 0) {
+      topClassByGrade[grade] = sorted[0].className;
+    }
+  });
 
   return (
-    <div style={{ padding: "20px" }}>
-      <Typography variant="h5" gutterBottom>
-        🏆 Kết quả thi đua toàn trường theo tuần
+    <Container>
+      <Typography variant="h4" gutterBottom>
+        Bảng điểm tuần
       </Typography>
 
-      <Card style={{ marginBottom: "20px" }}>
-        <CardContent>
-          <FormControl fullWidth>
-            <InputLabel id="week-select-label">Tuần</InputLabel>
-            <Select
-              labelId="week-select-label"
-              value={week}
-              onChange={(e) => setWeek(Number(e.target.value))}
-            >
-              {[1, 2, 3, 4, 5].map((w) => (
-                <MenuItem key={w} value={w}>
-                  Tuần {w}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </CardContent>
-      </Card>
+      {/* Dropdown chọn tuần */}
+      <FormControl fullWidth sx={{ mb: 3 }}>
+        <InputLabel id="week-select-label">Chọn tuần</InputLabel>
+        <Select
+          labelId="week-select-label"
+          value={selectedWeek}
+          label="Chọn tuần"
+          onChange={(e) => setSelectedWeek(e.target.value as number)}
+        >
+          {weeks.map((w) => (
+            <MenuItem key={w._id} value={w.weekNumber}>
+              Tuần {w.weekNumber} ({new Date(w.startDate).toLocaleDateString()} -{" "}
+              {new Date(w.endDate).toLocaleDateString()})
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
 
       {loading ? (
-        <CircularProgress />
+        <Typography>Đang tải dữ liệu...</Typography>
       ) : (
-        scores.map((group) => (
-          <Card key={group.grade} style={{ marginBottom: "20px" }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Khối {group.grade}
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Lớp</TableCell>
-                      <TableCell align="center">Tổng điểm</TableCell>
-                      <TableCell align="center">Xếp hạng</TableCell>
+        Object.keys(groupedScores).map((grade) => (
+          <Box key={grade} sx={{ mb: 4 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Khối {grade}
+            </Typography>
+            <Paper>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Lớp</TableCell>
+                    <TableCell align="right">Điểm học tập</TableCell>
+                    <TableCell align="right">Điểm thưởng</TableCell>
+                    <TableCell align="right">Điểm kỷ luật</TableCell>
+                    <TableCell align="right">Tổng điểm</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {groupedScores[grade].map((row) => (
+                    <TableRow
+                      key={row._id}
+                      sx={{
+                        backgroundColor:
+                          row.className === topClassByGrade[grade]
+                            ? "rgba(255, 223, 186, 0.5)"
+                            : "inherit",
+                      }}
+                    >
+                      <TableCell>{row.className}</TableCell>
+                      <TableCell align="right">{row.academicScore}</TableCell>
+                      <TableCell align="right">{row.bonusScore}</TableCell>
+                      <TableCell align="right">{row.violationScore}</TableCell>
+                      <TableCell align="right">{row.totalScore}</TableCell>
                     </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {group.classes.map((cls) => (
-                      <TableRow
-                        key={cls.className}
-                        style={{
-                          backgroundColor:
-                            cls.rank === 1 ? "#e3f2fd" : "transparent",
-                        }}
-                      >
-                        <TableCell>{cls.className}</TableCell>
-                        <TableCell align="center">{cls.totalScore}</TableCell>
-                        <TableCell align="center">{cls.rank}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            </Paper>
+          </Box>
         ))
       )}
-    </div>
+    </Container>
   );
-}
+};
+
+export default WeeklyScoresPage;
