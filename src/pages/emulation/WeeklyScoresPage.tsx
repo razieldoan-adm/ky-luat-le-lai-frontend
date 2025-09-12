@@ -70,7 +70,7 @@ export default function WeeklyScoresPage() {
   const handleCalculate = async () => {
     if (!selectedWeek) return;
     try {
-      const res = await axios.post('/api/class-weekly-scores/calculate', {
+      const res = await api.post('/api/class-weekly-scores/calculate', {
         weekNumber: selectedWeek.weekNumber
       });
       setScores(res.data);
@@ -83,7 +83,7 @@ export default function WeeklyScoresPage() {
   const handleCalculateTotalAndRank = async () => {
     if (!selectedWeek) return;
     try {
-      const res = await axios.post('/api/class-weekly-scores/calculate-total-rank', {
+      const res = await api.post('/api/class-weekly-scores/calculate-total-rank', {
         weekNumber: selectedWeek.weekNumber
       });
       setScores(res.data);
@@ -96,7 +96,7 @@ export default function WeeklyScoresPage() {
   const handleSave = async () => {
     if (!selectedWeek) return;
     try {
-      await axios.post('/api/class-weekly-scores', {
+      await api.post('/api/class-weekly-scores', {
         weekNumber: selectedWeek.weekNumber,
         scores
       });
