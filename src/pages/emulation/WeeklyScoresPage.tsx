@@ -230,4 +230,51 @@ export default function WeeklyScoresPage() {
         </TextField>
 
         <Button variant="outlined" onClick={fetchScores}>🔄 Tải dữ liệu</Button>
-        <Button variant="contained" color="primary" onClick={handleCalcula
+        <Button variant="contained" color="primary" onClick={handleCalculate}>📥 Lấy dữ liệu</Button>
+        <Button variant="contained" color="warning" onClick={handleCalculateTotalAndRank}>➕ Tính tổng & xếp hạng</Button>
+        <Button variant="contained" color="success" onClick={handleSave}>💾 Lưu</Button>
+        <Button variant="contained" color="success" onClick={handleExport}>Xuất file thi đua</Button>
+      </Stack>
+
+      <Table component={Paper}>
+        <TableHead>
+          <TableRow>
+            <TableCell>STT</TableCell>
+            <TableCell>Lớp</TableCell>
+            <TableCell>Điểm SĐB</TableCell>
+            <TableCell>Điểm kỷ luật</TableCell>
+            <TableCell>Điểm vệ sinh</TableCell>
+            <TableCell>Điểm chuyên cần</TableCell>
+            <TableCell>Điểm xếp hàng</TableCell>
+            <TableCell>Tổng</TableCell>
+            <TableCell>Xếp hạng</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {scores.map((cls, idx) => (
+            <TableRow key={cls.className} sx={getRowStyle(cls.rank)}>
+              <TableCell align="center">{idx + 1}</TableCell>
+              <TableCell align="center">{cls.className}</TableCell>
+              <TableCell align="center">{cls.academicScore}</TableCell>
+              <TableCell align="center">{cls.disciplineScore}</TableCell>
+              <TableCell align="center">{cls.hygieneScore}</TableCell>
+              <TableCell align="center">{cls.attendanceScore}</TableCell>
+              <TableCell align="center">{cls.lineUpScore}</TableCell>
+              <TableCell align="center">{cls.totalScore}</TableCell>
+              <TableCell align="center">{cls.rank}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snackbar.severity as any}>{snackbar.message}</Alert>
+      </Snackbar>
+    </Box>
+  );
+}
