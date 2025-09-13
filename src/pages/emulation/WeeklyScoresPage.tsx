@@ -37,13 +37,14 @@ interface Score {
   totalViolation?: number;
   totalRankScore?: number;
   rank?: number;
+  hasHomeroomTeacher?: boolean; // để lọc lớp có GVCN
 }
 
 export default function WeeklyScoresPage() {
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
   const [scores, setScores] = useState<Score[]>([]);
-  const [disciplineMax, setDisciplineMax] = useState<number>(100); // mặc định
+  const [disciplineMax, setDisciplineMax] = useState<number>(100);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -85,9 +86,14 @@ export default function WeeklyScoresPage() {
         params: { weekNumber: selectedWeek.weekNumber },
       });
 
-      const list: Score[] = res.data.map((s: Score) => ({
+      // chỉ lấy lớp có GVCN
+      const filtered = (res.data as Score[]).filter(
+        (s) => s.hasHomeroomTeacher
+      );
+
+      const list: Score[] = filtered.map((s) => ({
         ...s,
-        bonusScore: s.bonusScore || 0,
+        bonusScore: s.bonusScore ?? 0,
       }));
 
       const withCalc = calculateTotals(list);
@@ -97,7 +103,7 @@ export default function WeeklyScoresPage() {
       if (res.data.length === 0) {
         setSnackbar({
           open: true,
-          message: "Chưa có dữ liệu tuần này. Bấm 'Lấy dữ liệu' để tính.",
+          message: "Chưa có dữ liệu tuần này. Bấm 'Tải dữ liệu' để tính.",
           severity: "info",
         });
       }
@@ -110,10 +116,13 @@ export default function WeeklyScoresPage() {
     return list.map((s) => {
       const totalViolation =
         disciplineMax -
-        (s.disciplineScore + s.attendanceScore + s.hygieneScore + s.lineUpScore);
+        (s.disciplineScore +
+          s.attendanceScore +
+          s.hygieneScore +
+          s.lineUpScore);
 
       const totalRankScore =
-        s.academicScore + totalViolation + (s.bonusScore || 0);
+        s.academicScore + totalViolation + (s.bonusScore ?? 0);
 
       return { ...s, totalViolation, totalRankScore };
     });
@@ -129,7 +138,7 @@ export default function WeeklyScoresPage() {
 
     Object.keys(byGrade).forEach((g) => {
       const sorted = [...byGrade[g]].sort(
-        (a, b) => (b.totalRankScore || 0) - (a.totalRankScore || 0)
+        (a, b) => (b.totalRankScore ?? 0) - (a.totalRankScore ?? 0)
       );
       sorted.forEach((s, idx) => {
         const target = list.find((x) => x._id === s._id);
@@ -137,12 +146,13 @@ export default function WeeklyScoresPage() {
       });
     });
 
-    return [...list]; // giữ nguyên thứ tự ban đầu
+    return [...list];
   };
 
   const handleBonusChange = (id: string, value: number) => {
+    const safeValue = isNaN(value) ? 0 : value;
     const updated = scores.map((s) =>
-      s._id === id ? { ...s, bonusScore: value } : s
+      s._id === id ? { ...s, bonusScore: safeValue } : s
     );
     const withCalc = calculateTotals(updated);
     const withRanks = assignRanksPerGrade(withCalc);
@@ -167,13 +177,21 @@ export default function WeeklyScoresPage() {
   };
 
   const getRowStyle = (idx: number, rank?: number) => {
-    let style: any = {
-      backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9f9f9", // zebra
-    };
-    if (rank === 1) style.backgroundColor = "#ffe082";
-    if (rank === 2) style.backgroundColor = "#b2ebf2";
-    if (rank === 3) style.backgroundColor = "#c8e6c9";
-    return style;
+    const base =
+      idx % 2 === 0
+        ? { backgroundColor: "#fafafa" }
+        : { backgroundColor: "#ffffff" };
+
+    switch (rank) {
+      case 1:
+        return { ...base, backgroundColor: "#ffe082" };
+      case 2:
+        return { ...base, backgroundColor: "#b2ebf2" };
+      case 3:
+        return { ...base, backgroundColor: "#c8e6c9" };
+      default:
+        return base;
+    }
   };
 
   return (
@@ -212,58 +230,53 @@ export default function WeeklyScoresPage() {
       <Table component={Paper}>
         <TableHead>
           <TableRow>
-            <TableCell align="center">STT</TableCell>
-            <TableCell align="center">Khối</TableCell>
-            <TableCell align="center">Lớp</TableCell>
-            <TableCell align="center">SĐB</TableCell>
-            <TableCell align="center">Kỷ luật</TableCell>
-            <TableCell align="center">Vệ sinh</TableCell>
-            <TableCell align="center">Chuyên cần</TableCell>
-            <TableCell align="center">Xếp hàng</TableCell>
-            <TableCell align="center">Điểm nề nếp</TableCell>
-            <TableCell align="center">Điểm thưởng</TableCell>
-            <TableCell align="center">Tổng xếp hạng</TableCell>
-            <TableCell align="center">Hạng</TableCell>
+            <TableCell>STT</TableCell>
+            <TableCell>Khối</TableCell>
+            <TableCell>Lớp</TableCell>
+            <TableCell>SĐB</TableCell>
+            <TableCell>Kỷ luật</TableCell>
+            <TableCell>Vệ sinh</TableCell>
+            <TableCell>Chuyên cần</TableCell>
+            <TableCell>Xếp hàng</TableCell>
+            <TableCell>Điểm nề nếp</TableCell>
+            <TableCell>Điểm thưởng</TableCell>
+            <TableCell>Tổng xếp hạng</TableCell>
+            <TableCell>Hạng</TableCell>
           </TableRow>
         </TableHead>
-<TableBody>
-  {scores
-    .filter((s) => s.className && s.grade) // chỉ lấy lớp có tên và khối (có GVCN)
-    .map((s, idx) => (
-      <TableRow
-        key={s._id}
-        sx={{
-          ...getRowStyle(s.rank),
-          backgroundColor:
-            idx % 2 === 0 ? "#fafafa" : "#ffffff", // zebra table
-        }}
-      >
-        <TableCell align="center">{idx + 1}</TableCell>
-        <TableCell align="center">{s.grade}</TableCell>
-        <TableCell align="center">{s.className}</TableCell>
-        <TableCell align="center">{s.academicScore}</TableCell>
-        <TableCell align="center">{s.disciplineScore}</TableCell>
-        <TableCell align="center">{s.hygieneScore}</TableCell>
-        <TableCell align="center">{s.attendanceScore}</TableCell>
-        <TableCell align="center">{s.lineUpScore}</TableCell>
-        <TableCell align="center">{s.totalViolation}</TableCell>
-        <TableCell align="center">
-          <TextField
-            type="number"
-            size="small"
-            value={s.bonusScore || 0}
-            onChange={(e) =>
-              handleBonusChange(s._id, Number(e.target.value))
-            }
-            sx={{ width: 70 }}
-          />
-        </TableCell>
-        <TableCell align="center">{s.totalRankScore}</TableCell>
-        <TableCell align="center">{s.rank}</TableCell>
-      </TableRow>
-    ))}
-</TableBody>
-
+        <TableBody>
+          {scores.map((s, idx) => (
+            <TableRow key={s._id} sx={getRowStyle(idx, s.rank)}>
+              <TableCell align="center">{idx + 1}</TableCell>
+              <TableCell align="center">{s.grade}</TableCell>
+              <TableCell align="center">{s.className}</TableCell>
+              <TableCell align="center">{s.academicScore}</TableCell>
+              <TableCell align="center">{s.disciplineScore}</TableCell>
+              <TableCell align="center">{s.hygieneScore}</TableCell>
+              <TableCell align="center">{s.attendanceScore}</TableCell>
+              <TableCell align="center">{s.lineUpScore}</TableCell>
+              <TableCell align="center">{s.totalViolation}</TableCell>
+              <TableCell align="center">
+                <TextField
+                  type="number"
+                  size="small"
+                  value={s.bonusScore ?? 0}
+                  onChange={(e) =>
+                    handleBonusChange(
+                      s._id,
+                      e.target.value === "" ? 0 : Number(e.target.value)
+                    )
+                  }
+                  sx={{ width: 70, "& input": { textAlign: "center" } }}
+                />
+              </TableCell>
+              <TableCell align="center">{s.totalRankScore}</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 600 }}>
+                {s.rank}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
       </Table>
 
       <Snackbar
