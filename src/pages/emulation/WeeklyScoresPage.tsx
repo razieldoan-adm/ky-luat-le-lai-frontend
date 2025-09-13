@@ -14,6 +14,7 @@ import {
   Stack,
   Snackbar,
   Alert,
+  TableContainer,
 } from "@mui/material";
 import api from "../../api/api";
 
@@ -106,8 +107,11 @@ export default function WeeklyScoresPage() {
         params: { weekNumber: selectedWeek.weekNumber },
       });
 
-      // chỉ lấy các lớp có GVCN
-      const validClasses = classList.map((c) => normalize(c.className));
+      // lọc chỉ giữ lớp có GVCN
+      const validClasses = classList
+        .filter((c) => c.teacher && c.teacher.trim() !== "")
+        .map((c) => normalize(c.className));
+
       const filtered = res.data.filter((s: Score) =>
         validClasses.includes(normalize(s.className))
       );
@@ -192,6 +196,11 @@ export default function WeeklyScoresPage() {
       });
     } catch (err) {
       console.error("Lỗi khi lưu:", err);
+      setSnackbar({
+        open: true,
+        message: "Có lỗi khi lưu dữ liệu!",
+        severity: "error",
+      });
     }
   };
 
@@ -199,9 +208,9 @@ export default function WeeklyScoresPage() {
     let style: any = {
       backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9f9f9", // zebra
     };
-    if (rank === 1) style.backgroundColor = "#ffe082";
-    if (rank === 2) style.backgroundColor = "#b2ebf2";
-    if (rank === 3) style.backgroundColor = "#c8e6c9";
+    if (rank === 1) style.backgroundColor = "#ffe082"; // vàng
+    if (rank === 2) style.backgroundColor = "#b2ebf2"; // xanh nhạt
+    if (rank === 3) style.backgroundColor = "#c8e6c9"; // xanh lá
     return style;
   };
 
@@ -238,101 +247,112 @@ export default function WeeklyScoresPage() {
         </Button>
       </Stack>
 
-      <Table component={Paper}>
-        <TableHead>
-          <TableRow>
-            <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
-              STT
-            </TableCell>
-            <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
-              Lớp
-            </TableCell>
-            <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
-              Điểm thưởng
-            </TableCell>
-            <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
-              Học tập
-            </TableCell>
-            <TableCell align="center" colSpan={4} sx={{ border: "1px solid #000" }}>
-              Nề nếp
-            </TableCell>
-            <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
-              Tổng điểm Nề nếp
-            </TableCell>
-            <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
-              Tổng
-            </TableCell>
-            <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
-              Xếp hạng
-            </TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell align="center" sx={{ border: "1px solid #000" }}>
-              Kỷ luật
-            </TableCell>
-            <TableCell align="center" sx={{ border: "1px solid #000" }}>
-              Vệ sinh
-            </TableCell>
-            <TableCell align="center" sx={{ border: "1px solid #000" }}>
-              Chuyên cần
-            </TableCell>
-            <TableCell align="center" sx={{ border: "1px solid #000" }}>
-              Xếp hàng
-            </TableCell>
-          </TableRow>
-        </TableHead>
+      {/* Chia bảng theo khối */}
+      {["6", "7", "8", "9"].map((grade) => {
+        const gradeScores = scores.filter((s) => s.grade === grade);
+        if (gradeScores.length === 0) return null;
 
-        <TableBody>
-          {scores.map((s, idx) => (
-            <TableRow key={s._id} sx={getRowStyle(idx, s.rank)}>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                {idx + 1}
-              </TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                {s.className}
-              </TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                <TextField
-                  type="number"
-                  size="small"
-                  value={s.bonusScore || 0}
-                  onChange={(e) =>
-                    handleBonusChange(s._id, Number(e.target.value))
-                  }
-                  sx={{ width: 70, "& input": { textAlign: "center" } }}
-                />
-              </TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                {s.academicScore}
-              </TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                {s.disciplineScore}
-              </TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                {s.hygieneScore}
-              </TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                {s.attendanceScore}
-              </TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                {s.lineUpScore}
-              </TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                {s.totalViolation}
-              </TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                {s.totalRankScore}
-              </TableCell>
-              <TableCell
-                align="center"
-                sx={{ border: "1px solid #000", fontWeight: 600 }}
-              >
-                {s.rank}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+        return (
+          <Box key={grade} mb={4}>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Khối {grade}
+            </Typography>
+
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
+                      STT
+                    </TableCell>
+                    <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
+                      Lớp
+                    </TableCell>
+                    <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
+                      Điểm thưởng
+                    </TableCell>
+                    <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
+                      Học tập
+                    </TableCell>
+                    <TableCell align="center" colSpan={4} sx={{ border: "1px solid #000" }}>
+                      Nề nếp
+                    </TableCell>
+                    <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
+                      Tổng điểm Nề nếp
+                    </TableCell>
+                    <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
+                      Tổng
+                    </TableCell>
+                    <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
+                      Xếp hạng
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                      Kỷ luật
+                    </TableCell>
+                    <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                      Vệ sinh
+                    </TableCell>
+                    <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                      Chuyên cần
+                    </TableCell>
+                    <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                      Xếp hàng
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+
+                <TableBody>
+                  {gradeScores.map((s, idx) => (
+                    <TableRow key={s._id} sx={getRowStyle(idx, s.rank)}>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {idx + 1}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {s.className}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        <TextField
+                          type="number"
+                          size="small"
+                          value={s.bonusScore || 0}
+                          onChange={(e) => handleBonusChange(s._id, Number(e.target.value))}
+                          sx={{ width: 70, "& input": { textAlign: "center" } }}
+                        />
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {s.academicScore}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {s.disciplineScore}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {s.hygieneScore}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {s.attendanceScore}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {s.lineUpScore}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {s.totalViolation}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {s.totalRankScore}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000", fontWeight: 600 }}>
+                        {s.rank}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        );
+      })}
 
       <Snackbar
         open={snackbar.open}
