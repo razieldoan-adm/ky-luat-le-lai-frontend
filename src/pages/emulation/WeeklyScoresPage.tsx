@@ -226,36 +226,44 @@ export default function WeeklyScoresPage() {
             <TableCell align="center">Hạng</TableCell>
           </TableRow>
         </TableHead>
-        <TableBody>
-          {scores.map((s, idx) => (
-            <TableRow key={s._id} sx={getRowStyle(idx, s.rank)}>
-              <TableCell align="center">{idx + 1}</TableCell>
-              <TableCell align="center">{s.grade}</TableCell>
-              <TableCell align="center">{s.className}</TableCell>
-              <TableCell align="center">{s.academicScore}</TableCell>
-              <TableCell align="center">{s.disciplineScore}</TableCell>
-              <TableCell align="center">{s.hygieneScore}</TableCell>
-              <TableCell align="center">{s.attendanceScore}</TableCell>
-              <TableCell align="center">{s.lineUpScore}</TableCell>
-              <TableCell align="center">{s.totalViolation}</TableCell>
-              <TableCell align="center">
-                <TextField
-                  type="number"
-                  size="small"
-                  value={s.bonusScore || 0}
-                  onChange={(e) =>
-                    handleBonusChange(s._id, Number(e.target.value))
-                  }
-                  sx={{ width: 70, "& input": { textAlign: "center" } }}
-                />
-              </TableCell>
-              <TableCell align="center">{s.totalRankScore}</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 600 }}>
-                {s.rank}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
+<TableBody>
+  {scores
+    .filter((s) => s.className && s.grade) // chỉ lấy lớp có tên và khối (có GVCN)
+    .map((s, idx) => (
+      <TableRow
+        key={s._id}
+        sx={{
+          ...getRowStyle(s.rank),
+          backgroundColor:
+            idx % 2 === 0 ? "#fafafa" : "#ffffff", // zebra table
+        }}
+      >
+        <TableCell align="center">{idx + 1}</TableCell>
+        <TableCell align="center">{s.grade}</TableCell>
+        <TableCell align="center">{s.className}</TableCell>
+        <TableCell align="center">{s.academicScore}</TableCell>
+        <TableCell align="center">{s.disciplineScore}</TableCell>
+        <TableCell align="center">{s.hygieneScore}</TableCell>
+        <TableCell align="center">{s.attendanceScore}</TableCell>
+        <TableCell align="center">{s.lineUpScore}</TableCell>
+        <TableCell align="center">{s.totalViolation}</TableCell>
+        <TableCell align="center">
+          <TextField
+            type="number"
+            size="small"
+            value={s.bonusScore || 0}
+            onChange={(e) =>
+              handleBonusChange(s._id, Number(e.target.value))
+            }
+            sx={{ width: 70 }}
+          />
+        </TableCell>
+        <TableCell align="center">{s.totalRankScore}</TableCell>
+        <TableCell align="center">{s.rank}</TableCell>
+      </TableRow>
+    ))}
+</TableBody>
+
       </Table>
 
       <Snackbar
