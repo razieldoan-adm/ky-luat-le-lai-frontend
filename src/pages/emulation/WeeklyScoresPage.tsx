@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  Card,
-  CardContent,
   Typography,
   Table,
   TableBody,
@@ -55,7 +53,7 @@ export default function WeeklyScoresPage() {
     fetchScores();
   }, [week]);
 
-  // Tính toán trên frontend
+  // Tính toán tổng điểm
   const processed: ClassScore[] = data.map((cls) => {
     const totalViolation = cls.violationScore;
     const totalScore =
@@ -68,7 +66,7 @@ export default function WeeklyScoresPage() {
     return { ...cls, totalViolation, totalScore };
   });
 
-  // Gom nhóm theo khối
+  // Gom nhóm theo khối & xếp hạng
   const grouped: Record<string, ClassScore[]> = {};
   processed.forEach((cls) => {
     if (!grouped[cls.grade]) grouped[cls.grade] = [];
@@ -78,15 +76,18 @@ export default function WeeklyScoresPage() {
     grouped[g].sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
   });
 
+  // Tổng số lớp
+  const totalClasses = processed.length;
+
   return (
     <div style={{ padding: "24px" }}>
-      <Typography variant="h4" gutterBottom>
-        Bảng điểm thi đua tuần
+      <Typography variant="h5" gutterBottom>
+        🏆 Kết quả thi đua toàn trường theo tuần
       </Typography>
 
       {/* Dropdown chọn tuần */}
-      <FormControl style={{ minWidth: 200, marginBottom: 24 }}>
-        <InputLabel>Chọn tuần</InputLabel>
+      <FormControl style={{ minWidth: 200, marginBottom: 16 }}>
+        <InputLabel>Tuần</InputLabel>
         <Select
           value={week}
           onChange={(e) => setWeek(Number(e.target.value))}
@@ -99,54 +100,60 @@ export default function WeeklyScoresPage() {
         </Select>
       </FormControl>
 
+      <Typography variant="subtitle1" gutterBottom>
+        Tổng số lớp: {totalClasses}
+      </Typography>
+
       {loading ? (
         <CircularProgress />
       ) : (
         Object.keys(grouped).map((grade) => (
-          <Card key={grade} style={{ marginBottom: 24 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Khối {grade}
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Lớp</TableCell>
-                      <TableCell>SĐB</TableCell>
-                      <TableCell>Điểm thưởng</TableCell>
-                      <TableCell>Vệ sinh</TableCell>
-                      <TableCell>Chuyên cần</TableCell>
-                      <TableCell>Vi phạm</TableCell>
-                      <TableCell>Tổng điểm</TableCell>
+          <div key={grade} style={{ marginBottom: 32 }}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              style={{ marginTop: 16, fontWeight: "bold", color: "#1976d2" }}
+            >
+              Khối {grade}
+            </Typography>
+
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>STT</TableCell>
+                    <TableCell>Lớp</TableCell>
+                    <TableCell>Học tập</TableCell>
+                    <TableCell>Kỷ luật</TableCell>
+                    <TableCell>Vệ sinh</TableCell>
+                    <TableCell>Chuyên cần</TableCell>
+                    <TableCell>Tổng điểm</TableCell>
+                    <TableCell>Xếp hạng</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {grouped[grade].map((cls, idx) => (
+                    <TableRow
+                      key={cls._id}
+                      style={{
+                        backgroundColor: idx === 0 ? "#e6ffe6" : "inherit",
+                        fontWeight: idx === 0 ? "bold" : "normal",
+                      }}
+                    >
+                      <TableCell>{idx + 1}</TableCell>
+                      <TableCell>{cls.className}</TableCell>
+                      <TableCell>{cls.academicScore}</TableCell>
+                      <TableCell>{cls.violationScore}</TableCell>
+                      <TableCell>{cls.hygieneScore}</TableCell>
+                      <TableCell>{cls.diligenceScore}</TableCell>
+                      <TableCell>{cls.totalScore}</TableCell>
+                      <TableCell>{idx + 1}</TableCell>
                     </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {grouped[grade].map((cls, idx) => (
-                      <TableRow
-                        key={cls._id}
-                        style={{
-                          backgroundColor: idx === 0 ? "#d1f7d1" : "inherit",
-                        }}
-                      >
-                        <TableCell>{cls.className}</TableCell>
-                        <TableCell>{cls.academicScore}</TableCell>
-                        <TableCell>{cls.bonusScore}</TableCell>
-                        <TableCell>{cls.hygieneScore}</TableCell>
-                        <TableCell>{cls.diligenceScore}</TableCell>
-                        <TableCell style={{ color: "red", fontWeight: 600 }}>
-                          -{cls.totalViolation}
-                        </TableCell>
-                        <TableCell style={{ fontWeight: "bold" }}>
-                          {cls.totalScore}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </div>
         ))
       )}
     </div>
