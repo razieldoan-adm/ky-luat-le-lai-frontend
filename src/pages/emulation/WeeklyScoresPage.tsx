@@ -224,24 +224,31 @@ export default function WeeklyScoresPage() {
   }
 
   // rank per grade
-  function assignRanksPerGrade(list: Score[]) {
-    const byGrade: Record<string, Score[]> = {};
-    list.forEach((s) => {
-      if (!byGrade[s.grade]) byGrade[s.grade] = [];
-      byGrade[s.grade].push(s);
+  // rank per grade (xếp hạng theo từng khối)
+function assignRanksPerGrade(list: Score[]) {
+  const byGrade: Record<string, Score[]> = {};
+
+  // gom nhóm theo khối
+  list.forEach((s) => {
+    if (!byGrade[s.grade]) byGrade[s.grade] = [];
+    byGrade[s.grade].push(s);
+  });
+
+  // gán rank trong từng khối
+  Object.keys(byGrade).forEach((g) => {
+    byGrade[g].sort((a, b) => b.totalRankScore - a.totalRankScore);
+    byGrade[g].forEach((s, idx) => {
+      s.rank = idx + 1;
     });
-    Object.keys(byGrade).forEach((g) => {
-      byGrade[g].sort((a, b) => b.totalRankScore - a.totalRankScore);
-      byGrade[g].forEach((s, idx) => {
-        s.rank = idx + 1;
-      });
-    });
-    // flatten in grade order (numeric sort)
-    const grades = Object.keys(byGrade).sort((a, b) => Number(a) - Number(b));
-    const flat: Score[] = [];
-    grades.forEach((g) => flat.push(...byGrade[g]));
-    return flat;
-  }
+  });
+
+  // flatten theo thứ tự khối tăng dần
+  const grades = Object.keys(byGrade).sort((a, b) => Number(a) - Number(b));
+  const flat: Score[] = [];
+  grades.forEach((g) => flat.push(...byGrade[g]));
+  return flat;
+}
+
 
   // inline change bonus
   function onBonusChange(className: string, value: number) {
