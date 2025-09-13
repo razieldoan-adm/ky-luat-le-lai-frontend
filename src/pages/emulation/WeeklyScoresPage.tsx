@@ -120,7 +120,7 @@ export default function WeeklyScoresPage() {
     });
   };
 
-  // xếp hạng theo từng khối
+  // gán hạng theo khối nhưng giữ nguyên thứ tự danh sách
   const assignRanksPerGrade = (list: Score[]) => {
     const byGrade: Record<string, Score[]> = {};
     list.forEach((s) => {
@@ -129,16 +129,16 @@ export default function WeeklyScoresPage() {
     });
 
     Object.keys(byGrade).forEach((g) => {
-      byGrade[g].sort((a, b) => (b.totalRankScore || 0) - (a.totalRankScore || 0));
-      byGrade[g].forEach((s, idx) => {
-        s.rank = idx + 1;
+      const sorted = [...byGrade[g]].sort(
+        (a, b) => (b.totalRankScore || 0) - (a.totalRankScore || 0)
+      );
+      sorted.forEach((s, idx) => {
+        const target = list.find((x) => x._id === s._id);
+        if (target) target.rank = idx + 1;
       });
     });
 
-    const grades = Object.keys(byGrade).sort((a, b) => Number(a) - Number(b));
-    const flat: Score[] = [];
-    grades.forEach((g) => flat.push(...byGrade[g]));
-    return flat;
+    return [...list]; // giữ nguyên thứ tự ban đầu
   };
 
   const handleBonusChange = (id: string, value: number) => {
@@ -165,57 +165,6 @@ export default function WeeklyScoresPage() {
     } catch (err) {
       console.error("Lỗi khi lưu:", err);
     }
-  };
-
-  const handleExport = async () => {
-    if (!selectedWeek) return;
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet("Thi đua");
-
-    sheet.mergeCells("A1:I1");
-    sheet.getCell("A1").value = `BẢNG THI ĐUA - TUẦN ${selectedWeek.weekNumber}`;
-    sheet.getCell("A1").alignment = { horizontal: "center" };
-
-    const header = [
-      "Khối",
-      "Lớp",
-      "SĐB",
-      "Kỷ luật",
-      "Vệ sinh",
-      "Chuyên cần",
-      "Xếp hàng",
-      "Nề nếp",
-      "Điểm thưởng",
-      "Tổng xếp hạng",
-      "Hạng",
-    ];
-    sheet.addRow([]);
-    sheet.addRow(header);
-
-    scores.forEach((s) => {
-      sheet.addRow([
-        s.grade,
-        s.className,
-        s.academicScore,
-        s.disciplineScore,
-        s.hygieneScore,
-        s.attendanceScore,
-        s.lineUpScore,
-        s.totalViolation,
-        s.bonusScore,
-        s.totalRankScore,
-        s.rank,
-      ]);
-    });
-
-    const buf = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buf], { type: "application/octet-stream" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ThiDua_Tuan${selectedWeek.weekNumber}.xlsx`;
-    a.click();
-    window.URL.revokeObjectURL(url);
   };
 
   const getRowStyle = (rank?: number) => {
@@ -262,14 +211,12 @@ export default function WeeklyScoresPage() {
         <Button variant="contained" color="success" onClick={handleSave}>
           💾 Lưu
         </Button>
-        <Button variant="contained" onClick={handleExport}>
-          ⬇️ Xuất Excel
-        </Button>
       </Stack>
 
       <Table component={Paper}>
         <TableHead>
           <TableRow>
+            <TableCell>STT</TableCell>
             <TableCell>Khối</TableCell>
             <TableCell>Lớp</TableCell>
             <TableCell>SĐB</TableCell>
@@ -284,8 +231,9 @@ export default function WeeklyScoresPage() {
           </TableRow>
         </TableHead>
         <TableBody>
-          {scores.map((s) => (
+          {scores.map((s, idx) => (
             <TableRow key={s._id} sx={getRowStyle(s.rank)}>
+              <TableCell align="center">{idx + 1}</TableCell>
               <TableCell align="center">{s.grade}</TableCell>
               <TableCell align="center">{s.className}</TableCell>
               <TableCell align="center">{s.academicScore}</TableCell>
