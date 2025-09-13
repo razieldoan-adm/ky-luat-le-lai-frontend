@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Container,
   Typography,
@@ -14,7 +14,7 @@ import {
   Button,
   TextField,
 } from "@mui/material";
-import api from "@/utils/api";
+import api from "../../api/api";
 
 interface ClassScore {
   className: string;
