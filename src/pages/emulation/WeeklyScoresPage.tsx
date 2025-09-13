@@ -466,7 +466,7 @@ export default function WeeklyScoresPage() {
                       .sort((a, b) => a.rank - b.rank)
                       .map((cls, idx) => (
                         <TableRow
-                          key={cls.className}
+                          key={cls.className || idx}
                           sx={{
                             backgroundColor: cls.rank === 1 ? "#fff59d" : undefined,
                             fontWeight: cls.rank === 1 ? "bold" : undefined,
