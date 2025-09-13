@@ -18,7 +18,7 @@ import {
   Alert,
   Paper,
 } from "@mui/material";
-import api from "../../utils/api";
+import api from "../../api/api";
 
 interface Week {
   _id: string;
