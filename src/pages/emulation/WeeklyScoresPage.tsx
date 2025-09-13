@@ -28,7 +28,7 @@ interface Score {
   _id: string;
   className: string;
   grade: string;
-  academicScore: number;
+  academicScore: number; // SĐB
   disciplineScore: number;
   hygieneScore: number;
   attendanceScore: number;
@@ -41,16 +41,16 @@ interface Score {
 
 interface ClassItem {
   _id: string;
-  name: string;
+  className: string;
   grade: string;
-  homeroomTeacher?: string;
+  teacher: string;
 }
 
 export default function WeeklyScoresPage() {
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
   const [scores, setScores] = useState<Score[]>([]);
-  const [disciplineMax, setDisciplineMax] = useState<number>(100);
+  const [disciplineMax, setDisciplineMax] = useState<number>(100); // mặc định
   const [classList, setClassList] = useState<ClassItem[]>([]);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -61,7 +61,7 @@ export default function WeeklyScoresPage() {
   useEffect(() => {
     fetchWeeks();
     fetchSettings();
-    fetchClasses();
+    fetchClasses(); // ✅ gọi API lấy lớp có GVCN
   }, []);
 
   const fetchWeeks = async () => {
@@ -89,7 +89,7 @@ export default function WeeklyScoresPage() {
 
   const fetchClasses = async () => {
     try {
-      const res = await api.get("/api/classes");
+      const res = await api.get("/api/classes/with-teacher");
       setClassList(res.data);
     } catch (err) {
       console.error("Lỗi khi lấy lớp:", err);
@@ -103,26 +103,19 @@ export default function WeeklyScoresPage() {
         params: { weekNumber: selectedWeek.weekNumber },
       });
 
-      // lọc lớp có GVCN
-      const validClasses = classList
-        .filter((c) => !!c.homeroomTeacher)
-        .map((c) => c.name);
-
-      const list: Score[] = res.data
-        .filter((s: Score) => validClasses.includes(s.className))
-        .map((s: Score) => ({
-          ...s,
-          bonusScore: s.bonusScore || 0,
-        }));
+      const list: Score[] = res.data.map((s: Score) => ({
+        ...s,
+        bonusScore: s.bonusScore || 0,
+      }));
 
       const withCalc = calculateTotals(list);
       const withRanks = assignRanksPerGrade(withCalc);
       setScores(withRanks);
 
-      if (list.length === 0) {
+      if (res.data.length === 0) {
         setSnackbar({
           open: true,
-          message: "Chưa có dữ liệu tuần này hoặc không có lớp hợp lệ.",
+          message: "Chưa có dữ liệu tuần này. Bấm 'Lấy dữ liệu' để tính.",
           severity: "info",
         });
       }
@@ -144,6 +137,7 @@ export default function WeeklyScoresPage() {
     });
   };
 
+  // gán hạng theo khối nhưng giữ nguyên thứ tự danh sách
   const assignRanksPerGrade = (list: Score[]) => {
     const byGrade: Record<string, Score[]> = {};
     list.forEach((s) => {
@@ -161,7 +155,7 @@ export default function WeeklyScoresPage() {
       });
     });
 
-    return [...list];
+    return [...list]; // giữ nguyên thứ tự ban đầu
   };
 
   const handleBonusChange = (id: string, value: number) => {
@@ -235,50 +229,57 @@ export default function WeeklyScoresPage() {
 
       <Table component={Paper}>
         <TableHead>
-          <TableRow>
-            <TableCell align="center">STT</TableCell>
-            <TableCell align="center">Khối</TableCell>
-            <TableCell align="center">Lớp</TableCell>
-            <TableCell align="center">SĐB</TableCell>
-            <TableCell align="center">Kỷ luật</TableCell>
-            <TableCell align="center">Vệ sinh</TableCell>
-            <TableCell align="center">Chuyên cần</TableCell>
-            <TableCell align="center">Xếp hàng</TableCell>
-            <TableCell align="center">Điểm nề nếp</TableCell>
-            <TableCell align="center">Điểm thưởng</TableCell>
-            <TableCell align="center">Tổng xếp hạng</TableCell>
-            <TableCell align="center">Hạng</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {scores.map((s, idx) => (
-            <TableRow key={s._id} sx={getRowStyle(idx, s.rank)}>
-              <TableCell align="center">{idx + 1}</TableCell>
-              <TableCell align="center">{s.grade}</TableCell>
-              <TableCell align="center">{s.className}</TableCell>
-              <TableCell align="center">{s.academicScore}</TableCell>
-              <TableCell align="center">{s.disciplineScore}</TableCell>
-              <TableCell align="center">{s.hygieneScore}</TableCell>
-              <TableCell align="center">{s.attendanceScore}</TableCell>
-              <TableCell align="center">{s.lineUpScore}</TableCell>
-              <TableCell align="center">{s.totalViolation}</TableCell>
-              <TableCell align="center">
-                <TextField
-                  type="number"
-                  size="small"
-                  value={s.bonusScore || 0}
-                  onChange={(e) =>
-                    handleBonusChange(s._id, Number(e.target.value))
-                  }
-                  sx={{ width: 70, "& input": { textAlign: "center" } }}
-                />
-              </TableCell>
-              <TableCell align="center">{s.totalRankScore}</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 600 }}>
-                {s.rank}
-              </TableCell>
+            <TableRow>
+              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>STT</TableCell>
+              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Lớp</TableCell>
+              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Học tập</TableCell>
+              <TableCell align="center" colSpan={4} sx={{ border: "1px solid #000" }}>Nề nếp</TableCell>
+              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Tổng điểm Nề nếp</TableCell>
+              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Tổng</TableCell>
+              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Xếp hạng</TableCell>
             </TableRow>
-          ))}
+            <TableRow>
+              <TableCell align="center" sx={{ border: "1px solid #000" }}>Kỷ luật</TableCell>
+              <TableCell align="center" sx={{ border: "1px solid #000" }}>Vệ sinh</TableCell>
+              <TableCell align="center" sx={{ border: "1px solid #000" }}>Chuyên cần</TableCell>
+              <TableCell align="center" sx={{ border: "1px solid #000" }}>Xếp hàng</TableCell>
+            </TableRow>
+          </TableHead>
+        <TableBody>
+          {scores
+            .filter((s) =>
+              classList.some(
+                (c) => c.className === s.className && c.grade === s.grade
+              )
+            )
+            .map((s, idx) => (
+              <TableRow key={s._id} sx={getRowStyle(idx, s.rank)}>
+                <TableCell align="center">{idx + 1}</TableCell>
+                <TableCell align="center">{s.grade}</TableCell>
+                <TableCell align="center">{s.className}</TableCell>
+                <TableCell align="center">{s.academicScore}</TableCell>
+                <TableCell align="center">{s.disciplineScore}</TableCell>
+                <TableCell align="center">{s.hygieneScore}</TableCell>
+                <TableCell align="center">{s.attendanceScore}</TableCell>
+                <TableCell align="center">{s.lineUpScore}</TableCell>
+                <TableCell align="center">{s.totalViolation}</TableCell>
+                <TableCell align="center">
+                  <TextField
+                    type="number"
+                    size="small"
+                    value={s.bonusScore || 0}
+                    onChange={(e) =>
+                      handleBonusChange(s._id, Number(e.target.value))
+                    }
+                    sx={{ width: 70, "& input": { textAlign: "center" } }}
+                  />
+                </TableCell>
+                <TableCell align="center">{s.totalRankScore}</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600 }}>
+                  {s.rank}
+                </TableCell>
+              </TableRow>
+            ))}
         </TableBody>
       </Table>
 
