@@ -229,22 +229,21 @@ export default function WeeklyScoresPage() {
 
       <Table component={Paper}>
         <TableHead>
-            <TableRow>
-              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>STT</TableCell>
-              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Lớp</TableCell>
-              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Học tập</TableCell>
-              <TableCell align="center" colSpan={4} sx={{ border: "1px solid #000" }}>Nề nếp</TableCell>
-              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Tổng điểm Nề nếp</TableCell>
-              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Tổng</TableCell>
-              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>Xếp hạng</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>Kỷ luật</TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>Vệ sinh</TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>Chuyên cần</TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>Xếp hàng</TableCell>
-            </TableRow>
-          </TableHead>
+          <TableRow>
+            <TableCell align="center">STT</TableCell>
+            <TableCell align="center">Khối</TableCell>
+            <TableCell align="center">Lớp</TableCell>
+            <TableCell align="center">SĐB</TableCell>
+            <TableCell align="center">Kỷ luật</TableCell>
+            <TableCell align="center">Vệ sinh</TableCell>
+            <TableCell align="center">Chuyên cần</TableCell>
+            <TableCell align="center">Xếp hàng</TableCell>
+            <TableCell align="center">Điểm nề nếp</TableCell>
+            <TableCell align="center">Điểm thưởng</TableCell>
+            <TableCell align="center">Tổng xếp hạng</TableCell>
+            <TableCell align="center">Hạng</TableCell>
+          </TableRow>
+        </TableHead>
         <TableBody>
           {scores
             .filter((s) =>
