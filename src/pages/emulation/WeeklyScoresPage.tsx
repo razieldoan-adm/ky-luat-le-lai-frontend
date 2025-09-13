@@ -17,7 +17,6 @@ import {
 } from "@mui/material";
 import api from "../../api/api";
 
-
 interface Week {
   _id: string;
   weekNumber: number;
@@ -44,7 +43,7 @@ export default function WeeklyScoresPage() {
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
   const [scores, setScores] = useState<Score[]>([]);
-  const [disciplineMax, setDisciplineMax] = useState<number>(100); // mặc định, lấy từ settings
+  const [disciplineMax, setDisciplineMax] = useState<number>(100); // mặc định
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -167,17 +166,14 @@ export default function WeeklyScoresPage() {
     }
   };
 
-  const getRowStyle = (rank?: number) => {
-    switch (rank) {
-      case 1:
-        return { backgroundColor: "#ffe082" };
-      case 2:
-        return { backgroundColor: "#b2ebf2" };
-      case 3:
-        return { backgroundColor: "#c8e6c9" };
-      default:
-        return {};
-    }
+  const getRowStyle = (idx: number, rank?: number) => {
+    let style: any = {
+      backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9f9f9", // zebra
+    };
+    if (rank === 1) style.backgroundColor = "#ffe082";
+    if (rank === 2) style.backgroundColor = "#b2ebf2";
+    if (rank === 3) style.backgroundColor = "#c8e6c9";
+    return style;
   };
 
   return (
@@ -216,23 +212,23 @@ export default function WeeklyScoresPage() {
       <Table component={Paper}>
         <TableHead>
           <TableRow>
-            <TableCell>STT</TableCell>
-            <TableCell>Khối</TableCell>
-            <TableCell>Lớp</TableCell>
-            <TableCell>SĐB</TableCell>
-            <TableCell>Kỷ luật</TableCell>
-            <TableCell>Vệ sinh</TableCell>
-            <TableCell>Chuyên cần</TableCell>
-            <TableCell>Xếp hàng</TableCell>
-            <TableCell>Điểm nề nếp</TableCell>
-            <TableCell>Điểm thưởng</TableCell>
-            <TableCell>Tổng xếp hạng</TableCell>
-            <TableCell>Hạng</TableCell>
+            <TableCell align="center">STT</TableCell>
+            <TableCell align="center">Khối</TableCell>
+            <TableCell align="center">Lớp</TableCell>
+            <TableCell align="center">SĐB</TableCell>
+            <TableCell align="center">Kỷ luật</TableCell>
+            <TableCell align="center">Vệ sinh</TableCell>
+            <TableCell align="center">Chuyên cần</TableCell>
+            <TableCell align="center">Xếp hàng</TableCell>
+            <TableCell align="center">Điểm nề nếp</TableCell>
+            <TableCell align="center">Điểm thưởng</TableCell>
+            <TableCell align="center">Tổng xếp hạng</TableCell>
+            <TableCell align="center">Hạng</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {scores.map((s, idx) => (
-            <TableRow key={s._id} sx={getRowStyle(s.rank)}>
+            <TableRow key={s._id} sx={getRowStyle(idx, s.rank)}>
               <TableCell align="center">{idx + 1}</TableCell>
               <TableCell align="center">{s.grade}</TableCell>
               <TableCell align="center">{s.className}</TableCell>
@@ -250,11 +246,13 @@ export default function WeeklyScoresPage() {
                   onChange={(e) =>
                     handleBonusChange(s._id, Number(e.target.value))
                   }
-                  sx={{ width: 70 }}
+                  sx={{ width: 70, "& input": { textAlign: "center" } }}
                 />
               </TableCell>
               <TableCell align="center">{s.totalRankScore}</TableCell>
-              <TableCell align="center">{s.rank}</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 600 }}>
+                {s.rank}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
