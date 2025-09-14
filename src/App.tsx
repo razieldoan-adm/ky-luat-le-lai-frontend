@@ -6,6 +6,7 @@ import MainHeader from './components/MainHeader';
 import Sidebar from './components/Sidebar';
 import ProtectedRoute from './components/ProtectedRoute';
 
+import MainLayout from "./layouts/MainLayout";
 import LoginPage from './pages/LoginPage';
 import UnauthorizedPage from './pages/violation/UnauthorizedPage';
 import RulesPage from './pages/RulesPage';
@@ -95,28 +96,14 @@ function AppContent() {
                       
                     </Route>
         {/* General app routes (with global header/sidebar) */}
-        <Route
-          path="*"
-          element={
-            <>
-              <MainHeader />
-              <Toolbar />
-              <Box sx={{ display: 'flex' }}>
-                <Sidebar />
-                <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-                  <Routes>
-                    <Route path="/" element={<DashboardPage />} />
-                    <Route path="/unauthorized" element={<UnauthorizedPage />} />
-                    <Route path="/rules" element={<RulesPage />} />
-                    <Route path="/view-all-violations" element={<ViewAllStudentPage />} />
-                    <Route path="/view-hygiene-discipline" element={<ViewHygieneDiscipline />} />
-                    <Route path="/view-final-competition-result" element={<ViewFinalCompetitionResult />} />
-                  </Routes>
-                </Box>
-              </Box>
-            </>
-          }
-        />
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          <Route path="/rules" element={<RulesPage />} />
+          <Route path="/view-all-violations" element={<ViewAllStudentPage />} />
+          <Route path="/view-hygiene-discipline" element={<ViewHygieneDiscipline />} />
+          <Route path="/view-final-competition-result" element={<ViewFinalCompetitionResult />} />
+        </Route>
       </Routes>
     </Router>
   );
