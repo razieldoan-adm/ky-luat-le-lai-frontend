@@ -97,21 +97,17 @@ function AppContent() {
         </Route>
 
         {/* General app routes (dùng Layout chung) */}
-        <Route
-          path="*"
-          element={
-            <Layout>
-              <Routes>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/unauthorized" element={<UnauthorizedPage />} />
-                <Route path="/rules" element={<RulesPage />} />
-                <Route path="/view-all-violations" element={<ViewViolationListPage />} />
-                <Route path="/view-hygiene-discipline" element={<ViewHygieneDiscipline />} />
-                <Route path="/view-final-competition-result" element={<ViewFinalCompetitionResult />} />
-              </Routes>
-            </Layout>
-          }
-        />
+      <Route
+  path="*"
+  element={<Layout />}
+>
+  <Route path="/" element={<DashboardPage />} />
+  <Route path="/unauthorized" element={<UnauthorizedPage />} />
+  <Route path="/rules" element={<RulesPage />} />
+  <Route path="/view-all-violations" element={<ViewViolationListPage />} />
+  <Route path="/view-hygiene-discipline" element={<ViewHygieneDiscipline />} />
+  <Route path="/view-final-competition-result" element={<ViewFinalCompetitionResult />} />
+</Route>
       </Routes>
     </Router>
   );
