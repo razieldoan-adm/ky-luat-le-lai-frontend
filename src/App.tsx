@@ -100,7 +100,7 @@ function AppContent() {
      <Route
   path="*"
   element={
-      <Layout />    
+      <>    
           }
         >
           <Route path="/" element={<DashboardPage />} />
