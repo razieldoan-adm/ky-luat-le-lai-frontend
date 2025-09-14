@@ -10,7 +10,7 @@ import LoginPage from './pages/LoginPage';
 import UnauthorizedPage from './pages/violation/UnauthorizedPage';
 import RulesPage from './pages/RulesPage';
 import ViewAllStudentPage from './pages/ViewViolationListPage';
-import ViewHygieneDiscipline from './pages/ViewHygienediscipline'
+import ViewHygieneDiscipline from './pages/ViewHygieneDiscipline'
 // Violation
 import ViolationLayout from './layouts/ViolationLayout';
 import RecordViolationPage from './pages/violation/RecordViolationPage';
@@ -75,7 +75,6 @@ function AppContent() {
           <Route path="class-hygiene-score" element={<EnterClassHygieneScorePage />} />
           <Route path="class-attendance-summaries" element={<EnterClassAttendanceSummaryPage />} />
           <Route path="class-lineup-summaries" element={<EnterClassLineUpSummaryPage />} />
-          <Route path="report" element={<ReportsPage />} />
           <Route path="weekly-scores" element={<WeeklyScoresPage />} />
         </Route>
                     {/* Violation routes */}
