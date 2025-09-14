@@ -1,9 +1,9 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { CssBaseline, Toolbar, Box } from '@mui/material';
+import { CssBaseline, } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 
-import MainHeader from './components/MainHeader';
-import Sidebar from './components/Sidebar';
+
+
 import ProtectedRoute from './components/ProtectedRoute';
 
 import MainLayout from "./layouts/MainLayout";
