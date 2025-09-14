@@ -10,7 +10,10 @@ import LoginPage from './pages/LoginPage';
 import UnauthorizedPage from './pages/violation/UnauthorizedPage';
 import RulesPage from './pages/RulesPage';
 import ViewAllStudentPage from './pages/ViewViolationListPage';
-import ViewHygieneDiscipline from './pages/ViewHygieneDiscipline'
+import ViewHygieneDiscipline from './pages/ViewHygieneDiscipline';
+import DashboardPage from './pages/DashboardPage';
+import ViewFinalCompetitionResult from './pages/ViewFinalCompetitionResult';
+
 // Violation
 import ViolationLayout from './layouts/ViolationLayout';
 import RecordViolationPage from './pages/violation/RecordViolationPage';
@@ -33,7 +36,6 @@ import EnterViolationScoresPage from './pages/emulation/ClassViolationScoresPage
 import EnterClassHygieneScorePage from './pages/emulation/ClassHygieneScorePage';
 import EnterClassAttendanceSummaryPage from './pages/emulation/ClassAttendanceSummaryPage';
 import EnterClassLineUpSummaryPage from './pages/emulation/ClassLineUpSummaryPage';
-import ReportsPage from './pages/emulation/ReportsPage';
 import WeeklyScoresPage from './pages/emulation/WeeklyScoresPage';
 
 function AppContent() {
