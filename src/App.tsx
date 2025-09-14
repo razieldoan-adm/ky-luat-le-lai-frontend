@@ -100,18 +100,16 @@ function AppContent() {
      <Route
   path="*"
   element={
- 
-      <Layout />
-    </ProtectedRoute>
-  }
->
-  <Route path="/" element={<DashboardPage />} />
-  <Route path="/unauthorized" element={<UnauthorizedPage />} />
-  <Route path="/rules" element={<RulesPage />} />
-  <Route path="/view-all-violations" element={<ViewViolationListPage />} />
-  <Route path="/view-hygiene-discipline" element={<ViewHygieneDiscipline />} />
-  <Route path="/view-final-competition-result" element={<ViewFinalCompetitionResult />} />
-</Route>
+      <Layout />    
+          }
+        >
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          <Route path="/rules" element={<RulesPage />} />
+          <Route path="/view-all-violations" element={<ViewViolationListPage />} />
+          <Route path="/view-hygiene-discipline" element={<ViewHygieneDiscipline />} />
+          <Route path="/view-final-competition-result" element={<ViewFinalCompetitionResult />} />
+        </Route>
 
       </Routes>
     </Router>
