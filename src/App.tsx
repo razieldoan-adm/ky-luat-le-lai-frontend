@@ -97,7 +97,7 @@ function AppContent() {
         <Route
           path="*"
           element={
-            <>
+            <Layout />
               <MainHeader />
               <Toolbar />
               <Box sx={{ display: 'flex' }}>
