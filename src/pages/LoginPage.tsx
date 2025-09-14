@@ -83,7 +83,7 @@ export default function LoginPage() {
 
           {/* 🆕 Nút quay về dashboard */}
           <Typography variant="body2" align="center" sx={{ mt: 2 }}>
-            <Link to="/dashboard" style={{ textDecoration: 'none', color: '#1976d2' }}>
+            <Link to="/" style={{ textDecoration: 'none', color: '#1976d2' }}>
               ← Quay về bảng điều khiển
             </Link>
           </Typography>
