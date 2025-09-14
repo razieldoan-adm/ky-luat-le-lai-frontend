@@ -97,20 +97,25 @@ function AppContent() {
         </Route>
 
         {/* General app routes (dùng Layout chung) */}
-       <Route
-            path="/"
-            element={
-              <Layout />
-            }
-          >
-            <Route index element={<DashboardPage />} />
-            <Route path="unauthorized" element={<UnauthorizedPage />} />
-            <Route path="rules" element={<RulesPage />} />
-            <Route path="view-all-violations" element={<ViewViolationListPage />} />
-            <Route path="view-hygiene-discipline" element={<ViewHygieneDiscipline />} />
-            <Route path="view-final-competition-result" element={<ViewFinalCompetitionResult />} />
-          </Route>
-
+       <Route 
+         path="*" 
+         element={ <> 
+           <MainHeader /> 
+           <Toolbar /> 
+           <Box sx={{ display: 'flex' }}> 
+             <Sidebar />
+             <Box component="main" sx={{ flexGrow: 1, p: 3 }}> 
+               <Routes> <Route path="/" element={<DashboardPage />} /> 
+                 <Route path="/unauthorized" element={<UnauthorizedPage />} /> 
+                 Route path="/rules" element={<RulesPage />} /> 
+                 <Route path="/view-all-violations" element={<ViewAllStudentPage />} /> 
+                 <Route path="/view-hygiene-discipline" element={<ViewHygieneDiscipline />} /> 
+                 <Route path="/view-final-competition-result" element={<ViewFinalCompetitionResult />} /> 
+               </Routes> 
+             </Box> 
+           </Box> 
+         </> } 
+         />
       </Routes>
     </Router>
   );
