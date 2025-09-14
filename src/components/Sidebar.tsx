@@ -1,31 +1,52 @@
-import { Drawer, List, ListItem, ListItemText, useMediaQuery } from "@mui/material";
+import {
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  useMediaQuery,
+} from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
 const drawerWidth = 240;
 
-export default function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const [open, setOpen] = useState(false);
 
   const drawerContent = (
     <List>
-      <ListItem button component={Link} to="/">
-        <ListItemText primary="Dashboard" />
+      <ListItem disablePadding>
+        <ListItemButton component={Link} to="/">
+          <ListItemText primary="Dashboard" />
+        </ListItemButton>
       </ListItem>
-      <ListItem button component={Link} to="/rules">
-        <ListItemText primary="Rules" />
+      <ListItem disablePadding>
+        <ListItemButton component={Link} to="/rules">
+          <ListItemText primary="Rules" />
+        </ListItemButton>
       </ListItem>
-      <ListItem button component={Link} to="/view-all-violations">
-        <ListItemText primary="All Violations" />
+      <ListItem disablePadding>
+        <ListItemButton component={Link} to="/view-all-violations">
+          <ListItemText primary="All Violations" />
+        </ListItemButton>
       </ListItem>
-      <ListItem button component={Link} to="/view-hygiene-discipline">
-        <ListItemText primary="Hygiene & Discipline" />
+      <ListItem disablePadding>
+        <ListItemButton component={Link} to="/view-hygiene-discipline">
+          <ListItemText primary="Hygiene & Discipline" />
+        </ListItemButton>
       </ListItem>
-      <ListItem button component={Link} to="/view-final-competition-result">
-        <ListItemText primary="Final Competition" />
+      <ListItem disablePadding>
+        <ListItemButton component={Link} to="/view-final-competition-result">
+          <ListItemText primary="Final Competition" />
+        </ListItemButton>
       </ListItem>
     </List>
   );
@@ -34,8 +55,8 @@ export default function Sidebar() {
     return (
       <Drawer
         variant="temporary"
-        open={open}
-        onClose={() => setOpen(false)}
+        open={mobileOpen}
+        onClose={onClose}
         ModalProps={{ keepMounted: true }}
         sx={{
           "& .MuiDrawer-paper": { width: drawerWidth },
