@@ -7,7 +7,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { useState } from "react";
+
 import { Link } from "react-router-dom";
 
 const drawerWidth = 240;
