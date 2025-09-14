@@ -100,7 +100,7 @@ function AppContent() {
         <Route
           path="*"
           element={
-            <Layout>
+            <Layout/>
               <Routes>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/unauthorized" element={<UnauthorizedPage />} />
@@ -109,7 +109,7 @@ function AppContent() {
                 <Route path="/view-hygiene-discipline" element={<ViewHygieneDiscipline />} />
                 <Route path="/view-final-competition-result" element={<ViewFinalCompetitionResult />} />
               </Routes>
-            </Layout>
+            
           }
         />
       </Routes>
