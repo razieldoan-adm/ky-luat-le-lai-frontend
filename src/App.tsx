@@ -97,9 +97,13 @@ function AppContent() {
         </Route>
 
         {/* General app routes (dùng Layout chung) */}
-      <Route
+     <Route
   path="*"
-  element={<Layout />}
+  element={
+ 
+      <Layout />
+    </ProtectedRoute>
+  }
 >
   <Route path="/" element={<DashboardPage />} />
   <Route path="/unauthorized" element={<UnauthorizedPage />} />
@@ -108,6 +112,7 @@ function AppContent() {
   <Route path="/view-hygiene-discipline" element={<ViewHygieneDiscipline />} />
   <Route path="/view-final-competition-result" element={<ViewFinalCompetitionResult />} />
 </Route>
+
       </Routes>
     </Router>
   );
