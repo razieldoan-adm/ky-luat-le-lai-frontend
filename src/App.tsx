@@ -107,7 +107,7 @@ function AppContent() {
              <Box component="main" sx={{ flexGrow: 1, p: 3 }}> 
                <Routes> <Route path="/" element={<DashboardPage />} /> 
                  <Route path="/unauthorized" element={<UnauthorizedPage />} /> 
-                 Route path="/rules" element={<RulesPage />} /> 
+                 <Route path="/rules" element={<RulesPage />} /> 
                  <Route path="/view-all-violations" element={<ViewAllStudentPage />} /> 
                  <Route path="/view-hygiene-discipline" element={<ViewHygieneDiscipline />} /> 
                  <Route path="/view-final-competition-result" element={<ViewFinalCompetitionResult />} /> 
