@@ -1,51 +1,19 @@
-import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { Box, Toolbar } from "@mui/material";
+import { Outlet } from "react-router-dom";
+import MainHeader from "../components/MainHeader";
+import Sidebar from "../components/Sidebar";
 
-const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
-  };
-
-  const handleLogin = () => {
-    navigate('/login');
-  };
-
+export default function MainLayout() {
   return (
-    <Box>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Hệ Thống Quản Lý
-          </Typography>
-
-          {user ? (
-            <>
-              <Typography variant="body1" mr={2}>
-                Xin chào, {user.name}
-              </Typography>
-              <Button color="inherit" onClick={handleLogout}>
-                Logout
-              </Button>
-            </>
-          ) : (
-            <Button color="inherit" onClick={handleLogin}>
-              Login
-            </Button>
-          )}
-        </Toolbar>
-      </AppBar>
-
-      <Box p={2}>
-        {children}
+    <>
+      <MainHeader />
+      <Toolbar />
+      <Box sx={{ display: "flex" }}>
+        <Sidebar />
+        <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+          <Outlet /> {/* Nơi hiển thị các trang con */}
+        </Box>
       </Box>
-    </Box>
+    </>
   );
-};
-
-export default MainLayout;
+}
