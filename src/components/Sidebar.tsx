@@ -1,14 +1,27 @@
+// src/components/Sidebar.tsx
 import {
+  Box,
   Drawer,
   List,
-  ListItem,
   ListItemButton,
+  ListItemIcon,
   ListItemText,
+  Toolbar,
   useMediaQuery,
-} from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+} from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
-import { Link } from "react-router-dom";
+// Icons
+import RuleIcon from '@mui/icons-material/Rule';
+import ReportProblemIcon from '@mui/icons-material/ReportProblem';
+import CleaningServicesIcon from '@mui/icons-material/CleaningServices';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import AddAlert from '@mui/icons-material/AddAlert';
+import GradeIcon from '@mui/icons-material/Grade';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 
 const drawerWidth = 240;
 
@@ -18,39 +31,66 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const drawerContent = (
-    <List>
-      <ListItem disablePadding>
-        <ListItemButton component={Link} to="/">
-          <ListItemText primary="Dashboard" />
-        </ListItemButton>
-      </ListItem>
-      <ListItem disablePadding>
-        <ListItemButton component={Link} to="/rules">
-          <ListItemText primary="Rules" />
-        </ListItemButton>
-      </ListItem>
-      <ListItem disablePadding>
-        <ListItemButton component={Link} to="/view-all-violations">
-          <ListItemText primary="All Violations" />
-        </ListItemButton>
-      </ListItem>
-      <ListItem disablePadding>
-        <ListItemButton component={Link} to="/view-hygiene-discipline">
-          <ListItemText primary="Hygiene & Discipline" />
-        </ListItemButton>
-      </ListItem>
-      <ListItem disablePadding>
-        <ListItemButton component={Link} to="/view-final-competition-result">
-          <ListItemText primary="Final Competition" />
-        </ListItemButton>
-      </ListItem>
-    </List>
+    <>
+      <Toolbar />
+      <Box sx={{ overflow: 'auto' }}>
+        <List>
+          <ListItemButton onClick={() => navigate('/')}>
+            <ListItemIcon><DashboardIcon /></ListItemIcon>
+            <ListItemText primary="Dashboard" />
+          </ListItemButton>
+
+          <ListItemButton onClick={() => navigate('/rules')}>
+            <ListItemIcon><RuleIcon /></ListItemIcon>
+            <ListItemText primary="Nội qui học sinh" />
+          </ListItemButton>
+
+          <ListItemButton onClick={() => navigate('/view-all-violations')}>
+            <ListItemIcon><ReportProblemIcon /></ListItemIcon>
+            <ListItemText primary="Tổng hợp vi phạm" />
+          </ListItemButton>
+
+          <ListItemButton onClick={() => navigate('/view-hygiene-discipline')}>
+            <ListItemIcon><CleaningServicesIcon /></ListItemIcon>
+            <ListItemText primary="Trật tự - Vệ sinh" />
+          </ListItemButton>
+
+          <ListItemButton onClick={() => navigate('/view-final-competition-result')}>
+            <ListItemIcon><EmojiEventsIcon /></ListItemIcon>
+            <ListItemText primary="Kết quả thi đua tuần" />
+          </ListItemButton>
+
+          {(user?.role === 'admin' || user?.role === 'student') && (
+            <ListItemButton onClick={() => navigate('/violation')}>
+              <ListItemIcon><AddAlert /></ListItemIcon>
+              <ListItemText primary="Nhập vi phạm học sinh" />
+            </ListItemButton>
+          )}
+
+          {user?.role === 'admin' && (
+            <>
+              <ListItemButton onClick={() => navigate('/emulation')}>
+                <ListItemIcon><GradeIcon /></ListItemIcon>
+                <ListItemText primary="Nhập điểm thi đua" />
+              </ListItemButton>
+              <ListItemButton onClick={() => navigate('/admin')}>
+                <ListItemIcon><AdminPanelSettingsIcon /></ListItemIcon>
+                <ListItemText primary="Trang quản trị" />
+              </ListItemButton>
+            </>
+          )}
+        </List>
+      </Box>
+    </>
   );
 
+  // 📱 Mobile: temporary drawer
   if (isMobile) {
     return (
       <Drawer
@@ -59,7 +99,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         onClose={onClose}
         ModalProps={{ keepMounted: true }}
         sx={{
-          "& .MuiDrawer-paper": { width: drawerWidth },
+          '& .MuiDrawer-paper': { width: drawerWidth },
         }}
       >
         {drawerContent}
@@ -67,16 +107,14 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     );
   }
 
+  // 💻 Desktop: permanent drawer
   return (
     <Drawer
       variant="permanent"
       sx={{
         width: drawerWidth,
         flexShrink: 0,
-        "& .MuiDrawer-paper": {
-          width: drawerWidth,
-          boxSizing: "border-box",
-        },
+        '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
       }}
       open
     >
