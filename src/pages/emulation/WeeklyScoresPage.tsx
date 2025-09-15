@@ -138,20 +138,29 @@ export default function WeeklyScoresPage() {
   };
 
   const calculateTotals = (list: Score[]) => {
-    return list.map((s) => {
-      const totalViolation =
-        disciplineMax -
-        (s.disciplineScore +
-          s.attendanceScore +
-          s.hygieneScore +
-          s.lineUpScore);
+  return list.map((s) => {
+    // Điểm nề nếp còn lại
+    const totalViolation =
+      disciplineMax -
+      ((s.disciplineScore || 0) +
+        (s.hygieneScore || 0) +
+        (s.attendanceScore || 0) +
+        (s.lineUpScore || 0));
 
-      const totalRankScore =
-        s.academicScore + totalViolation + (s.bonusScore || 0);
+    // Tổng điểm xếp hạng = Học tập + Nề nếp còn lại + Điểm thưởng
+    const totalRankScore =
+      (s.academicScore || 0) +
+      totalViolation +
+      (s.bonusScore || 0);
 
-      return { ...s, totalViolation, totalRankScore };
-    });
-  };
+    return {
+      ...s,
+      totalViolation,
+      totalRankScore,
+    };
+  });
+};
+
 
   const assignRanksPerGrade = (list: Score[]) => {
     const byGrade: Record<string, Score[]> = {};
