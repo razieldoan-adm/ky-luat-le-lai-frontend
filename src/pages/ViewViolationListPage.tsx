@@ -118,47 +118,50 @@ export default function ViewViolationStudentByClassPage() {
   };
 
   const applyFilters = () => {
-    if (!selectedClass || selectedWeek === '') {
-      alert('Vui lòng chọn đầy đủ lớp và tuần');
-      return;
-    }
+  let data = violations;
 
-    const data = violations.filter(
-      (v) =>
-        v.className.trim().toLowerCase() === selectedClass.trim().toLowerCase() &&
-        v.weekNumber === selectedWeek
+  // lọc theo lớp nếu có chọn
+  if (selectedClass) {
+    data = data.filter(
+      (v) => v.className.trim().toLowerCase() === selectedClass.trim().toLowerCase()
     );
-    setFiltered(data);
-
-    const total = data.reduce((sum, v) => {
-      const rule = rules.find((r) => r.title === v.description);
-      return sum + (rule?.point || 0);
-    }, 0);
-
-    setTotalPoint(total);
-
-    // ✅ Tìm học sinh vi phạm từ 3 lần trở lên
-    const countMap: { [key: string]: { count: number; className: string; displayName: string } } = {};
-data.forEach((v) => {
-  const normalized = v.name.trim().toLowerCase(); // chuẩn hóa để tránh phân biệt hoa/thường
-  if (!countMap[normalized]) {
-    countMap[normalized] = { count: 1, className: v.className, displayName: v.name };
-  } else {
-    countMap[normalized].count += 1;
   }
-});
 
-const repeated = Object.values(countMap)
-  .filter((val) => val.count >= 3)
-  .map((val) => ({
-    name: val.displayName, // vẫn hiển thị tên gốc
-    count: val.count,
-    className: val.className,
-  }));
+  // lọc theo tuần (nếu khác 'all' và khác rỗng)
+  if (selectedWeek !== "" && selectedWeek !== "all") {
+    data = data.filter((v) => v.weekNumber === selectedWeek);
+  }
 
-setRepeatStudents(repeated);
+  setFiltered(data);
 
-  };
+  const total = data.reduce((sum, v) => {
+    const rule = rules.find((r) => r.title === v.description);
+    return sum + (rule?.point || 0);
+  }, 0);
+  setTotalPoint(total);
+
+  // ✅ tìm học sinh vi phạm >= 3 lần
+  const countMap: { [key: string]: { count: number; className: string; displayName: string } } = {};
+  data.forEach((v) => {
+    const normalized = v.name.trim().toLowerCase();
+    if (!countMap[normalized]) {
+      countMap[normalized] = { count: 1, className: v.className, displayName: v.name };
+    } else {
+      countMap[normalized].count += 1;
+    }
+  });
+
+  const repeated = Object.values(countMap)
+    .filter((val) => val.count >= 3)
+    .map((val) => ({
+      name: val.displayName,
+      count: val.count,
+      className: val.className,
+    }));
+
+  setRepeatStudents(repeated);
+};
+
 
   return (
     <Box sx={{ maxWidth: '100%', mx: 'auto', py: 4 }}>
@@ -196,6 +199,7 @@ setRepeatStudents(repeated);
           sx={{ minWidth: 150 }}
         >
           <MenuItem value="">-- Chọn tuần --</MenuItem>
+          <MenuItem value="all">Tất cả tuần</MenuItem>
           {weekList.map((w) => (
             <MenuItem key={w._id} value={w.weekNumber}>
               Tuần {w.weekNumber}
