@@ -123,12 +123,13 @@ export default function ViewViolationStudentByClassPage() {
   // lọc theo lớp nếu có chọn
   if (selectedClass) {
     data = data.filter(
-      (v) => v.className.trim().toLowerCase() === selectedClass.trim().toLowerCase()
+      (v) =>
+        v.className.trim().toLowerCase() === selectedClass.trim().toLowerCase()
     );
   }
 
-  // lọc theo tuần (nếu khác 'all' và khác rỗng)
-  if (selectedWeek !== "" && selectedWeek !== "all") {
+  // lọc theo tuần nếu có chọn (nếu rỗng thì bỏ qua = tất cả tuần)
+  if (selectedWeek !== '') {
     data = data.filter((v) => v.weekNumber === selectedWeek);
   }
 
@@ -140,12 +141,18 @@ export default function ViewViolationStudentByClassPage() {
   }, 0);
   setTotalPoint(total);
 
-  // ✅ tìm học sinh vi phạm >= 3 lần
-  const countMap: { [key: string]: { count: number; className: string; displayName: string } } = {};
+  // tìm học sinh vi phạm >= 3 lần
+  const countMap: {
+    [key: string]: { count: number; className: string; displayName: string };
+  } = {};
   data.forEach((v) => {
     const normalized = v.name.trim().toLowerCase();
     if (!countMap[normalized]) {
-      countMap[normalized] = { count: 1, className: v.className, displayName: v.name };
+      countMap[normalized] = {
+        count: 1,
+        className: v.className,
+        displayName: v.name,
+      };
     } else {
       countMap[normalized].count += 1;
     }
@@ -161,6 +168,7 @@ export default function ViewViolationStudentByClassPage() {
 
   setRepeatStudents(repeated);
 };
+
 
 
   return (
@@ -199,7 +207,6 @@ export default function ViewViolationStudentByClassPage() {
           sx={{ minWidth: 150 }}
         >
           <MenuItem value="">-- Chọn tuần --</MenuItem>
-          <MenuItem value="all">Tất cả tuần</MenuItem>
           {weekList.map((w) => (
             <MenuItem key={w._id} value={w.weekNumber}>
               Tuần {w.weekNumber}
