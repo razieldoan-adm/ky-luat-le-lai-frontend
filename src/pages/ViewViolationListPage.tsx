@@ -208,7 +208,7 @@ export default function ViewViolationStudentByClassPage() {
   }
   sx={{ minWidth: 150 }}
 >
-  <MenuItem value="">-- Chọn tuần --</MenuItem>
+  
   <MenuItem value="all">-- Xem tất cả --</MenuItem> {/* ✅ có value riêng */}
   {weekList.map((w) => (
     <MenuItem key={w._id} value={w.weekNumber}>
