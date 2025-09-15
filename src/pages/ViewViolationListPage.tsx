@@ -49,6 +49,7 @@ export default function ViewViolationStudentByClassPage() {
   const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [totalPoint, setTotalPoint] = useState(0);
+  const [selectedRule, setSelectedRule] = useState<string>(''); 
   dayjs.extend(isSameOrAfter);
   dayjs.extend(isSameOrBefore);
   // Lấy danh sách lớp, rules, weeks
@@ -132,7 +133,9 @@ export default function ViewViolationStudentByClassPage() {
   if (selectedWeek !== '' && selectedWeek !== 'all') {
     data = data.filter((v) => v.weekNumber === selectedWeek);
   }
-
+  if (selectedRule) {
+  data = data.filter((v) => v.description === selectedRule);
+}
   setFiltered(data);
 
   const total = data.reduce((sum, v) => {
@@ -200,22 +203,36 @@ export default function ViewViolationStudentByClassPage() {
         </TextField>
 
        <TextField
-  label="Chọn tuần"
-  select
-  value={selectedWeek}
-  onChange={(e) =>
-    setSelectedWeek(e.target.value === "all" ? "all" : e.target.value === "" ? "" : Number(e.target.value))
-  }
-  sx={{ minWidth: 150 }}
->
-  
-  <MenuItem value="all">-- Xem tất cả --</MenuItem> {/* ✅ có value riêng */}
-  {weekList.map((w) => (
-    <MenuItem key={w._id} value={w.weekNumber}>
-      Tuần {w.weekNumber}
-    </MenuItem>
-  ))}
-</TextField>
+          label="Chọn tuần"
+          select
+          value={selectedWeek}
+          onChange={(e) =>
+            setSelectedWeek(e.target.value === "all" ? "all" : e.target.value === "" ? "" : Number(e.target.value))
+          }
+          sx={{ minWidth: 150 }}
+        >
+          
+          <MenuItem value="all">-- Xem tất cả --</MenuItem> {/* ✅ có value riêng */}
+          {weekList.map((w) => (
+            <MenuItem key={w._id} value={w.weekNumber}>
+              Tuần {w.weekNumber}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          label="Chọn lỗi vi phạm"
+          select
+          value={selectedRule}
+          onChange={(e) => setSelectedRule(e.target.value)}
+          sx={{ minWidth: 200 }}
+        >
+          <MenuItem value="">-- Xem tất cả --</MenuItem>
+          {rules.map((r) => (
+            <MenuItem key={r._id} value={r.title}>
+              {r.title}
+            </MenuItem>
+          ))}
+        </TextField>
 
 
         <Button variant="contained" onClick={applyFilters}>
