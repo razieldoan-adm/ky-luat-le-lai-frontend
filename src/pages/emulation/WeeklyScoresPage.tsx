@@ -14,6 +14,7 @@ import {
   TableBody,
   Paper,
   Stack,
+  CircularProgress,
 } from "@mui/material";
 import api from "../../api/api";
 
@@ -37,27 +38,37 @@ export default function WeeklyScoresPage() {
   const [scores, setScores] = useState<Score[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // giả sử tuần 1 → 20
+  // giả sử có 20 tuần
   useEffect(() => {
     const weekList = Array.from({ length: 20 }, (_, i) => i + 1);
     setWeeks(weekList);
   }, []);
 
+  // GOM DỮ LIỆU
   const handleAggregate = async () => {
     if (!selectedWeek) return;
     setLoading(true);
     try {
-      const res = await api.post("/weekly-scores/calculate", {
+      // gọi gom dữ liệu
+      await api.post("/weekly-scores/calculate", {
         weekNumber: selectedWeek,
       });
+
+      // gọi tính rank (nếu backend có)
+      const res = await api.post("/weekly-scores/calculate-total-rank", {
+        weekNumber: selectedWeek,
+      });
+
       setScores(res.data);
     } catch (err) {
       console.error("Aggregate error:", err);
+      alert("Không gom được dữ liệu. Kiểm tra backend.");
     } finally {
       setLoading(false);
     }
   };
 
+  // TẢI DỮ LIỆU
   const handleLoad = async () => {
     if (!selectedWeek) return;
     setLoading(true);
@@ -68,11 +79,13 @@ export default function WeeklyScoresPage() {
       setScores(res.data);
     } catch (err) {
       console.error("Load error:", err);
+      alert("Không tải được dữ liệu.");
     } finally {
       setLoading(false);
     }
   };
 
+  // LƯU DỮ LIỆU
   const handleSave = async () => {
     if (!selectedWeek) return;
     try {
@@ -83,6 +96,7 @@ export default function WeeklyScoresPage() {
       alert("Đã lưu điểm tuần");
     } catch (err) {
       console.error("Save error:", err);
+      alert("Không lưu được dữ liệu.");
     }
   };
 
@@ -115,7 +129,7 @@ export default function WeeklyScoresPage() {
           onClick={handleAggregate}
           disabled={!selectedWeek || loading}
         >
-          GOM DỮ LIỆU
+          {loading ? <CircularProgress size={20} /> : "GOM DỮ LIỆU"}
         </Button>
 
         <Button
@@ -152,12 +166,12 @@ export default function WeeklyScoresPage() {
                 <TableCell>Khối</TableCell>
                 <TableCell>Học tập</TableCell>
                 <TableCell>Thưởng</TableCell>
-                <TableCell>Kỷ luật</TableCell>
-                <TableCell>Vệ sinh</TableCell>
-                <TableCell>Chuyên cần</TableCell>
-                <TableCell>Điểm danh</TableCell>
-                <TableCell>Tổng nề nếp</TableCell>
-                <TableCell>Xếp hạng</TableCell>
+                <TableCell>Kỷ luật (-)</TableCell>
+                <TableCell>Vệ sinh (-)</TableCell>
+                <TableCell>Chuyên cần (-)</TableCell>
+                <TableCell>Điểm danh (-)</TableCell>
+                <TableCell>Tổng</TableCell>
+                <TableCell>Hạng</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
