@@ -44,7 +44,7 @@ export default function ViewViolationStudentByClassPage() {
   const [filtered, setFiltered] = useState<Violation[]>([]);
   const [repeatStudents, setRepeatStudents] = useState<{ name: string; count: number; className: string }[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
-  const [selectedWeek, setSelectedWeek] = useState<number | ''>('');
+  const [selectedWeek, setSelectedWeek] = useState<number | '' | 'all'>('');
   const [classList, setClassList] = useState<string[]>([]);
   const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
@@ -129,7 +129,7 @@ export default function ViewViolationStudentByClassPage() {
   }
 
   // lọc theo tuần nếu có chọn (nếu rỗng thì bỏ qua = tất cả tuần)
-  if (selectedWeek !== '') {
+  if (selectedWeek !== '' && selectedWeek !== 'all') {
     data = data.filter((v) => v.weekNumber === selectedWeek);
   }
 
@@ -207,7 +207,7 @@ export default function ViewViolationStudentByClassPage() {
           sx={{ minWidth: 150 }}
         >
           <MenuItem value="">-- Chọn tuần --</MenuItem>
-          <MenuItem value="">-- Xem tất cả --</MenuItem>
+          <MenuItem value="all">-- Xem tất cả --</MenuItem>
           {weekList.map((w) => (
             <MenuItem key={w._id} value={w.weekNumber}>
               Tuần {w.weekNumber}
