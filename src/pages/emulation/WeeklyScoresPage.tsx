@@ -31,15 +31,21 @@ interface Score {
   grade: string;
   weekNumber?: number;
   academicScore?: number; // SĐB
-  disciplineScore?: number; // điểm trừ
-  hygieneScore?: number; // điểm trừ
-  attendanceScore?: number; // điểm trừ
-  lineUpScore?: number; // điểm trừ
+  disciplineScore?: number; // raw value from backend (could be penalty or remaining)
+  hygieneScore?: number;
+  attendanceScore?: number;
+  lineUpScore?: number;
   bonusScore?: number;
-  totalViolation?: number; // disciplineMax - tổng trừ
+  totalViolation?: number; // disciplineMax - totalPenalty
   totalRankScore?: number; // academic + totalViolation + bonus
   rank?: number;
   disciplineMax?: number;
+
+  // computed penalties (for display)
+  disciplinePenalty?: number;
+  hygienePenalty?: number;
+  attendancePenalty?: number;
+  lineUpPenalty?: number;
 }
 
 interface ClassItem {
@@ -69,33 +75,26 @@ export default function WeeklyScoresPage() {
   }, []);
 
   useEffect(() => {
+    // reset when week changes
     setScores([]);
   }, [selectedWeek]);
 
-  // === API ===
+  // ------------------- API calls -------------------
   const fetchWeeks = async () => {
     try {
       const res = await api.get("/api/academic-weeks/study-weeks");
       setWeeks(res.data);
-      if (res.data.length > 0) {
-        setSelectedWeek(res.data[0]);
-      }
+      if (res.data.length > 0) setSelectedWeek(res.data[0]);
     } catch (err) {
       console.error("Lỗi khi lấy weeks:", err);
-      setSnackbar({
-        open: true,
-        message: "Không tải được danh sách tuần.",
-        severity: "error",
-      });
+      setSnackbar({ open: true, message: "Không tải được danh sách tuần.", severity: "error" });
     }
   };
 
   const fetchSettings = async () => {
     try {
       const res = await api.get("/api/settings");
-      if (res.data?.disciplineMax) {
-        setDisciplineMax(Number(res.data.disciplineMax));
-      }
+      if (res.data?.disciplineMax) setDisciplineMax(Number(res.data.disciplineMax));
     } catch (err) {
       console.error("Lỗi khi lấy settings:", err);
     }
@@ -118,153 +117,139 @@ export default function WeeklyScoresPage() {
         params: { weekNumber: selectedWeek.weekNumber },
       });
 
+      // only classes that have a homeroom teacher (same as original logic)
       const validClasses = classList
         .filter((c) => c.teacher && c.teacher.trim() !== "")
         .map((c) => normalize(c.className));
 
-      const filtered = res.data.filter((s: Score) =>
+      const filteredRaw = (res.data as Score[]).filter((s) =>
         validClasses.includes(normalize(s.className))
       );
 
-      const list: Score[] = filtered.map((s: Score) => ({
+      // force numeric conversion for raw fields
+      const list: Score[] = filteredRaw.map((s) => ({
         ...s,
+        academicScore: Number(s.academicScore) || 0,
+        disciplineScore: Number(s.disciplineScore) || 0,
+        hygieneScore: Number(s.hygieneScore) || 0,
+        attendanceScore: Number(s.attendanceScore) || 0,
+        lineUpScore: Number(s.lineUpScore) || 0,
         bonusScore: Number(s.bonusScore) || 0,
+        disciplineMax: s.disciplineMax ? Number(s.disciplineMax) : undefined,
       }));
 
-      const computed = computeTotalsIfMissing(list);
+      const computed = computeTotalsAndPenalties(list);
       const ranked = assignRanksPerGrade(computed);
       setScores(ranked);
 
-      if (filtered.length === 0) {
-        setSnackbar({
-          open: true,
-          message: "Chưa có dữ liệu tuần này. Bấm 'Gom dữ liệu' để tính.",
-          severity: "info",
-        });
+      if (filteredRaw.length === 0) {
+        setSnackbar({ open: true, message: "Chưa có dữ liệu tuần này. Bấm 'Gom dữ liệu' để tính.", severity: "info" });
       }
     } catch (err) {
       console.error("Lỗi khi load scores:", err);
-      setSnackbar({
-        open: true,
-        message: "Lỗi khi tải dữ liệu điểm.",
-        severity: "error",
-      });
+      setSnackbar({ open: true, message: "Lỗi khi tải dữ liệu điểm.", severity: "error" });
     } finally {
       setLoading(false);
     }
   };
 
+  // Gom dữ liệu (backend sẽ tính tổng từ các collection con)
   const handleAggregate = async () => {
     if (!selectedWeek) {
-      setSnackbar({
-        open: true,
-        message: "Hãy chọn tuần trước.",
-        severity: "info",
-      });
+      setSnackbar({ open: true, message: "Hãy chọn tuần trước.", severity: "info" });
       return;
     }
     setLoading(true);
     try {
-      await api.post("/api/class-weekly-scores/calculate", {
-        weekNumber: selectedWeek.weekNumber,
-      });
+      await api.post("/api/class-weekly-scores/calculate", { weekNumber: selectedWeek.weekNumber });
       await fetchScores();
-      setSnackbar({
-        open: true,
-        message: "Đã gom dữ liệu tuần thành công!",
-        severity: "success",
-      });
+      setSnackbar({ open: true, message: "Đã gom dữ liệu tuần thành công!", severity: "success" });
     } catch (err) {
-      console.error("Lỗi khi gom dữ liệu:", err);
-      setSnackbar({
-        open: true,
-        message: "Không gom được dữ liệu. Kiểm tra backend.",
-        severity: "error",
-      });
+      console.error("Lỗi gom dữ liệu:", err);
+      setSnackbar({ open: true, message: "Không gom được dữ liệu. Kiểm tra backend.", severity: "error" });
     } finally {
       setLoading(false);
     }
   };
 
+  // Tính xếp hạng trên backend (nếu muốn)
   const handleCalculateRank = async () => {
     if (!selectedWeek) return;
     setLoading(true);
     try {
-      await api.post("/api/class-weekly-scores/calculate-total-rank", {
-        weekNumber: selectedWeek.weekNumber,
-      });
+      await api.post("/api/class-weekly-scores/calculate-total-rank", { weekNumber: selectedWeek.weekNumber });
       await fetchScores();
-      setSnackbar({
-        open: true,
-        message: "Đã tính xếp hạng!",
-        severity: "success",
-      });
+      setSnackbar({ open: true, message: "Đã tính xếp hạng!", severity: "success" });
     } catch (err) {
       console.error("Lỗi khi tính xếp hạng:", err);
-      setSnackbar({
-        open: true,
-        message: "Không tính được xếp hạng.",
-        severity: "error",
-      });
+      setSnackbar({ open: true, message: "Không tính được xếp hạng.", severity: "error" });
     } finally {
       setLoading(false);
     }
   };
 
+  // Lưu bảng tổng trở lại DB
   const handleSave = async () => {
     if (!selectedWeek) return;
     try {
-      await api.post("/api/class-weekly-scores", {
-        weekNumber: selectedWeek.weekNumber,
-        scores,
-      });
-      setSnackbar({
-        open: true,
-        message: "Đã lưu dữ liệu tuần thành công!",
-        severity: "success",
-      });
+      await api.post("/api/class-weekly-scores", { weekNumber: selectedWeek.weekNumber, scores });
+      setSnackbar({ open: true, message: "Đã lưu dữ liệu tuần thành công!", severity: "success" });
     } catch (err) {
       console.error("Lỗi khi lưu:", err);
-      setSnackbar({
-        open: true,
-        message: "Có lỗi khi lưu dữ liệu!",
-        severity: "error",
-      });
+      setSnackbar({ open: true, message: "Có lỗi khi lưu dữ liệu!", severity: "error" });
     }
   };
 
-  // === Utils ===
-  const normalize = (str?: string) =>
-    str ? str.toString().trim().toUpperCase() : "";
+  // ------------------- Helpers & computation -------------------
+  const normalize = (str?: string) => (str ? str.toString().trim().toUpperCase() : "");
 
-  const computeTotalsIfMissing = (list: Score[]): Score[] => {
+  /**
+   * computeTotalsAndPenalties:
+   * - Detect whether backend values are "remaining points" (ví dụ 100) or "penalties" (ví dụ 0..10).
+   * - Convert to penalty values for display and sum.
+   * - Calculate totalViolation (remaining nề nếp) and totalRankScore.
+   */
+  const computeTotalsAndPenalties = (list: Score[]): Score[] => {
     return list.map((s) => {
-      const disciplineScore = Number(s.disciplineScore) || 0;
-      const hygieneScore = Number(s.hygieneScore) || 0;
-      const attendanceScore = Number(s.attendanceScore) || 0;
-      const lineUpScore = Number(s.lineUpScore) || 0;
-      const bonus = Number(s.bonusScore) || 0;
-      const academic = Number(s.academicScore) || 0;
       const max = Number(s.disciplineMax || disciplineMax);
 
-      const totalViolation =
-        typeof s.totalViolation === "number"
-          ? s.totalViolation
-          : max - (disciplineScore + hygieneScore + attendanceScore + lineUpScore);
+      // raw values (from backend) converted to numbers
+      const rawDis = Number(s.disciplineScore || 0);
+      const rawHyg = Number(s.hygieneScore || 0);
+      const rawAtt = Number(s.attendanceScore || 0);
+      const rawLine = Number(s.lineUpScore || 0);
 
-      const totalRankScore =
-        typeof s.totalRankScore === "number"
-          ? s.totalRankScore
-          : academic + totalViolation + bonus;
+      // Heuristic: if most raw values are close to max (>= max/2) -> backend returned "remaining points"
+      const largeCount = [rawDis, rawHyg, rawAtt, rawLine].filter((v) => v >= Math.round(max * 0.5)).length;
+      const isRemainingFormat = largeCount >= 2; // >=2 fields look like remaining => treat as remaining
+
+      // penalties (the actual points to subtract from class)
+      const disciplinePenalty = isRemainingFormat ? Math.max(0, max - rawDis) : rawDis;
+      const hygienePenalty = isRemainingFormat ? Math.max(0, max - rawHyg) : rawHyg;
+      const attendancePenalty = isRemainingFormat ? Math.max(0, max - rawAtt) : rawAtt;
+      const lineUpPenalty = isRemainingFormat ? Math.max(0, max - rawLine) : rawLine;
+
+      const totalPenalty = disciplinePenalty + hygienePenalty + attendancePenalty + lineUpPenalty;
+      const totalViolation = max - totalPenalty; // remaining nề nếp
+
+      const academic = Number(s.academicScore || 0);
+      const bonus = Number(s.bonusScore || 0);
+      const totalRankScore = academic + totalViolation + bonus;
 
       return {
         ...s,
+        // keep original raw numbers too if needed, but display penalties in table
+        disciplinePenalty,
+        hygienePenalty,
+        attendancePenalty,
+        lineUpPenalty,
         totalViolation,
         totalRankScore,
       };
     });
   };
 
+  // assign rank per grade (sort by totalRankScore desc)
   const assignRanksPerGrade = (list: Score[]): Score[] => {
     const byGrade: Record<string, Score[]> = {};
     list.forEach((s) => {
@@ -274,41 +259,51 @@ export default function WeeklyScoresPage() {
     });
 
     Object.keys(byGrade).forEach((g) => {
-      const sorted = [...byGrade[g]].sort(
-        (a, b) => (b.totalRankScore || 0) - (a.totalRankScore || 0)
-      );
-      sorted.forEach((s, idx) => {
-        const target = list.find(
-          (x) => x._id === s._id && x.className === s.className
-        );
-        if (target) target.rank = idx + 1;
+      byGrade[g].sort((a, b) => {
+        const diff = (b.totalRankScore || 0) - (a.totalRankScore || 0);
+        if (diff !== 0) return diff;
+        // tie-breaker by className
+        return (a.className || "").localeCompare(b.className || "", undefined, { numeric: true, sensitivity: "base" });
+      });
+      byGrade[g].forEach((s, idx) => {
+        s.rank = idx + 1;
       });
     });
 
-    return [...list];
+    // Return as array sorted first by grade order (6,7,8,9...) then by rank within grade
+    const gradeOrder = ["6", "7", "8", "9"];
+    const result: Score[] = [];
+    gradeOrder.forEach((g) => {
+      const arr = byGrade[g] || [];
+      arr.forEach((r) => result.push(r));
+    });
+    // include other grades if any
+    Object.keys(byGrade).forEach((g) => {
+      if (!gradeOrder.includes(g)) {
+        byGrade[g].forEach((r) => result.push(r));
+      }
+    });
+
+    return result;
   };
 
   const handleBonusChange = (id: string | undefined, value: number) => {
     if (!id) return;
-    const updated = scores.map((s) =>
-      s._id === id ? { ...s, bonusScore: value } : s
-    );
-    const withCalc = computeTotalsIfMissing(updated);
-    const withRanks = assignRanksPerGrade(withCalc);
-    setScores(withRanks);
+    const updated = scores.map((s) => (s._id === id ? { ...s, bonusScore: Number(value) } : s));
+    const recomputed = computeTotalsAndPenalties(updated);
+    const ranked = assignRanksPerGrade(recomputed);
+    setScores(ranked);
   };
 
   const getRowStyle = (idx: number, rank?: number) => {
-    let style: any = {
-      backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9f9f9",
-    };
+    let style: any = { backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9f9f9" };
     if (rank === 1) style.backgroundColor = "#ffe082";
     if (rank === 2) style.backgroundColor = "#b2ebf2";
     if (rank === 3) style.backgroundColor = "#c8e6c9";
     return style;
   };
 
-  // === UI ===
+  // ------------------- UI -------------------
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -325,48 +320,27 @@ export default function WeeklyScoresPage() {
             setSelectedWeek(week);
             setScores([]);
           }}
-          sx={{ width: 300 }}
+          sx={{ width: 360 }}
           size="small"
         >
           {weeks.map((w) => (
             <MenuItem key={w._id} value={w._id}>
-              Tuần {w.weekNumber} (
-              {new Date(w.startDate).toLocaleDateString()} -{" "}
-              {new Date(w.endDate).toLocaleDateString()})
+              Tuần {w.weekNumber} ({new Date(w.startDate).toLocaleDateString()} - {new Date(w.endDate).toLocaleDateString()})
             </MenuItem>
           ))}
         </TextField>
 
         <Stack direction="row" spacing={2}>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={handleAggregate}
-            disabled={!selectedWeek || loading}
-          >
+          <Button variant="contained" color="secondary" onClick={handleAggregate} disabled={!selectedWeek || loading}>
             Gom dữ liệu
           </Button>
-          <Button
-            variant="outlined"
-            onClick={fetchScores}
-            disabled={!selectedWeek || loading}
-          >
+          <Button variant="outlined" onClick={fetchScores} disabled={!selectedWeek || loading}>
             🔄 Tải dữ liệu
           </Button>
-          <Button
-            variant="outlined"
-            color="info"
-            onClick={handleCalculateRank}
-            disabled={!selectedWeek || loading}
-          >
+          <Button variant="outlined" color="info" onClick={handleCalculateRank} disabled={!selectedWeek || loading}>
             TÍNH XẾP HẠNG
           </Button>
-          <Button
-            variant="contained"
-            color="success"
-            onClick={handleSave}
-            disabled={!selectedWeek || scores.length === 0}
-          >
+          <Button variant="contained" color="success" onClick={handleSave} disabled={!selectedWeek || scores.length === 0}>
             💾 Lưu
           </Button>
         </Stack>
@@ -393,6 +367,7 @@ export default function WeeklyScoresPage() {
 
           <TableBody>
             {scores.length > 0 ? (
+              // scores are already ordered by grade then rank in assignRanksPerGrade
               scores.map((s, i) => (
                 <TableRow key={s._id || s.className} sx={getRowStyle(i, s.rank)}>
                   <TableCell>{i + 1}</TableCell>
@@ -403,49 +378,30 @@ export default function WeeklyScoresPage() {
                       type="number"
                       size="small"
                       value={s.bonusScore ?? 0}
-                      onChange={(e) =>
-                        handleBonusChange(s._id, Number(e.target.value))
-                      }
+                      onChange={(e) => handleBonusChange(s._id, Number(e.target.value))}
                       sx={{ width: 70, "& input": { textAlign: "center" } }}
                     />
                   </TableCell>
                   <TableCell align="center">{s.academicScore ?? "-"}</TableCell>
-                  <TableCell align="center">{s.disciplineScore ?? 0}</TableCell>
-                  <TableCell align="center">{s.hygieneScore ?? 0}</TableCell>
-                  <TableCell align="center">{s.attendanceScore ?? 0}</TableCell>
-                  <TableCell align="center">{s.lineUpScore ?? 0}</TableCell>
-                  <TableCell align="center">
-                    {typeof s.totalViolation === "number"
-                      ? s.totalViolation
-                      : "-"}
-                  </TableCell>
-                  <TableCell align="center">
-                    {typeof s.totalRankScore === "number"
-                      ? s.totalRankScore
-                      : "-"}
-                  </TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600 }}>
-                    {s.rank ?? "-"}
-                  </TableCell>
+                  <TableCell align="center">{s.disciplinePenalty ?? 0}</TableCell>
+                  <TableCell align="center">{s.hygienePenalty ?? 0}</TableCell>
+                  <TableCell align="center">{s.attendancePenalty ?? 0}</TableCell>
+                  <TableCell align="center">{s.lineUpPenalty ?? 0}</TableCell>
+                  <TableCell align="center">{typeof s.totalViolation === "number" ? s.totalViolation : "-"}</TableCell>
+                  <TableCell align="center">{typeof s.totalRankScore === "number" ? s.totalRankScore : "-"}</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>{s.rank ?? "-"}</TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={12} align="center">
-                  Không có dữ liệu.
-                </TableCell>
+                <TableCell colSpan={12} align="center">Không có dữ liệu.</TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </Paper>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
+      <Snackbar open={snackbar.open} autoHideDuration={3500} onClose={() => setSnackbar((p) => ({ ...p, open: false }))} anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
     </Box>
