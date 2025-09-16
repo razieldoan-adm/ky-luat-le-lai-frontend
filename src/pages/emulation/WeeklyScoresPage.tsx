@@ -1,10 +1,10 @@
 // src/pages/emulation/WeeklyScoresPage.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
   TextField,
-  
+  Button,
   Paper,
   Table,
   TableHead,
@@ -12,13 +12,12 @@ import {
   TableCell,
   TableBody,
   MenuItem,
-  
   Snackbar,
   Alert,
+  Stack,
 } from "@mui/material";
 import api from "../../api/api";
 
-// ===== Types =====
 interface Week {
   _id: string;
   weekNumber: number;
@@ -47,27 +46,20 @@ interface WeeklyScore {
   rank?: number;
 }
 
-// ===== Component =====
 export default function WeeklyScoresPage() {
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
 
-  // raw data từ 4 bảng
-  const [attendance, setAttendance] = useState<RawScore[]>([]);
-  const [hygiene, setHygiene] = useState<RawScore[]>([]);
-  const [lineup, setLineup] = useState<RawScore[]>([]);
-  const [violations, setViolations] = useState<RawScore[]>([]);
-
   const [scores, setScores] = useState<WeeklyScore[]>([]);
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
 
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" | "info" }>({
-    open: false,
-    message: "",
-    severity: "success",
-  });
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error" | "info";
+  }>({ open: false, message: "", severity: "success" });
 
-  // ===== Fetch Weeks + Settings =====
+  // ===== Load Weeks + Settings =====
   useEffect(() => {
     fetchWeeks();
     fetchSettings();
@@ -77,12 +69,9 @@ export default function WeeklyScoresPage() {
     try {
       const res = await api.get("/api/academic-weeks/study-weeks");
       setWeeks(res.data);
-      if (res.data.length > 0) {
-        setSelectedWeek(res.data[0].weekNumber);
-      }
+      if (res.data.length > 0) setSelectedWeek(res.data[0].weekNumber);
     } catch (err) {
       console.error(err);
-      setSnackbar({ open: true, message: "Không tải được danh sách tuần.", severity: "error" });
     }
   };
 
@@ -91,101 +80,76 @@ export default function WeeklyScoresPage() {
       const res = await api.get("/api/settings");
       if (res.data?.disciplineMax) setDisciplineMax(res.data.disciplineMax);
     } catch (err) {
-      console.error("Lỗi khi lấy settings:", err);
+      console.error(err);
     }
   };
 
-  // ===== Fetch 4 bảng khi đổi tuần =====
-  useEffect(() => {
-    if (selectedWeek) {
-      fetchAttendance();
-      fetchHygiene();
-      fetchLineUp();
-      fetchViolations();
-    }
-  }, [selectedWeek]);
+  // ===== GOM DỮ LIỆU =====
+  const handleGatherData = async () => {
+    if (!selectedWeek) return;
 
-  const fetchAttendance = async () => {
     try {
-      const res = await api.get("/api/classattendancesummaries", { params: { weekNumber: selectedWeek } });
-      setAttendance(res.data);
+      const [attendanceRes, hygieneRes, lineupRes, violationRes] = await Promise.all([
+        api.get("/api/classattendancesummaries", { params: { weekNumber: selectedWeek } }),
+        api.get("/api/classhygienescores", { params: { weekNumber: selectedWeek } }),
+        api.get("/api/classlineupsummaries", { params: { weekNumber: selectedWeek } }),
+        api.get("/api/classviolationscores", { params: { weekNumber: selectedWeek } }),
+      ]);
+
+      const attendance: RawScore[] = attendanceRes.data;
+      const hygiene: RawScore[] = hygieneRes.data;
+      const lineup: RawScore[] = lineupRes.data;
+      const violations: RawScore[] = violationRes.data;
+
+      const map: Record<string, WeeklyScore> = {};
+
+      const addData = (
+        arr: RawScore[],
+        key: "disciplineScore" | "hygieneScore" | "attendanceScore" | "lineUpScore"
+      ) => {
+        arr.forEach((item) => {
+          if (!map[item.className]) {
+            map[item.className] = {
+              className: item.className,
+              grade: item.grade,
+              weekNumber: selectedWeek,
+              academicScore: 0,
+              bonusScore: 0,
+              disciplineScore: 0,
+              hygieneScore: 0,
+              attendanceScore: 0,
+              lineUpScore: 0,
+              totalViolation: 0,
+              totalRankScore: 0,
+            };
+          }
+          (map[item.className][key] as number) = item.score ?? 0;
+        });
+      };
+
+      addData(attendance, "attendanceScore");
+      addData(hygiene, "hygieneScore");
+      addData(lineup, "lineUpScore");
+      addData(violations, "disciplineScore");
+
+      setScores(Object.values(map));
+      setSnackbar({ open: true, message: "Đã gom dữ liệu thành công", severity: "success" });
     } catch (err) {
-      console.error("Lỗi khi load attendance:", err);
+      console.error(err);
+      setSnackbar({ open: true, message: "Lỗi khi gom dữ liệu", severity: "error" });
     }
   };
 
-  const fetchHygiene = async () => {
-    try {
-      const res = await api.get("/api/classhygienescores", { params: { weekNumber: selectedWeek } });
-      setHygiene(res.data);
-    } catch (err) {
-      console.error("Lỗi khi load hygiene:", err);
-    }
-  };
-
-  const fetchLineUp = async () => {
-    try {
-      const res = await api.get("/api/classlineupsummaries", { params: { weekNumber: selectedWeek } });
-      setLineup(res.data);
-    } catch (err) {
-      console.error("Lỗi khi load lineup:", err);
-    }
-  };
-
-  const fetchViolations = async () => {
-    try {
-      const res = await api.get("/api/classviolationscores", { params: { weekNumber: selectedWeek } });
-      setViolations(res.data);
-    } catch (err) {
-      console.error("Lỗi khi load violations:", err);
-    }
-  };
-
-  // ===== Gom dữ liệu thô từ 4 bảng =====
-  const mergedScores: WeeklyScore[] = useMemo(() => {
-    const map: Record<string, WeeklyScore> = {};
-
-    const addData = (
-      arr: RawScore[],
-      key: "disciplineScore" | "hygieneScore" | "attendanceScore" | "lineUpScore"
-    ) => {
-      arr.forEach((item) => {
-        if (!map[item.className]) {
-          map[item.className] = {
-            className: item.className,
-            grade: item.grade,
-            weekNumber: selectedWeek || 0,
-            academicScore: 0,
-            bonusScore: 0,
-            disciplineScore: 0,
-            hygieneScore: 0,
-            attendanceScore: 0,
-            lineUpScore: 0,
-            totalViolation: 0,
-            totalRankScore: 0,
-          };
-        }
-        (map[item.className][key] as number) = item.score ?? 0;
-      });
-    };
-
-    addData(attendance, "attendanceScore");
-    addData(hygiene, "hygieneScore");
-    addData(lineup, "lineUpScore");
-    addData(violations, "disciplineScore");
-
-    return Object.values(map);
-  }, [attendance, hygiene, lineup, violations, selectedWeek]);
-
-  // ===== Tính toán totals & ranks =====
-  useEffect(() => {
-    const computed = mergedScores.map((s) => {
-      const totalViolation = disciplineMax - (s.disciplineScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
+  // ===== TÍNH TOÁN XẾP HẠNG =====
+  const handleCalculateRank = () => {
+    const computed = scores.map((s) => {
+      const totalViolation =
+        disciplineMax - (s.disciplineScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
       const totalRankScore = s.academicScore + totalViolation + s.bonusScore;
       return { ...s, totalViolation, totalRankScore };
     });
 
-    // Rank theo khối
+    // rank theo khối
     const byGrade: Record<string, WeeklyScore[]> = {};
     computed.forEach((s) => {
       if (!byGrade[s.grade]) byGrade[s.grade] = [];
@@ -201,10 +165,26 @@ export default function WeeklyScoresPage() {
     });
 
     setScores(computed);
-  }, [mergedScores, disciplineMax]);
+    setSnackbar({ open: true, message: "Đã tính xếp hạng", severity: "info" });
+  };
 
-  // ===== Handlers =====
-  const handleChangeScore = (className: string, field: "academicScore" | "bonusScore", value: number) => {
+  // ===== LƯU =====
+  const handleSave = async () => {
+    try {
+      await api.post("/api/weekly-scores", { weekNumber: selectedWeek, scores });
+      setSnackbar({ open: true, message: "Đã lưu thành công", severity: "success" });
+    } catch (err) {
+      console.error(err);
+      setSnackbar({ open: true, message: "Lỗi khi lưu dữ liệu", severity: "error" });
+    }
+  };
+
+  // ===== Cập nhật điểm nhập tay =====
+  const handleChangeScore = (
+    className: string,
+    field: "academicScore" | "bonusScore",
+    value: number
+  ) => {
     const updated = scores.map((s) =>
       s.className === className ? { ...s, [field]: value } : s
     );
@@ -212,14 +192,13 @@ export default function WeeklyScoresPage() {
   };
 
   const getRowStyle = (idx: number, rank?: number) => {
-    let style: any = { backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9f9f9" };
+    let style: any = { backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9" };
     if (rank === 1) style.backgroundColor = "#ffe082";
     if (rank === 2) style.backgroundColor = "#b2ebf2";
     if (rank === 3) style.backgroundColor = "#c8e6c9";
     return style;
   };
 
-  // ===== UI =====
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -242,6 +221,19 @@ export default function WeeklyScoresPage() {
           </MenuItem>
         ))}
       </TextField>
+
+      {/* 3 button */}
+      <Stack direction="row" spacing={2} mb={2}>
+        <Button variant="contained" color="secondary" onClick={handleGatherData}>
+          GOM DỮ LIỆU
+        </Button>
+        <Button variant="contained" color="info" onClick={handleCalculateRank}>
+          TÍNH XẾP HẠNG
+        </Button>
+        <Button variant="contained" color="success" onClick={handleSave}>
+          LƯU
+        </Button>
+      </Stack>
 
       {/* bảng */}
       <Paper elevation={3} sx={{ width: "100%", overflowX: "auto", borderRadius: 2 }}>
