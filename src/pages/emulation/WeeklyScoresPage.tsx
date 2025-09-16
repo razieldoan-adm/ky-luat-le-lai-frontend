@@ -1,150 +1,139 @@
 import React, { useState } from "react";
 import {
   Box,
-  Typography,
   Button,
-  Paper,
+  TextField,
+  Typography,
   Table,
   TableHead,
   TableRow,
   TableCell,
   TableBody,
-  TextField,
-  MenuItem,
+  Paper,
 } from "@mui/material";
 import api from "../../api/api";
 
 interface ClassData {
   className: string;
   grade: string;
-  violationScore: number; // điểm kỷ luật
-  attendanceScore: number; // điểm chuyên cần
-  lineupScore: number; // điểm vệ sinh
-  academicScore: number; // điểm học tập (nhập tay)
-  bonusScore: number; // điểm thưởng (nhập tay)
-  totalDiscipline: number; // tổng nề nếp
-  totalScore: number; // tổng điểm
-  rank?: number;
+  violation: number;
+  hygiene: number;
+  attendance: number;
+  lineup: number;
+  academicScore: number;
+  bonusScore: number;
+  totalDiscipline: number;
+  totalScore: number;
+  rank: number;
 }
 
 const WeeklyScoresPage: React.FC = () => {
-  const [week, setWeek] = useState<number>(1);
+  const [weekNumber, setWeekNumber] = useState<number>(1);
   const [rows, setRows] = useState<ClassData[]>([]);
 
-  // Load dữ liệu từ 3 API
+  // Load dữ liệu từ backend
   const handleLoadData = async () => {
     try {
-      const [violationRes, attendanceRes, lineupRes] = await Promise.all([
-        api.get(`/class-violation-scores/by-week?weekNumber=${week}`),
-        api.get(`/class-attendance-summaries/by-week?weekNumber=${week}`),
-        api.get(`/class-lineup-summaries/by-week?weekNumber=${week}`),
+      const [attRes, hygRes, lineupRes, vioRes] = await Promise.all([
+        api.get(`/api/classattendancesummaries?weekNumber=${weekNumber}`),
+        api.get(`/api/classhygienescores?weekNumber=${weekNumber}`),
+        api.get(`/api/classlineupsummaries?weekNumber=${weekNumber}`),
+        api.get(`/api/classviolationscores?weekNumber=${weekNumber}`),
       ]);
 
-      const violationScores: any[] = violationRes.data;
-      const attendanceScores: any[] = attendanceRes.data;
-      const lineupScores: any[] = lineupRes.data;
+      const attendance = attRes.data;
+      const hygiene = hygRes.data;
+      const lineup = lineupRes.data;
+      const violation = vioRes.data;
 
-      // Gộp dữ liệu theo className
-      const merged: ClassData[] = violationScores.map((v) => {
-        const att = attendanceScores.find((a) => a.className === v.className);
-        const lin = lineupScores.find((l) => l.className === v.className);
+      // Gom dữ liệu
+      const classes: Record<string, ClassData> = {};
 
-        return {
-          className: v.className,
-          grade: v.grade || "",
-          violationScore: v.violationScore || 0,
-          attendanceScore: att ? att.score : 0,
-          lineupScore: lin ? lin.score : 0,
-          academicScore: 0,
-          bonusScore: 0,
-          totalDiscipline: 0,
-          totalScore: 0,
-        };
+      [...attendance, ...hygiene, ...lineup, ...violation].forEach((item: any) => {
+        const name = item.className;
+        if (!classes[name]) {
+          classes[name] = {
+            className: name,
+            grade: item.grade || "",
+            violation: 0,
+            hygiene: 0,
+            attendance: 0,
+            lineup: 0,
+            academicScore: 0,
+            bonusScore: 0,
+            totalDiscipline: 0,
+            totalScore: 0,
+            rank: 0,
+          };
+        }
+
+        if ("violationScore" in item) classes[name].violation = item.violationScore;
+        if ("hygieneScore" in item) classes[name].hygiene = item.hygieneScore;
+        if ("attendanceScore" in item) classes[name].attendance = item.attendanceScore;
+        if ("lineupScore" in item) classes[name].lineup = item.lineupScore;
       });
 
-      setRows(merged);
+      setRows(Object.values(classes));
     } catch (err) {
       console.error("Lỗi load dữ liệu:", err);
     }
   };
 
-  // Cập nhật giá trị nhập tay
-  const handleInputChange = (
-    index: number,
-    field: keyof ClassData,
-    value: number
-  ) => {
-    const updated = [...rows];
-    updated[index][field] = value;
-    setRows(updated);
-  };
-
-  // Tính toán trên FE
+  // Tính toán điểm
   const handleCalculate = () => {
-    const calculated = rows.map((row) => {
+    const updated = rows.map((r) => {
       const totalDiscipline =
-        row.violationScore + row.attendanceScore + row.lineupScore;
-      const totalScore =
-        totalDiscipline + row.academicScore + row.bonusScore;
-      return { ...row, totalDiscipline, totalScore };
+        100 - (r.violation + r.hygiene + r.attendance + r.lineup);
+      const totalScore = r.academicScore + r.bonusScore + totalDiscipline;
+      return { ...r, totalDiscipline, totalScore };
     });
 
-    // Xếp hạng theo tổng điểm
-    calculated.sort((a, b) => b.totalScore - a.totalScore);
-    calculated.forEach((row, idx) => {
+    // Xếp hạng
+    updated.sort((a, b) => b.totalScore - a.totalScore);
+    updated.forEach((row, idx) => {
       row.rank = idx + 1;
     });
 
-    setRows([...calculated]);
+    setRows([...updated]);
   };
 
-  // Lưu dữ liệu vào backend
+  // Lưu dữ liệu
   const handleSave = async () => {
     try {
-      await Promise.all(
-        rows.map((row) =>
-          api.post("/class-violation-scores", {
-            className: row.className,
-            weekNumber: week,
-            violationScore: row.violationScore,
-            attendanceScore: row.attendanceScore,
-            lineupScore: row.lineupScore,
-            academicScore: row.academicScore,
-            bonusScore: row.bonusScore,
-            totalDiscipline: row.totalDiscipline,
-            totalScore: row.totalScore,
-            rank: row.rank,
-            grade: row.grade,
-          })
-        )
-      );
+      await api.post("/api/weekly-scores/save", { weekNumber, rows });
       alert("Đã lưu thành công!");
     } catch (err) {
-      console.error("Lỗi lưu dữ liệu:", err);
+      console.error("Lỗi lưu:", err);
     }
+  };
+
+  // Cập nhật giá trị nhập tay
+  const handleInputChange = <K extends keyof ClassData>(
+    index: number,
+    field: K,
+    value: ClassData[K]
+  ) => {
+    const updated = [...rows];
+    updated[index] = { ...updated[index], [field]: value };
+    setRows(updated);
   };
 
   return (
     <Box p={2}>
-      <Typography variant="h6">Weekly Scores - Tuần {week}</Typography>
+      <Typography variant="h5" gutterBottom>
+        Weekly Scores - Tuần {weekNumber}
+      </Typography>
 
-      <Box display="flex" alignItems="center" mb={2} gap={2}>
+      <Box display="flex" alignItems="center" gap={2} mb={2}>
         <TextField
-          select
           label="Tuần"
-          value={week}
-          onChange={(e) => setWeek(Number(e.target.value))}
+          type="number"
+          value={weekNumber}
+          onChange={(e) => setWeekNumber(Number(e.target.value))}
           size="small"
           sx={{ width: 120 }}
-        >
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((w) => (
-            <MenuItem key={w} value={w}>
-              Tuần {w}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        <Button variant="contained" onClick={handleLoadData}>
+        />
+        <Button variant="contained" color="primary" onClick={handleLoadData}>
           Tải dữ liệu
         </Button>
         <Button variant="contained" color="secondary" onClick={handleCalculate}>
@@ -164,36 +153,29 @@ const WeeklyScoresPage: React.FC = () => {
               <TableCell>Kỷ luật</TableCell>
               <TableCell>Vệ sinh</TableCell>
               <TableCell>Chuyên cần</TableCell>
-              <TableCell>Xếp hạng</TableCell>
-              <TableCell>
-                Điểm học tập <br /> (nhập tay)
-              </TableCell>
-              <TableCell>
-                Điểm thưởng <br /> (nhập tay)
-              </TableCell>
+              <TableCell>Xếp hàng</TableCell>
+              <TableCell>Điểm học tập</TableCell>
+              <TableCell>Điểm thưởng</TableCell>
               <TableCell>Tổng nề nếp</TableCell>
               <TableCell>Tổng điểm</TableCell>
+              <TableCell>Xếp hạng</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row, index) => (
-              <TableRow key={row.className}>
+            {rows.map((row, idx) => (
+              <TableRow key={idx}>
                 <TableCell>{row.className}</TableCell>
                 <TableCell>{row.grade}</TableCell>
-                <TableCell>{row.violationScore}</TableCell>
-                <TableCell>{row.lineupScore}</TableCell>
-                <TableCell>{row.attendanceScore}</TableCell>
-                <TableCell>{row.rank || "-"}</TableCell>
+                <TableCell>{row.violation}</TableCell>
+                <TableCell>{row.hygiene}</TableCell>
+                <TableCell>{row.attendance}</TableCell>
+                <TableCell>{row.lineup}</TableCell>
                 <TableCell>
                   <TextField
                     type="number"
                     value={row.academicScore}
                     onChange={(e) =>
-                      handleInputChange(
-                        index,
-                        "academicScore",
-                        Number(e.target.value)
-                      )
+                      handleInputChange(idx, "academicScore", Number(e.target.value))
                     }
                     size="small"
                     sx={{ width: 80 }}
@@ -204,11 +186,7 @@ const WeeklyScoresPage: React.FC = () => {
                     type="number"
                     value={row.bonusScore}
                     onChange={(e) =>
-                      handleInputChange(
-                        index,
-                        "bonusScore",
-                        Number(e.target.value)
-                      )
+                      handleInputChange(idx, "bonusScore", Number(e.target.value))
                     }
                     size="small"
                     sx={{ width: 80 }}
@@ -216,6 +194,7 @@ const WeeklyScoresPage: React.FC = () => {
                 </TableCell>
                 <TableCell>{row.totalDiscipline}</TableCell>
                 <TableCell>{row.totalScore}</TableCell>
+                <TableCell>{row.rank}</TableCell>
               </TableRow>
             ))}
           </TableBody>
