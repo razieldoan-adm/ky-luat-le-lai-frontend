@@ -1,307 +1,237 @@
-// src/pages/emulation/WeeklyScoresPage.tsx
 import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
-  TextField,
   Button,
-  Paper,
+  MenuItem,
+  Select,
   Table,
+  TableBody,
+  TableCell,
   TableHead,
   TableRow,
-  TableCell,
-  TableBody,
-  MenuItem,
+  Paper,
   Snackbar,
   Alert,
-  Stack,
 } from "@mui/material";
 import api from "../../api/api";
 
-interface Week {
+interface StudyWeek {
   _id: string;
   weekNumber: number;
   startDate: string;
   endDate: string;
 }
 
-interface RawScore {
+interface ClassScore {
   className: string;
   grade: string;
-  score: number;
-}
-
-interface WeeklyScore {
-  className: string;
-  grade: string;
-  weekNumber: number;
-  academicScore: number;
-  bonusScore: number;
+  academicScore: number; // nhập trực tiếp
+  bonusScore: number; // nhập trực tiếp
   disciplineScore: number;
   hygieneScore: number;
   attendanceScore: number;
   lineUpScore: number;
-  totalViolation: number;
-  totalRankScore: number;
+  totalViolation?: number;
+  totalRankScore?: number;
   rank?: number;
 }
 
+const disciplineMax = 100; // ví dụ điểm nề nếp tối đa
+
 export default function WeeklyScoresPage() {
-  const [weeks, setWeeks] = useState<Week[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+  const [weeks, setWeeks] = useState<StudyWeek[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  const [scores, setScores] = useState<ClassScore[]>([]);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
-  const [scores, setScores] = useState<WeeklyScore[]>([]);
-  const [disciplineMax, setDisciplineMax] = useState<number>(100);
-
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: "success" | "error" | "info";
-  }>({ open: false, message: "", severity: "success" });
-
-  // ===== Load Weeks + Settings =====
+  // Lấy danh sách tuần
   useEffect(() => {
+    const fetchWeeks = async () => {
+      try {
+        const res = await api.get("/api/academic-weeks/study-weeks");
+        setWeeks(res.data);
+      } catch (err) {
+        console.error("Lỗi load weeks:", err);
+      }
+    };
     fetchWeeks();
-    fetchSettings();
   }, []);
 
-  const fetchWeeks = async () => {
-    try {
-      const res = await api.get("/api/academic-weeks/study-weeks");
-      setWeeks(res.data);
-      if (res.data.length > 0) setSelectedWeek(res.data[0].weekNumber);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchSettings = async () => {
-    try {
-      const res = await api.get("/api/settings");
-      if (res.data?.disciplineMax) setDisciplineMax(res.data.disciplineMax);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // ===== GOM DỮ LIỆU =====
-  const handleGatherData = async () => {
+  // Gom dữ liệu từ 4 API
+  const handleAggregate = async () => {
     if (!selectedWeek) return;
-
     try {
       const [attendanceRes, hygieneRes, lineupRes, violationRes] = await Promise.all([
-        api.get("/api/classattendancesummaries", { params: { weekNumber: selectedWeek } }),
-        api.get("/api/classhygienescores", { params: { weekNumber: selectedWeek } }),
-        api.get("/api/classlineupsummaries", { params: { weekNumber: selectedWeek } }),
-        api.get("/api/classviolationscores", { params: { weekNumber: selectedWeek } }),
+        api.get(`/api/classattendancesummaries?weekNumber=${selectedWeek}`),
+        api.get(`/api/classhygienescores?weekNumber=${selectedWeek}`),
+        api.get(`/api/classlineupsummaries?weekNumber=${selectedWeek}`),
+        api.get(`/api/classviolationscores?weekNumber=${selectedWeek}`),
       ]);
 
-      const attendance: RawScore[] = attendanceRes.data;
-      const hygiene: RawScore[] = hygieneRes.data;
-      const lineup: RawScore[] = lineupRes.data;
-      const violations: RawScore[] = violationRes.data;
+      const map: Record<string, ClassScore> = {};
 
-      const map: Record<string, WeeklyScore> = {};
-
-      const addData = (
-        arr: RawScore[],
-        key: "disciplineScore" | "hygieneScore" | "attendanceScore" | "lineUpScore"
-      ) => {
+      const mergeData = (arr: any[], field: keyof ClassScore, gradeField = "grade") => {
         arr.forEach((item) => {
-          if (!map[item.className]) {
-            map[item.className] = {
-              className: item.className,
-              grade: item.grade,
-              weekNumber: selectedWeek,
+          const cls = item.className || item.class; // tuỳ backend trả về
+          if (!map[cls]) {
+            map[cls] = {
+              className: cls,
+              grade: item[gradeField] || "",
               academicScore: 0,
               bonusScore: 0,
               disciplineScore: 0,
               hygieneScore: 0,
               attendanceScore: 0,
               lineUpScore: 0,
-              totalViolation: 0,
-              totalRankScore: 0,
             };
           }
-          (map[item.className][key] as number) = item.score ?? 0;
+          map[cls][field] = item.score || 0;
         });
       };
 
-      addData(attendance, "attendanceScore");
-      addData(hygiene, "hygieneScore");
-      addData(lineup, "lineUpScore");
-      addData(violations, "disciplineScore");
+      mergeData(attendanceRes.data, "attendanceScore");
+      mergeData(hygieneRes.data, "hygieneScore");
+      mergeData(lineupRes.data, "lineUpScore");
+      mergeData(violationRes.data, "disciplineScore");
 
       setScores(Object.values(map));
       setSnackbar({ open: true, message: "Đã gom dữ liệu thành công", severity: "success" });
     } catch (err) {
-      console.error(err);
-      setSnackbar({ open: true, message: "Lỗi khi gom dữ liệu", severity: "error" });
+      console.error("Lỗi gom dữ liệu:", err);
+      setSnackbar({ open: true, message: "Gom dữ liệu thất bại", severity: "error" });
     }
   };
 
-  // ===== TÍNH TOÁN XẾP HẠNG =====
+  // Tính xếp hạng
   const handleCalculateRank = () => {
-    const computed = scores.map((s) => {
+    const updated = [...scores];
+    updated.forEach((s) => {
       const totalViolation =
-        disciplineMax - (s.disciplineScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
-      const totalRankScore = s.academicScore + totalViolation + s.bonusScore;
-      return { ...s, totalViolation, totalRankScore };
+        disciplineMax - ((s.disciplineScore || 0) + (s.hygieneScore || 0) + (s.attendanceScore || 0) + (s.lineUpScore || 0));
+      s.totalViolation = totalViolation;
+      s.totalRankScore = (s.academicScore || 0) + totalViolation + (s.bonusScore || 0);
     });
 
-    // rank theo khối
-    const byGrade: Record<string, WeeklyScore[]> = {};
-    computed.forEach((s) => {
-      if (!byGrade[s.grade]) byGrade[s.grade] = [];
-      byGrade[s.grade].push(s);
+    // sắp rank theo grade
+    const grouped: Record<string, ClassScore[]> = {};
+    updated.forEach((s) => {
+      if (!grouped[s.grade]) grouped[s.grade] = [];
+      grouped[s.grade].push(s);
+    });
+    Object.values(grouped).forEach((arr) => {
+      arr.sort((a, b) => (b.totalRankScore || 0) - (a.totalRankScore || 0));
+      arr.forEach((s, i) => (s.rank = i + 1));
     });
 
-    Object.keys(byGrade).forEach((g) => {
-      const sorted = [...byGrade[g]].sort((a, b) => b.totalRankScore - a.totalRankScore);
-      sorted.forEach((s, i) => {
-        const idx = computed.findIndex((c) => c.className === s.className);
-        if (idx !== -1) computed[idx].rank = i + 1;
-      });
-    });
-
-    setScores(computed);
-    setSnackbar({ open: true, message: "Đã tính xếp hạng", severity: "info" });
+    setScores(updated);
+    setSnackbar({ open: true, message: "Đã tính xếp hạng", severity: "success" });
   };
 
-  // ===== LƯU =====
+  // Lưu
   const handleSave = async () => {
+    if (!selectedWeek) return;
     try {
-      await api.post("/api/weekly-scores", { weekNumber: selectedWeek, scores });
+      await api.post("/api/weekly-scores", {
+        weekNumber: selectedWeek,
+        scores,
+      });
       setSnackbar({ open: true, message: "Đã lưu thành công", severity: "success" });
     } catch (err) {
-      console.error(err);
-      setSnackbar({ open: true, message: "Lỗi khi lưu dữ liệu", severity: "error" });
+      console.error("Lỗi lưu:", err);
+      setSnackbar({ open: true, message: "Lưu thất bại", severity: "error" });
     }
-  };
-
-  // ===== Cập nhật điểm nhập tay =====
-  const handleChangeScore = (
-    className: string,
-    field: "academicScore" | "bonusScore",
-    value: number
-  ) => {
-    const updated = scores.map((s) =>
-      s.className === className ? { ...s, [field]: value } : s
-    );
-    setScores(updated);
-  };
-
-  const getRowStyle = (idx: number, rank?: number) => {
-    let style: any = { backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9" };
-    if (rank === 1) style.backgroundColor = "#ffe082";
-    if (rank === 2) style.backgroundColor = "#b2ebf2";
-    if (rank === 3) style.backgroundColor = "#c8e6c9";
-    return style;
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        📊 Điểm Thi Đua Tuần
+    <Box p={3}>
+      <Typography variant="h5" gutterBottom>
+        Quản lý điểm thi đua theo tuần
       </Typography>
 
-      {/* chọn tuần */}
-      <TextField
-        select
-        label="Chọn tuần"
-        value={selectedWeek ?? ""}
-        onChange={(e) => setSelectedWeek(Number(e.target.value))}
-        sx={{ width: 300, mb: 2 }}
-        size="small"
-      >
-        {weeks.map((w) => (
-          <MenuItem key={w._id} value={w.weekNumber}>
-            Tuần {w.weekNumber} ({new Date(w.startDate).toLocaleDateString()} -{" "}
-            {new Date(w.endDate).toLocaleDateString()})
-          </MenuItem>
-        ))}
-      </TextField>
-
-      {/* 3 button */}
-      <Stack direction="row" spacing={2} mb={2}>
-        <Button variant="contained" color="secondary" onClick={handleGatherData}>
-          GOM DỮ LIỆU
+      <Box display="flex" gap={2} mb={2}>
+        <Select
+          value={selectedWeek}
+          onChange={(e) => setSelectedWeek(e.target.value as number)}
+          displayEmpty
+        >
+          <MenuItem value="">-- Chọn tuần --</MenuItem>
+          {weeks.map((w) => (
+            <MenuItem key={w._id} value={w.weekNumber}>
+              Tuần {w.weekNumber} ({w.startDate} → {w.endDate})
+            </MenuItem>
+          ))}
+        </Select>
+        <Button variant="contained" onClick={handleAggregate}>
+          Gom dữ liệu
         </Button>
-        <Button variant="contained" color="info" onClick={handleCalculateRank}>
-          TÍNH XẾP HẠNG
+        <Button variant="contained" color="secondary" onClick={handleCalculateRank}>
+          Tính xếp hạng
         </Button>
         <Button variant="contained" color="success" onClick={handleSave}>
-          LƯU
+          Lưu
         </Button>
-      </Stack>
+      </Box>
 
-      {/* bảng */}
-      <Paper elevation={3} sx={{ width: "100%", overflowX: "auto", borderRadius: 2 }}>
-        <Table size="small">
+      <Paper>
+        <Table>
           <TableHead>
-            <TableRow sx={{ backgroundColor: "#f0f0f0" }}>
-              <TableCell>STT</TableCell>
+            <TableRow>
               <TableCell>Lớp</TableCell>
               <TableCell>Khối</TableCell>
               <TableCell>Học tập</TableCell>
-              <TableCell>Điểm thưởng</TableCell>
-              <TableCell>Kỷ luật (-)</TableCell>
-              <TableCell>Vệ sinh (-)</TableCell>
-              <TableCell>Chuyên cần (-)</TableCell>
-              <TableCell>Xếp hàng (-)</TableCell>
+              <TableCell>Kỷ luật</TableCell>
+              <TableCell>Vệ sinh</TableCell>
+              <TableCell>Chuyên cần</TableCell>
+              <TableCell>Xếp hàng</TableCell>
+              <TableCell>Thưởng</TableCell>
               <TableCell>Tổng nề nếp</TableCell>
               <TableCell>Tổng xếp hạng</TableCell>
-              <TableCell>Xếp hạng</TableCell>
+              <TableCell>Thứ hạng</TableCell>
             </TableRow>
           </TableHead>
-
           <TableBody>
-            {scores.length > 0 ? (
-              scores.map((s, i) => (
-                <TableRow key={s.className} sx={getRowStyle(i, s.rank)}>
-                  <TableCell>{i + 1}</TableCell>
-                  <TableCell>{s.className}</TableCell>
-                  <TableCell>{s.grade}</TableCell>
-                  <TableCell>
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={s.academicScore}
-                      onChange={(e) =>
-                        handleChangeScore(s.className, "academicScore", Number(e.target.value))
-                      }
-                      sx={{ width: 70, "& input": { textAlign: "center" } }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={s.bonusScore}
-                      onChange={(e) =>
-                        handleChangeScore(s.className, "bonusScore", Number(e.target.value))
-                      }
-                      sx={{ width: 70, "& input": { textAlign: "center" } }}
-                    />
-                  </TableCell>
-                  <TableCell align="center">{s.disciplineScore}</TableCell>
-                  <TableCell align="center">{s.hygieneScore}</TableCell>
-                  <TableCell align="center">{s.attendanceScore}</TableCell>
-                  <TableCell align="center">{s.lineUpScore}</TableCell>
-                  <TableCell align="center">{s.totalViolation}</TableCell>
-                  <TableCell align="center">{s.totalRankScore}</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600 }}>
-                    {s.rank ?? "-"}
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={12} align="center">
-                  Không có dữ liệu.
+            {scores.map((s) => (
+              <TableRow key={s.className}>
+                <TableCell>{s.className}</TableCell>
+                <TableCell>{s.grade}</TableCell>
+                <TableCell>
+                  <input
+                    type="number"
+                    value={s.academicScore}
+                    onChange={(e) => {
+                      const updated = [...scores];
+                      const idx = updated.findIndex((x) => x.className === s.className);
+                      updated[idx].academicScore = Number(e.target.value);
+                      setScores(updated);
+                    }}
+                  />
                 </TableCell>
+                <TableCell>{s.disciplineScore}</TableCell>
+                <TableCell>{s.hygieneScore}</TableCell>
+                <TableCell>{s.attendanceScore}</TableCell>
+                <TableCell>{s.lineUpScore}</TableCell>
+                <TableCell>
+                  <input
+                    type="number"
+                    value={s.bonusScore}
+                    onChange={(e) => {
+                      const updated = [...scores];
+                      const idx = updated.findIndex((x) => x.className === s.className);
+                      updated[idx].bonusScore = Number(e.target.value);
+                      setScores(updated);
+                    }}
+                  />
+                </TableCell>
+                <TableCell>{s.totalViolation ?? "-"}</TableCell>
+                <TableCell>{s.totalRankScore ?? "-"}</TableCell>
+                <TableCell>{s.rank ?? "-"}</TableCell>
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
       </Paper>
@@ -309,8 +239,7 @@ export default function WeeklyScoresPage() {
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
