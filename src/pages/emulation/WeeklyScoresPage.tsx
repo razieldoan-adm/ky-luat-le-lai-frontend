@@ -31,14 +31,14 @@ const WeeklyScoresPage: React.FC = () => {
   const [weekNumber, setWeekNumber] = useState<number>(1);
   const [rows, setRows] = useState<ClassData[]>([]);
 
-  // Load dữ liệu từ backend
+  // Load dữ liệu
   const handleLoadData = async () => {
     try {
       const [attRes, hygRes, lineupRes, vioRes] = await Promise.all([
-        api.get(`/api/classattendancesummaries?weekNumber=${weekNumber}`),
-        api.get(`/api/classhygienescores?weekNumber=${weekNumber}`),
-        api.get(`/api/classlineupsummaries?weekNumber=${weekNumber}`),
-        api.get(`/api/classviolationscores?weekNumber=${weekNumber}`),
+        api.get("/api/class-attendance-summaries", { params: { weekNumber } }),
+        api.get("/api/class-hygiene-summaries", { params: { weekNumber } }),
+        api.get("/api/class-lineup-summaries", { params: { weekNumber } }),
+        api.get("/api/class-violation-scores", { params: { weekNumber } }),
       ]);
 
       const attendance = attRes.data;
@@ -46,7 +46,6 @@ const WeeklyScoresPage: React.FC = () => {
       const lineup = lineupRes.data;
       const violation = vioRes.data;
 
-      // Gom dữ liệu
       const classes: Record<string, ClassData> = {};
 
       [...attendance, ...hygiene, ...lineup, ...violation].forEach((item: any) => {
@@ -79,7 +78,7 @@ const WeeklyScoresPage: React.FC = () => {
     }
   };
 
-  // Tính toán điểm
+  // Tính toán
   const handleCalculate = () => {
     const updated = rows.map((r) => {
       const totalDiscipline =
@@ -88,7 +87,6 @@ const WeeklyScoresPage: React.FC = () => {
       return { ...r, totalDiscipline, totalScore };
     });
 
-    // Xếp hạng
     updated.sort((a, b) => b.totalScore - a.totalScore);
     updated.forEach((row, idx) => {
       row.rank = idx + 1;
@@ -107,7 +105,7 @@ const WeeklyScoresPage: React.FC = () => {
     }
   };
 
-  // Cập nhật giá trị nhập tay
+  // Nhập tay
   const handleInputChange = <K extends keyof ClassData>(
     index: number,
     field: K,
