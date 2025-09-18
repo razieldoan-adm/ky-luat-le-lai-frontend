@@ -213,6 +213,13 @@ export default function WeeklyScoresPage() {
       .padStart(2, "0")}`;
   };
 
+  // Gom điểm theo khối để render từng bảng
+  const groupedByGrade: Record<string, ScoreRow[]> = {};
+  scores.forEach((s) => {
+    if (!groupedByGrade[s.grade]) groupedByGrade[s.grade] = [];
+    groupedByGrade[s.grade].push(s);
+  });
+
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>
@@ -249,85 +256,70 @@ export default function WeeklyScoresPage() {
         </Button>
       </Box>
 
-      <Paper>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Khối</TableCell>
-              <TableCell>Học tập</TableCell>
-              <TableCell>Thưởng</TableCell>
-              <TableCell>Vi phạm</TableCell>
-              <TableCell>Vệ sinh</TableCell>
-              <TableCell>Chuyên cần</TableCell>
-              <TableCell>Xếp hàng</TableCell>
-              <TableCell>Tổng nề nếp</TableCell>
-              <TableCell>Tổng</TableCell>
-              <TableCell>Xếp hạng</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {scores.map((s, idx) => (
-              <TableRow
-                key={s.className}
-                sx={s.rank === 1 ? { backgroundColor: "#e0f7fa" } : {}}
-              >
-                <TableCell>{s.className}</TableCell>
-                <TableCell>{s.grade}</TableCell>
-                <TableCell>
-                  <TextField
-                    type="number"
-                    size="small"
-                    sx={{ width: 70 }}
-                    value={s.academicScore}
-                    onChange={(e) =>
-                      handleChange(idx, "academicScore", Number(e.target.value))
-                    }
-                  />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    type="number"
-                    size="small"
-                    sx={{ width: 70 }}
-                    value={s.bonusScore}
-                    onChange={(e) =>
-                      handleChange(idx, "bonusScore", Number(e.target.value))
-                    }
-                  />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    type="number"
-                    size="small"
-                    sx={{ width: 70 }}
-                    value={s.violationScore}
-                    onChange={(e) =>
-                      handleChange(idx, "violationScore", Number(e.target.value))
-                    }
-                  />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    type="number"
-                    size="small"
-                    sx={{ width: 70 }}
-                    value={s.hygieneScore}
-                    onChange={(e) =>
-                      handleChange(idx, "hygieneScore", Number(e.target.value))
-                    }
-                  />
-                </TableCell>
-                <TableCell>{s.attendanceScore}</TableCell>
-                <TableCell>{s.lineUpScore}</TableCell>
-                <TableCell>{s.totalViolation}</TableCell>
-                <TableCell>{s.totalScore}</TableCell>
-                <TableCell>{s.rank || "-"}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
+      {Object.keys(groupedByGrade).map((grade) => (
+        <Box key={grade} mb={4}>
+          <Typography variant="h6" gutterBottom>
+            Khối {grade}
+          </Typography>
+          <Paper>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Lớp</TableCell>
+                  <TableCell>Học tập</TableCell>
+                  <TableCell>Thưởng</TableCell>
+                  <TableCell>Vi phạm</TableCell>
+                  <TableCell>Vệ sinh</TableCell>
+                  <TableCell>Chuyên cần</TableCell>
+                  <TableCell>Xếp hàng</TableCell>
+                  <TableCell>Tổng nề nếp</TableCell>
+                  <TableCell>Tổng</TableCell>
+                  <TableCell>Xếp hạng</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {groupedByGrade[grade].map((s, idx) => (
+                  <TableRow
+                    key={s.className}
+                    sx={s.rank === 1 ? { backgroundColor: "#e0f7fa" } : {}}
+                  >
+                    <TableCell>{s.className}</TableCell>
+                    <TableCell>
+                      <TextField
+                        type="number"
+                        size="small"
+                        sx={{ width: 70 }}
+                        value={s.academicScore}
+                        onChange={(e) =>
+                          handleChange(idx, "academicScore", Number(e.target.value))
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        type="number"
+                        size="small"
+                        sx={{ width: 70 }}
+                        value={s.bonusScore}
+                        onChange={(e) =>
+                          handleChange(idx, "bonusScore", Number(e.target.value))
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>{s.violationScore}</TableCell>
+                    <TableCell>{s.hygieneScore}</TableCell>
+                    <TableCell>{s.attendanceScore}</TableCell>
+                    <TableCell>{s.lineUpScore}</TableCell>
+                    <TableCell>{s.totalViolation}</TableCell>
+                    <TableCell>{s.totalScore}</TableCell>
+                    <TableCell>{s.rank || "-"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
+        </Box>
+      ))}
 
       <Snackbar
         open={snackbar.open}
