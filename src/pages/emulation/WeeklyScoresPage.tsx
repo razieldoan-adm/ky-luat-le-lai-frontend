@@ -158,7 +158,7 @@ export default function WeeklyScoresPage() {
     }
   };
 
-  const handleCalculate = () => {
+    const handleCalculate = () => {
     if (!scores.length) return;
 
     const updated = scores.map((s) => {
@@ -176,14 +176,21 @@ export default function WeeklyScoresPage() {
       grouped[s.grade].push(s);
     });
 
+    // Gán rank vào từng phần tử
     Object.values(grouped).forEach((arr) => {
       arr.sort((a, b) => b.totalScore - a.totalScore);
-      arr.forEach((s, idx) => (s.rank = idx + 1));
+      arr.forEach((s, idx) => {
+        const target = updated.find(
+          (x) => x.className === s.className && x.grade === s.grade
+        );
+        if (target) target.rank = idx + 1;
+      });
     });
 
-    setScores([...updated]);
+    setScores(updated);
     setSnackbar({ open: true, message: "Đã tính xếp hạng", severity: "success" });
   };
+
 
   const handleSave = async () => {
     if (!selectedWeek) return;
