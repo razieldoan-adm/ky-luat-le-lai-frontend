@@ -119,16 +119,16 @@ export default function WeeklyScoresPage() {
       const data: ScoreRow[] = classes.map((cls) => {
         const v =
           violations.data.find((x: any) => x.className === cls.className)
-            ?.total || 0;
+            ?.totalScore || 0;
         const h =
-          hygiene.data.find((x: any) => x.className === cls.className)?.total ||
-          0;
+          hygiene.data.find((x: any) => x.className === cls.className)
+            ?.totalScore || 0;
         const a =
           attendance.data.find((x: any) => x.className === cls.className)
-            ?.total || 0;
+            ?.totalScore || 0;
         const l =
-          lineup.data.find((x: any) => x.className === cls.className)?.total ||
-          0;
+          lineup.data.find((x: any) => x.className === cls.className)
+            ?.totalScore || 0;
 
         return {
           className: cls.className,
