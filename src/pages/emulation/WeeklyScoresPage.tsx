@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
-  TextField,
+  Button,
   Paper,
   Table,
   TableHead,
@@ -10,115 +10,156 @@ import {
   TableCell,
   TableBody,
   MenuItem,
-  Button,
-  Stack,
+  Select,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import api from "../../api/api";
 
-interface Score {
-  className: string;
-  grade: string;
-  weekNumber: number;
-  attendanceScore: number;
-  hygieneScore: number;
-  lineupScore: number;
-  violationScore: number;
-  academicScore: number;
-  bonusScore: number;
-  totalViolation: number;
+interface ClassInfo {
+  _id: string;
+  name: string;
+  grade: number;
+  homeroomTeacher: string;
+}
+
+interface ScoreData {
+  classId: string;
   totalScore: number;
-  ranking: number;
+  totalViolations: number;
+}
+
+interface Setting {
+  weeks: number[];
+  classes: ClassInfo[];
 }
 
 export default function WeeklyScoresPage() {
-  const [week, setWeek] = useState<number>(1);
-  const [scores, setScores] = useState<Score[]>([]);
+  const [settings, setSettings] = useState<Setting | null>(null);
+  const [week, setWeek] = useState<number | "">("");
+  const [scores, setScores] = useState<ScoreData[]>([]);
 
-  // load dữ liệu điểm tuần
+  // Lấy settings (gồm danh sách lớp + tuần)
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchSettings = async () => {
       try {
-        const res = await api.get("/api/class-weekly-scores/temp", {
-          params: { weekNumber: week },
-        });
-        let data: Score[] = res.data;
-
-        // sắp xếp theo khối (grade) và xếp hạng trong khối
-        data.sort((a, b) => {
-          if (a.grade !== b.grade) return a.grade.localeCompare(b.grade);
-          return a.ranking - b.ranking;
-        });
-
-        setScores(data);
-      } catch (err) {
-        console.error("Lỗi load dữ liệu:", err);
+        const res = await api.get("/api/settings");
+        setSettings(res.data);
+      } catch (error) {
+        console.error("Lỗi tải settings:", error);
       }
     };
-    fetchData();
-  }, [week]);
+    fetchSettings();
+  }, []);
+
+  const handleLoad = async () => {
+    if (!week) return;
+    try {
+      const res = await api.get("/api/class-lineup-summaries", {
+        params: { weekNumber: week },
+      });
+      setScores(res.data || []);
+    } catch (error) {
+      console.error("Lỗi tải dữ liệu:", error);
+    }
+  };
+
+  const getScoreByClass = (classId: string) => {
+    const found = scores.find((s) => s.classId === classId);
+    return found || { totalScore: 0, totalViolations: 0 };
+  };
+
+  // Tìm lớp đứng đầu mỗi khối
+  const getTopClassesByGrade = () => {
+    if (!settings) return {};
+    const topByGrade: Record<number, string> = {};
+    settings.classes
+      .filter((cls) => cls.homeroomTeacher)
+      .forEach((cls) => {
+        const score = getScoreByClass(cls._id).totalScore;
+        if (
+          !topByGrade[cls.grade] ||
+          score > getScoreByClass(topByGrade[cls.grade]).totalScore
+        ) {
+          topByGrade[cls.grade] = cls._id;
+        }
+      });
+    return topByGrade;
+  };
+
+  if (!settings) return <Typography>Đang tải...</Typography>;
+
+  const topClasses = getTopClassesByGrade();
 
   return (
     <Box p={2}>
       <Typography variant="h5" gutterBottom>
-        Bảng điểm thi đua tuần {week}
+        Tổng điểm vi phạm các lớp theo tuần
       </Typography>
 
-      <Stack direction="row" spacing={2} mb={2}>
-        <TextField
-          select
-          label="Chọn tuần"
+      <FormControl sx={{ minWidth: 150, mr: 2 }}>
+        <InputLabel>Tuần</InputLabel>
+        <Select
           value={week}
+          label="Tuần"
           onChange={(e) => setWeek(Number(e.target.value))}
-          size="small"
         >
-          {[...Array(10)].map((_, i) => (
-            <MenuItem key={i + 1} value={i + 1}>
-              Tuần {i + 1}
+          {settings.weeks.map((w) => (
+            <MenuItem key={w} value={w}>
+              Tuần {w}
             </MenuItem>
           ))}
-        </TextField>
-        <Button
-          variant="contained"
-          onClick={() => console.log("Lưu điểm tuần:", scores)}
-        >
-          Lưu
-        </Button>
-      </Stack>
+        </Select>
+      </FormControl>
 
-      <Paper>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Điểm Chuyên cần</TableCell>
-              <TableCell>Điểm Vệ sinh</TableCell>
-              <TableCell>Điểm Xếp hàng</TableCell>
-              <TableCell>Điểm Vi phạm</TableCell>
-              <TableCell>Điểm Học tập</TableCell>
-              <TableCell>Điểm Thưởng</TableCell>
-              <TableCell>Tổng kỷ luật</TableCell>
-              <TableCell>Tổng điểm</TableCell>
-              <TableCell>Xếp hạng</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {scores.map((s) => (
-              <TableRow key={s.className}>
-                <TableCell>{s.className}</TableCell>
-                <TableCell>{s.attendanceScore}</TableCell>
-                <TableCell>{s.hygieneScore}</TableCell>
-                <TableCell>{s.lineupScore}</TableCell>
-                <TableCell>{s.violationScore}</TableCell>
-                <TableCell>{s.academicScore}</TableCell>
-                <TableCell>{s.bonusScore}</TableCell>
-                <TableCell>{s.totalViolation}</TableCell>
-                <TableCell>{s.totalScore}</TableCell>
-                <TableCell>{s.ranking}</TableCell>
+      <Button variant="contained" onClick={handleLoad}>
+        LOAD DỮ LIỆU
+      </Button>
+
+      {week && (
+        <Paper sx={{ mt: 3 }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>STT</TableCell>
+                <TableCell>Lớp</TableCell>
+                <TableCell>Khối</TableCell>
+                <TableCell align="center">Tổng điểm vi phạm</TableCell>
+                <TableCell align="center">Tổng số lỗi vi phạm</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
+            </TableHead>
+            <TableBody>
+              {settings.classes
+                .filter((cls) => cls.homeroomTeacher) // chỉ lớp có GVCN
+                .sort(
+                  (a, b) =>
+                    a.grade - b.grade || a.name.localeCompare(b.name)
+                )
+                .map((cls, idx) => {
+                  const score = getScoreByClass(cls._id);
+                  const isTop = topClasses[cls.grade] === cls._id;
+                  return (
+                    <TableRow
+                      key={cls._id}
+                      sx={{
+                        backgroundColor: isTop ? "#e0ffe0" : "inherit", // highlight lớp top
+                        fontWeight: isTop ? "bold" : "normal",
+                      }}
+                    >
+                      <TableCell>{idx + 1}</TableCell>
+                      <TableCell>{cls.name}</TableCell>
+                      <TableCell>{cls.grade}</TableCell>
+                      <TableCell align="center">{score.totalScore}</TableCell>
+                      <TableCell align="center">
+                        {score.totalViolations}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+            </TableBody>
+          </Table>
+        </Paper>
+      )}
     </Box>
   );
 }
