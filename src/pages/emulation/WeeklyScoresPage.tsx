@@ -1,7 +1,9 @@
-import {  useState } from "react";
+// src/pages/emulation/WeeklyScoresPage.tsx
+import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
+  TextField,
   Button,
   Paper,
   Table,
@@ -9,9 +11,8 @@ import {
   TableRow,
   TableCell,
   TableBody,
-  TextField,
   MenuItem,
-  CircularProgress,
+  Stack,
   Snackbar,
   Alert,
 } from "@mui/material";
@@ -21,59 +22,70 @@ interface WeeklyScore {
   className: string;
   grade: string;
   weekNumber: number;
+  attendanceScore: number;
+  hygieneScore: number;
+  lineupScore: number;
+  violationScore: number;
   academicScore: number;
   bonusScore: number;
-  violationScore: number;
-  hygieneScore: number;
-  attendanceScore: number;
-  lineupScore: number;
   totalViolation: number;
   totalScore: number;
+  ranking: number;
 }
 
-export default function WeeklyScoresPage() {
+const WeeklyScoresPage = () => {
   const [weekNumber, setWeekNumber] = useState<number>(1);
   const [scores, setScores] = useState<WeeklyScore[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [saving, setSaving] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
+  const [error, setError] = useState<string>("");
 
-  // Hàm tải dữ liệu thô từ API temp
+  useEffect(() => {
+    loadTempScores();
+  }, [weekNumber]);
+
   const loadTempScores = async () => {
     try {
-      setLoading(true);
-      const res = await api.get(`/api/class-weekly-scores/temp`, {
+      const res = await api.get("/api/class-weekly-scores/temp", {
         params: { weekNumber },
       });
-      setScores(res.data || []);
-    } catch (err: any) {
+      setScores(res.data);
+    } catch (err) {
       console.error("Lỗi load dữ liệu:", err);
-      setMessage("Không thể tải dữ liệu thô");
-    } finally {
-      setLoading(false);
+      setError("Không thể tải dữ liệu thô");
     }
   };
 
-  // Hàm lưu dữ liệu vào DB
-  const saveScores = async () => {
+  const loadSavedScores = async () => {
     try {
-      setSaving(true);
-      await api.post("/api/class-weekly-scores", { weekNumber, scores });
-      setMessage("Lưu thành công!");
-    } catch (err: any) {
-      console.error("Lỗi lưu dữ liệu:", err);
-      setMessage("Lưu thất bại!");
-    } finally {
-      setSaving(false);
+      const res = await api.get("/api/class-weekly-scores", {
+        params: { weekNumber },
+      });
+      setScores(res.data);
+    } catch (err) {
+      console.error("Lỗi load dữ liệu:", err);
+      setError("Không thể tải dữ liệu đã lưu");
     }
   };
 
-  // Cập nhật điểm nhập vào
-  const handleChange = (index: number, field: keyof WeeklyScore, value: number) => {
-    const newScores = [...scores];
-    (newScores[index] as any)[field] = value;
+  const handleSave = async () => {
+    try {
+      await api.post("/api/class-weekly-scores", { weekNumber, scores });
+      setMessage("Đã lưu điểm tuần");
+    } catch (err) {
+      console.error("Lỗi lưu dữ liệu:", err);
+      setError("Không thể lưu điểm tuần");
+    }
+  };
 
-    // Tính lại totalScore
+  const handleChangeScore = (
+    index: number,
+    field: "academicScore" | "bonusScore",
+    value: number
+  ) => {
+    const newScores = [...scores];
+    newScores[index][field] = value;
+
+    // cập nhật lại totalScore
     newScores[index].totalScore =
       newScores[index].academicScore +
       newScores[index].bonusScore +
@@ -85,111 +97,111 @@ export default function WeeklyScoresPage() {
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>
-        Quản lý điểm thi đua tuần
+        Điểm thi đua tuần
       </Typography>
 
-      {/* Chọn tuần */}
-      <TextField
-        select
-        label="Chọn tuần"
-        value={weekNumber}
-        onChange={(e) => setWeekNumber(Number(e.target.value))}
-        sx={{ mb: 2, minWidth: 150 }}
-      >
-        {Array.from({ length: 20 }, (_, i) => i + 1).map((w) => (
-          <MenuItem key={w} value={w}>
-            Tuần {w}
-          </MenuItem>
-        ))}
-      </TextField>
+      <Stack direction="row" spacing={2} mb={2}>
+        <TextField
+          select
+          label="Chọn tuần"
+          value={weekNumber}
+          onChange={(e) => setWeekNumber(Number(e.target.value))}
+          size="small"
+        >
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((w) => (
+            <MenuItem key={w} value={w}>
+              Tuần {w}
+            </MenuItem>
+          ))}
+        </TextField>
 
-      {/* Nút load dữ liệu */}
-      <Button
-        variant="contained"
-        onClick={loadTempScores}
-        sx={{ ml: 2 }}
-        disabled={loading}
-      >
-        {loading ? <CircularProgress size={20} color="inherit" /> : "Tải dữ liệu thô"}
-      </Button>
+        <Button variant="outlined" onClick={loadTempScores}>
+          Tải dữ liệu thô
+        </Button>
+        <Button variant="outlined" onClick={loadSavedScores}>
+          Tải dữ liệu đã lưu
+        </Button>
+        <Button variant="contained" onClick={handleSave}>
+          Lưu
+        </Button>
+      </Stack>
 
-      {/* Bảng dữ liệu */}
-      <Paper sx={{ mt: 3 }}>
+      <Paper>
         <Table>
           <TableHead>
             <TableRow>
               <TableCell>Lớp</TableCell>
               <TableCell>Khối</TableCell>
-              <TableCell>Học tập</TableCell>
-              <TableCell>Điểm thưởng</TableCell>
-              <TableCell>Vi phạm</TableCell>
-              <TableCell>Vệ sinh</TableCell>
               <TableCell>Chuyên cần</TableCell>
+              <TableCell>Vệ sinh</TableCell>
               <TableCell>Xếp hàng</TableCell>
-              <TableCell>Điểm nề nếp</TableCell>
+              <TableCell>Vi phạm</TableCell>
+              <TableCell>Học tập</TableCell>
+              <TableCell>Thưởng</TableCell>
+              <TableCell>Tổng kỷ luật</TableCell>
               <TableCell>Tổng điểm</TableCell>
+              <TableCell>Xếp hạng</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {scores.map((row, i) => (
-              <TableRow key={i}>
-                <TableCell>{row.className}</TableCell>
-                <TableCell>{row.grade}</TableCell>
+            {scores.map((s, idx) => (
+              <TableRow key={idx}>
+                <TableCell>{s.className}</TableCell>
+                <TableCell>{s.grade}</TableCell>
+                <TableCell>{s.attendanceScore}</TableCell>
+                <TableCell>{s.hygieneScore}</TableCell>
+                <TableCell>{s.lineupScore}</TableCell>
+                <TableCell>{s.violationScore}</TableCell>
                 <TableCell>
                   <TextField
                     type="number"
-                    value={row.academicScore}
+                    value={s.academicScore}
                     onChange={(e) =>
-                      handleChange(i, "academicScore", Number(e.target.value))
+                      handleChangeScore(idx, "academicScore", Number(e.target.value))
                     }
                     size="small"
-                    sx={{ width: 80 }}
+                    style={{ width: 80 }}
                   />
                 </TableCell>
                 <TableCell>
                   <TextField
                     type="number"
-                    value={row.bonusScore}
+                    value={s.bonusScore}
                     onChange={(e) =>
-                      handleChange(i, "bonusScore", Number(e.target.value))
+                      handleChangeScore(idx, "bonusScore", Number(e.target.value))
                     }
                     size="small"
-                    sx={{ width: 80 }}
+                    style={{ width: 80 }}
                   />
                 </TableCell>
-                <TableCell>{row.violationScore}</TableCell>
-                <TableCell>{row.hygieneScore}</TableCell>
-                <TableCell>{row.attendanceScore}</TableCell>
-                <TableCell>{row.lineupScore}</TableCell>
-                <TableCell>{row.totalViolation}</TableCell>
-                <TableCell>{row.totalScore}</TableCell>
+                <TableCell>{s.totalViolation}</TableCell>
+                <TableCell>{s.totalScore}</TableCell>
+                <TableCell>
+                  <strong>{s.ranking}</strong>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Paper>
 
-      {/* Nút lưu */}
-      <Button
-        variant="contained"
-        color="success"
-        onClick={saveScores}
-        sx={{ mt: 2 }}
-        disabled={saving || scores.length === 0}
-      >
-        {saving ? <CircularProgress size={20} color="inherit" /> : "Lưu kết quả"}
-      </Button>
-
-      {/* Thông báo */}
       <Snackbar
         open={!!message}
         autoHideDuration={3000}
         onClose={() => setMessage("")}
       >
-        <Alert severity="info" sx={{ width: "100%" }}>
-          {message}
-        </Alert>
+        <Alert severity="success">{message}</Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!error}
+        autoHideDuration={3000}
+        onClose={() => setError("")}
+      >
+        <Alert severity="error">{error}</Alert>
       </Snackbar>
     </Box>
   );
-}
+};
+
+export default WeeklyScoresPage;
