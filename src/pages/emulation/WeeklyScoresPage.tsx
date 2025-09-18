@@ -51,7 +51,11 @@ export default function WeeklyScoresPage() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
   const [scores, setScores] = useState<ScoreRow[]>([]);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" | "info" }>({ open: false, message: "", severity: "info" });
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error" | "info";
+  }>({ open: false, message: "", severity: "info" });
 
   useEffect(() => {
     fetchWeeks();
@@ -88,23 +92,43 @@ export default function WeeklyScoresPage() {
 
   const handleLoadData = async () => {
     if (!selectedWeek) {
-      setSnackbar({ open: true, message: "Vui lòng chọn tuần", severity: "error" });
+      setSnackbar({
+        open: true,
+        message: "Vui lòng chọn tuần",
+        severity: "error",
+      });
       return;
     }
 
     try {
       const [violations, hygiene, attendance, lineup] = await Promise.all([
-        api.get(`/api/class-violation-scores?weekNumber=${selectedWeek.weekNumber}`),
-        api.get(`/api/class-hygiene-scores?weekNumber=${selectedWeek.weekNumber}`),
-        api.get(`/api/class-attendance-summaries?weekNumber=${selectedWeek.weekNumber}`),
-        api.get(`/api/class-lineup-summaries?weekNumber=${selectedWeek.weekNumber}`),
+        api.get(
+          `/api/class-violation-scores?weekNumber=${selectedWeek.weekNumber}`
+        ),
+        api.get(
+          `/api/class-hygiene-scores?weekNumber=${selectedWeek.weekNumber}`
+        ),
+        api.get(
+          `/api/class-attendance-summaries?weekNumber=${selectedWeek.weekNumber}`
+        ),
+        api.get(
+          `/api/class-lineup-summaries?weekNumber=${selectedWeek.weekNumber}`
+        ),
       ]);
 
       const data: ScoreRow[] = classes.map((cls) => {
-        const v = violations.data.find((x: any) => x.className === cls.className)?.total || 0;
-        const h = hygiene.data.find((x: any) => x.className === cls.className)?.total || 0;
-        const a = attendance.data.find((x: any) => x.className === cls.className)?.total || 0;
-        const l = lineup.data.find((x: any) => x.className === cls.className)?.total || 0;
+        const v =
+          violations.data.find((x: any) => x.className === cls.className)
+            ?.total || 0;
+        const h =
+          hygiene.data.find((x: any) => x.className === cls.className)?.total ||
+          0;
+        const a =
+          attendance.data.find((x: any) => x.className === cls.className)
+            ?.total || 0;
+        const l =
+          lineup.data.find((x: any) => x.className === cls.className)?.total ||
+          0;
 
         return {
           className: cls.className,
@@ -126,21 +150,26 @@ export default function WeeklyScoresPage() {
       setSnackbar({ open: true, message: "Đã load dữ liệu", severity: "success" });
     } catch (err) {
       console.error("Lỗi khi load dữ liệu:", err);
-      setSnackbar({ open: true, message: "Lỗi khi load dữ liệu", severity: "error" });
+      setSnackbar({
+        open: true,
+        message: "Lỗi khi load dữ liệu",
+        severity: "error",
+      });
     }
   };
 
   const handleCalculate = () => {
     if (!scores.length) return;
 
-    // Tính totalViolation và totalScore
     const updated = scores.map((s) => {
-      const totalViolation = disciplineMax - (s.violationScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
+      const totalViolation =
+        disciplineMax -
+        (s.violationScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
       const totalScore = s.academicScore + s.bonusScore + totalViolation;
       return { ...s, totalViolation, totalScore };
     });
 
-    // Xếp hạng theo khối
+    // Nhóm theo khối và xếp hạng trong từng khối
     const grouped: Record<string, ScoreRow[]> = {};
     updated.forEach((s) => {
       if (!grouped[s.grade]) grouped[s.grade] = [];
@@ -177,6 +206,13 @@ export default function WeeklyScoresPage() {
     setScores(updated);
   };
 
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>
@@ -196,7 +232,8 @@ export default function WeeklyScoresPage() {
         >
           {weeks.map((w) => (
             <MenuItem key={w._id} value={w._id}>
-              Tuần {w.weekNumber} ({w.startDate} → {w.endDate})
+              Tuần {w.weekNumber} ({formatDate(w.startDate)} →{" "}
+              {formatDate(w.endDate)})
             </MenuItem>
           ))}
         </TextField>
@@ -241,6 +278,7 @@ export default function WeeklyScoresPage() {
                   <TextField
                     type="number"
                     size="small"
+                    sx={{ width: 70 }}
                     value={s.academicScore}
                     onChange={(e) =>
                       handleChange(idx, "academicScore", Number(e.target.value))
@@ -251,14 +289,35 @@ export default function WeeklyScoresPage() {
                   <TextField
                     type="number"
                     size="small"
+                    sx={{ width: 70 }}
                     value={s.bonusScore}
                     onChange={(e) =>
                       handleChange(idx, "bonusScore", Number(e.target.value))
                     }
                   />
                 </TableCell>
-                <TableCell>{s.violationScore}</TableCell>
-                <TableCell>{s.hygieneScore}</TableCell>
+                <TableCell>
+                  <TextField
+                    type="number"
+                    size="small"
+                    sx={{ width: 70 }}
+                    value={s.violationScore}
+                    onChange={(e) =>
+                      handleChange(idx, "violationScore", Number(e.target.value))
+                    }
+                  />
+                </TableCell>
+                <TableCell>
+                  <TextField
+                    type="number"
+                    size="small"
+                    sx={{ width: 70 }}
+                    value={s.hygieneScore}
+                    onChange={(e) =>
+                      handleChange(idx, "hygieneScore", Number(e.target.value))
+                    }
+                  />
+                </TableCell>
                 <TableCell>{s.attendanceScore}</TableCell>
                 <TableCell>{s.lineUpScore}</TableCell>
                 <TableCell>{s.totalViolation}</TableCell>
