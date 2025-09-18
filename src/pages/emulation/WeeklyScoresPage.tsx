@@ -2,19 +2,19 @@ import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
-  Paper,
+  Button,
   Table,
   TableHead,
   TableRow,
   TableCell,
   TableBody,
+  TextField,
   MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
+  Paper,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import api from "../../api/api";
-import dayjs from "dayjs";
 
 interface Week {
   _id: string;
@@ -23,128 +23,260 @@ interface Week {
   endDate: string;
 }
 
-interface ClassResult {
+interface Class {
+  _id: string;
   className: string;
-  studyScore: number; // điểm học tập
-  bonusScore: number; // điểm thưởng
-  discipline: number; // kỷ luật
-  hygiene: number; // vệ sinh
-  diligence: number; // chuyên cần
-  totalBehavior: number; // tổng nề nếp
-  total: number; // tổng điểm
-  rankBehavior?: number;
-  rankTotal?: number;
+  grade: string;
+  homeroomTeacher: string;
 }
 
-export default function FinalCompetitionResultPage() {
-  const [weekList, setWeekList] = useState<Week[]>([]);
+interface ScoreRow {
+  className: string;
+  grade: string;
+  weekNumber: number;
+  academicScore: number;
+  bonusScore: number;
+  violationScore: number;
+  hygieneScore: number;
+  attendanceScore: number;
+  lineUpScore: number;
+  totalViolation: number;
+  totalScore: number;
+  rank: number;
+}
+
+export default function WeeklyScoresPage() {
+  const [weeks, setWeeks] = useState<Week[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
-  const [results, setResults] = useState<ClassResult[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [disciplineMax, setDisciplineMax] = useState<number>(100);
+  const [scores, setScores] = useState<ScoreRow[]>([]);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" | "info" }>({ open: false, message: "", severity: "info" });
 
   useEffect(() => {
     fetchWeeks();
+    fetchClasses();
+    fetchSettings();
   }, []);
 
   const fetchWeeks = async () => {
     try {
       const res = await api.get("/api/academic-weeks/study-weeks");
-      setWeekList(res.data);
+      setWeeks(res.data);
     } catch (err) {
       console.error("Lỗi khi lấy tuần:", err);
     }
   };
 
-  const fetchResults = async (weekId: string) => {
+  const fetchClasses = async () => {
     try {
-      // TODO: gọi API backend trả về kết quả tính sẵn theo tuần
-      const res = await api.get(`/api/final-competition/week/${weekId}`);
-      const data: ClassResult[] = res.data;
-
-      // Tính xếp hạng nề nếp
-      const behaviorSorted = [...data].sort((a, b) => b.totalBehavior - a.totalBehavior);
-      behaviorSorted.forEach((item, index) => {
-        item.rankBehavior = index + 1;
-      });
-
-      // Tính xếp hạng toàn trường
-      const totalSorted = [...data].sort((a, b) => b.total - a.total);
-      totalSorted.forEach((item, index) => {
-        item.rankTotal = index + 1;
-      });
-
-      setResults(data);
+      const res = await api.get("/api/classes");
+      setClasses(res.data);
     } catch (err) {
-      console.error("Lỗi khi lấy kết quả:", err);
+      console.error("Lỗi khi lấy lớp:", err);
     }
   };
 
-  const handleWeekChange = (weekId: string) => {
-    const week = weekList.find(w => w._id === weekId) || null;
-    setSelectedWeek(week);
-    if (week) fetchResults(week._id);
+  const fetchSettings = async () => {
+    try {
+      const res = await api.get("/api/settings");
+      setDisciplineMax(res.data?.disciplineMax ?? 100);
+    } catch (err) {
+      console.error("Lỗi khi lấy setting:", err);
+    }
+  };
+
+  const handleLoadData = async () => {
+    if (!selectedWeek) {
+      setSnackbar({ open: true, message: "Vui lòng chọn tuần", severity: "error" });
+      return;
+    }
+
+    try {
+      const [violations, hygiene, attendance, lineup] = await Promise.all([
+        api.get(`/api/class-violation-scores?weekNumber=${selectedWeek.weekNumber}`),
+        api.get(`/api/class-hygiene-scores?weekNumber=${selectedWeek.weekNumber}`),
+        api.get(`/api/class-attendance-summaries?weekNumber=${selectedWeek.weekNumber}`),
+        api.get(`/api/class-lineup-summaries?weekNumber=${selectedWeek.weekNumber}`),
+      ]);
+
+      const data: ScoreRow[] = classes.map((cls) => {
+        const v = violations.data.find((x: any) => x.className === cls.className)?.total || 0;
+        const h = hygiene.data.find((x: any) => x.className === cls.className)?.total || 0;
+        const a = attendance.data.find((x: any) => x.className === cls.className)?.total || 0;
+        const l = lineup.data.find((x: any) => x.className === cls.className)?.total || 0;
+
+        return {
+          className: cls.className,
+          grade: cls.grade,
+          weekNumber: selectedWeek.weekNumber,
+          academicScore: 0,
+          bonusScore: 0,
+          violationScore: v,
+          hygieneScore: h,
+          attendanceScore: a,
+          lineUpScore: l,
+          totalViolation: 0,
+          totalScore: 0,
+          rank: 0,
+        };
+      });
+
+      setScores(data);
+      setSnackbar({ open: true, message: "Đã load dữ liệu", severity: "success" });
+    } catch (err) {
+      console.error("Lỗi khi load dữ liệu:", err);
+      setSnackbar({ open: true, message: "Lỗi khi load dữ liệu", severity: "error" });
+    }
+  };
+
+  const handleCalculate = () => {
+    if (!scores.length) return;
+
+    // Tính totalViolation và totalScore
+    const updated = scores.map((s) => {
+      const totalViolation = disciplineMax - (s.violationScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
+      const totalScore = s.academicScore + s.bonusScore + totalViolation;
+      return { ...s, totalViolation, totalScore };
+    });
+
+    // Xếp hạng theo khối
+    const grouped: Record<string, ScoreRow[]> = {};
+    updated.forEach((s) => {
+      if (!grouped[s.grade]) grouped[s.grade] = [];
+      grouped[s.grade].push(s);
+    });
+
+    Object.values(grouped).forEach((arr) => {
+      arr.sort((a, b) => b.totalScore - a.totalScore);
+      arr.forEach((s, idx) => (s.rank = idx + 1));
+    });
+
+    setScores([...updated]);
+    setSnackbar({ open: true, message: "Đã tính xếp hạng", severity: "success" });
+  };
+
+  const handleSave = async () => {
+    if (!selectedWeek) return;
+
+    try {
+      await api.post("/api/class-weekly-scores", {
+        weekNumber: selectedWeek.weekNumber,
+        scores,
+      });
+      setSnackbar({ open: true, message: "Đã lưu dữ liệu", severity: "success" });
+    } catch (err) {
+      console.error("Lỗi khi lưu:", err);
+      setSnackbar({ open: true, message: "Lỗi khi lưu dữ liệu", severity: "error" });
+    }
+  };
+
+  const handleChange = (index: number, field: keyof ScoreRow, value: number) => {
+    const updated = [...scores];
+    (updated[index] as any)[field] = value;
+    setScores(updated);
   };
 
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>
-        🏆 Kết quả thi đua toàn trường theo tuần
+        Bảng điểm thi đua tuần
       </Typography>
 
-      <FormControl sx={{ minWidth: 200, mb: 2 }}>
-        <InputLabel id="week-select-label">Tuần</InputLabel>
-        <Select
-          labelId="week-select-label"
+      <Box display="flex" gap={2} mb={2}>
+        <TextField
+          select
+          label="Chọn tuần"
           value={selectedWeek?._id || ""}
-          onChange={e => handleWeekChange(e.target.value)}
+          onChange={(e) => {
+            const week = weeks.find((w) => w._id === e.target.value) || null;
+            setSelectedWeek(week);
+          }}
+          sx={{ minWidth: 200 }}
         >
-          {weekList.map(week => (
-            <MenuItem key={week._id} value={week._id}>
-              Tuần {week.weekNumber} ({dayjs(week.startDate).format("DD/MM")} - {dayjs(week.endDate).format("DD/MM")})
+          {weeks.map((w) => (
+            <MenuItem key={w._id} value={w._id}>
+              Tuần {w.weekNumber} ({w.startDate} → {w.endDate})
             </MenuItem>
           ))}
-        </Select>
-      </FormControl>
+        </TextField>
 
-      <Typography variant="body1" gutterBottom>
-        Tổng số lớp: {results.length}
-      </Typography>
+        <Button variant="contained" onClick={handleLoadData}>
+          Gọi dữ liệu
+        </Button>
+        <Button variant="contained" color="secondary" onClick={handleCalculate}>
+          Tính xếp hạng
+        </Button>
+        <Button variant="contained" color="success" onClick={handleSave}>
+          Lưu
+        </Button>
+      </Box>
 
       <Paper>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>STT</TableCell>
               <TableCell>Lớp</TableCell>
+              <TableCell>Khối</TableCell>
               <TableCell>Học tập</TableCell>
-              <TableCell>Điểm thưởng</TableCell>
-              <TableCell>Kỷ luật</TableCell>
+              <TableCell>Thưởng</TableCell>
+              <TableCell>Vi phạm</TableCell>
               <TableCell>Vệ sinh</TableCell>
               <TableCell>Chuyên cần</TableCell>
-              <TableCell>Xếp hạng nề nếp</TableCell>
-              <TableCell>Tổng điểm nề nếp</TableCell>
-              <TableCell>Tổng điểm</TableCell>
+              <TableCell>Xếp hàng</TableCell>
+              <TableCell>Tổng nề nếp</TableCell>
+              <TableCell>Tổng</TableCell>
               <TableCell>Xếp hạng</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {results.map((row, index) => (
-              <TableRow key={row.className}>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell>{row.className}</TableCell>
-                <TableCell>{row.studyScore}</TableCell>
-                <TableCell>{row.bonusScore}</TableCell>
-                <TableCell>{row.discipline}</TableCell>
-                <TableCell>{row.hygiene}</TableCell>
-                <TableCell>{row.diligence}</TableCell>
-                <TableCell>{row.rankBehavior}</TableCell>
-                <TableCell>{row.totalBehavior}</TableCell>
-                <TableCell>{row.total}</TableCell>
-                <TableCell>{row.rankTotal}</TableCell>
+            {scores.map((s, idx) => (
+              <TableRow
+                key={s.className}
+                sx={s.rank === 1 ? { backgroundColor: "#e0f7fa" } : {}}
+              >
+                <TableCell>{s.className}</TableCell>
+                <TableCell>{s.grade}</TableCell>
+                <TableCell>
+                  <TextField
+                    type="number"
+                    size="small"
+                    value={s.academicScore}
+                    onChange={(e) =>
+                      handleChange(idx, "academicScore", Number(e.target.value))
+                    }
+                  />
+                </TableCell>
+                <TableCell>
+                  <TextField
+                    type="number"
+                    size="small"
+                    value={s.bonusScore}
+                    onChange={(e) =>
+                      handleChange(idx, "bonusScore", Number(e.target.value))
+                    }
+                  />
+                </TableCell>
+                <TableCell>{s.violationScore}</TableCell>
+                <TableCell>{s.hygieneScore}</TableCell>
+                <TableCell>{s.attendanceScore}</TableCell>
+                <TableCell>{s.lineUpScore}</TableCell>
+                <TableCell>{s.totalViolation}</TableCell>
+                <TableCell>{s.totalScore}</TableCell>
+                <TableCell>{s.rank || "-"}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Paper>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
     </Box>
   );
 }
