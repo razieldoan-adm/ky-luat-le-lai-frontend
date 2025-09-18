@@ -139,14 +139,14 @@ export default function WeeklyScoresPage() {
     if (!scores.length) return;
 
     // Tính totalViolation và totalScore
-    const updated = scores.map((s) => {
+    let updated = scores.map((s) => {
       const totalViolation =
         disciplineMax - (s.violationScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
       const totalScore = s.academicScore + s.bonusScore + totalViolation;
       return { ...s, totalViolation, totalScore };
     });
 
-    // Xếp hạng theo khối
+    // Xếp hạng theo từng khối
     const grouped: Record<string, ScoreRow[]> = {};
     updated.forEach((s) => {
       if (!grouped[s.grade]) grouped[s.grade] = [];
@@ -155,10 +155,12 @@ export default function WeeklyScoresPage() {
 
     Object.values(grouped).forEach((arr) => {
       arr.sort((a, b) => b.totalScore - a.totalScore);
-      arr.forEach((s, idx) => (s.rank = idx + 1));
+      arr.forEach((s, idx) => {
+        s.rank = idx + 1;
+      });
     });
 
-    setScores([...updated]);
+    setScores(updated);
     setSnackbar({ open: true, message: "Đã tính xếp hạng", severity: "success" });
   };
 
@@ -177,9 +179,10 @@ export default function WeeklyScoresPage() {
     }
   };
 
-  const handleChange = (index: number, field: keyof ScoreRow, value: number) => {
-    const updated = [...scores];
-    (updated[index] as any)[field] = value;
+  const handleChange = (className: string, field: keyof ScoreRow, value: number) => {
+    const updated = scores.map((s) =>
+      s.className === className ? { ...s, [field]: value } : s
+    );
     setScores(updated);
   };
 
@@ -189,6 +192,12 @@ export default function WeeklyScoresPage() {
     if (!groupedByGrade[s.grade]) groupedByGrade[s.grade] = [];
     groupedByGrade[s.grade].push(s);
   });
+
+  // Hiển thị ngày/tháng ngắn gọn
+  const formatDate = (d: string) => {
+    const date = new Date(d);
+    return `${date.getDate()}/${date.getMonth() + 1}`;
+  };
 
   return (
     <Box p={3}>
@@ -205,11 +214,11 @@ export default function WeeklyScoresPage() {
             const week = weeks.find((w) => w._id === e.target.value) || null;
             setSelectedWeek(week);
           }}
-          sx={{ minWidth: 200 }}
+          sx={{ minWidth: 180 }}
         >
           {weeks.map((w) => (
             <MenuItem key={w._id} value={w._id}>
-              Tuần {w.weekNumber} ({w.startDate} → {w.endDate})
+              Tuần {w.weekNumber} ({formatDate(w.startDate)} → {formatDate(w.endDate)})
             </MenuItem>
           ))}
         </TextField>
@@ -260,11 +269,7 @@ export default function WeeklyScoresPage() {
                         sx={{ width: 70 }}
                         value={s.academicScore}
                         onChange={(e) =>
-                          handleChange(
-                            scores.findIndex((x) => x.className === s.className),
-                            "academicScore",
-                            Number(e.target.value)
-                          )
+                          handleChange(s.className, "academicScore", Number(e.target.value))
                         }
                       />
                     </TableCell>
@@ -275,11 +280,7 @@ export default function WeeklyScoresPage() {
                         sx={{ width: 70 }}
                         value={s.bonusScore}
                         onChange={(e) =>
-                          handleChange(
-                            scores.findIndex((x) => x.className === s.className),
-                            "bonusScore",
-                            Number(e.target.value)
-                          )
+                          handleChange(s.className, "bonusScore", Number(e.target.value))
                         }
                       />
                     </TableCell>
