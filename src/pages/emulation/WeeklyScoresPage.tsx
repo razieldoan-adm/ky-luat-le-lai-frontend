@@ -147,7 +147,11 @@ export default function WeeklyScoresPage() {
       });
 
       setScores(data);
-      setSnackbar({ open: true, message: "Đã load dữ liệu", severity: "success" });
+      setSnackbar({
+        open: true,
+        message: "Đã load dữ liệu",
+        severity: "success",
+      });
     } catch (err) {
       console.error("Lỗi khi load dữ liệu:", err);
       setSnackbar({
@@ -158,9 +162,10 @@ export default function WeeklyScoresPage() {
     }
   };
 
-    const handleCalculate = () => {
+  const handleCalculate = () => {
     if (!scores.length) return;
 
+    // Tính điểm tổng
     const updated = scores.map((s) => {
       const totalViolation =
         disciplineMax -
@@ -169,14 +174,13 @@ export default function WeeklyScoresPage() {
       return { ...s, totalViolation, totalScore };
     });
 
-    // Nhóm theo khối và xếp hạng trong từng khối
+    // Gom theo khối và xếp hạng trong từng khối
     const grouped: Record<string, ScoreRow[]> = {};
     updated.forEach((s) => {
       if (!grouped[s.grade]) grouped[s.grade] = [];
       grouped[s.grade].push(s);
     });
 
-    // Gán rank vào từng phần tử
     Object.values(grouped).forEach((arr) => {
       arr.sort((a, b) => b.totalScore - a.totalScore);
       arr.forEach((s, idx) => {
@@ -188,9 +192,12 @@ export default function WeeklyScoresPage() {
     });
 
     setScores(updated);
-    setSnackbar({ open: true, message: "Đã tính xếp hạng", severity: "success" });
+    setSnackbar({
+      open: true,
+      message: "Đã tính xếp hạng",
+      severity: "success",
+    });
   };
-
 
   const handleSave = async () => {
     if (!selectedWeek) return;
@@ -200,10 +207,18 @@ export default function WeeklyScoresPage() {
         weekNumber: selectedWeek.weekNumber,
         scores,
       });
-      setSnackbar({ open: true, message: "Đã lưu dữ liệu", severity: "success" });
+      setSnackbar({
+        open: true,
+        message: "Đã lưu dữ liệu",
+        severity: "success",
+      });
     } catch (err) {
       console.error("Lỗi khi lưu:", err);
-      setSnackbar({ open: true, message: "Lỗi khi lưu dữ liệu", severity: "error" });
+      setSnackbar({
+        open: true,
+        message: "Lỗi khi lưu dữ liệu",
+        severity: "error",
+      });
     }
   };
 
@@ -298,7 +313,11 @@ export default function WeeklyScoresPage() {
                         sx={{ width: 70 }}
                         value={s.academicScore}
                         onChange={(e) =>
-                          handleChange(idx, "academicScore", Number(e.target.value))
+                          handleChange(
+                            scores.findIndex((x) => x.className === s.className),
+                            "academicScore",
+                            Number(e.target.value)
+                          )
                         }
                       />
                     </TableCell>
@@ -309,7 +328,11 @@ export default function WeeklyScoresPage() {
                         sx={{ width: 70 }}
                         value={s.bonusScore}
                         onChange={(e) =>
-                          handleChange(idx, "bonusScore", Number(e.target.value))
+                          handleChange(
+                            scores.findIndex((x) => x.className === s.className),
+                            "bonusScore",
+                            Number(e.target.value)
+                          )
                         }
                       />
                     </TableCell>
