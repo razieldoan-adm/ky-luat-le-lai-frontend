@@ -30,22 +30,9 @@ interface Score {
   ranking: number;
 }
 
-interface Setting {
-  disciplineMax: number;
-  classCounts?: Record<string, number>; // ví dụ { "10": 5, "11": 6 }
-}
-
 export default function WeeklyScoresPage() {
   const [week, setWeek] = useState<number>(1);
   const [scores, setScores] = useState<Score[]>([]);
-  const [settings, setSettings] = useState<Setting | null>(null);
-
-  // load settings
-  useEffect(() => {
-    api.get("/api/settings").then((res) => {
-      setSettings(res.data);
-    });
-  }, []);
 
   // load dữ liệu điểm tuần
   useEffect(() => {
@@ -56,34 +43,7 @@ export default function WeeklyScoresPage() {
         });
         let data: Score[] = res.data;
 
-        // Nếu có settings.classCounts -> thêm các lớp trống
-        if (settings?.classCounts) {
-          const filled: Score[] = [...data];
-          for (const [grade, count] of Object.entries(settings.classCounts)) {
-            for (let i = 1; i <= count; i++) {
-              const className = `${grade}${i}`;
-              if (!filled.find((s) => s.className === className)) {
-                filled.push({
-                  className,
-                  grade,
-                  weekNumber: week,
-                  attendanceScore: 0,
-                  hygieneScore: 0,
-                  lineupScore: 0,
-                  violationScore: 0,
-                  academicScore: 0,
-                  bonusScore: 0,
-                  totalViolation: settings.disciplineMax ?? 100,
-                  totalScore: 0,
-                  ranking: 0,
-                });
-              }
-            }
-          }
-          data = filled;
-        }
-
-        // sắp xếp theo grade + ranking
+        // sắp xếp theo khối (grade) và xếp hạng trong khối
         data.sort((a, b) => {
           if (a.grade !== b.grade) return a.grade.localeCompare(b.grade);
           return a.ranking - b.ranking;
@@ -95,7 +55,7 @@ export default function WeeklyScoresPage() {
       }
     };
     fetchData();
-  }, [week, settings]);
+  }, [week]);
 
   return (
     <Box p={2}>
