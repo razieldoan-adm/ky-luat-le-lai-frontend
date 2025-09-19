@@ -20,9 +20,15 @@ import api from "../../api/api";
 // Parse datetime-local chỉ lấy dd/MM, năm = năm hệ thống
 function parseCustomDate(value: string): Date | null {
   if (!value) return null;
-  const [, monthStr, dayStr] = value.split("-");
-  const currentYear = new Date().getFullYear();
-  return new Date(currentYear, Number(monthStr) - 1, Number(dayStr));
+  // value dạng "2025-09-19T22:10"
+  const [datePart] = value.split("T");
+  if (!datePart) return null;
+
+  const [yearInput, month, day] = datePart.split("-").map(Number);
+
+  const currentYear = new Date().getFullYear(); // luôn dùng năm hệ thống
+
+  return new Date(currentYear, month - 1, day);
 }
 
 
