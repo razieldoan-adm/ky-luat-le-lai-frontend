@@ -2,217 +2,177 @@ import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
-  Select,
-  MenuItem,
+  TextField,
   Button,
+  Paper,
   Table,
   TableHead,
   TableRow,
   TableCell,
   TableBody,
-  Paper,
+  MenuItem,
+  Stack,
+  Snackbar,
+  Alert,
 } from "@mui/material";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import api from "../../api/api";
 
 interface Violation {
   _id: string;
-  violationName: string;
-  date: string;
-  handlingMethod: string;
-  status: string;
+  type: string;
   points: number;
-  week: number;
+  handlingMethod: string;
+  createdAt: string;
 }
 
-const ViolationDetailPage = () => {
-  const { studentId } = useParams<{ studentId: string }>();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const searchParams = new URLSearchParams(location.search);
-  const className = searchParams.get("className") || "";
-
+export default function ViolationDetailPage() {
+  const { studentId } = useParams();
   const [violations, setViolations] = useState<Violation[]>([]);
-  const [selectedViolation, setSelectedViolation] = useState("");
-  const [violationList, setViolationList] = useState<any[]>([]);
-  const [customDate, setCustomDate] = useState("");
+  const [violationType, setViolationType] = useState("");
+  const [points, setPoints] = useState<number>(0);
+  const [handlingMethod, setHandlingMethod] = useState("");
+  const [dayInput, setDayInput] = useState("");
+  const [monthInput, setMonthInput] = useState("");
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+
+  const currentYear = new Date().getFullYear();
 
   useEffect(() => {
     fetchViolations();
-    fetchViolationList();
-  }, [studentId]);
+  }, []);
 
   const fetchViolations = async () => {
     try {
-      const res = await api.get(`/api/violations/student/${studentId}`);
+      const res = await api.get(`/api/violations/${studentId}`);
       setViolations(res.data);
     } catch (err) {
-      console.error("Lỗi khi tải danh sách vi phạm:", err);
+      console.error("Lỗi tải vi phạm:", err);
     }
   };
 
-  const fetchViolationList = async () => {
-    try {
-      const res = await api.get("/api/violations/list");
-      setViolationList(res.data);
-    } catch (err) {
-      console.error("Lỗi khi tải danh mục vi phạm:", err);
-    }
-  };
-
-  // Format ngày hiển thị dd/mm/yyyy
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const dd = String(date.getDate()).padStart(2, "0");
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const yyyy = date.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
-  };
-
-  // Thêm vi phạm mới
   const handleAddViolation = async () => {
-    if (!selectedViolation) return;
-
-    const now = new Date();
-    const year = now.getFullYear();
-    let violationDate: string;
-
-    if (customDate) {
-      // Nếu có chọn ngày (yyyy-mm-dd) → lấy dd/mm + năm hệ thống
-      const [yyyy, mm, dd] = customDate.split("-");
-      violationDate = new Date(`${year}-${mm}-${dd}`).toISOString();
-    } else {
-      // Nếu không chọn → lấy ngày giờ hệ thống
-      violationDate = now.toISOString();
-    }
-
     try {
-      await api.post("/api/violations", {
-        studentId,
-        violationId: selectedViolation,
-        date: violationDate,
+      // Nếu có nhập ngày/tháng thủ công thì tạo chuỗi dd/MM/yyyy
+      let formattedDate: string;
+      if (dayInput && monthInput) {
+        const dd = dayInput.padStart(2, "0");
+        const mm = monthInput.padStart(2, "0");
+        formattedDate = `${dd}/${mm}/${currentYear}`;
+      } else {
+        // Nếu không nhập thì lấy ngày hệ thống
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, "0");
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        formattedDate = `${dd}/${mm}/${currentYear}`;
+      }
+
+      await api.post(`/api/violations/${studentId}`, {
+        type: violationType,
+        points,
+        handlingMethod,
+        violationDate: formattedDate, // Lưu dạng dd/MM/yyyy
       });
-      setSelectedViolation("");
-      setCustomDate("");
-      fetchViolations();
-    } catch (err) {
-      console.error("Lỗi khi thêm vi phạm:", err);
-    }
-  };
 
-  const handleDeleteViolation = async (violationId: string) => {
-    try {
-      await api.delete(`/api/violations/${violationId}`);
+      setViolationType("");
+      setPoints(0);
+      setHandlingMethod("");
+      setDayInput("");
+      setMonthInput("");
       fetchViolations();
+      setOpenSnackbar(true);
     } catch (err) {
-      console.error("Lỗi khi xóa vi phạm:", err);
-    }
-  };
-
-  const handleProcessViolation = async (violationId: string) => {
-    try {
-      await api.put(`/api/violations/${violationId}/process`);
-      fetchViolations();
-    } catch (err) {
-      console.error("Lỗi khi xử lý vi phạm:", err);
+      console.error("Lỗi thêm vi phạm:", err);
     }
   };
 
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>
-        Chi tiết vi phạm
+        Chi tiết vi phạm học sinh
       </Typography>
 
-      {/* Form ghi nhận lỗi mới */}
-      <Box display="flex" gap={2} mb={3}>
-        <Select
-          value={selectedViolation}
-          onChange={(e) => setSelectedViolation(e.target.value)}
-          displayEmpty
-          sx={{ minWidth: 200 }}
-        >
-          <MenuItem value="">Lỗi vi phạm</MenuItem>
-          {violationList.map((v) => (
-            <MenuItem key={v._id} value={v._id}>
-              {v.name}
-            </MenuItem>
-          ))}
-        </Select>
+      {/* Form thêm vi phạm */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack spacing={2}>
+          <TextField
+            label="Loại vi phạm"
+            value={violationType}
+            onChange={(e) => setViolationType(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Điểm trừ"
+            type="number"
+            value={points}
+            onChange={(e) => setPoints(Number(e.target.value))}
+            fullWidth
+          />
+          <TextField
+            select
+            label="Hình thức xử lý"
+            value={handlingMethod}
+            onChange={(e) => setHandlingMethod(e.target.value)}
+            fullWidth
+          >
+            <MenuItem value="Nhắc nhở">Nhắc nhở</MenuItem>
+            <MenuItem value="Kiểm điểm">Kiểm điểm</MenuItem>
+            <MenuItem value="Mời phụ huynh">Mời phụ huynh</MenuItem>
+          </TextField>
 
-        <input
-          type="date"
-          value={customDate}
-          onChange={(e) => setCustomDate(e.target.value)}
-          style={{ padding: "8px" }}
-        />
+          <Stack direction="row" spacing={2}>
+            <TextField
+              label="Ngày (dd)"
+              value={dayInput}
+              onChange={(e) => setDayInput(e.target.value)}
+              inputProps={{ maxLength: 2 }}
+            />
+            <TextField
+              label="Tháng (MM)"
+              value={monthInput}
+              onChange={(e) => setMonthInput(e.target.value)}
+              inputProps={{ maxLength: 2 }}
+            />
+          </Stack>
 
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleAddViolation}
-        >
-          Ghi nhận
-        </Button>
-      </Box>
+          <Button variant="contained" onClick={handleAddViolation}>
+            Thêm vi phạm
+          </Button>
+        </Stack>
+      </Paper>
 
       {/* Bảng danh sách vi phạm */}
       <Paper>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>STT</TableCell>
-              <TableCell>Lỗi vi phạm</TableCell>
-              <TableCell>Thời gian</TableCell>
-              <TableCell>Xử lý</TableCell>
-              <TableCell>Trạng thái</TableCell>
+              <TableCell>Loại</TableCell>
               <TableCell>Điểm trừ</TableCell>
-              <TableCell>Tuần</TableCell>
-              <TableCell>Thao tác</TableCell>
+              <TableCell>Xử lý</TableCell>
+              <TableCell>Ngày vi phạm</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {violations.map((v, index) => (
+            {violations.map((v) => (
               <TableRow key={v._id}>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell>{v.violationName}</TableCell>
-                <TableCell>{formatDate(v.date)}</TableCell>
-                <TableCell>{v.handlingMethod}</TableCell>
-                <TableCell>
-                  {v.status === "unprocessed" ? "Chưa xử lý" : "Đã xử lý"}
-                </TableCell>
+                <TableCell>{v.type}</TableCell>
                 <TableCell>{v.points}</TableCell>
-                <TableCell>{v.week}</TableCell>
-                <TableCell>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    color="primary"
-                    onClick={() => handleProcessViolation(v._id)}
-                  >
-                    Xử lý
-                  </Button>
-                  <Button
-                    size="small"
-                    color="error"
-                    onClick={() => handleDeleteViolation(v._id)}
-                  >
-                    Xóa
-                  </Button>
-                </TableCell>
+                <TableCell>{v.handlingMethod}</TableCell>
+                <TableCell>{v.createdAt || ""}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Paper>
 
-      <Box mt={2}>
-        <Button variant="outlined" onClick={() => navigate(-1)}>
-          Quay lại
-        </Button>
-      </Box>
+      {/* Snackbar thông báo */}
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={3000}
+        onClose={() => setOpenSnackbar(false)}
+      >
+        <Alert severity="success">Đã thêm vi phạm!</Alert>
+      </Snackbar>
     </Box>
   );
-};
-
-export default ViolationDetailPage;
+}
