@@ -126,7 +126,7 @@ const ViolationDetailPage = () => {
     const year = now.getFullYear();
 
     if (customDate) {
-      const [yyyy, mm, dd] = customDate.split('-');
+      const [_, dd, mm] = customDate.split('-');
       return `${dd}/${mm}/${year}`;
     }
 
