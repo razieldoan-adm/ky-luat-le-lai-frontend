@@ -77,11 +77,11 @@ export default function ViolationDetailPage() {
     const year = today.getFullYear();
 
     if (customDate) {
-      // Nếu người dùng nhập, customDate dạng yyyy-mm-dd → tách dd/mm
-      const [y, m, d] = customDate.split("-");
+      // Nếu người dùng nhập, customDate dạng yyyy-mm-dd → chỉ lấy dd/mm và gắn năm hệ thống
+      const [, m, d] = customDate.split("-");
       return `${d}/${m}/${year}`;
     } else {
-      // Nếu để trống → lấy hệ thống
+      // Nếu để trống → lấy ngày hệ thống
       const d = String(today.getDate()).padStart(2, "0");
       const m = String(today.getMonth() + 1).padStart(2, "0");
       return `${d}/${m}/${year}`;
