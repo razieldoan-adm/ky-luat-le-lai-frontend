@@ -16,7 +16,7 @@ import {
 import api from "../api/api";
 
 interface Result {
-  className: string;
+  
   academicScore: number;
   disciplineScore: number;
   hygieneScore: number;
