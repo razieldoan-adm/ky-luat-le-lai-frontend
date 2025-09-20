@@ -18,8 +18,14 @@ interface Result {
   _id: string;
   className: string;
   weekNumber: number;
-  totalPoints: number;
-  ranking: number;
+  academicScore: number;
+  disciplineScore: number;
+  hygieneScore: number;
+  attendanceScore: number;
+  lineUpScore: number;
+  totalNeNepscore: number;
+  totalScore: number;
+  rank: number;
 }
 
 export default function ViewFinalCompetitionResult() {
@@ -32,7 +38,6 @@ export default function ViewFinalCompetitionResult() {
   const fetchWeeks = async () => {
     try {
       const res = await api.get<Result[]>("/api/class-weekly-scores");
-
       const weekNumbers: number[] = Array.from(
         new Set(res.data.map((item) => item.weekNumber))
       ).sort((a, b) => a - b);
@@ -115,19 +120,21 @@ export default function ViewFinalCompetitionResult() {
         Kết quả thi đua tuần
       </Typography>
 
-      <Box mb={2}>
-        <Typography variant="subtitle1">Chọn tuần:</Typography>
-        <Select
-          value={selectedWeek ?? ""}
-          onChange={(e) => setSelectedWeek(Number(e.target.value))}
-          sx={{ minWidth: 120 }}
-        >
-          {weeks.map((w) => (
-            <MenuItem key={w} value={w}>
-              Tuần {w}
-            </MenuItem>
-          ))}
-        </Select>
+      <Box mb={2} display="flex" gap={2}>
+        <Box>
+          <Typography variant="subtitle1">Chọn tuần:</Typography>
+          <Select
+            value={selectedWeek ?? ""}
+            onChange={(e) => setSelectedWeek(Number(e.target.value))}
+            sx={{ minWidth: 120 }}
+          >
+            {weeks.map((w) => (
+              <MenuItem key={w} value={w}>
+                Tuần {w}
+              </MenuItem>
+            ))}
+          </Select>
+        </Box>
       </Box>
 
       {loading ? (
@@ -139,20 +146,79 @@ export default function ViewFinalCompetitionResult() {
               Khối {group}
             </Typography>
             <Paper>
-              <Table>
+              <Table size="small" sx={{ border: "1px solid #000" }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Hạng</TableCell>
-                    <TableCell>Lớp</TableCell>
-                    <TableCell>Điểm</TableCell>
+                    <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
+                      STT
+                    </TableCell>
+                    <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
+                      Lớp
+                    </TableCell>
+                    <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
+                      Học tập
+                    </TableCell>
+                    <TableCell align="center" colSpan={4} sx={{ border: "1px solid #000" }}>
+                      Nề nếp
+                    </TableCell>
+                    <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
+                      Tổng điểm Nề nếp
+                    </TableCell>
+                    <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
+                      Tổng
+                    </TableCell>
+                    <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
+                      Xếp hạng
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                      Kỷ luật
+                    </TableCell>
+                    <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                      Vệ sinh
+                    </TableCell>
+                    <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                      Chuyên cần
+                    </TableCell>
+                    <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                      Xếp hàng
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {groupedResults[group].map((r) => (
-                    <TableRow key={r._id} style={getRowStyle(r.ranking)}>
-                      <TableCell>{r.ranking}</TableCell>
-                      <TableCell>{r.className}</TableCell>
-                      <TableCell>{r.totalPoints}</TableCell>
+                  {groupedResults[group].map((r, idx) => (
+                    <TableRow key={r._id} style={getRowStyle(r.rank)}>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {idx + 1}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {r.className}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {r.academicScore}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {r.disciplineScore}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {r.hygieneScore}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {r.attendanceScore}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {r.lineUpScore}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {r.totalNeNepscore}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {r.totalScore}
+                      </TableCell>
+                      <TableCell align="center" sx={{ border: "1px solid #000" }}>
+                        {r.rank}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
