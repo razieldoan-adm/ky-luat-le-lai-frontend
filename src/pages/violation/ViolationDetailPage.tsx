@@ -27,7 +27,7 @@ import api from '../../api/api';
 interface Violation {
   _id: string;
   description: string;
-  time: any; // could be ISO string or Date object or dd/MM/yyyy string
+  time?: string; // có thể là ISO hoặc dd/MM/yyyy (tuỳ backend)
   handled: boolean;
   handlingMethod: string;
   weekNumber?: number;
@@ -56,7 +56,7 @@ const ViolationDetailPage = () => {
   const [maxConductScore, setMaxConductScore] = useState(100);
   const [currentWeek, setCurrentWeek] = useState<any | null>(null);
 
-  // nhập ngày/tháng (năm mặc định là năm hiện tại)
+  // nhập ngày/tháng (nếu muốn)
   const [dayInput, setDayInput] = useState('');
   const [monthInput, setMonthInput] = useState('');
 
@@ -119,116 +119,106 @@ const ViolationDetailPage = () => {
   };
 
   const getHandlingMethodByRepeatCount = (count: number) => {
-    const methods = ["Nhắc nhở", "Kiểm điểm", "Chép phạt", "Báo phụ huynh", "Mời phụ huynh", "Tạm dừng việc học tập"];
-    return methods[count] || "Tạm dừng việc học tập";
+    const methods = [
+      'Nhắc nhở',
+      'Kiểm điểm',
+      'Chép phạt',
+      'Báo phụ huynh',
+      'Mời phụ huynh',
+      'Tạm dừng việc học tập',
+    ];
+    return methods[count] || 'Tạm dừng việc học tập';
   };
 
-  // --- Hàm lấy ngày vi phạm (ưu tiên ngày nhập, fallback ngày hệ thống)
-  // Trả về Date object
+  /**
+   * Trả về Date object:
+   * - Nếu nhập dayInput + monthInput hợp lệ -> trả Date(year hiện tại, mm, dd) với giờ đặt ở noon (12:00)
+   *   (đặt giờ ở noon tránh rủi ro bị lệch ngày do timezone khi convert/hiển thị)
+   * - Nếu không -> trả new Date() (ngày giờ hệ thống hiện tại)
+   */
   const getViolationDate = (): Date => {
     const now = new Date();
     const year = now.getFullYear();
 
     if (dayInput && monthInput) {
       const dd = parseInt(dayInput, 10);
-      const mm = parseInt(monthInput, 10) - 1; // JS tháng từ 0
+      const mm = parseInt(monthInput, 10) - 1; // JS months 0-11
+
       if (!isNaN(dd) && !isNaN(mm) && dd > 0 && dd <= 31 && mm >= 0 && mm < 12) {
-        // Tạo dạng yyyy-mm-dd để tránh ảo tuỳ locale
-        const candidate = new Date(year, mm, dd);
-        if (!isNaN(candidate.getTime())) {
-          return candidate;
+        // tạo date với giờ = 12:00 local để tránh bị trừ ngày khi chuyển sang UTC
+        const customDate = new Date(year, mm, dd, 12, 0, 0, 0);
+        if (!isNaN(customDate.getTime())) {
+          return customDate;
         }
       }
     }
 
-    return now;
+    // fallback: now (current datetime)
+    return new Date();
   };
 
-  // --- Format Date -> dd/MM/yyyy
-  const formatDate = (date: Date) => {
-    const dd = String(date.getDate()).padStart(2, '0');
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const yyyy = date.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
-  };
+  // helper hiển thị thời gian: xử lý input v.time có thể là ISO hoặc dd/MM/yyyy
+  const renderTime = (time?: string) => {
+    if (!time) return 'N/A';
 
-  // --- Robust formatter for displaying whatever v.time is
-  const formatTimeForDisplay = (t: any) => {
-    if (!t && t !== 0) return '';
-    // If it's a Date object
-    if (t instanceof Date) return formatDate(t);
-    // If it's a string, try ISO or dd/mm/yyyy
-    if (typeof t === 'string') {
-      // Try ISO parse first
-      const dIso = new Date(t);
-      if (!isNaN(dIso.getTime())) return formatDate(dIso);
+    // nếu backend trả dd/MM/yyyy (kiểu "21/09/2025") -> giữ nguyên
+    const ddmmPattern = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
+    if (ddmmPattern.test(time)) return time;
 
-      // Try dd/mm/yyyy or d/m/yyyy
-      const m = t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-      if (m) {
-        const dd = parseInt(m[1], 10);
-        const mm = parseInt(m[2], 10) - 1;
-        const yyyy = parseInt(m[3], 10);
-        const d = new Date(yyyy, mm, dd);
-        if (!isNaN(d.getTime())) return formatDate(d);
+    // thử parse bằng Date -> nếu hợp lệ thì format theo locale vi
+    const parsed = new Date(time);
+    if (!isNaN(parsed.getTime())) {
+      try {
+        return parsed.toLocaleDateString('vi-VN');
+      } catch {
+        return time;
       }
-
-      // fallback: return raw
-      return t;
     }
 
-    // other types: try convert to Date
-    try {
-      const d = new Date(t);
-      if (!isNaN(d.getTime())) return formatDate(d);
-    } catch {}
-    return String(t);
+    // fallback trả chuỗi thô
+    return time;
   };
 
   const handleAddViolation = async () => {
     const selectedRule = rules.find((r) => r._id === selectedRuleId);
     if (!selectedRule || !name || !className) {
-      setSnackbarMessage('Vui lòng chọn lỗi và đảm bảo có thông tin học sinh/lớp.');
+      setSnackbarMessage('Vui lòng chọn lỗi và đảm bảo có tên/lớp.');
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
       return;
     }
 
     try {
-      // lấy tuần hiện tại (như trước)
+      // lấy tuần hiện tại (nếu backend cần)
       const weeksRes = await api.get('/api/academic-weeks/study-weeks');
       const weeks = weeksRes.data || [];
       const now = new Date();
-
-      const currentWeek = weeks.find((w: any) => {
+      const currentWeekFound = weeks.find((w: any) => {
         const start = new Date(w.startDate);
         const end = new Date(w.endDate);
         return now >= start && now <= end;
       });
+      const weekNumber = currentWeekFound ? currentWeekFound.weekNumber : null;
 
-      const weekNumber = currentWeek ? currentWeek.weekNumber : null;
-
-      // lấy các vi phạm hiện có để tính lặp
+      // find repeat count để xác định hình thức xử lý
       const res = await api.get(
         `/api/violations/${encodeURIComponent(name)}?className=${encodeURIComponent(className)}`
       );
-      const sameViolations = (res.data || []).filter(
-        (v: Violation) => v.description === selectedRule.title
-      );
+      const sameViolations = (res.data || []).filter((v: Violation) => v.description === selectedRule.title);
       const repeatCount = sameViolations.length;
       const autoHandlingMethod = getHandlingMethodByRepeatCount(repeatCount);
 
-      // prepare time: use ISO string to send to backend (backend thường lưu Date)
-      const violationDateObj = getViolationDate();
-      const violationTimeToSend = violationDateObj.toISOString();
+      // LẤY DATE ĐƯỢC CHUẨN HÓA
+      const violationDate = getViolationDate();
 
+      // GỬI lên backend: gửi ISO string để backend lưu Date chuẩn
       await api.post('/api/violations', {
         name,
         className,
         description: selectedRule.title,
         handlingMethod: autoHandlingMethod,
         weekNumber: weekNumber,
-        time: violationTimeToSend,
+        time: violationDate.toISOString(), // gửi ISO
         handled: false,
       });
 
@@ -240,7 +230,9 @@ const ViolationDetailPage = () => {
       setSnackbarMessage(`Đã ghi nhận lỗi: ${selectedRule.title} (Tuần: ${weekNumber ?? 'Không xác định'})`);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
-      await fetchViolations();
+
+      // reload violations
+      fetchViolations();
     } catch (err) {
       console.error('Lỗi khi ghi nhận vi phạm:', err);
       setSnackbarMessage('Lỗi khi ghi nhận vi phạm.');
@@ -254,7 +246,7 @@ const ViolationDetailPage = () => {
       await api.patch(`/api/violations/${id}/handle`);
       setSnackbarMessage('Đã xử lý vi phạm thành công!');
       setSnackbarSeverity('success');
-      await fetchViolations();
+      fetchViolations();
     } catch (err) {
       console.error('Lỗi khi xử lý vi phạm:', err);
       setSnackbarMessage('Lỗi khi xử lý vi phạm.');
@@ -279,7 +271,6 @@ const ViolationDetailPage = () => {
     }
   };
 
-  // compute points & final score (unchanged)
   const totalPenalty = violations.reduce((sum, v) => {
     const rule = rules.find((r) => r.title === v.description);
     return sum + (rule?.point || 0);
@@ -327,18 +318,18 @@ const ViolationDetailPage = () => {
               </Select>
             </FormControl>
 
-            {/* ô nhập ngày/tháng (năm mặc định là năm hiện tại) */}
+            {/* Nhập ngày & tháng (nếu muốn) */}
             <TextField
               label="Ngày (dd)"
               value={dayInput}
-              onChange={(e) => setDayInput(e.target.value)}
+              onChange={(e) => setDayInput(e.target.value.replace(/\D/g, ''))}
               inputProps={{ maxLength: 2 }}
               sx={{ width: 100 }}
             />
             <TextField
               label="Tháng (MM)"
               value={monthInput}
-              onChange={(e) => setMonthInput(e.target.value)}
+              onChange={(e) => setMonthInput(e.target.value.replace(/\D/g, ''))}
               inputProps={{ maxLength: 2 }}
               sx={{ width: 100 }}
             />
@@ -371,15 +362,33 @@ const ViolationDetailPage = () => {
                 <TableRow key={v._id}>
                   <TableCell>{idx + 1}</TableCell>
                   <TableCell>{v.description}</TableCell>
-                  <TableCell>{formatTimeForDisplay(v.time)}</TableCell>
+                  <TableCell>{renderTime(v.time)}</TableCell>
                   <TableCell>{v.handlingMethod}</TableCell>
                   <TableCell>
                     {v.handled ? (
-                      <Box sx={{ backgroundColor: 'green', color: 'white', px: 1, py: 0.5, borderRadius: 1, textAlign: 'center' }}>
+                      <Box
+                        sx={{
+                          backgroundColor: 'green',
+                          color: 'white',
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 1,
+                          textAlign: 'center',
+                        }}
+                      >
                         Đã xử lý
                       </Box>
                     ) : (
-                      <Box sx={{ backgroundColor: '#ffcccc', color: 'red', px: 1, py: 0.5, borderRadius: 1, textAlign: 'center' }}>
+                      <Box
+                        sx={{
+                          backgroundColor: '#ffcccc',
+                          color: 'red',
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 1,
+                          textAlign: 'center',
+                        }}
+                      >
                         Chưa xử lý
                       </Box>
                     )}
