@@ -52,6 +52,7 @@ export default function WeeklyScoresPage() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
   const [scores, setScores] = useState<ScoreRow[]>([]);
+  const [hasData, setHasData] = useState<boolean>(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -92,6 +93,17 @@ export default function WeeklyScoresPage() {
     }
   };
 
+  // ---- check if weekly scores exist ----
+  const checkHasData = async (weekNumber: number) => {
+    try {
+      const res = await api.get(`/api/class-weekly-scores?weekNumber=${weekNumber}`);
+      setHasData(res.data && res.data.length > 0);
+    } catch (err) {
+      console.error("Lỗi khi kiểm tra dữ liệu:", err);
+      setHasData(false);
+    }
+  };
+
   // ---- load component scores from backend ----
   const handleLoadData = async () => {
     if (!selectedWeek) {
@@ -112,38 +124,35 @@ export default function WeeklyScoresPage() {
       const attendance = attendanceRes.data || [];
       const lineup = lineupRes.data || [];
 
-      const data: ScoreRow[] = classes
-        // nếu bạn chỉ muốn lớp có GVCN, uncomment dòng dưới
-        // .filter(c => c.homeroomTeacher)
-        .map((cls) => {
-          const vItem = violations.find((x: any) => x.className === cls.className);
-          const hItem = hygiene.find((x: any) => x.className === cls.className);
-          const aItem = attendance.find((x: any) => x.className === cls.className);
-          const lItem = lineup.find((x: any) => x.className === cls.className);
+      const data: ScoreRow[] = classes.map((cls) => {
+        const vItem = violations.find((x: any) => x.className === cls.className);
+        const hItem = hygiene.find((x: any) => x.className === cls.className);
+        const aItem = attendance.find((x: any) => x.className === cls.className);
+        const lItem = lineup.find((x: any) => x.className === cls.className);
 
-          // backend đang dùng totalScore field -> đọc totalScore
-          const v = (vItem && (vItem.totalScore ?? vItem.total ?? vItem.score ?? 0)) || 0;
-          const h = (hItem && (hItem.totalScore ?? hItem.total ?? hItem.score ?? 0)) || 0;
-          const a = (aItem && (aItem.totalScore ?? aItem.total ?? aItem.score ?? 0)) || 0;
-          const l = (lItem && (lItem.totalScore ?? lItem.total ?? lItem.score ?? 0)) || 0;
+        const v = (vItem && (vItem.totalScore ?? vItem.total ?? vItem.score ?? 0)) || 0;
+        const h = (hItem && (hItem.totalScore ?? hItem.total ?? hItem.score ?? 0)) || 0;
+        const a = (aItem && (aItem.totalScore ?? aItem.total ?? aItem.score ?? 0)) || 0;
+        const l = (lItem && (lItem.totalScore ?? lItem.total ?? lItem.score ?? 0)) || 0;
 
-          return {
-            className: cls.className,
-            grade: String(cls.grade),
-            weekNumber: selectedWeek.weekNumber,
-            academicScore: 0,
-            bonusScore: 0,
-            violationScore: Number(v),
-            hygieneScore: Number(h),
-            attendanceScore: Number(a),
-            lineUpScore: Number(l),
-            totalViolation: 0,
-            totalScore: 0,
-            rank: 0,
-          };
-        });
+        return {
+          className: cls.className,
+          grade: String(cls.grade),
+          weekNumber: selectedWeek.weekNumber,
+          academicScore: 0,
+          bonusScore: 0,
+          violationScore: Number(v),
+          hygieneScore: Number(h),
+          attendanceScore: Number(a),
+          lineUpScore: Number(l),
+          totalViolation: 0,
+          totalScore: 0,
+          rank: 0,
+        };
+      });
 
       setScores(data);
+      setHasData(false); // load lần đầu coi như chưa có trong weekly-scores
       setSnackbar({ open: true, message: "Đã load dữ liệu", severity: "success" });
     } catch (err) {
       console.error("Lỗi khi load dữ liệu:", err);
@@ -158,7 +167,6 @@ export default function WeeklyScoresPage() {
       return;
     }
 
-    // 1) compute totals for every class
     let updated = scores.map((s) => {
       const totalViolation =
         disciplineMax - (s.violationScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
@@ -166,19 +174,17 @@ export default function WeeklyScoresPage() {
       return { ...s, totalViolation, totalScore };
     });
 
-    // 2) group by grade
     const grouped: Record<string, ScoreRow[]> = {};
     updated.forEach((r) => {
       if (!grouped[r.grade]) grouped[r.grade] = [];
       grouped[r.grade].push(r);
     });
 
-    // 3) for each grade sort by totalScore desc and assign competition rank (1,1,3...)
     Object.values(grouped).forEach((arr) => {
       arr.sort((a, b) => b.totalScore - a.totalScore);
       let prevScore: number | null = null;
       let prevRank = 0;
-      let i = 0; // index (0-based)
+      let i = 0;
       arr.forEach((row) => {
         i++;
         if (prevScore === null) {
@@ -187,15 +193,16 @@ export default function WeeklyScoresPage() {
           prevScore = row.totalScore;
         } else {
           if (row.totalScore === prevScore) {
-            row.rank = prevRank; // tie -> same rank
+            row.rank = prevRank;
           } else {
-            row.rank = i; // competition ranking: rank = position index (1-based)
+            row.rank = i;
             prevRank = row.rank;
             prevScore = row.totalScore;
           }
         }
-        // also update the corresponding object in updated (they are same refs)
-        const idx = updated.findIndex((u) => u.className === row.className && u.grade === row.grade);
+        const idx = updated.findIndex(
+          (u) => u.className === row.className && u.grade === row.grade
+        );
         if (idx !== -1) updated[idx] = { ...row };
       });
     });
@@ -211,7 +218,11 @@ export default function WeeklyScoresPage() {
       return;
     }
     try {
-      await api.post("/api/class-weekly-scores", { weekNumber: selectedWeek.weekNumber, scores });
+      await api.post("/api/class-weekly-scores", {
+        weekNumber: selectedWeek.weekNumber,
+        scores,
+      });
+      setHasData(true);
       setSnackbar({ open: true, message: "Đã lưu dữ liệu", severity: "success" });
     } catch (err) {
       console.error("Lỗi khi lưu:", err);
@@ -219,13 +230,13 @@ export default function WeeklyScoresPage() {
     }
   };
 
-  // ---- change handler (by className to be stable when grouped) ----
   const handleChange = (className: string, field: keyof ScoreRow, value: number) => {
-    const updated = scores.map((s) => (s.className === className ? { ...s, [field]: value } : s));
+    const updated = scores.map((s) =>
+      s.className === className ? { ...s, [field]: value } : s
+    );
     setScores(updated);
   };
 
-  // ---- grouping for render; ensure rows shown ordered by rank (if calculated) ----
   const groupedByGrade: Record<string, ScoreRow[]> = {};
   scores.forEach((s) => {
     if (!groupedByGrade[s.grade]) groupedByGrade[s.grade] = [];
@@ -255,38 +266,55 @@ export default function WeeklyScoresPage() {
           onChange={(e) => {
             const week = weeks.find((w) => w._id === e.target.value) || null;
             setSelectedWeek(week);
+            if (week) checkHasData(week.weekNumber);
           }}
           sx={{ minWidth: 200 }}
           size="small"
         >
           {weeks.map((w) => (
             <MenuItem key={w._id} value={w._id}>
-              Tuần {w.weekNumber} ({formatDateShort(w.startDate)} → {formatDateShort(w.endDate)})
+              Tuần {w.weekNumber} ({formatDateShort(w.startDate)} →{" "}
+              {formatDateShort(w.endDate)})
             </MenuItem>
           ))}
         </TextField>
 
-        <Button variant="contained" onClick={handleLoadData}>
-          Gọi dữ liệu
+        <Button
+          variant="contained"
+          onClick={handleLoadData}
+          disabled={!selectedWeek || hasData}
+        >
+          Load dữ liệu
         </Button>
-        <Button variant="contained" color="secondary" onClick={handleCalculate}>
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={handleCalculate}
+          disabled={!scores.length}
+        >
           Tính xếp hạng
         </Button>
-        <Button variant="contained" color="success" onClick={handleSave}>
-          Lưu
+        <Button
+          variant="contained"
+          color="success"
+          onClick={handleSave}
+          disabled={!selectedWeek || !hasData}
+        >
+          Cập nhật dữ liệu
         </Button>
       </Box>
 
-      {gradeKeys.length === 0 && <Typography>Chưa có dữ liệu (nhấn "Gọi dữ liệu").</Typography>}
+      {gradeKeys.length === 0 && (
+        <Typography>Chưa có dữ liệu (nhấn "Load dữ liệu").</Typography>
+      )}
 
       {gradeKeys.map((grade) => {
-        // create sorted copy: ranked ones first by rank asc, then others by className
         const rows = (groupedByGrade[grade] || []).slice().sort((a, b) => {
           const aRank = a.rank || 9999;
           const bRank = b.rank || 9999;
-          if (aRank !== bRank) return aRank - bRank; // rank ascending (1 at top)
-          // if both unranked or same rank, fallback to totalScore desc
-          if ((b.totalScore || 0) !== (a.totalScore || 0)) return (b.totalScore || 0) - (a.totalScore || 0);
+          if (aRank !== bRank) return aRank - bRank;
+          if ((b.totalScore || 0) !== (a.totalScore || 0))
+            return (b.totalScore || 0) - (a.totalScore || 0);
           return a.className.localeCompare(b.className);
         });
 
@@ -317,7 +345,11 @@ export default function WeeklyScoresPage() {
                   {rows.map((r) => (
                     <TableRow
                       key={r.className}
-                      sx={r.className === topClassName ? { backgroundColor: "rgba(255,215,0,0.18)" } : {}}
+                      sx={
+                        r.className === topClassName
+                          ? { backgroundColor: "rgba(255,215,0,0.18)" }
+                          : {}
+                      }
                     >
                       <TableCell>{r.className}</TableCell>
 
@@ -327,7 +359,9 @@ export default function WeeklyScoresPage() {
                           type="number"
                           sx={{ width: 70 }}
                           value={r.academicScore}
-                          onChange={(e) => handleChange(r.className, "academicScore", Number(e.target.value))}
+                          onChange={(e) =>
+                            handleChange(r.className, "academicScore", Number(e.target.value))
+                          }
                         />
                       </TableCell>
 
@@ -337,7 +371,9 @@ export default function WeeklyScoresPage() {
                           type="number"
                           sx={{ width: 70 }}
                           value={r.bonusScore}
-                          onChange={(e) => handleChange(r.className, "bonusScore", Number(e.target.value))}
+                          onChange={(e) =>
+                            handleChange(r.className, "bonusScore", Number(e.target.value))
+                          }
                         />
                       </TableCell>
 
@@ -359,7 +395,11 @@ export default function WeeklyScoresPage() {
         );
       })}
 
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
     </Box>
