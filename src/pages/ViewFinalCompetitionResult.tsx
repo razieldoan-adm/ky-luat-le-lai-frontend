@@ -12,7 +12,7 @@ import {
   TextField,
   CircularProgress,
 } from "@mui/material";
-import api from "../api/api";
+import api from "../../api/api";
 
 interface Result {
   className: string;
@@ -35,40 +35,60 @@ interface Week {
 
 const ViewFinalCompetitionResult = () => {
   const [weeks, setWeeks] = useState<Week[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Lấy danh sách tuần
+  const fetchWeeks = async () => {
+    try {
+      const res = await api.get("/api/academic-weeks/study-weeks");
+      setWeeks(res.data);
+      if (res.data.length > 0) setSelectedWeek(res.data[0]); // chọn tuần đầu tiên
+    } catch (err) {
+      console.error("Lỗi khi lấy tuần:", err);
+    }
+  };
+
+  // Lấy kết quả theo tuần
+  const fetchResults = async (week: Week) => {
+    setLoading(true);
+    try {
+      const res = await api.get("/api/class-weekly-scores", {
+        params: { weekNumber: week.weekNumber },
+      });
+
+      // Sắp xếp lớp (ví dụ: 10A1, 10A2, 11A1, 12A1)
+      const sorted = res.data.sort((a: any, b: any) => {
+        const extractNumber = (s: string) => {
+          const match = s.match(/\d+$/);
+          return match ? parseInt(match[0], 10) : 0;
+        };
+        const extractPrefix = (s: string) => s.replace(/\d+$/, "");
+
+        const prefixA = extractPrefix(a.className);
+        const prefixB = extractPrefix(b.className);
+
+        if (prefixA !== prefixB) return prefixA.localeCompare(prefixB);
+        return extractNumber(a.className) - extractNumber(b.className);
+      });
+
+      setResults(sorted);
+    } catch (err) {
+      console.error("Lỗi khi lấy kết quả:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchWeeks = async () => {
-      try {
-        const res = await api.get("/api/weeks");
-        setWeeks(res.data);
-      } catch (err) {
-        console.error("Lỗi tải tuần:", err);
-      }
-    };
     fetchWeeks();
   }, []);
 
-  // Lấy dữ liệu kết quả khi chọn tuần
   useEffect(() => {
-    const fetchResults = async () => {
-      if (!selectedWeek) return;
-      setLoading(true);
-      try {
-        const res = await api.get("/api/final-competition-results", {
-          params: { weekNumber: selectedWeek },
-        });
-        setResults(res.data);
-      } catch (err) {
-        console.error("Lỗi tải kết quả:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchResults();
+    if (selectedWeek) {
+      fetchResults(selectedWeek);
+    }
   }, [selectedWeek]);
 
   return (
@@ -82,12 +102,15 @@ const ViewFinalCompetitionResult = () => {
         <TextField
           select
           label="Chọn tuần"
-          value={selectedWeek}
-          onChange={(e) => setSelectedWeek(Number(e.target.value))}
-          sx={{ minWidth: 200 }}
+          value={selectedWeek?._id || ""}
+          onChange={(e) => {
+            const week = weeks.find((w) => w._id === e.target.value) || null;
+            setSelectedWeek(week);
+          }}
+          sx={{ minWidth: 250 }}
         >
           {weeks.map((w) => (
-            <MenuItem key={w._id} value={w.weekNumber}>
+            <MenuItem key={w._id} value={w._id}>
               Tuần {w.weekNumber} ({w.startDate} → {w.endDate})
             </MenuItem>
           ))}
