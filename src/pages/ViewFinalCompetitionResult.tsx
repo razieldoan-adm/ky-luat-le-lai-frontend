@@ -4,44 +4,39 @@ import {
   Typography,
   Select,
   MenuItem,
+  Paper,
   Table,
   TableHead,
   TableRow,
   TableCell,
   TableBody,
-  FormControl,
-  InputLabel,
   CircularProgress,
 } from "@mui/material";
 import api from "../api/api";
 
 interface Result {
+  _id: string;
   className: string;
-  academicScore: number;
-  disciplineScore: number;
-  hygieneScore: number;
-  attendanceScore: number;
-  lineUpScore: number;
-  totalNeNepscore: number;
-  totalScore: number;
-  rank: number;
   weekNumber: number;
+  totalPoints: number;
+  ranking: number;
 }
 
-const ViewFinalCompetitionResult = () => {
+export default function ViewFinalCompetitionResult() {
   const [weeks, setWeeks] = useState<number[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedKhoi, setSelectedKhoi] = useState<string>("all");
 
-  // lấy danh sách tuần có dữ liệu trong class-weekly-scores
+  // lấy danh sách tuần có dữ liệu
   const fetchWeeks = async () => {
     try {
-      const res = await api.get("/api/class-weekly-scores");
-      const weekNumbers = Array.from(
-        new Set(res.data.map((item: Result) => item.weekNumber))
+      const res = await api.get<Result[]>("/api/class-weekly-scores");
+
+      const weekNumbers: number[] = Array.from(
+        new Set(res.data.map((item) => item.weekNumber))
       ).sort((a, b) => a - b);
+
       setWeeks(weekNumbers);
       if (weekNumbers.length > 0) setSelectedWeek(weekNumbers[0]);
     } catch (err) {
@@ -54,11 +49,12 @@ const ViewFinalCompetitionResult = () => {
     if (!selectedWeek) return;
     setLoading(true);
     try {
-      const res = await api.get("/api/class-weekly-scores", {
+      const res = await api.get<Result[]>("/api/class-weekly-scores", {
         params: { weekNumber: selectedWeek },
       });
 
-      const sorted = res.data.sort((a: Result, b: Result) => {
+      // sắp xếp lớp theo tên
+      const sorted = res.data.sort((a, b) => {
         const extractNumber = (s: string) => {
           const match = s.match(/\d+$/);
           return match ? parseInt(match[0], 10) : 0;
@@ -88,24 +84,43 @@ const ViewFinalCompetitionResult = () => {
     fetchResults();
   }, [selectedWeek]);
 
-  // lọc theo khối
-  const filteredResults =
-    selectedKhoi === "all"
-      ? results
-      : results.filter((r) => r.className.startsWith(selectedKhoi));
+  // nhóm kết quả theo khối lớp
+  const groupedResults: Record<string, Result[]> = results.reduce(
+    (acc: Record<string, Result[]>, r) => {
+      const prefix = r.className.replace(/\d+$/, "");
+      if (!acc[prefix]) acc[prefix] = [];
+      acc[prefix].push(r);
+      return acc;
+    },
+    {}
+  );
+
+  // màu theo hạng
+  const getRowStyle = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return { backgroundColor: "#FFD700" }; // vàng
+      case 2:
+        return { backgroundColor: "#C0C0C0" }; // bạc
+      case 3:
+        return { backgroundColor: "#CD7F32" }; // đồng
+      default:
+        return {};
+    }
+  };
 
   return (
     <Box p={3}>
-      <Typography variant="h5" gutterBottom fontWeight="bold">
-        Kết quả thi đua tổng hợp
+      <Typography variant="h5" gutterBottom>
+        Kết quả thi đua tuần
       </Typography>
 
-      {/* chọn tuần */}
-      <FormControl sx={{ minWidth: 200, mr: 2 }}>
-        <InputLabel>Chọn tuần</InputLabel>
+      <Box mb={2}>
+        <Typography variant="subtitle1">Chọn tuần:</Typography>
         <Select
           value={selectedWeek ?? ""}
           onChange={(e) => setSelectedWeek(Number(e.target.value))}
+          sx={{ minWidth: 120 }}
         >
           {weeks.map((w) => (
             <MenuItem key={w} value={w}>
@@ -113,115 +128,39 @@ const ViewFinalCompetitionResult = () => {
             </MenuItem>
           ))}
         </Select>
-      </FormControl>
+      </Box>
 
-      {/* chọn khối */}
-      <FormControl sx={{ minWidth: 120 }}>
-        <InputLabel>Lọc theo khối</InputLabel>
-        <Select
-          value={selectedKhoi}
-          onChange={(e) => setSelectedKhoi(e.target.value)}
-        >
-          <MenuItem value="all">Tất cả</MenuItem>
-          <MenuItem value="10">Khối 10</MenuItem>
-          <MenuItem value="11">Khối 11</MenuItem>
-          <MenuItem value="12">Khối 12</MenuItem>
-        </Select>
-      </FormControl>
-
-      {/* bảng kết quả */}
       {loading ? (
-        <Box display="flex" justifyContent="center" mt={3}>
-          <CircularProgress />
-        </Box>
+        <CircularProgress />
       ) : (
-        <Table size="small" sx={{ border: "1px solid #000", mt: 3 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
-                STT
-              </TableCell>
-              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
-                Lớp
-              </TableCell>
-              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
-                Học tập
-              </TableCell>
-              <TableCell align="center" colSpan={4} sx={{ border: "1px solid #000" }}>
-                Nề nếp
-              </TableCell>
-              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
-                Tổng điểm Nề nếp
-              </TableCell>
-              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
-                Tổng
-              </TableCell>
-              <TableCell align="center" rowSpan={2} sx={{ border: "1px solid #000" }}>
-                Xếp hạng
-              </TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                Kỷ luật
-              </TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                Vệ sinh
-              </TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                Chuyên cần
-              </TableCell>
-              <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                Xếp hàng
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredResults.map((r, idx) => {
-              let bgColor = "inherit";
-              if (r.rank === 1) bgColor = "#ffd700"; // vàng
-              else if (r.rank === 2) bgColor = "#c0c0c0"; // bạc
-              else if (r.rank === 3) bgColor = "#cd7f32"; // đồng
-
-              return (
-                <TableRow key={idx} sx={{ backgroundColor: bgColor }}>
-                  <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                    {idx + 1}
-                  </TableCell>
-                  <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                    {r.className}
-                  </TableCell>
-                  <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                    {r.academicScore}
-                  </TableCell>
-                  <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                    {r.disciplineScore}
-                  </TableCell>
-                  <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                    {r.hygieneScore}
-                  </TableCell>
-                  <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                    {r.attendanceScore}
-                  </TableCell>
-                  <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                    {r.lineUpScore}
-                  </TableCell>
-                  <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                    {r.totalNeNepscore}
-                  </TableCell>
-                  <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                    {r.totalScore}
-                  </TableCell>
-                  <TableCell align="center" sx={{ border: "1px solid #000" }}>
-                    {r.rank}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        Object.keys(groupedResults).map((group) => (
+          <Box key={group} mb={3}>
+            <Typography variant="h6" gutterBottom>
+              Khối {group}
+            </Typography>
+            <Paper>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Hạng</TableCell>
+                    <TableCell>Lớp</TableCell>
+                    <TableCell>Điểm</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {groupedResults[group].map((r) => (
+                    <TableRow key={r._id} style={getRowStyle(r.ranking)}>
+                      <TableCell>{r.ranking}</TableCell>
+                      <TableCell>{r.className}</TableCell>
+                      <TableCell>{r.totalPoints}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Paper>
+          </Box>
+        ))
       )}
     </Box>
   );
-};
-
-export default ViewFinalCompetitionResult;
+}
