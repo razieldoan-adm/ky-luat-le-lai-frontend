@@ -18,27 +18,13 @@ import {
 import { useParams } from "react-router-dom";
 import api from "../../api/api";
 
-interface Violation {
-  _id: string;
-  description: string;
-  handlingMethod: string;
-  time: string;
-}
-
-interface Rule {
-  _id: string;
-  title: string;
-  score: number;
-  handlingMethod: string;
-}
-
 export default function ViolationDetailPage() {
   const { studentId } = useParams();
   const [studentName, setStudentName] = useState("");
   const [className, setClassName] = useState("");
-  const [violations, setViolations] = useState<Violation[]>([]);
-  const [rules, setRules] = useState<Rule[]>([]);
-  const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
+  const [violations, setViolations] = useState<any[]>([]);
+  const [rules, setRules] = useState<any[]>([]);
+  const [selectedRule, setSelectedRule] = useState<any>(null);
   const [autoHandlingMethod, setAutoHandlingMethod] = useState("");
   const [weekNumber, setWeekNumber] = useState<number | null>(null);
   const [dayInput, setDayInput] = useState("");
@@ -67,21 +53,22 @@ export default function ViolationDetailPage() {
     fetchData();
   }, [studentId]);
 
-  // ✅ Trả về ISO string để backend lưu chuẩn
-  const getFormattedDate = () => {
+  // ✅ Hàm xử lý thời gian
+  const getViolationDate = () => {
     const now = new Date();
     const year = now.getFullYear();
 
     if (dayInput && monthInput) {
       const dd = parseInt(dayInput, 10);
-      const mm = parseInt(monthInput, 10) - 1; // tháng trong JS từ 0
+      const mm = parseInt(monthInput, 10) - 1;
       const customDate = new Date(year, mm, dd);
 
-      if (isNaN(customDate.getTime())) return now.toISOString();
-      return customDate.toISOString();
+      if (!isNaN(customDate.getTime())) {
+        return customDate;
+      }
     }
 
-    return now.toISOString();
+    return now;
   };
 
   const handleAddViolation = async () => {
@@ -95,7 +82,7 @@ export default function ViolationDetailPage() {
         description: selectedRule.title,
         handlingMethod: autoHandlingMethod,
         weekNumber,
-        time: getFormattedDate(),
+        time: getViolationDate(), // ✅ luôn chuẩn
         handled: false,
       });
 
@@ -192,4 +179,3 @@ export default function ViolationDetailPage() {
     </Box>
   );
 }
-
