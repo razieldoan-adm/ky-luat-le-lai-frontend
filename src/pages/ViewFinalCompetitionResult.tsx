@@ -15,13 +15,6 @@ import {
 } from "@mui/material";
 import api from "../api/api";
 
-interface Week {
-  _id?: string;
-  id?: string;
-  weekNumber: number;
-  name?: string;
-}
-
 interface Result {
   className: string;
   academicScore: number;
@@ -32,28 +25,27 @@ interface Result {
   totalNeNepscore: number;
   totalScore: number;
   rank: number;
+  weekNumber: number;
 }
 
 const ViewFinalCompetitionResult = () => {
-  const [weeks, setWeeks] = useState<Week[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
+  const [weeks, setWeeks] = useState<number[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedKhoi, setSelectedKhoi] = useState<string>("all");
 
-  // lấy danh sách tuần
+  // lấy danh sách tuần có dữ liệu trong class-weekly-scores
   const fetchWeeks = async () => {
     try {
-      const res = await api.get("/api/academic-weeks/study-weeks");
-      const formatted = res.data.map((w: any) => ({
-        _id: w._id || w.id || w.week || w.weekNumber,
-        weekNumber: w.weekNumber || w.week || 0,
-        name: w.name || `Tuần ${w.weekNumber || w.week}`,
-      }));
-      setWeeks(formatted);
-      if (formatted.length > 0) setSelectedWeek(formatted[0]);
+      const res = await api.get("/api/class-weekly-scores");
+      const weekNumbers = Array.from(
+        new Set(res.data.map((item: Result) => item.weekNumber))
+      ).sort((a, b) => a - b);
+      setWeeks(weekNumbers);
+      if (weekNumbers.length > 0) setSelectedWeek(weekNumbers[0]);
     } catch (err) {
-      console.error("Lỗi khi lấy tuần:", err);
+      console.error("Lỗi khi lấy tuần từ class-weekly-scores:", err);
     }
   };
 
@@ -63,11 +55,10 @@ const ViewFinalCompetitionResult = () => {
     setLoading(true);
     try {
       const res = await api.get("/api/class-weekly-scores", {
-        params: { weekNumber: selectedWeek.weekNumber },
+        params: { weekNumber: selectedWeek },
       });
 
-      // sắp xếp lớp
-      const sorted = res.data.sort((a: any, b: any) => {
+      const sorted = res.data.sort((a: Result, b: Result) => {
         const extractNumber = (s: string) => {
           const match = s.match(/\d+$/);
           return match ? parseInt(match[0], 10) : 0;
@@ -113,15 +104,12 @@ const ViewFinalCompetitionResult = () => {
       <FormControl sx={{ minWidth: 200, mr: 2 }}>
         <InputLabel>Chọn tuần</InputLabel>
         <Select
-          value={selectedWeek?._id || ""}
-          onChange={(e) => {
-            const week = weeks.find((w) => w._id === e.target.value);
-            setSelectedWeek(week || null);
-          }}
+          value={selectedWeek ?? ""}
+          onChange={(e) => setSelectedWeek(Number(e.target.value))}
         >
           {weeks.map((w) => (
-            <MenuItem key={w._id} value={w._id}>
-              {w.name}
+            <MenuItem key={w} value={w}>
+              Tuần {w}
             </MenuItem>
           ))}
         </Select>
