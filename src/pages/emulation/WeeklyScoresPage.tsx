@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
+  TextField,
   Button,
   Paper,
   Table,
@@ -9,181 +10,240 @@ import {
   TableRow,
   TableCell,
   TableBody,
-  Stack,
   MenuItem,
-  TextField,
+  Stack,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import api from "../../api/api";
 
 interface Week {
-  _id: string;
+  id: string;
   weekNumber: number;
-  startDate: string;
-  endDate: string;
+  startDate?: string;
+  endDate?: string;
 }
 
-interface Score {
-  _id: string;
-  studentName: string;
+interface ClassScore {
   className: string;
-  grade?: number; // có thể undefined nếu API chưa trả
-  total: number;
+  totalScore: number;
+  rank: number;
+  grade: number; // khối lớp (6,7,8,9)
 }
 
-const WeeklyScoresPage = () => {
+export default function WeeklyScoresPage() {
   const [weeks, setWeeks] = useState<Week[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
-  const [scores, setScores] = useState<Score[]>([]);
-  const [hasData, setHasData] = useState(false);
+  const [selectedWeek, setSelectedWeek] = useState<string>("");
+  const [scores, setScores] = useState<ClassScore[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
-  useEffect(() => {
-    fetchWeeks();
-  }, []);
-
-  useEffect(() => {
-    if (selectedWeek) {
-      checkAndLoadData(selectedWeek.weekNumber);
-    }
-  }, [selectedWeek]);
-
+  // fetch danh sách tuần
   const fetchWeeks = async () => {
     try {
-      const res = await api.get("/api/weeks");
-      setWeeks(res.data || []);
+      const res = await api.get("/api/academic-weeks/study-weeks");
+      const normalized = (res.data || []).map((w: any, idx: number) => ({
+        id: w._id || w.id || String(idx),
+        weekNumber: w.weekNumber || w.week || idx + 1,
+        startDate: w.startDate || w.start || "",
+        endDate: w.endDate || w.end || "",
+      }));
+      setWeeks(normalized);
     } catch (err) {
       console.error("Lỗi khi load tuần:", err);
     }
   };
 
-  const checkAndLoadData = async (weekNumber: number) => {
+  // fetch điểm theo tuần
+  const fetchScores = async (weekNumber: number) => {
+    setLoading(true);
     try {
-      const res = await api.get("/api/class-weekly-scores", {
+      const res = await api.get("/api/class-lineup-summaries", {
         params: { weekNumber },
       });
-      const data = res.data || [];
-      if (data.length > 0) {
-        // đã có dữ liệu trong DB
-        setHasData(true);
-        setScores(data);
-      } else {
-        // chưa có dữ liệu
-        setHasData(false);
-        setScores([]);
-      }
+
+      let data = res.data || [];
+
+      // Chuẩn hóa dữ liệu: thêm grade (khối)
+      data = data.map((item: any) => {
+        const className = item.className || "Không rõ";
+        let grade = 0;
+        if (className.startsWith("6")) grade = 6;
+        else if (className.startsWith("7")) grade = 7;
+        else if (className.startsWith("8")) grade = 8;
+        else if (className.startsWith("9")) grade = 9;
+
+        return {
+          className,
+          totalScore: item.totalScore || 0,
+          rank: 0,
+          grade,
+        };
+      });
+
+      // Xếp hạng riêng từng khối
+      const ranked: ClassScore[] = [];
+      [6, 7, 8, 9].forEach((g) => {
+        const group = data.filter((x: ClassScore) => x.grade === g);
+        group.sort((a, b) => b.totalScore - a.totalScore);
+        group.forEach((item, idx) => {
+          ranked.push({ ...item, rank: idx + 1 });
+        });
+      });
+
+      setScores(ranked);
     } catch (err) {
-      console.error("Lỗi kiểm tra dữ liệu:", err);
-      setHasData(false);
-      setScores([]);
+      console.error("Lỗi khi load điểm:", err);
+      setSnackbar({ open: true, message: "Lỗi khi tải dữ liệu điểm", severity: "error" });
+    } finally {
+      setLoading(false);
     }
   };
 
+  // lưu điểm (load dữ liệu lần đầu)
   const handleLoadData = async () => {
     if (!selectedWeek) return;
+    const week = weeks.find((w) => w.id === selectedWeek);
+    if (!week) return;
+
     try {
-      const res = await api.post("/api/class-lineup-summaries/load", {
-        weekNumber: selectedWeek.weekNumber,
-      });
-      setScores(res.data || []);
-      setHasData(true); // sau khi load lần đầu coi như đã có dữ liệu
+      await fetchScores(week.weekNumber);
+      await api.post("/api/class-lineup-summaries/load", { weekNumber: week.weekNumber });
+      setSnackbar({ open: true, message: "Đã load dữ liệu tuần mới", severity: "success" });
     } catch (err) {
       console.error("Lỗi khi load dữ liệu:", err);
+      setSnackbar({ open: true, message: "Không thể load dữ liệu", severity: "error" });
     }
   };
 
+  // cập nhật lại dữ liệu tuần
   const handleUpdateData = async () => {
     if (!selectedWeek) return;
+    const week = weeks.find((w) => w.id === selectedWeek);
+    if (!week) return;
+
     try {
-      const res = await api.put("/api/class-lineup-summaries/update", {
-        weekNumber: selectedWeek.weekNumber,
-      });
-      setScores(res.data || []);
-      setHasData(true);
+      await fetchScores(week.weekNumber);
+      await api.put("/api/class-lineup-summaries/update", { weekNumber: week.weekNumber });
+      setSnackbar({ open: true, message: "Đã cập nhật dữ liệu tuần", severity: "success" });
     } catch (err) {
       console.error("Lỗi khi cập nhật dữ liệu:", err);
+      setSnackbar({ open: true, message: "Không thể cập nhật dữ liệu", severity: "error" });
     }
   };
 
-  // nhóm điểm theo grade, nếu thiếu grade thì cố gắng parse từ className
-  const groupedByGrade = scores.reduce((acc, item) => {
-    let grade = item.grade;
-    if (!grade && item.className) {
-      const match = item.className.match(/^(\d+)/); // lấy số đầu của tên lớp
-      if (match) grade = parseInt(match[1], 10);
-    }
-    if (!grade) grade = -1; // fallback cho lỗi
-    if (!acc[grade]) acc[grade] = [];
-    acc[grade].push(item);
-    return acc;
-  }, {} as Record<number, Score[]>);
+  // khi chọn tuần → tự động load dữ liệu nếu đã tồn tại
+  useEffect(() => {
+    if (!selectedWeek) return;
+    const week = weeks.find((w) => w.id === selectedWeek);
+    if (!week) return;
+
+    const checkData = async () => {
+      try {
+        const res = await api.get("/api/class-lineup-summaries/check", {
+          params: { weekNumber: week.weekNumber },
+        });
+
+        if (res.data?.exists) {
+          await fetchScores(week.weekNumber); // tự động load dữ liệu
+        } else {
+          setScores([]); // chưa có dữ liệu
+        }
+      } catch (err) {
+        console.error("Lỗi khi kiểm tra dữ liệu tuần:", err);
+      }
+    };
+
+    checkData();
+  }, [selectedWeek, weeks]);
+
+  useEffect(() => {
+    fetchWeeks();
+  }, []);
 
   return (
-    <Box p={2}>
-      <Typography variant="h5" gutterBottom>
-        Điểm thi đua theo tuần
+    <Box p={3}>
+      <Typography variant="h5" mb={2}>
+        Điểm thi đua hàng tuần
       </Typography>
 
-      <Stack direction="row" spacing={2} mb={2}>
-        <TextField
-          select
-          label="Chọn tuần"
-          value={selectedWeek?._id || ""}
-          onChange={(e) => {
-            const week = weeks.find((w) => w._id === e.target.value) || null;
-            setSelectedWeek(week);
-          }}
-          sx={{ minWidth: 200 }}
-        >
-          {weeks.map((w) => (
-            <MenuItem key={w._id} value={w._id}>
-              Tuần {w.weekNumber} ({w.startDate} - {w.endDate})
-            </MenuItem>
-          ))}
-        </TextField>
+      {/* chọn tuần */}
+      <TextField
+        select
+        label="Chọn tuần"
+        value={selectedWeek || ""}
+        onChange={(e) => setSelectedWeek(e.target.value)}
+        sx={{ minWidth: 200, mr: 2 }}
+      >
+        {weeks.map((w) => (
+          <MenuItem key={w.id} value={w.id}>
+            Tuần {w.weekNumber}{" "}
+            {w.startDate && w.endDate ? `(${w.startDate} - ${w.endDate})` : ""}
+          </MenuItem>
+        ))}
+      </TextField>
 
-        {!hasData && (
-          <Button variant="contained" onClick={handleLoadData} disabled={!selectedWeek}>
+      {/* nút thao tác */}
+      <Stack direction="row" spacing={2} mt={2} mb={2}>
+        {!scores.length && selectedWeek && (
+          <Button variant="contained" color="primary" onClick={handleLoadData} disabled={loading}>
             Load dữ liệu
           </Button>
         )}
-        {hasData && (
-          <Button variant="contained" color="success" onClick={handleUpdateData}>
-            Cập nhật dữ liệu
+        {scores.length > 0 && (
+          <Button variant="contained" color="secondary" onClick={handleUpdateData} disabled={loading}>
+            Cập nhật
           </Button>
         )}
       </Stack>
 
-      {Object.entries(groupedByGrade).map(([grade, list]) => {
-        const sorted = [...list].sort((a, b) => b.total - a.total);
-        return (
-          <Paper key={grade} sx={{ mb: 4, p: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              {grade === "-1" ? "Khối chưa xác định" : `Khối ${grade}`}
-            </Typography>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Hạng</TableCell>
-                  <TableCell>Học sinh</TableCell>
-                  <TableCell>Lớp</TableCell>
-                  <TableCell>Điểm</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {sorted.map((s, idx) => (
-                  <TableRow key={s._id}>
-                    <TableCell>{idx + 1}</TableCell>
-                    <TableCell>{s.studentName}</TableCell>
-                    <TableCell>{s.className}</TableCell>
-                    <TableCell>{s.total}</TableCell>
+      {/* bảng điểm */}
+      {scores.length > 0 ? (
+        [6, 7, 8, 9].map((g) => {
+          const groupScores = scores.filter((s) => s.grade === g);
+          if (groupScores.length === 0) return null;
+
+          return (
+            <Paper key={g} sx={{ p: 2, mb: 3 }}>
+              <Typography variant="h6" mb={1}>
+                Khối {g}
+              </Typography>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Lớp</TableCell>
+                    <TableCell align="right">Điểm</TableCell>
+                    <TableCell align="right">Hạng</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
-        );
-      })}
+                </TableHead>
+                <TableBody>
+                  {groupScores.map((row) => (
+                    <TableRow key={row.className}>
+                      <TableCell>{row.className}</TableCell>
+                      <TableCell align="right">{row.totalScore}</TableCell>
+                      <TableCell align="right">{row.rank}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Paper>
+          );
+        })
+      ) : (
+        selectedWeek && <Typography>Chưa có dữ liệu tuần này.</Typography>
+      )}
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
     </Box>
   );
-};
-
-export default WeeklyScoresPage;
+}
