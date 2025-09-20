@@ -56,7 +56,7 @@ const ViolationDetailPage = () => {
   const [maxConductScore, setMaxConductScore] = useState(100);
   const [currentWeek, setCurrentWeek] = useState<any | null>(null);
 
-  // 👇 Thêm state nhập ngày & tháng
+  // 👇 thêm state nhập ngày/tháng
   const [dayInput, setDayInput] = useState('');
   const [monthInput, setMonthInput] = useState('');
 
@@ -118,11 +118,18 @@ const ViolationDetailPage = () => {
   };
 
   const getHandlingMethodByRepeatCount = (count: number) => {
-    const methods = ["Nhắc nhở", "Kiểm điểm", "Chép phạt", "Báo phụ huynh", "Mời phụ huynh", "Tạm dừng việc học tập"];
-    return methods[count] || "Tạm dừng việc học tập";
+    const methods = [
+      'Nhắc nhở',
+      'Kiểm điểm',
+      'Chép phạt',
+      'Báo phụ huynh',
+      'Mời phụ huynh',
+      'Tạm dừng việc học tập',
+    ];
+    return methods[count] || 'Tạm dừng việc học tập';
   };
 
-  // ✅ Hàm tính ngày lưu xuống DB
+  // 👇 Hàm lấy ngày vi phạm (ưu tiên ngày nhập, fallback ngày hệ thống)
   const getViolationDate = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -130,11 +137,23 @@ const ViolationDetailPage = () => {
     if (dayInput && monthInput) {
       const dd = parseInt(dayInput, 10);
       const mm = parseInt(monthInput, 10) - 1;
-      const customDate = new Date(year, mm, dd);
-      if (!isNaN(customDate.getTime())) return customDate;
+
+      if (!isNaN(dd) && !isNaN(mm) && dd > 0 && dd <= 31 && mm >= 0 && mm < 12) {
+        const customDate = new Date(year, mm, dd);
+        if (!isNaN(customDate.getTime())) {
+          return customDate;
+        }
+      }
     }
 
     return now;
+  };
+
+  const formatDate = (date: Date) => {
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
   };
 
   const handleAddViolation = async () => {
@@ -163,20 +182,24 @@ const ViolationDetailPage = () => {
       const repeatCount = sameViolations.length;
       const autoHandlingMethod = getHandlingMethodByRepeatCount(repeatCount);
 
+      const violationDate = getViolationDate();
+
       await api.post('/api/violations', {
         name,
         className,
         description: selectedRule.title,
         handlingMethod: autoHandlingMethod,
         weekNumber: weekNumber,
-        time: getViolationDate(), // ✅ thời gian chuẩn
-        handled: false
+        time: formatDate(violationDate),
+        handled: false,
       });
 
       setSelectedRuleId('');
       setDayInput('');
       setMonthInput('');
-      setSnackbarMessage(`Đã ghi nhận lỗi: ${selectedRule.title} (Tuần: ${weekNumber ?? 'Không xác định'})`);
+      setSnackbarMessage(
+        `Đã ghi nhận lỗi: ${selectedRule.title} (Tuần: ${weekNumber ?? 'Không xác định'})`
+      );
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
       fetchViolations();
@@ -265,7 +288,7 @@ const ViolationDetailPage = () => {
               </Select>
             </FormControl>
 
-            {/* 👇 nhập ngày & tháng */}
+            {/* 👇 ô nhập ngày/tháng */}
             <TextField
               label="Ngày (dd)"
               value={dayInput}
@@ -309,15 +332,33 @@ const ViolationDetailPage = () => {
                 <TableRow key={v._id}>
                   <TableCell>{idx + 1}</TableCell>
                   <TableCell>{v.description}</TableCell>
-                  <TableCell>{new Date(v.time).toLocaleDateString('vi-VN')}</TableCell>
+                  <TableCell>{v.time}</TableCell>
                   <TableCell>{v.handlingMethod}</TableCell>
                   <TableCell>
                     {v.handled ? (
-                      <Box sx={{ backgroundColor: 'green', color: 'white', px: 1, py: 0.5, borderRadius: 1, textAlign: 'center' }}>
+                      <Box
+                        sx={{
+                          backgroundColor: 'green',
+                          color: 'white',
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 1,
+                          textAlign: 'center',
+                        }}
+                      >
                         Đã xử lý
                       </Box>
                     ) : (
-                      <Box sx={{ backgroundColor: '#ffcccc', color: 'red', px: 1, py: 0.5, borderRadius: 1, textAlign: 'center' }}>
+                      <Box
+                        sx={{
+                          backgroundColor: '#ffcccc',
+                          color: 'red',
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 1,
+                          textAlign: 'center',
+                        }}
+                      >
                         Chưa xử lý
                       </Box>
                     )}
@@ -326,11 +367,19 @@ const ViolationDetailPage = () => {
                   <TableCell>{v.weekNumber ?? 'N/A'}</TableCell>
                   <TableCell>
                     {!v.handled && (
-                      <Button size="small" variant="contained" onClick={() => handleMarkAsHandled(v._id)}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => handleMarkAsHandled(v._id)}
+                      >
                         XỬ LÝ
                       </Button>
                     )}
-                    <Button size="small" color="error" onClick={() => handleDeleteViolation(v._id)}>
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => handleDeleteViolation(v._id)}
+                    >
                       Xoá
                     </Button>
                   </TableCell>
@@ -347,7 +396,11 @@ const ViolationDetailPage = () => {
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
           {snackbarMessage}
         </Alert>
       </Snackbar>
