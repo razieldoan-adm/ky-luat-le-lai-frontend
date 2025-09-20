@@ -1,350 +1,160 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 import {
   Box,
-  Button,
-  Card,
-  CardContent,
   Typography,
-  Stack,
-  Snackbar,
-  Alert,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
+  TextField,
+  Button,
+  Paper,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  TextField,
-} from '@mui/material';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import api from '../../api/api';
+  TableCell,
+  TableBody,
+  MenuItem,
+  Stack,
+} from "@mui/material";
+import { useParams, useNavigate } from "react-router-dom";
+import api from "../../api/api";
+
+interface Student {
+  _id: string;
+  name: string;
+  className: string;
+  conductScore: number;
+}
 
 interface Violation {
   _id: string;
-  description: string;
-  time?: string; // có thể là ISO hoặc dd/MM/yyyy (tuỳ backend)
-  handled: boolean;
+  violationName: string;
+  points: number;
   handlingMethod: string;
-  weekNumber?: number;
 }
 
-interface Rule {
+interface StudentViolation {
   _id: string;
-  title: string;
-  point: number;
+  violation: Violation;
+  time: string;
+  handlingMethod: string;
+  status: string;
+  points: number;
+  week: number;
 }
 
 const ViolationDetailPage = () => {
-  const { name } = useParams<{ name: string }>();
+  const { studentId, className } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const className = new URLSearchParams(location.search).get('className') || '';
 
-  const [violations, setViolations] = useState<Violation[]>([]);
-  const [rules, setRules] = useState<Rule[]>([]);
-  const [selectedRuleId, setSelectedRuleId] = useState('');
-
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
-
-  const [maxConductScore, setMaxConductScore] = useState(100);
-  const [currentWeek, setCurrentWeek] = useState<any | null>(null);
-
-  // nhập ngày/tháng (nếu muốn)
-  const [dayInput, setDayInput] = useState('');
-  const [monthInput, setMonthInput] = useState('');
+  const [student, setStudent] = useState<Student | null>(null);
+  const [violations, setViolations] = useState<StudentViolation[]>([]);
+  const [allViolations, setAllViolations] = useState<Violation[]>([]);
+  const [selectedViolation, setSelectedViolation] = useState("");
+  const [dateInput, setDateInput] = useState(""); // chỉ cần ngày
 
   useEffect(() => {
-    fetchViolations();
-    fetchRules();
-    fetchSettings();
-    fetchWeeks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, className]);
-
-  const fetchSettings = async () => {
-    try {
-      const res = await api.get('/api/settings');
-      if (res.data?.maxConductScore) {
-        setMaxConductScore(res.data.maxConductScore);
-      }
-    } catch (err) {
-      console.error('Lỗi khi lấy settings:', err);
-    }
-  };
-
-  const fetchWeeks = async () => {
-    try {
-      const res = await api.get('/api/academic-weeks/study-weeks');
-      const weeks = res.data || [];
-      const now = new Date();
-
-      const week = weeks.find((w: any) => {
-        const start = new Date(w.startDate);
-        const end = new Date(w.endDate);
-        return now >= start && now <= end;
-      });
-
-      setCurrentWeek(week || null);
-    } catch (err) {
-      console.error('Lỗi khi lấy tuần học:', err);
-    }
-  };
-
-  const fetchViolations = async () => {
-    try {
-      const res = await api.get(
-        `/api/violations/${encodeURIComponent(name || '')}?className=${encodeURIComponent(className)}`
-      );
-      setViolations(res.data || []);
-    } catch (err) {
-      console.error('Error fetching violations:', err);
-      setViolations([]);
-    }
-  };
-
-  const fetchRules = async () => {
-    try {
-      const res = await api.get('/api/rules');
-      setRules(res.data || []);
-    } catch (err) {
-      console.error('Lỗi khi lấy rules:', err);
-    }
-  };
-
-  const getHandlingMethodByRepeatCount = (count: number) => {
-    const methods = [
-      'Nhắc nhở',
-      'Kiểm điểm',
-      'Chép phạt',
-      'Báo phụ huynh',
-      'Mời phụ huynh',
-      'Tạm dừng việc học tập',
-    ];
-    return methods[count] || 'Tạm dừng việc học tập';
-  };
-
-  /**
-   * Trả về Date object:
-   * - Nếu nhập dayInput + monthInput hợp lệ -> trả Date(year hiện tại, mm, dd) với giờ đặt ở noon (12:00)
-   *   (đặt giờ ở noon tránh rủi ro bị lệch ngày do timezone khi convert/hiển thị)
-   * - Nếu không -> trả new Date() (ngày giờ hệ thống hiện tại)
-   */
-  const getViolationDate = (): Date => {
-    const now = new Date();
-    const year = now.getFullYear();
-
-    if (dayInput && monthInput) {
-      const dd = parseInt(dayInput, 10);
-      const mm = parseInt(monthInput, 10) - 1; // JS months 0-11
-
-      if (!isNaN(dd) && !isNaN(mm) && dd > 0 && dd <= 31 && mm >= 0 && mm < 12) {
-        // tạo date với giờ = 12:00 local để tránh bị trừ ngày khi chuyển sang UTC
-        const customDate = new Date(year, mm, dd, 12, 0, 0, 0);
-        if (!isNaN(customDate.getTime())) {
-          return customDate;
-        }
-      }
-    }
-
-    // fallback: now (current datetime)
-    return new Date();
-  };
-
-  // helper hiển thị thời gian: xử lý input v.time có thể là ISO hoặc dd/MM/yyyy
-  const renderTime = (time?: string) => {
-    if (!time) return 'N/A';
-
-    // nếu backend trả dd/MM/yyyy (kiểu "21/09/2025") -> giữ nguyên
-    const ddmmPattern = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
-    if (ddmmPattern.test(time)) return time;
-
-    // thử parse bằng Date -> nếu hợp lệ thì format theo locale vi
-    const parsed = new Date(time);
-    if (!isNaN(parsed.getTime())) {
+    const fetchData = async () => {
       try {
-        return parsed.toLocaleDateString('vi-VN');
-      } catch {
-        return time;
+        const [studentRes, violationRes, studentViolationRes] = await Promise.all([
+          api.get(`/api/students/${studentId}`),
+          api.get("/api/violations"),
+          api.get(`/api/student-violations/${studentId}`),
+        ]);
+        setStudent(studentRes.data);
+        setAllViolations(violationRes.data);
+        setViolations(studentViolationRes.data);
+      } catch (error) {
+        console.error("Lỗi khi tải dữ liệu:", error);
       }
-    }
+    };
 
-    // fallback trả chuỗi thô
-    return time;
-  };
+    fetchData();
+  }, [studentId]);
 
   const handleAddViolation = async () => {
-    const selectedRule = rules.find((r) => r._id === selectedRuleId);
-    if (!selectedRule || !name || !className) {
-      setSnackbarMessage('Vui lòng chọn lỗi và đảm bảo có tên/lớp.');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-      return;
-    }
+    if (!selectedViolation) return;
 
     try {
-      // lấy tuần hiện tại (nếu backend cần)
-      const weeksRes = await api.get('/api/academic-weeks/study-weeks');
-      const weeks = weeksRes.data || [];
-      const now = new Date();
-      const currentWeekFound = weeks.find((w: any) => {
-        const start = new Date(w.startDate);
-        const end = new Date(w.endDate);
-        return now >= start && now <= end;
-      });
-      const weekNumber = currentWeekFound ? currentWeekFound.weekNumber : null;
+      let violationTime: Date;
+      if (dateInput) {
+        violationTime = new Date(dateInput); // chỉ lấy ngày
+      } else {
+        violationTime = new Date(); // nếu để trống thì lấy hệ thống
+      }
 
-      // find repeat count để xác định hình thức xử lý
-      const res = await api.get(
-        `/api/violations/${encodeURIComponent(name)}?className=${encodeURIComponent(className)}`
-      );
-      const sameViolations = (res.data || []).filter((v: Violation) => v.description === selectedRule.title);
-      const repeatCount = sameViolations.length;
-      const autoHandlingMethod = getHandlingMethodByRepeatCount(repeatCount);
-
-      // LẤY DATE ĐƯỢC CHUẨN HÓA
-      const violationDate = getViolationDate();
-
-      // GỬI lên backend: gửi ISO string để backend lưu Date chuẩn
-      await api.post('/api/violations', {
-        name,
-        className,
-        description: selectedRule.title,
-        handlingMethod: autoHandlingMethod,
-        weekNumber: weekNumber,
-        time: violationDate.toISOString(), // gửi ISO
-        handled: false,
+      const res = await api.post("/api/student-violations", {
+        studentId,
+        violationId: selectedViolation,
+        time: violationTime.toISOString(),
       });
 
-      // reset inputs
-      setSelectedRuleId('');
-      setDayInput('');
-      setMonthInput('');
-
-      setSnackbarMessage(`Đã ghi nhận lỗi: ${selectedRule.title} (Tuần: ${weekNumber ?? 'Không xác định'})`);
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-
-      // reload violations
-      fetchViolations();
-    } catch (err) {
-      console.error('Lỗi khi ghi nhận vi phạm:', err);
-      setSnackbarMessage('Lỗi khi ghi nhận vi phạm.');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    }
-  };
-
-  const handleMarkAsHandled = async (id: string) => {
-    try {
-      await api.patch(`/api/violations/${id}/handle`);
-      setSnackbarMessage('Đã xử lý vi phạm thành công!');
-      setSnackbarSeverity('success');
-      fetchViolations();
-    } catch (err) {
-      console.error('Lỗi khi xử lý vi phạm:', err);
-      setSnackbarMessage('Lỗi khi xử lý vi phạm.');
-      setSnackbarSeverity('error');
-    } finally {
-      setSnackbarOpen(true);
+      setViolations([...violations, res.data]);
+      setSelectedViolation("");
+      setDateInput("");
+    } catch (error) {
+      console.error("Lỗi khi thêm vi phạm:", error);
     }
   };
 
   const handleDeleteViolation = async (id: string) => {
     try {
-      await api.delete(`/api/violations/${id}`);
-      setViolations((prev) => prev.filter((v) => v._id !== id));
-      setSnackbarMessage('Xoá vi phạm thành công!');
-      setSnackbarSeverity('success');
-    } catch (err) {
-      console.error('Lỗi xoá vi phạm:', err);
-      setSnackbarMessage('Lỗi xoá vi phạm.');
-      setSnackbarSeverity('error');
-    } finally {
-      setSnackbarOpen(true);
+      await api.delete(`/api/student-violations/${id}`);
+      setViolations(violations.filter((v) => v._id !== id));
+    } catch (error) {
+      console.error("Lỗi khi xóa vi phạm:", error);
     }
   };
 
-  const totalPenalty = violations.reduce((sum, v) => {
-    const rule = rules.find((r) => r.title === v.description);
-    return sum + (rule?.point || 0);
-  }, 0);
-
-  const finalScore = Math.max(maxConductScore - totalPenalty, 0);
-  const isBelowThreshold = finalScore < maxConductScore * 0.5;
-
   return (
-    <Box sx={{ width: '80vw', py: 6, mx: 'auto' }}>
-      <Typography variant="h4" fontWeight="bold" align="center">
+    <Box p={2}>
+      <Typography variant="h5" mb={2}>
         Chi tiết vi phạm
       </Typography>
-      <Typography variant="h6">
-        Học sinh: {name} - Lớp: {className}
-      </Typography>
-      <Typography color={isBelowThreshold ? 'error' : 'green'}>
-        Điểm hạnh kiểm: {finalScore}/{maxConductScore}
-      </Typography>
 
-      {currentWeek && (
-        <Typography sx={{ mt: 1 }}>
-          Tuần hiện tại: Tuần {currentWeek.weekNumber} (
-          {new Date(currentWeek.startDate).toLocaleDateString()} -{' '}
-          {new Date(currentWeek.endDate).toLocaleDateString()})
-        </Typography>
+      {student && (
+        <Box mb={2}>
+          <Typography>
+            Học sinh: {student.name} - Lớp: {student.className}
+          </Typography>
+          <Typography>Điểm hạnh kiểm: {student.conductScore}</Typography>
+        </Box>
       )}
 
-      <Card sx={{ my: 3 }}>
-        <CardContent>
-          <Typography variant="h6">Ghi nhận lỗi mới</Typography>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mt={2}>
-            <FormControl fullWidth>
-              <InputLabel>Lỗi vi phạm</InputLabel>
-              <Select
-                value={selectedRuleId}
-                label="Lỗi vi phạm"
-                onChange={(e) => setSelectedRuleId(e.target.value)}
-              >
-                {rules.map((rule) => (
-                  <MenuItem key={rule._id} value={rule._id}>
-                    {rule.title} ({rule.point} điểm)
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack direction="row" spacing={2}>
+          <TextField
+            select
+            label="Lỗi vi phạm"
+            value={selectedViolation}
+            onChange={(e) => setSelectedViolation(e.target.value)}
+            sx={{ minWidth: 250 }}
+          >
+            {allViolations.map((v) => (
+              <MenuItem key={v._id} value={v._id}>
+                {v.violationName}
+              </MenuItem>
+            ))}
+          </TextField>
 
-            {/* Nhập ngày & tháng (nếu muốn) */}
-            <TextField
-              label="Ngày (dd)"
-              value={dayInput}
-              onChange={(e) => setDayInput(e.target.value.replace(/\D/g, ''))}
-              inputProps={{ maxLength: 2 }}
-              sx={{ width: 100 }}
-            />
-            <TextField
-              label="Tháng (MM)"
-              value={monthInput}
-              onChange={(e) => setMonthInput(e.target.value.replace(/\D/g, ''))}
-              inputProps={{ maxLength: 2 }}
-              sx={{ width: 100 }}
-            />
+          <TextField
+            type="date"
+            label="Ngày vi phạm"
+            InputLabelProps={{ shrink: true }}
+            value={dateInput}
+            onChange={(e) => setDateInput(e.target.value)}
+          />
 
-            <Button variant="contained" onClick={handleAddViolation}>
-              Ghi nhận
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
+          <Button
+            variant="contained"
+            onClick={handleAddViolation}
+          >
+            Ghi nhận
+          </Button>
+        </Stack>
+      </Paper>
 
-      <TableContainer component={Paper}>
+      <Paper>
         <Table>
           <TableHead>
-            <TableRow sx={{ backgroundColor: '#87cafe' }}>
+            <TableRow sx={{ backgroundColor: "#90caf9" }}>
               <TableCell>STT</TableCell>
               <TableCell>Lỗi vi phạm</TableCell>
               <TableCell>Thời gian</TableCell>
@@ -356,74 +166,38 @@ const ViolationDetailPage = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {violations.map((v, idx) => {
-              const matchedRule = rules.find((r) => r.title === v.description);
-              return (
-                <TableRow key={v._id}>
-                  <TableCell>{idx + 1}</TableCell>
-                  <TableCell>{v.description}</TableCell>
-                  <TableCell>{renderTime(v.time)}</TableCell>
-                  <TableCell>{v.handlingMethod}</TableCell>
-                  <TableCell>
-                    {v.handled ? (
-                      <Box
-                        sx={{
-                          backgroundColor: 'green',
-                          color: 'white',
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 1,
-                          textAlign: 'center',
-                        }}
-                      >
-                        Đã xử lý
-                      </Box>
-                    ) : (
-                      <Box
-                        sx={{
-                          backgroundColor: '#ffcccc',
-                          color: 'red',
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 1,
-                          textAlign: 'center',
-                        }}
-                      >
-                        Chưa xử lý
-                      </Box>
-                    )}
-                  </TableCell>
-                  <TableCell>{matchedRule?.point || 0}</TableCell>
-                  <TableCell>{v.weekNumber ?? 'N/A'}</TableCell>
-                  <TableCell>
-                    {!v.handled && (
-                      <Button size="small" variant="contained" onClick={() => handleMarkAsHandled(v._id)}>
-                        XỬ LÝ
-                      </Button>
-                    )}
-                    <Button size="small" color="error" onClick={() => handleDeleteViolation(v._id)}>
-                      Xoá
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {violations.map((v, index) => (
+              <TableRow key={v._id}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{v.violation?.violationName}</TableCell>
+                <TableCell>
+                  {new Date(v.time).toLocaleDateString("vi-VN")}
+                </TableCell>
+                <TableCell>{v.handlingMethod}</TableCell>
+                <TableCell>
+                  {v.status === "Chưa xử lý" ? (
+                    <Typography color="error">Chưa xử lý</Typography>
+                  ) : (
+                    "Đã xử lý"
+                  )}
+                </TableCell>
+                <TableCell>{v.points}</TableCell>
+                <TableCell>{v.week}</TableCell>
+                <TableCell>
+                  <Button
+                    color="error"
+                    onClick={() => handleDeleteViolation(v._id)}
+                  >
+                    Xoá
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
-      </TableContainer>
+      </Paper>
 
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={3000}
-        onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
-
-      <Button variant="outlined" sx={{ mt: 3 }} onClick={() => navigate('/')}>
+      <Button sx={{ mt: 2 }} onClick={() => navigate(-1)}>
         Quay lại
       </Button>
     </Box>
