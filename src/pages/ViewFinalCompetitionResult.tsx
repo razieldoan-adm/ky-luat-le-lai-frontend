@@ -11,6 +11,7 @@ import {
   MenuItem,
   TextField,
   CircularProgress,
+  Stack,
 } from "@mui/material";
 import api from "../api/api";
 
@@ -27,8 +28,10 @@ interface Result {
 }
 
 interface Week {
-  _id: string;
-  weekNumber: number;
+  _id?: string;
+  id?: string;
+  week?: number;
+  weekNumber?: number;
   startDate: string;
   endDate: string;
 }
@@ -38,13 +41,23 @@ const ViewFinalCompetitionResult = () => {
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
+  const [gradeFilter, setGradeFilter] = useState<string>("all");
+
+  // chuẩn hóa field tuần (id, _id, weekNumber, week)
+  const normalizeWeek = (w: any): Week => ({
+    _id: w._id || w.id || String(w.week) || String(w.weekNumber),
+    weekNumber: w.weekNumber || w.week,
+    startDate: w.startDate,
+    endDate: w.endDate,
+  });
 
   // Lấy danh sách tuần
   const fetchWeeks = async () => {
     try {
       const res = await api.get("/api/academic-weeks/study-weeks");
-      setWeeks(res.data);
-      if (res.data.length > 0) setSelectedWeek(res.data[0]); // chọn tuần đầu tiên
+      const normalized = res.data.map((w: any) => normalizeWeek(w));
+      setWeeks(normalized);
+      if (normalized.length > 0) setSelectedWeek(normalized[0]);
     } catch (err) {
       console.error("Lỗi khi lấy tuần:", err);
     }
@@ -58,18 +71,19 @@ const ViewFinalCompetitionResult = () => {
         params: { weekNumber: week.weekNumber },
       });
 
-      // Sắp xếp lớp (ví dụ: 10A1, 10A2, 11A1, 12A1)
+      // Sắp xếp theo khối + số lớp
       const sorted = res.data.sort((a: any, b: any) => {
+        const extractGrade = (s: string) => {
+          const match = s.match(/^\d+/);
+          return match ? parseInt(match[0], 10) : 0;
+        };
         const extractNumber = (s: string) => {
           const match = s.match(/\d+$/);
           return match ? parseInt(match[0], 10) : 0;
         };
-        const extractPrefix = (s: string) => s.replace(/\d+$/, "");
-
-        const prefixA = extractPrefix(a.className);
-        const prefixB = extractPrefix(b.className);
-
-        if (prefixA !== prefixB) return prefixA.localeCompare(prefixB);
+        const gradeA = extractGrade(a.className);
+        const gradeB = extractGrade(b.className);
+        if (gradeA !== gradeB) return gradeA - gradeB;
         return extractNumber(a.className) - extractNumber(b.className);
       });
 
@@ -91,14 +105,34 @@ const ViewFinalCompetitionResult = () => {
     }
   }, [selectedWeek]);
 
+  // Lọc theo khối
+  const filteredResults = results.filter((r) => {
+    if (gradeFilter === "all") return true;
+    return r.className.startsWith(gradeFilter);
+  });
+
+  // Tính top 3 theo từng khối
+  const getRankColor = (className: string, rank: number) => {
+    if (rank === 1) return "#FFD700"; // vàng
+    if (rank === 2) return "#C0C0C0"; // bạc
+    if (rank === 3) return "#CD7F32"; // đồng
+    return "inherit";
+  };
+
   return (
     <Box p={2}>
       <Typography variant="h5" fontWeight="bold" gutterBottom align="center">
         KẾT QUẢ TỔNG HỢP THI ĐUA
       </Typography>
 
-      {/* Chọn tuần */}
-      <Box mb={2} display="flex" justifyContent="center">
+      <Stack
+        direction="row"
+        spacing={2}
+        mb={2}
+        justifyContent="center"
+        alignItems="center"
+      >
+        {/* Chọn tuần */}
         <TextField
           select
           label="Chọn tuần"
@@ -115,7 +149,22 @@ const ViewFinalCompetitionResult = () => {
             </MenuItem>
           ))}
         </TextField>
-      </Box>
+
+        {/* Chọn khối */}
+        <TextField
+          select
+          label="Chọn khối"
+          value={gradeFilter}
+          onChange={(e) => setGradeFilter(e.target.value)}
+          sx={{ minWidth: 150 }}
+        >
+          <MenuItem value="all">Tất cả</MenuItem>
+          <MenuItem value="6">Khối 6</MenuItem>
+          <MenuItem value="7">Khối 7</MenuItem>
+          <MenuItem value="8">Khối 8</MenuItem>
+          <MenuItem value="9">Khối 9</MenuItem>
+        </TextField>
+      </Stack>
 
       {/* Bảng kết quả */}
       <Paper sx={{ width: "100%", overflowX: "auto" }}>
@@ -193,8 +242,13 @@ const ViewFinalCompetitionResult = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {results.map((r, idx) => (
-                <TableRow key={idx}>
+              {filteredResults.map((r, idx) => (
+                <TableRow
+                  key={idx}
+                  sx={{
+                    backgroundColor: getRankColor(r.className, r.rank),
+                  }}
+                >
                   <TableCell align="center" sx={{ border: "1px solid #000" }}>
                     {idx + 1}
                   </TableCell>
