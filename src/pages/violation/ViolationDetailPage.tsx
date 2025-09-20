@@ -12,6 +12,8 @@ import {
   TableBody,
   MenuItem,
   Stack,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../../api/api";
@@ -41,14 +43,15 @@ interface StudentViolation {
 }
 
 const ViolationDetailPage = () => {
-  const { studentId } = useParams(); // ✅ bỏ className để không bị cảnh báo
+  const { studentId } = useParams();
   const navigate = useNavigate();
 
   const [student, setStudent] = useState<Student | null>(null);
   const [violations, setViolations] = useState<StudentViolation[]>([]);
   const [allViolations, setAllViolations] = useState<Violation[]>([]);
   const [selectedViolation, setSelectedViolation] = useState("");
-  const [dateInput, setDateInput] = useState(""); // chỉ cần ngày
+  const [dateInput, setDateInput] = useState(""); // chỉ lưu ngày
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,22 +76,30 @@ const ViolationDetailPage = () => {
     if (!selectedViolation) return;
 
     try {
-      let violationTime: Date;
+      let violationTime: string;
       if (dateInput) {
-        violationTime = new Date(dateInput); // chỉ lấy ngày
+        // Lấy đúng ngày nhập, format về ISO chỉ có ngày
+        const dateOnly = new Date(dateInput);
+        violationTime = new Date(
+          dateOnly.getFullYear(),
+          dateOnly.getMonth(),
+          dateOnly.getDate()
+        ).toISOString();
       } else {
-        violationTime = new Date(); // nếu để trống thì lấy hệ thống
+        // Nếu không nhập thì lấy hệ thống
+        violationTime = new Date().toISOString();
       }
 
       const res = await api.post("/api/student-violations", {
         studentId,
         violationId: selectedViolation,
-        time: violationTime.toISOString(),
+        time: violationTime,
       });
 
       setViolations([...violations, res.data]);
       setSelectedViolation("");
       setDateInput("");
+      setSuccessMessage("Ghi nhận vi phạm thành công!");
     } catch (error) {
       console.error("Lỗi khi thêm vi phạm:", error);
     }
@@ -200,6 +211,14 @@ const ViolationDetailPage = () => {
       <Button sx={{ mt: 2 }} onClick={() => navigate(-1)}>
         Quay lại
       </Button>
+
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={2000}
+        onClose={() => setSuccessMessage("")}
+      >
+        <Alert severity="success">{successMessage}</Alert>
+      </Snackbar>
     </Box>
   );
 };
