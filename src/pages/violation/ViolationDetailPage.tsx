@@ -41,7 +41,7 @@ interface StudentViolation {
 }
 
 const ViolationDetailPage = () => {
-  const { studentId, className } = useParams();
+  const { studentId } = useParams(); // ✅ bỏ className để không bị cảnh báo
   const navigate = useNavigate();
 
   const [student, setStudent] = useState<Student | null>(null);
