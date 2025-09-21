@@ -169,6 +169,11 @@ export default function WeeklyScoresPage() {
         api.get("/api/class-attendance-summaries", { params: { weekNumber: weekNum } }),
         api.get("/api/class-lineup-summaries", { params: { weekNumber: weekNum } }),
       ]).then((res) => res.map((r) => r.data || []));
+      console.log("== DEBUG DATA ==");
+console.log("violations:", violations);
+console.log("hygiene:", hygiene);
+console.log("attendance:", attendance);
+console.log("lineup:", lineup);
 
       const data: ScoreRow[] = classes.map((cls) => {
         const v = violations.find((x: any) => x.className === cls.className)?.totalScore || 0;
