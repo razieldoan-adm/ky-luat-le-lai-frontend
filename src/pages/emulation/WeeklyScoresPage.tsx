@@ -53,7 +53,7 @@ interface ScoreRow {
 export default function WeeklyScoresPage() {
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
-  const [classes, setClasses] = useState<Class[]>([]);
+  
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [hasData, setHasData] = useState<boolean>(false);
