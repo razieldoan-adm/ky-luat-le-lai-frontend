@@ -28,12 +28,7 @@ interface Week {
   endDate?: string;
 }
 
-interface Class {
-  _id: string;
-  className: string;
-  grade: string;
-  homeroomTeacher?: string;
-}
+
 
 interface ScoreRow {
   className: string;
@@ -110,15 +105,6 @@ export default function WeeklyScoresPage() {
       setWeeks(normalized);
     } catch (err) {
       console.error("Lỗi lấy tuần:", err);
-    }
-  };
-
-  const fetchClasses = async () => {
-    try {
-      const res = await api.get("/api/classes");
-      setClasses(res.data || []);
-    } catch (err) {
-      console.error("Lỗi lấy lớp:", err);
     }
   };
 
