@@ -94,7 +94,7 @@ export default function WeeklyScoresPage() {
       lineUpScore: Number(r.lineUpScore ?? 0),
       totalViolation: Number(r.totalViolation ?? 0),
       totalScore: Number(r.totalScore ?? 0),
-      rank: Number(r.rank ?? 0),
+      rank: Number(r.rank ?? r.ranking ?? 0),
     }));
   };
 
@@ -162,40 +162,10 @@ export default function WeeklyScoresPage() {
       return;
     }
     try {
-      const weekNum = selectedWeek.weekNumber;
-      const [violations, hygiene, attendance, lineup] = await Promise.all([
-        api.get("/api/class-violation-scores", { params: { weekNumber: weekNum } }),
-        api.get("/api/class-hygiene-scores", { params: { weekNumber: weekNum } }),
-        api.get("/api/class-attendance-summaries", { params: { weekNumber: weekNum } }),
-        api.get("/api/class-lineup-summaries", { params: { weekNumber: weekNum } }),
-      ]).then((res) => res.map((r) => r.data || []));
-      console.log("== DEBUG DATA ==");
-console.log("violations:", violations);
-console.log("hygiene:", hygiene);
-console.log("attendance:", attendance);
-console.log("lineup:", lineup);
-
-      const data: ScoreRow[] = classes.map((cls) => {
-        const v = violations.find((x: any) => x.className === cls.className)?.totalScore || 0;
-        const h = hygiene.find((x: any) => x.className === cls.className)?.totalScore || 0;
-        const a = attendance.find((x: any) => x.className === cls.className)?.totalScore || 0;
-        const l = lineup.find((x: any) => x.className === cls.className)?.totalScore || 0;
-        return {
-          className: cls.className,
-          grade: String(cls.grade ?? resolveGrade(cls.className)),
-          weekNumber: weekNum,
-          academicScore: 0,
-          bonusScore: 0,
-          violationScore: Number(v),
-          hygieneScore: Number(h),
-          attendanceScore: Number(a),
-          lineUpScore: Number(l),
-          totalViolation: 0,
-          totalScore: 0,
-          rank: 0,
-        };
+      const res = await api.get("/api/class-weekly-scores/temp", {
+        params: { weekNumber: selectedWeek.weekNumber },
       });
-      setScores(data);
+      setScores(normalizeSavedScores(res.data));
       setSnackbar({ open: true, message: "Đã load dữ liệu (chưa lưu)", severity: "success" });
     } catch (err) {
       console.error("Load dữ liệu lỗi:", err);
@@ -239,24 +209,31 @@ console.log("lineup:", lineup);
     setScores(updated);
   };
 
-  const handleSaveOrUpdate = async () => {
+  const handleSave = async () => {
     if (!selectedWeek || !scores.length) return;
     try {
-      if (!hasData) {
-        await api.post("/api/class-weekly-scores", {
-          weekNumber: selectedWeek.weekNumber,
-          scores,
-        });
-        setHasData(true);
-      } else {
-        await api.put("/api/class-weekly-scores", {
-          weekNumber: selectedWeek.weekNumber,
-          scores,
-        });
-      }
-      setSnackbar({ open: true, message: "Đã lưu/cập nhật", severity: "success" });
+      await api.post("/api/class-weekly-scores", {
+        weekNumber: selectedWeek.weekNumber,
+        scores,
+      });
+      setHasData(true);
+      setSnackbar({ open: true, message: "Đã lưu dữ liệu", severity: "success" });
     } catch (err) {
-      setSnackbar({ open: true, message: "Lỗi lưu dữ liệu", severity: "error" });
+      console.error("Save error:", err);
+      setSnackbar({ open: true, message: "Lỗi khi lưu dữ liệu", severity: "error" });
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!selectedWeek || !scores.length) return;
+    try {
+      await api.put(`/api/class-weekly-scores/${selectedWeek.weekNumber}`, {
+        scores,
+      });
+      setSnackbar({ open: true, message: "Đã cập nhật dữ liệu", severity: "success" });
+    } catch (err) {
+      console.error("Update error:", err);
+      setSnackbar({ open: true, message: "Lỗi khi cập nhật dữ liệu", severity: "error" });
     }
   };
 
@@ -344,13 +321,34 @@ console.log("lineup:", lineup);
           </Button>
         )}
 
-        <Button variant="contained" color="secondary" onClick={handleCalculate} disabled={!scores.length}>
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={handleCalculate}
+          disabled={!scores.length}
+        >
           Tính xếp hạng
         </Button>
 
-        <Button variant="contained" color="success" onClick={handleSaveOrUpdate} disabled={!scores.length}>
-          {hasData ? "Cập nhật" : "Lưu"}
-        </Button>
+        {!hasData ? (
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleSave}
+            disabled={!scores.length}
+          >
+            Lưu
+          </Button>
+        ) : (
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={handleUpdate}
+            disabled={!scores.length}
+          >
+            Cập nhật
+          </Button>
+        )}
 
         <Button variant="outlined" onClick={handleExportExcel} disabled={!scores.length}>
           Xuất Excel
