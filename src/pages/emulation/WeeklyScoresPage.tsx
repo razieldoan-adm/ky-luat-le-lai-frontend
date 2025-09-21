@@ -89,7 +89,6 @@ export default function WeeklyScoresPage() {
   // init
   useEffect(() => {
     fetchWeeks();
-    fetchClasses();
     fetchSettings();
   }, []);
 
