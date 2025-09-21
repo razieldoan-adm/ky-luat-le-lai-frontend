@@ -44,7 +44,7 @@ interface ScoreRow {
   violationScore: number;
   hygieneScore: number;
   attendanceScore: number;
-  lineUpScore: number;
+  lineupScore: number;
   totalViolation: number;
   totalScore: number;
   rank: number;
@@ -74,27 +74,20 @@ export default function WeeklyScoresPage() {
     return `${dd}/${mm}`;
   };
 
-  const resolveGrade = (className: string): string => {
-    const cls = classes.find((c) => c.className === className);
-    if (cls && cls.grade) return String(cls.grade);
-    const m = className.match(/^(\d+)/);
-    return m ? m[1] : "undefined";
-  };
-
   const normalizeSavedScores = (arr: any[]): ScoreRow[] => {
     return (arr || []).map((r: any) => ({
-      className: r.className || r.class || "",
-      grade: String(r.grade ?? resolveGrade(r.className) ?? "undefined"),
-      weekNumber: Number(r.weekNumber ?? r.week ?? selectedWeek?.weekNumber ?? 0),
+      className: r.className || "",
+      grade: String(r.grade ?? "undefined"),
+      weekNumber: Number(r.weekNumber ?? selectedWeek?.weekNumber ?? 0),
       academicScore: Number(r.academicScore ?? 0),
       bonusScore: Number(r.bonusScore ?? 0),
       violationScore: Number(r.violationScore ?? 0),
       hygieneScore: Number(r.hygieneScore ?? 0),
       attendanceScore: Number(r.attendanceScore ?? 0),
-      lineUpScore: Number(r.lineUpScore ?? 0),
+      lineupScore: Number(r.lineupScore ?? 0), // sửa lại cho đúng backend
       totalViolation: Number(r.totalViolation ?? 0),
       totalScore: Number(r.totalScore ?? 0),
-      rank: Number(r.rank ?? r.ranking ?? 0),
+      rank: Number(r.rank ?? 0),
     }));
   };
 
@@ -109,8 +102,8 @@ export default function WeeklyScoresPage() {
     try {
       const res = await api.get("/api/academic-weeks/study-weeks");
       const normalized: Week[] = (res.data || []).map((w: any, idx: number) => ({
-        _id: w._id || w.id || String(idx),
-        weekNumber: Number(w.weekNumber ?? w.week ?? idx + 1),
+        _id: w._id || String(idx),
+        weekNumber: Number(w.weekNumber ?? idx + 1),
         startDate: w.startDate || "",
         endDate: w.endDate || "",
       }));
@@ -177,7 +170,7 @@ export default function WeeklyScoresPage() {
     if (!scores.length) return;
     let updated = scores.map((s) => {
       const totalViolation =
-        disciplineMax - (s.violationScore + s.hygieneScore + s.attendanceScore + s.lineUpScore);
+        disciplineMax - (s.violationScore + s.hygieneScore + s.attendanceScore + s.lineupScore);
       const totalScore = s.academicScore + s.bonusScore + totalViolation;
       return { ...s, totalViolation, totalScore };
     });
@@ -225,11 +218,12 @@ export default function WeeklyScoresPage() {
   };
 
   const handleUpdate = async () => {
-    if (!selectedWeek || !scores.length) return;
+    if (!selectedWeek) return;
     try {
-      await api.put(`/api/class-weekly-scores/${selectedWeek.weekNumber}`, {
-        scores,
+      await api.put("/api/class-weekly-scores/update", {
+        weekNumber: selectedWeek.weekNumber,
       });
+      await checkHasData(selectedWeek.weekNumber);
       setSnackbar({ open: true, message: "Đã cập nhật dữ liệu", severity: "success" });
     } catch (err) {
       console.error("Update error:", err);
@@ -247,7 +241,7 @@ export default function WeeklyScoresPage() {
       "Vi phạm": s.violationScore,
       "Vệ sinh": s.hygieneScore,
       "Chuyên cần": s.attendanceScore,
-      "Xếp hàng": s.lineUpScore,
+      "Xếp hàng": s.lineupScore,
       "Tổng nề nếp": s.totalViolation,
       "Tổng điểm": s.totalScore,
       Hạng: s.rank,
@@ -344,7 +338,7 @@ export default function WeeklyScoresPage() {
             variant="contained"
             color="warning"
             onClick={handleUpdate}
-            disabled={!scores.length}
+            disabled={!selectedWeek}
           >
             Cập nhật
           </Button>
@@ -386,9 +380,9 @@ export default function WeeklyScoresPage() {
                   <TableBody>
                     {rows.map((r) => {
                       let bg = {};
-                      if (r.rank === 1) bg = { backgroundColor: "rgba(255,215,0,0.25)" }; // vàng
-                      else if (r.rank === 2) bg = { backgroundColor: "rgba(192,192,192,0.25)" }; // bạc
-                      else if (r.rank === 3) bg = { backgroundColor: "rgba(205,127,50,0.25)" }; // đồng
+                      if (r.rank === 1) bg = { backgroundColor: "rgba(255,215,0,0.25)" };
+                      else if (r.rank === 2) bg = { backgroundColor: "rgba(192,192,192,0.25)" };
+                      else if (r.rank === 3) bg = { backgroundColor: "rgba(205,127,50,0.25)" };
 
                       return (
                         <TableRow key={r.className} sx={bg}>
@@ -418,7 +412,7 @@ export default function WeeklyScoresPage() {
                           <TableCell>{r.violationScore}</TableCell>
                           <TableCell>{r.hygieneScore}</TableCell>
                           <TableCell>{r.attendanceScore}</TableCell>
-                          <TableCell>{r.lineUpScore}</TableCell>
+                          <TableCell>{r.lineupScore}</TableCell>
                           <TableCell>{r.totalViolation}</TableCell>
                           <TableCell>{r.totalScore}</TableCell>
                           <TableCell>{r.rank || "-"}</TableCell>
