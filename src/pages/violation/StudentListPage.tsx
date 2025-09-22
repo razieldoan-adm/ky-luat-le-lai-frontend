@@ -1,5 +1,5 @@
 // pages/StudentListPage.tsx
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 import { Button, Select, MenuItem, Table, TableHead, TableRow, TableCell, TableBody, TextField } from '@mui/material';
 
