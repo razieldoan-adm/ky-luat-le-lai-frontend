@@ -56,7 +56,7 @@ const StudentListPage: React.FC = () => {
   // Lưu tất cả
   const handleSaveAll = async () => {
     try {
-      await api.put("/api/students/update-phones", { students });
+      await api.post("/api/students/update-phones", { students });
       alert("Đã lưu thay đổi thành công!");
     } catch (err) {
       console.error("Lỗi khi lưu thay đổi:", err);
