@@ -21,6 +21,7 @@ import RecordViolationPage from './pages/violation/RecordViolationPage';
 import ViolationDetailPage from './pages/violation/ViolationDetailPage';
 import UnhandledViolationsPage from './pages/violation/UnhandledViolationsPage';
 import AllStudentPage from './pages/violation/AllViolationStudentPage';
+import StudentListPage from './pages/violation/StudentListPage.tsx';
 
 // Admin
 import AdminLayout from './layouts/AdminLayout';
@@ -93,7 +94,7 @@ function AppContent() {
                       <Route path="violations/:name" element={<ViolationDetailPage />} />
                       <Route path="unhandled" element={<UnhandledViolationsPage />} />
                       <Route path="all-violations" element={<AllStudentPage />} />
-                      
+                      <Route path="student-list" element={<StudentListPage />} />
                     </Route>
         {/* General app routes (with global header/sidebar) */}
         <Route element={<MainLayout />}>
