@@ -16,7 +16,7 @@ export default function StudentListPage() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const res = await api.get("/classes/with-teacher"); // ✅ instance api đã tự có prefix /api
+        const res = await api.get("/api/classes/with-teacher"); // ✅ instance api đã tự có prefix /api
         console.log("Classes:", res.data); // log thử dữ liệu
         setClassOptions(res.data || []);
       } catch (err) {
