@@ -1,94 +1,161 @@
-// pages/StudentListPage.tsx
-import { useState } from 'react';
-import axios from 'axios';
-import { Button, Select, MenuItem, Table, TableHead, TableRow, TableCell, TableBody, TextField } from '@mui/material';
+import React, { useEffect, useState } from "react";
+import {
+  Button,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  TextField,
+} from "@mui/material";
+import api from "@/api"; // axios instance của bạn
 
-export default function StudentListPage() {
-  const [students, setStudents] = useState<any[]>([]);
-  const [className, setClassName] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+interface Student {
+  _id: string;
+  name: string;
+  className: string;
+  fatherPhone?: string;
+  motherPhone?: string;
+}
 
-  const fetchStudents = async () => {
-    if (!className) return;
-    const res = await axios.get('/api/students', { params: { className } });
-    setStudents(res.data);
+const StudentListPage: React.FC = () => {
+  const [classes, setClasses] = useState<string[]>([]);
+  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // load danh sách lớp từ setting
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const res = await api.get("/api/settings/classes");
+        setClasses(res.data || []);
+      } catch (err) {
+        console.error("Lỗi load danh sách lớp:", err);
+      }
+    };
+    fetchClasses();
+  }, []);
+
+  // load học sinh theo lớp
+  const handleLoad = async () => {
+    if (!selectedClass) return;
+    setLoading(true);
+    try {
+      const res = await api.get("/api/students", {
+        params: { className: selectedClass },
+      });
+      setStudents(res.data || []);
+    } catch (err) {
+      console.error("Lỗi load danh sách học sinh:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleImport = async () => {
-    if (!file) return;
-    const formData = new FormData();
-    formData.append('file', file);
-    await axios.post('/api/students/import', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    setStudents([]); // reset sau khi import
-  };
-
-  const handleSavePhones = async () => {
-    await axios.post('/api/students/update-phones', students);
-    alert('Đã lưu số điện thoại');
-  };
-
-  const handleChangePhone = (id: string, field: string, value: string) => {
-    setStudents(prev =>
-      prev.map(s => (s._id === id ? { ...s, [field]: value } : s))
+  // update khi nhập số điện thoại
+  const handleChangePhone = (
+    id: string,
+    field: "fatherPhone" | "motherPhone",
+    value: string
+  ) => {
+    setStudents((prev) =>
+      prev.map((s) => (s._id === id ? { ...s, [field]: value } : s))
     );
   };
 
+  // lưu thay đổi
+  const handleSave = async () => {
+    try {
+      await api.put("/api/students/bulk-update", { students });
+      alert("Lưu thành công!");
+    } catch (err) {
+      console.error("Lỗi lưu:", err);
+      alert("Lưu thất bại!");
+    }
+  };
+
   return (
-    <div className="p-4">
-      <h1>Danh sách học sinh</h1>
+    <div style={{ padding: 20 }}>
+      <h2>Danh sách học sinh</h2>
 
-      <div className="flex gap-4 my-4">
-        <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-        <Button variant="contained" onClick={handleImport}>Import Excel</Button>
-
-        <Select value={className} onChange={(e) => setClassName(e.target.value)} displayEmpty>
-          <MenuItem value="">Chọn lớp</MenuItem>
-          <MenuItem value="10A1">10A1</MenuItem>
-          <MenuItem value="10A2">10A2</MenuItem>
-          <MenuItem value="11A1">11A1</MenuItem>
+      <FormControl sx={{ minWidth: 200, mr: 2 }}>
+        <InputLabel>Lớp</InputLabel>
+        <Select
+          value={selectedClass}
+          onChange={(e) => setSelectedClass(e.target.value)}
+        >
+          {classes.map((cls) => (
+            <MenuItem key={cls} value={cls}>
+              {cls}
+            </MenuItem>
+          ))}
         </Select>
-        <Button variant="contained" onClick={fetchStudents}>Load danh sách</Button>
-        <Button variant="outlined" onClick={handleSavePhones}>Lưu</Button>
-      </div>
+      </FormControl>
+
+      <Button variant="contained" onClick={handleLoad} sx={{ mr: 1 }}>
+        Load danh sách
+      </Button>
+      <Button
+        variant="outlined"
+        onClick={handleSave}
+        disabled={students.length === 0}
+      >
+        Lưu
+      </Button>
+
+      {loading && <p>Đang tải...</p>}
 
       {students.length > 0 && (
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>STT</TableCell>
-              <TableCell>Họ tên</TableCell>
-              <TableCell>Lớp</TableCell>
-              <TableCell>SĐT Ba</TableCell>
-              <TableCell>SĐT Mẹ</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {students.map((s, i) => (
-              <TableRow key={s._id}>
-                <TableCell>{i + 1}</TableCell>
-                <TableCell>{s.name}</TableCell>
-                <TableCell>{s.className}</TableCell>
-                <TableCell>
-                  <TextField
-                    value={s.fatherPhone || ''}
-                    onChange={(e) => handleChangePhone(s._id, 'fatherPhone', e.target.value)}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    value={s.motherPhone || ''}
-                    onChange={(e) => handleChangePhone(s._id, 'motherPhone', e.target.value)}
-                    size="small"
-                  />
-                </TableCell>
+        <TableContainer component={Paper} sx={{ mt: 3 }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>STT</TableCell>
+                <TableCell>Họ tên</TableCell>
+                <TableCell>Lớp</TableCell>
+                <TableCell>SĐT Ba</TableCell>
+                <TableCell>SĐT Mẹ</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {students.map((s, index) => (
+                <TableRow key={s._id}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{s.name}</TableCell>
+                  <TableCell>{s.className}</TableCell>
+                  <TableCell>
+                    <TextField
+                      value={s.fatherPhone || ""}
+                      onChange={(e) =>
+                        handleChangePhone(s._id, "fatherPhone", e.target.value)
+                      }
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <TextField
+                      value={s.motherPhone || ""}
+                      onChange={(e) =>
+                        handleChangePhone(s._id, "motherPhone", e.target.value)
+                      }
+                      size="small"
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
     </div>
   );
-}
+};
+
+export default StudentListPage;
