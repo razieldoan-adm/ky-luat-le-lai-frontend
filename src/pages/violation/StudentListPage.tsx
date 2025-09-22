@@ -12,6 +12,7 @@ import {
   TableBody,
   TextField,
 } from "@mui/material";
+import * as XLSX from "xlsx"; // cần cài: npm install xlsx
 import api from "../../api/api";
 
 const StudentListPage: React.FC = () => {
@@ -32,12 +33,12 @@ const StudentListPage: React.FC = () => {
     fetchClasses();
   }, []);
 
-  // Lấy học sinh theo lớp
+  // Load học sinh theo lớp
   const handleLoadStudents = async () => {
     if (!selectedClass) return;
     try {
       const res = await api.get("/api/students", {
-        params: { classId: selectedClass }, // 👈 dùng classId
+        params: { classId: selectedClass },
       });
       setStudents(res.data);
     } catch (err) {
@@ -45,14 +46,14 @@ const StudentListPage: React.FC = () => {
     }
   };
 
-  // Cập nhật input cha mẹ
+  // Nhập SĐT cha mẹ
   const handleInputChange = (index: number, field: string, value: string) => {
     const newStudents = [...students];
     newStudents[index] = { ...newStudents[index], [field]: value };
     setStudents(newStudents);
   };
 
-  // Lưu tất cả thay đổi
+  // Lưu tất cả
   const handleSaveAll = async () => {
     try {
       await api.put("/api/students/update-contacts", { students });
@@ -63,11 +64,38 @@ const StudentListPage: React.FC = () => {
     }
   };
 
+  // Import Excel
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const excelData = XLSX.utils.sheet_to_json(sheet);
+
+      // Map dữ liệu Excel thành students
+      const importedStudents = (excelData as any[]).map((row, idx) => ({
+        _id: row._id || `excel-${idx}`,
+        name: row["Tên"] || row["Họ tên"] || "",
+        className: row["Lớp"] || "",
+        fatherPhone: row["SĐT Ba"] || "",
+        motherPhone: row["SĐT Mẹ"] || "",
+      }));
+
+      setStudents(importedStudents);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
   return (
     <div>
       <h2>Danh sách học sinh</h2>
 
-      <FormControl sx={{ minWidth: 220, mr: 2 }}>
+      <FormControl sx={{ minWidth: 250, mr: 2 }}>
         <InputLabel id="class-select-label">Chọn lớp</InputLabel>
         <Select
           labelId="class-select-label"
@@ -76,7 +104,7 @@ const StudentListPage: React.FC = () => {
         >
           {classOptions.map((c) => (
             <MenuItem key={c._id} value={c._id}>
-              {c.className} - GVCN: {c.teacherName}
+              {c.className} - GVCN: {c.teacherName || c.homeroomTeacher || "?"}
             </MenuItem>
           ))}
         </Select>
@@ -89,6 +117,21 @@ const StudentListPage: React.FC = () => {
         disabled={!selectedClass}
       >
         Load danh sách
+      </Button>
+
+      <Button
+        variant="contained"
+        color="secondary"
+        sx={{ ml: 2 }}
+        component="label"
+      >
+        Import Excel
+        <input
+          type="file"
+          hidden
+          accept=".xlsx, .xls"
+          onChange={handleImportExcel}
+        />
       </Button>
 
       <Button
@@ -114,7 +157,7 @@ const StudentListPage: React.FC = () => {
         </TableHead>
         <TableBody>
           {students.map((s, index) => (
-            <TableRow key={s._id}>
+            <TableRow key={s._id || index}>
               <TableCell>{index + 1}</TableCell>
               <TableCell>{s.name}</TableCell>
               <TableCell>{s.className}</TableCell>
