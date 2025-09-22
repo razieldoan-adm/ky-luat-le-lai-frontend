@@ -13,7 +13,7 @@ import {
   TextField,
 } from "@mui/material";
 import * as XLSX from "xlsx";
-import api from "@/utils/api";
+import api from "../../api/api";
 
 interface Student {
   _id?: string;
