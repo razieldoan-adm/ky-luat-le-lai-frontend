@@ -47,6 +47,11 @@ const drawerWidth = 240;
           <ListItemButton onClick={() => navigate('/violation/all-violations')}>
           <ListItemIcon><ClassIcon /></ListItemIcon>
           <ListItemText primary="Danh sách vi phạm tổng hợp" />
+        
+        </ListItemButton>
+        <ListItemButton onClick={() => navigate('/violation/student-list')}>
+          <ListItemIcon><ClassIcon /></ListItemIcon>
+          <ListItemText primary="Danh sách học sinh" />
         </ListItemButton>
       </List>
 
