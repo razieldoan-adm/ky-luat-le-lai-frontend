@@ -104,7 +104,7 @@ const StudentListPage: React.FC = () => {
         >
           {classOptions.map((c) => (
             <MenuItem key={c._id} value={c._id}>
-              {c.className} - GVCN: {c.teacherName || c.homeroomTeacher || "?"}
+              {c.className} - GVCN: {c.teacher || "?"}
             </MenuItem>
           ))}
         </Select>
