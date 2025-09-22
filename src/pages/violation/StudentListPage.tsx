@@ -56,7 +56,7 @@ const StudentListPage: React.FC = () => {
   // Lưu tất cả
   const handleSaveAll = async () => {
     try {
-      await api.post("/api/students/update-phones", { students });
+      await api.put("/api/students/update-phones", { students });
       alert("Đã lưu thay đổi thành công!");
     } catch (err) {
       console.error("Lỗi khi lưu thay đổi:", err);
@@ -80,7 +80,7 @@ const StudentListPage: React.FC = () => {
       // Map dữ liệu Excel thành students
       const importedStudents = (excelData as any[]).map((row, idx) => ({
         _id: row._id || `excel-${idx}`,
-        name: row["Tên"] || row["Họ tên"] || "",
+        name: row["Họ tên"] || "",
         className: row["Lớp"] || "",
         fatherPhone: row["SĐT Ba"] || "",
         motherPhone: row["SĐT Mẹ"] || "",
