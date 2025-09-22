@@ -1,68 +1,190 @@
-const Student = require('../models/Student');
-const XLSX = require('xlsx');
+import React, { useState, useEffect } from "react";
+import {
+  Button,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  TextField,
+} from "@mui/material";
+import * as XLSX from "xlsx"; // cần cài: npm install xlsx
+import api from "../../api/api";
 
-exports.importExcel = async (req, res) => {
-  try {
-    const workbook = XLSX.readFile(req.file.path);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet);
+const StudentListPage: React.FC = () => {
+  const [classOptions, setClassOptions] = useState<any[]>([]);
+  const [selectedClass, setSelectedClass] = useState("");
+  const [students, setStudents] = useState<any[]>([]);
 
-    // Excel: Tên, Lớp
-    let inserted = 0;
-    let updated = 0;
-
-    for (let r of rows) {
-      const name = r['Tên']?.trim();
-      const className = r['Lớp']?.trim();
-
-      if (!name || !className) continue;
-
-      // Tìm học sinh theo tên + lớp
-      const existing = await Student.findOne({ name, className });
-      if (existing) {
-        // Nếu đã có thì có thể update thêm các trường khác nếu cần
-        await Student.updateOne({ _id: existing._id }, { name, className });
-        updated++;
-      } else {
-        // Nếu chưa có thì thêm mới
-        await Student.create({ name, className });
-        inserted++;
+  // Lấy danh sách lớp
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const res = await api.get("/api/classes/with-teacher");
+        setClassOptions(res.data);
+      } catch (err) {
+        console.error("Lỗi khi lấy danh sách lớp:", err);
       }
-    }
+    };
+    fetchClasses();
+  }, []);
 
-    res.json({
-      message: 'Import thành công',
-      inserted,
-      updated,
-      total: inserted + updated,
-    });
-  } catch (err) {
-    console.error('Lỗi import:', err);
-    res.status(500).json({ error: 'Lỗi import' });
-  }
-};
-
-exports.getByClass = async (req, res) => {
-  try {
-    const { className } = req.query;
-    const students = await Student.find(className ? { className } : {});
-    res.json(students);
-  } catch (err) {
-    res.status(500).json({ error: 'Lỗi lấy danh sách' });
-  }
-};
-
-exports.updatePhones = async (req, res) => {
-  try {
-    const updates = req.body; // [{_id, fatherPhone, motherPhone}, ...]
-    for (let u of updates) {
-      await Student.findByIdAndUpdate(u._id, {
-        fatherPhone: u.fatherPhone,
-        motherPhone: u.motherPhone,
+  // Load học sinh theo lớp
+  const handleLoadStudents = async () => {
+    if (!selectedClass) return;
+    try {
+      const res = await api.get("/api/students", {
+        params: { classId: selectedClass },
       });
+      setStudents(res.data);
+    } catch (err) {
+      console.error("Lỗi khi lấy danh sách học sinh:", err);
     }
-    res.json({ message: 'Cập nhật thành công' });
-  } catch (err) {
-    res.status(500).json({ error: 'Lỗi cập nhật' });
-  }
+  };
+
+  // Nhập SĐT cha mẹ
+  const handleInputChange = (index: number, field: string, value: string) => {
+    const newStudents = [...students];
+    newStudents[index] = { ...newStudents[index], [field]: value };
+    setStudents(newStudents);
+  };
+
+  // Lưu tất cả
+  const handleSaveAll = async () => {
+    try {
+      await api.put("/api/students/update-contacts", { students });
+      alert("Đã lưu thay đổi thành công!");
+    } catch (err) {
+      console.error("Lỗi khi lưu thay đổi:", err);
+      alert("Có lỗi xảy ra khi lưu!");
+    }
+  };
+
+  // Import Excel
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const excelData = XLSX.utils.sheet_to_json(sheet);
+
+      // Map dữ liệu Excel thành students
+      const importedStudents = (excelData as any[]).map((row, idx) => ({
+        _id: row._id || `excel-${idx}`,
+        name: row["Tên"] || row["Họ tên"] || "",
+        className: row["Lớp"] || "",
+        fatherPhone: row["SĐT Ba"] || "",
+        motherPhone: row["SĐT Mẹ"] || "",
+      }));
+
+      setStudents(importedStudents);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  return (
+    <div>
+      <h2>Danh sách học sinh</h2>
+
+      <FormControl sx={{ minWidth: 250, mr: 2 }}>
+        <InputLabel id="class-select-label">Chọn lớp</InputLabel>
+        <Select
+          labelId="class-select-label"
+          value={selectedClass}
+          onChange={(e) => setSelectedClass(e.target.value)}
+        >
+          {classOptions.map((c) => (
+            <MenuItem key={c._id} value={c._id}>
+              {c.className} - GVCN: {c.teacherName || c.homeroomTeacher || "?"}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={handleLoadStudents}
+        disabled={!selectedClass}
+      >
+        Load danh sách
+      </Button>
+
+      <Button
+        variant="contained"
+        color="secondary"
+        sx={{ ml: 2 }}
+        component="label"
+      >
+        Import Excel
+        <input
+          type="file"
+          hidden
+          accept=".xlsx, .xls"
+          onChange={handleImportExcel}
+        />
+      </Button>
+
+      <Button
+        variant="outlined"
+        color="success"
+        sx={{ ml: 2 }}
+        onClick={handleSaveAll}
+        disabled={students.length === 0}
+      >
+        Lưu thay đổi
+      </Button>
+
+      {/* Bảng học sinh */}
+      <Table sx={{ mt: 3 }}>
+        <TableHead>
+          <TableRow>
+            <TableCell>STT</TableCell>
+            <TableCell>Tên học sinh</TableCell>
+            <TableCell>Lớp</TableCell>
+            <TableCell>SĐT Ba</TableCell>
+            <TableCell>SĐT Mẹ</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {students.map((s, index) => (
+            <TableRow key={s._id || index}>
+              <TableCell>{index + 1}</TableCell>
+              <TableCell>{s.name}</TableCell>
+              <TableCell>{s.className}</TableCell>
+              <TableCell>
+                <TextField
+                  variant="standard"
+                  value={s.fatherPhone || ""}
+                  onChange={(e) =>
+                    handleInputChange(index, "fatherPhone", e.target.value)
+                  }
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  variant="standard"
+                  value={s.motherPhone || ""}
+                  onChange={(e) =>
+                    handleInputChange(index, "motherPhone", e.target.value)
+                  }
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
 };
+
+export default StudentListPage;
