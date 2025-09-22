@@ -80,7 +80,7 @@ const StudentListPage: React.FC = () => {
       // Map dữ liệu Excel thành students
       const importedStudents = (excelData as any[]).map((row, idx) => ({
         _id: row._id || `excel-${idx}`,
-        name: row["Tên"] || row["Họ tên"] || "",
+        name: row["Họ tên"] || "",
         className: row["Lớp"] || "",
         fatherPhone: row["SĐT Ba"] || "",
         motherPhone: row["SĐT Mẹ"] || "",
@@ -104,7 +104,7 @@ const StudentListPage: React.FC = () => {
         >
           {classOptions.map((c) => (
             <MenuItem key={c._id} value={c._id}>
-              {c.className} - GVCN: {c.teacherName || c.homeroomTeacher || "?"}
+              {c.className} - GVCN: {c.teacher || "?"}
             </MenuItem>
           ))}
         </Select>
