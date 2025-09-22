@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Button,
-  Select,
   MenuItem,
+  Select,
   InputLabel,
   FormControl,
   Table,
@@ -11,16 +11,9 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Box,
 } from "@mui/material";
 import * as XLSX from "xlsx";
-import api from "../../api/api";
-
-interface ClassOption {
-  _id: string;
-  name: string;
-  teacher: string;
-}
+import api from "@/utils/api";
 
 interface Student {
   _id?: string;
@@ -30,8 +23,13 @@ interface Student {
   motherPhone?: string;
 }
 
+interface ClassItem {
+  _id: string;
+  name: string;
+}
+
 const StudentListPage: React.FC = () => {
-  const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [students, setStudents] = useState<Student[]>([]);
 
@@ -39,10 +37,10 @@ const StudentListPage: React.FC = () => {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const res = await api.get("/api/classes/with-teacher");
-        setClassOptions(res.data);
-      } catch (err) {
-        console.error("Lỗi khi lấy danh sách lớp:", err);
+        const res = await api.get("/api/classes");
+        setClasses(res.data);
+      } catch (error) {
+        console.error("Lỗi khi tải danh sách lớp:", error);
       }
     };
     fetchClasses();
@@ -50,12 +48,17 @@ const StudentListPage: React.FC = () => {
 
   // Load học sinh theo lớp
   const handleLoadStudents = async () => {
-    if (!selectedClass) return;
+    if (!selectedClass) {
+      alert("Vui lòng chọn lớp!");
+      return;
+    }
     try {
-      const res = await api.get(`/api/students/by-class/${selectedClass}`);
+      const res = await api.get("/api/students", {
+        params: { classId: selectedClass },
+      });
       setStudents(res.data);
-    } catch (err) {
-      console.error("Lỗi khi load học sinh:", err);
+    } catch (error) {
+      console.error("Lỗi khi tải danh sách học sinh:", error);
     }
   };
 
@@ -72,13 +75,11 @@ const StudentListPage: React.FC = () => {
       const worksheet = workbook.Sheets[sheetName];
       const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-      // Giả sử Excel có cột: Họ tên, Lớp, SĐT Ba, SĐT Mẹ
       const importedStudents: Student[] = jsonData.map((row) => ({
-        _id: undefined,
         name: row["Họ tên"] || "",
         className: row["Lớp"] || "",
-        fatherPhone: row["SĐT Ba"] || "",
-        motherPhone: row["SĐT Mẹ"] || "",
+        fatherPhone: row["SDT Ba"] || "",
+        motherPhone: row["SDT Mẹ"] || "",
       }));
 
       setStudents(importedStudents);
@@ -86,97 +87,118 @@ const StudentListPage: React.FC = () => {
     reader.readAsArrayBuffer(file);
   };
 
-  // Cập nhật SĐT trong bảng
-  const handleChangePhone = (
-    index: number,
-    field: "fatherPhone" | "motherPhone",
-    value: string
-  ) => {
-    const updated = [...students];
-    updated[index][field] = value;
-    setStudents(updated);
-  };
-
   // Lưu thay đổi
   const handleSaveChanges = async () => {
     try {
-      await api.post("/api/students/update-list", { students });
-      alert("Đã lưu danh sách học sinh!");
-    } catch (err) {
-      console.error("Lỗi khi lưu:", err);
-      alert("Có lỗi xảy ra khi lưu dữ liệu.");
+      await api.post("/api/students/bulk-update", { students });
+      alert("Đã lưu thay đổi!");
+    } catch (error) {
+      console.error("Lỗi khi lưu thay đổi:", error);
     }
   };
 
+  // Cập nhật dữ liệu bảng khi sửa trực tiếp
+  const handleChange = (
+    index: number,
+    field: keyof Student,
+    value: string
+  ) => {
+    const updatedStudents = [...students];
+    updatedStudents[index][field] = value;
+    setStudents(updatedStudents);
+  };
+
   return (
-    <Box sx={{ p: 3 }}>
-      <h2>Danh sách học sinh</h2>
+    <div style={{ padding: 20 }}>
+      <h2>Trang ghi nhận kỷ luật</h2>
 
-      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel id="class-label">Lớp</InputLabel>
-          <Select
-            labelId="class-label"
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-          >
-            {classOptions.map((c) => (
-              <MenuItem key={c._id} value={c._id}>
-                {c.name} - GVCN: {c.teacher}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <Button variant="contained" onClick={handleLoadStudents}>
-          LOAD DANH SÁCH
-        </Button>
-
-        <Button variant="contained" component="label" color="secondary">
-          IMPORT EXCEL
-          <input type="file" hidden onChange={handleImportExcel} />
-        </Button>
-
-        <Button
-          variant="contained"
-          color="success"
-          disabled={students.length === 0}
-          onClick={handleSaveChanges}
+      {/* Dropdown chọn lớp */}
+      <FormControl style={{ minWidth: 250, marginRight: 20 }}>
+        <InputLabel id="class-select-label">Chọn lớp</InputLabel>
+        <Select
+          labelId="class-select-label"
+          value={selectedClass}
+          onChange={(e) => setSelectedClass(e.target.value)}
         >
-          LƯU THAY ĐỔI
-        </Button>
-      </Box>
+          {classes.map((cls) => (
+            <MenuItem key={cls._id} value={cls._id}>
+              {cls.name}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      {/* Nút thao tác */}
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={handleLoadStudents}
+        style={{ marginRight: 10 }}
+      >
+        LOAD DANH SÁCH
+      </Button>
+
+      <Button variant="contained" component="label" color="secondary">
+        IMPORT EXCEL
+        <input
+          type="file"
+          hidden
+          accept=".xlsx, .xls"
+          onChange={handleImportExcel}
+        />
+      </Button>
+
+      <Button
+        variant="outlined"
+        color="success"
+        onClick={handleSaveChanges}
+        style={{ marginLeft: 10 }}
+      >
+        LƯU THAY ĐỔI
+      </Button>
 
       {/* Bảng học sinh */}
-      <Table>
+      <Table style={{ marginTop: 20 }}>
         <TableHead>
           <TableRow>
-            <TableCell>STT</TableCell>
             <TableCell>Họ tên</TableCell>
             <TableCell>Lớp</TableCell>
-            <TableCell>SĐT Ba</TableCell>
-            <TableCell>SĐT Mẹ</TableCell>
+            <TableCell>SDT Ba</TableCell>
+            <TableCell>SDT Mẹ</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {students.map((s, idx) => (
-            <TableRow key={idx}>
-              <TableCell>{idx + 1}</TableCell>
-              <TableCell>{s.name}</TableCell>
-              <TableCell>{s.className}</TableCell>
+          {students.map((student, index) => (
+            <TableRow key={student._id || index}>
               <TableCell>
                 <TextField
-                  value={s.fatherPhone || ""}
+                  value={student.name}
                   onChange={(e) =>
-                    handleChangePhone(idx, "fatherPhone", e.target.value)
+                    handleChange(index, "name", e.target.value)
                   }
                 />
               </TableCell>
               <TableCell>
                 <TextField
-                  value={s.motherPhone || ""}
+                  value={student.className}
                   onChange={(e) =>
-                    handleChangePhone(idx, "motherPhone", e.target.value)
+                    handleChange(index, "className", e.target.value)
+                  }
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  value={student.fatherPhone || ""}
+                  onChange={(e) =>
+                    handleChange(index, "fatherPhone", e.target.value)
+                  }
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  value={student.motherPhone || ""}
+                  onChange={(e) =>
+                    handleChange(index, "motherPhone", e.target.value)
                   }
                 />
               </TableCell>
@@ -184,7 +206,7 @@ const StudentListPage: React.FC = () => {
           ))}
         </TableBody>
       </Table>
-    </Box>
+    </div>
   );
 };
 
