@@ -100,4 +100,92 @@ const StudentListPage: React.FC = () => {
   // Lưu thay đổi
   const handleSaveChanges = async () => {
     try {
-      aw
+      await api.post("/api/students/update-list", { students });
+      alert("Đã lưu danh sách học sinh!");
+    } catch (err) {
+      console.error("Lỗi khi lưu:", err);
+      alert("Có lỗi xảy ra khi lưu dữ liệu.");
+    }
+  };
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <h2>Danh sách học sinh</h2>
+
+      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+        <FormControl sx={{ minWidth: 200 }}>
+          <InputLabel id="class-label">Lớp</InputLabel>
+          <Select
+            labelId="class-label"
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)}
+          >
+            {classOptions.map((c) => (
+              <MenuItem key={c._id} value={c._id}>
+                {c.name} - GVCN: {c.teacher}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <Button variant="contained" onClick={handleLoadStudents}>
+          LOAD DANH SÁCH
+        </Button>
+
+        <Button variant="contained" component="label" color="secondary">
+          IMPORT EXCEL
+          <input type="file" hidden onChange={handleImportExcel} />
+        </Button>
+
+        <Button
+          variant="contained"
+          color="success"
+          disabled={students.length === 0}
+          onClick={handleSaveChanges}
+        >
+          LƯU THAY ĐỔI
+        </Button>
+      </Box>
+
+      {/* Bảng học sinh */}
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>STT</TableCell>
+            <TableCell>Họ tên</TableCell>
+            <TableCell>Lớp</TableCell>
+            <TableCell>SĐT Ba</TableCell>
+            <TableCell>SĐT Mẹ</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {students.map((s, idx) => (
+            <TableRow key={idx}>
+              <TableCell>{idx + 1}</TableCell>
+              <TableCell>{s.name}</TableCell>
+              <TableCell>{s.className}</TableCell>
+              <TableCell>
+                <TextField
+                  value={s.fatherPhone || ""}
+                  onChange={(e) =>
+                    handleChangePhone(idx, "fatherPhone", e.target.value)
+                  }
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  value={s.motherPhone || ""}
+                  onChange={(e) =>
+                    handleChangePhone(idx, "motherPhone", e.target.value)
+                  }
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Box>
+  );
+};
+
+export default StudentListPage;
