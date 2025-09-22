@@ -73,7 +73,7 @@ const StudentListPage: React.FC = () => {
       const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
 
       // Giả sử Excel có cột: Họ tên, Lớp, SĐT Ba, SĐT Mẹ
-      const importedStudents: Student[] = jsonData.map((row, idx) => ({
+      const importedStudents: Student[] = jsonData.map((row) => ({
         _id: undefined,
         name: row["Họ tên"] || "",
         className: row["Lớp"] || "",
