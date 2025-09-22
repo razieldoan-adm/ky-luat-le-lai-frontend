@@ -14,7 +14,7 @@ import {
   Paper,
   TextField,
 } from "@mui/material";
-import api from "@/api"; // axios instance của bạn
+import api from "../../api/api"; // axios instance của bạn
 
 interface Student {
   _id: string;
