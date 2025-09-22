@@ -78,8 +78,8 @@ const StudentListPage: React.FC = () => {
       const excelData = XLSX.utils.sheet_to_json(sheet);
 
       // Map dữ liệu Excel thành students
-      const importedStudents = (excelData as any[]).map((row, idx) => ({
-        _id: row._id || `excel-${idx}`,
+      const importedStudents = (excelData as any[]).map((row) => ({
+       
         name: row["Họ tên"] || "",
         className: row["Lớp"] || "",
         fatherPhone: row["SĐT Ba"] || "",
