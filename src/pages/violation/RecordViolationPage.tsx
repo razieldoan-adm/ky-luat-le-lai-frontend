@@ -1,4 +1,3 @@
-// src/pages/RecordViolationPage.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -34,21 +33,20 @@ export default function RecordViolationPage() {
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const navigate = useNavigate();
 
-  // 🔎 Gợi ý học sinh theo tên + lớp
+  // 🔎 Gợi ý học sinh từ DB (theo tên hoặc lớp hoặc cả hai)
   useEffect(() => {
-    if (!name.trim() || !className.trim()) {
+    if (!name.trim() && !className.trim()) {
       setSuggestions([]);
       return;
     }
 
     const timeout = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (name.trim()) params.append('name', name.trim());
+      if (className.trim()) params.append('className', className.trim());
+
       api
-        .get('/api/students/search', {
-          params: {
-            name,
-            className,
-          },
-        })
+        .get(`/api/students/search?${params.toString()}`)
         .then((res) => setSuggestions(res.data))
         .catch((err) => {
           console.error('Search error:', err);
@@ -77,7 +75,9 @@ export default function RecordViolationPage() {
     if (!name.trim() || !className.trim()) return;
 
     navigate(
-      `/violation/violations/${encodeURIComponent(name)}?className=${encodeURIComponent(className)}`
+      `/violation/violations/${encodeURIComponent(name)}?className=${encodeURIComponent(
+        className
+      )}`
     );
   };
 
@@ -97,7 +97,6 @@ export default function RecordViolationPage() {
           Ghi nhận lỗi học sinh vi phạm kỷ luật
         </Typography>
 
-        {/* Form nhập */}
         <Stack spacing={2}>
           <TextField
             label="Nhập tên học sinh"
@@ -132,32 +131,30 @@ export default function RecordViolationPage() {
 
         {/* Danh sách gợi ý */}
         {suggestions.length > 0 && (
-          <>
-            <Typography variant="subtitle1" sx={{ mt: 4 }}>
+          <Paper sx={{ mt: 4, p: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
               Gợi ý học sinh:
             </Typography>
-            <Paper elevation={2} sx={{ mt: 1 }}>
-              <List>
-                {suggestions.map((s) => (
-                  <ListItemButton
-                    key={s._id}
-                    onClick={() =>
-                      navigate(
-                        `/violation/violations/${encodeURIComponent(s.name)}?className=${encodeURIComponent(
-                          s.className
-                        )}`
-                      )
-                    }
-                  >
-                    <ListItemText
-                      primary={`Tên: ${s.name}`}
-                      secondary={`Lớp: ${s.className}`}
-                    />
-                  </ListItemButton>
-                ))}
-              </List>
-            </Paper>
-          </>
+            <List>
+              {suggestions.map((s) => (
+                <ListItemButton
+                  key={s._id}
+                  onClick={() =>
+                    navigate(
+                      `/violation/violations/${encodeURIComponent(
+                        s.name
+                      )}?className=${encodeURIComponent(s.className)}`
+                    )
+                  }
+                >
+                  <ListItemText
+                    primary={`Tên: ${s.name}`}
+                    secondary={`Lớp: ${s.className}`}
+                  />
+                </ListItemButton>
+              ))}
+            </List>
+          </Paper>
         )}
       </Box>
     </Box>
