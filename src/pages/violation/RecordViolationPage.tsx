@@ -6,17 +6,16 @@ import {
   Typography,
   Button,
   List,
-  ListItem,
+  ListItemButton,
   ListItemText,
-  IconButton,
   Paper,
   Stack,
   MenuItem,
 } from '@mui/material';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import api from '../../api/api';
 
 interface StudentSuggestion {
+  _id: string;
   name: string;
   className: string;
 }
@@ -34,7 +33,7 @@ export default function RecordViolationPage() {
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const navigate = useNavigate();
 
-  // Gợi ý học sinh từ danh sách đã import
+  // 🔎 Gợi ý học sinh theo tên (dùng bảng Student)
   useEffect(() => {
     if (!name.trim()) {
       setSuggestions([]);
@@ -54,7 +53,7 @@ export default function RecordViolationPage() {
     return () => clearTimeout(timeout);
   }, [name]);
 
-  // Lấy danh sách lớp có GVCN
+  // 📌 Lấy danh sách lớp có GVCN
   useEffect(() => {
     const fetchClasses = async () => {
       try {
@@ -100,34 +99,6 @@ export default function RecordViolationPage() {
             fullWidth
           />
 
-          {suggestions.length > 0 && (
-            <Paper elevation={2} sx={{ maxHeight: 250, overflow: 'auto' }}>
-              <List>
-                {suggestions.map((s, i) => (
-                  <ListItem
-                    key={i}
-                    secondaryAction={
-                      <IconButton
-                        edge="end"
-                        onClick={() =>
-                          navigate(
-                            `/violation/violations/${encodeURIComponent(s.name)}?className=${encodeURIComponent(
-                              s.className
-                            )}`
-                          )
-                        }
-                      >
-                        <ArrowForwardIcon />
-                      </IconButton>
-                    }
-                  >
-                    <ListItemText primary={s.name} secondary={`Lớp: ${s.className}`} />
-                  </ListItem>
-                ))}
-              </List>
-            </Paper>
-          )}
-
           <TextField
             label="Chọn lớp"
             select
@@ -151,6 +122,35 @@ export default function RecordViolationPage() {
             Ghi nhận lỗi
           </Button>
         </Stack>
+
+        {suggestions.length > 0 && (
+          <>
+            <Typography variant="subtitle1" sx={{ mt: 4 }}>
+              Gợi ý học sinh:
+            </Typography>
+            <Paper elevation={2} sx={{ mt: 1 }}>
+              <List>
+                {suggestions.map((s) => (
+                  <ListItemButton
+                    key={s._id}
+                    onClick={() =>
+                      navigate(
+                        `/violation/violations/${encodeURIComponent(s.name)}?className=${encodeURIComponent(
+                          s.className
+                        )}`
+                      )
+                    }
+                  >
+                    <ListItemText
+                      primary={`Tên: ${s.name}`}
+                      secondary={`Lớp: ${s.className}`}
+                    />
+                  </ListItemButton>
+                ))}
+              </List>
+            </Paper>
+          </>
+        )}
       </Box>
     </Box>
   );
