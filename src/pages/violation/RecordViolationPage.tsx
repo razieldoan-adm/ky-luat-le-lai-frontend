@@ -1,6 +1,12 @@
-// src/pages/StudentViolationInputPage.tsx
+// src/pages/RecordViolationPage.tsx
 import React, { useState } from "react";
-import { Button, TextField, Card, CardContent, Typography } from "@mui/material";
+import {
+  Button,
+  TextField,
+  Card,
+  CardContent,
+  Typography,
+} from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
 interface Student {
@@ -9,31 +15,35 @@ interface Student {
   className: string;
 }
 
-const StudentViolationInputPage: React.FC = () => {
+const RecordViolationPage: React.FC = () => {
   const [name, setName] = useState("");
   const [className, setClassName] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
   const navigate = useNavigate();
 
+  // thêm HS vào danh sách
   const handleAdd = () => {
     if (!name.trim() || !className.trim()) return;
+
     const newStudent: Student = {
       id: Date.now().toString(),
       name: name.trim(),
       className: className.trim(),
     };
-    setStudents([...students, newStudent]);
+
+    setStudents((prev) => [...prev, newStudent]);
     setName("");
     setClassName("");
   };
 
+  // điều hướng sang trang ghi nhận vi phạm
   const handleGoViolation = (student: Student) => {
-    // Điều hướng sang trang ghi nhận vi phạm, truyền id hoặc name
     navigate(`/violations/${student.id}`, { state: student });
   };
 
   return (
     <div style={{ padding: 20 }}>
+      {/* Form nhập học sinh */}
       <Card sx={{ maxWidth: 500, margin: "0 auto", mb: 3 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
@@ -53,12 +63,18 @@ const StudentViolationInputPage: React.FC = () => {
             value={className}
             onChange={(e) => setClassName(e.target.value)}
           />
-          <Button variant="contained" color="primary" onClick={handleAdd} fullWidth>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleAdd}
+            fullWidth
+          >
             Thêm học sinh
           </Button>
         </CardContent>
       </Card>
 
+      {/* Danh sách học sinh */}
       <div>
         <Typography variant="h6" gutterBottom>
           Danh sách học sinh
@@ -72,13 +88,24 @@ const StudentViolationInputPage: React.FC = () => {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              cursor: "pointer",
             }}
+            onClick={() => handleGoViolation(s)} // click cả card cũng sang trang
           >
             <div>
-              <Typography><b>{s.name}</b></Typography>
+              <Typography>
+                <b>{s.name}</b>
+              </Typography>
               <Typography variant="body2">Lớp: {s.className}</Typography>
             </div>
-            <Button variant="outlined" onClick={() => handleGoViolation(s)}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation(); // tránh trùng sự kiện click card
+                handleGoViolation(s);
+              }}
+            >
               Ghi nhận vi phạm
             </Button>
           </Card>
@@ -88,4 +115,4 @@ const StudentViolationInputPage: React.FC = () => {
   );
 };
 
-export default StudentViolationInputPage;
+export default RecordViolationPage;
