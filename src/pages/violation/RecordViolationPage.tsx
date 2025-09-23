@@ -1,20 +1,17 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   TextField,
   Typography,
   Button,
+  List,
+  ListItem,
+  Paper,
   Stack,
   MenuItem,
-  Paper,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-} from "@mui/material";
-import api from "../../api/api";
+} from '@mui/material';
+import api from '../../api/api';
 
 interface StudentSuggestion {
   _id: string;
@@ -29,42 +26,40 @@ interface ClassOption {
 }
 
 export default function RecordViolationPage() {
-  const [name, setName] = useState("");
-  const [className, setClassName] = useState("");
+  const [name, setName] = useState('');
+  const [className, setClassName] = useState('');
   const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const navigate = useNavigate();
 
-  // 🔍 Gọi API gợi ý theo tên học sinh
+  // Gợi ý học sinh từ DB
   useEffect(() => {
     if (!name.trim()) {
       setSuggestions([]);
       return;
     }
 
-    const timeout = setTimeout(async () => {
-      try {
-        const res = await api.get(
-          `/api/students/search?name=${encodeURIComponent(name)}`
-        );
-        setSuggestions(res.data);
-      } catch (err) {
-        console.error("Search error:", err);
-        setSuggestions([]);
-      }
-    }, 400);
+    const timeout = setTimeout(() => {
+      api
+        .get(`/api/students/search?name=${encodeURIComponent(name)}`)
+        .then((res) => setSuggestions(res.data))
+        .catch((err) => {
+          console.error('Search error:', err);
+          setSuggestions([]);
+        });
+    }, 300);
 
     return () => clearTimeout(timeout);
   }, [name]);
 
-  // 📌 Lấy danh sách lớp
+  // Lấy danh sách lớp có GVCN
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const res = await api.get("/api/classes/with-teacher");
+        const res = await api.get('/api/classes/with-teacher');
         setClassOptions(res.data);
       } catch (err) {
-        console.error("Lỗi khi lấy danh sách lớp:", err);
+        console.error('Lỗi khi lấy danh sách lớp:', err);
       }
     };
     fetchClasses();
@@ -72,30 +67,28 @@ export default function RecordViolationPage() {
 
   const handleManualSubmit = () => {
     if (!name.trim() || !className.trim()) return;
+
     navigate(
-      `/violation/violations/${encodeURIComponent(
-        name
-      )}?className=${encodeURIComponent(className)}`
+      `/violation/violations/${encodeURIComponent(name)}?className=${encodeURIComponent(className)}`
     );
   };
 
   return (
     <Box
       sx={{
-        width: "75vw",
-        minHeight: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "flex-start",
+        width: '75vw',
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'flex-start',
         py: 6,
       }}
     >
-      <Box sx={{ width: "100%", maxWidth: 1000 }}>
+      <Box sx={{ width: '100%', maxWidth: 1000 }}>
         <Typography variant="h4" align="center" gutterBottom>
           Ghi nhận lỗi học sinh vi phạm kỷ luật
         </Typography>
 
-        {/* Form nhập thủ công */}
         <Stack spacing={2}>
           <TextField
             label="Nhập tên học sinh"
@@ -130,45 +123,38 @@ export default function RecordViolationPage() {
 
         {/* Danh sách gợi ý */}
         {suggestions.length > 0 && (
-          <Box sx={{ mt: 4 }}>
+          <Paper sx={{ mt: 4, p: 2, border: '1px solid #ccc' }}>
             <Typography variant="subtitle1" gutterBottom>
-              Học sinh gợi ý:
+              Danh sách gợi ý:
             </Typography>
-            <Paper elevation={3}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell><b>Tên học sinh</b></TableCell>
-                    <TableCell><b>Lớp</b></TableCell>
-                    <TableCell><b>Thao tác</b></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {suggestions.map((s) => (
-                    <TableRow key={s._id}>
-                      <TableCell>{s.name}</TableCell>
-                      <TableCell>{s.className}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() =>
-                            navigate(
-                              `/violation/violations/${encodeURIComponent(
-                                s.name
-                              )}?className=${encodeURIComponent(s.className)}`
-                            )
-                          }
-                        >
-                          Ghi nhận
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
-          </Box>
+            <List>
+              {suggestions.map((s) => (
+                <ListItem
+                  key={s._id}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    borderBottom: '1px solid #eee',
+                  }}
+                >
+                  <Typography>{s.name} — {s.className}</Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() =>
+                      navigate(
+                        `/violation/violations/${encodeURIComponent(s.name)}?className=${encodeURIComponent(
+                          s.className
+                        )}`
+                      )
+                    }
+                  >
+                    Chọn
+                  </Button>
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
         )}
       </Box>
     </Box>
