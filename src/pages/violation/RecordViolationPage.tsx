@@ -1,16 +1,18 @@
 // src/pages/RecordViolationPage.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Button,
   TextField,
   Card,
   CardContent,
   Typography,
+  MenuItem,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 interface Student {
-  id: string;
+  _id: string;
   name: string;
   className: string;
 }
@@ -18,36 +20,56 @@ interface Student {
 const RecordViolationPage: React.FC = () => {
   const [name, setName] = useState("");
   const [className, setClassName] = useState("");
-  const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [suggestedStudents, setSuggestedStudents] = useState<Student[]>([]);
   const navigate = useNavigate();
 
-  // thêm HS vào danh sách
-  const handleAdd = () => {
-    if (!name.trim() || !className.trim()) return;
+  // Lấy danh sách lớp từ DB
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const res = await axios.get("/api/classes");
+        setClasses(res.data.map((c: any) => c.name));
+      } catch (error) {
+        console.error("Lỗi lấy danh sách lớp:", error);
+      }
+    };
+    fetchClasses();
+  }, []);
 
-    const newStudent: Student = {
-      id: Date.now().toString(),
-      name: name.trim(),
-      className: className.trim(),
+  // Gọi API tìm HS gợi ý
+  useEffect(() => {
+    const fetchStudents = async () => {
+      if (!name.trim() || !className) {
+        setSuggestedStudents([]);
+        return;
+      }
+      try {
+        const res = await axios.get("/api/students/search", {
+          params: { name, className },
+        });
+        setSuggestedStudents(res.data);
+      } catch (error) {
+        console.error("Lỗi tìm học sinh:", error);
+      }
     };
 
-    setStudents((prev) => [...prev, newStudent]);
-    setName("");
-    setClassName("");
-  };
+    const delayDebounce = setTimeout(fetchStudents, 400); // debounce 0.4s
+    return () => clearTimeout(delayDebounce);
+  }, [name, className]);
 
-  // điều hướng sang trang ghi nhận vi phạm
+  // Chuyển sang trang ghi nhận vi phạm
   const handleGoViolation = (student: Student) => {
-    navigate(`/violations/${student.id}`, { state: student });
+    navigate(`/violations/${student._id}`, { state: student });
   };
 
   return (
     <div style={{ padding: 20 }}>
-      {/* Form nhập học sinh */}
-      <Card sx={{ maxWidth: 500, margin: "0 auto", mb: 3 }}>
+      {/* Form nhập */}
+      <Card sx={{ maxWidth: 600, margin: "0 auto", mb: 3 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
-            Nhập học sinh
+            Ghi nhận vi phạm
           </Typography>
           <TextField
             label="Tên học sinh"
@@ -57,31 +79,30 @@ const RecordViolationPage: React.FC = () => {
             onChange={(e) => setName(e.target.value)}
           />
           <TextField
-            label="Lớp"
+            select
+            label="Chọn lớp"
             fullWidth
             margin="normal"
             value={className}
             onChange={(e) => setClassName(e.target.value)}
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleAdd}
-            fullWidth
           >
-            Thêm học sinh
-          </Button>
+            {classes.map((c) => (
+              <MenuItem key={c} value={c}>
+                {c}
+              </MenuItem>
+            ))}
+          </TextField>
         </CardContent>
       </Card>
 
-      {/* Danh sách học sinh */}
+      {/* Danh sách gợi ý */}
       <div>
         <Typography variant="h6" gutterBottom>
-          Danh sách học sinh
+          Kết quả tìm kiếm
         </Typography>
-        {students.map((s) => (
+        {suggestedStudents.map((s) => (
           <Card
-            key={s.id}
+            key={s._id}
             sx={{
               mb: 2,
               p: 2,
@@ -90,7 +111,7 @@ const RecordViolationPage: React.FC = () => {
               alignItems: "center",
               cursor: "pointer",
             }}
-            onClick={() => handleGoViolation(s)} // click cả card cũng sang trang
+            onClick={() => handleGoViolation(s)}
           >
             <div>
               <Typography>
@@ -102,7 +123,7 @@ const RecordViolationPage: React.FC = () => {
               variant="outlined"
               size="small"
               onClick={(e) => {
-                e.stopPropagation(); // tránh trùng sự kiện click card
+                e.stopPropagation();
                 handleGoViolation(s);
               }}
             >
