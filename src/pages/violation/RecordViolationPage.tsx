@@ -1,3 +1,4 @@
+// src/pages/RecordViolationPage.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -33,16 +34,21 @@ export default function RecordViolationPage() {
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const navigate = useNavigate();
 
-  // 🔎 Gợi ý học sinh theo tên (dùng bảng Student)
+  // 🔎 Gợi ý học sinh theo tên + lớp
   useEffect(() => {
-    if (!name.trim()) {
+    if (!name.trim() || !className.trim()) {
       setSuggestions([]);
       return;
     }
 
     const timeout = setTimeout(() => {
       api
-        .get(`/api/students/search?name=${encodeURIComponent(name)}`)
+        .get('/api/students/search', {
+          params: {
+            name,
+            className,
+          },
+        })
         .then((res) => setSuggestions(res.data))
         .catch((err) => {
           console.error('Search error:', err);
@@ -51,7 +57,7 @@ export default function RecordViolationPage() {
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [name]);
+  }, [name, className]);
 
   // 📌 Lấy danh sách lớp có GVCN
   useEffect(() => {
@@ -91,6 +97,7 @@ export default function RecordViolationPage() {
           Ghi nhận lỗi học sinh vi phạm kỷ luật
         </Typography>
 
+        {/* Form nhập */}
         <Stack spacing={2}>
           <TextField
             label="Nhập tên học sinh"
@@ -123,6 +130,7 @@ export default function RecordViolationPage() {
           </Button>
         </Stack>
 
+        {/* Danh sách gợi ý */}
         {suggestions.length > 0 && (
           <>
             <Typography variant="subtitle1" sx={{ mt: 4 }}>
