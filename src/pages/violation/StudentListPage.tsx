@@ -12,7 +12,6 @@ import {
   TableBody,
   TextField,
 } from "@mui/material";
-import * as XLSX from "xlsx"; // cần cài: npm install xlsx
 import api from "../../api/api";
 
 const StudentListPage: React.FC = () => {
@@ -20,7 +19,7 @@ const StudentListPage: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState<any[]>([]);
 
-  // Lấy danh sách lớp
+  // 📌 Lấy danh sách lớp
   useEffect(() => {
     const fetchClasses = async () => {
       try {
@@ -33,12 +32,12 @@ const StudentListPage: React.FC = () => {
     fetchClasses();
   }, []);
 
-  // Load học sinh theo lớp
+  // 📌 Load học sinh theo lớp
   const handleLoadStudents = async () => {
     if (!selectedClass) return;
     try {
       const res = await api.get("/api/students", {
-        params: { classId: selectedClass },
+        params: { className: selectedClass }, // ✅ backend dùng className
       });
       setStudents(res.data);
     } catch (err) {
@@ -46,55 +45,50 @@ const StudentListPage: React.FC = () => {
     }
   };
 
-  // Nhập SĐT cha mẹ
+  // 📌 Nhập SĐT cha mẹ
   const handleInputChange = (index: number, field: string, value: string) => {
     const newStudents = [...students];
     newStudents[index] = { ...newStudents[index], [field]: value };
     setStudents(newStudents);
   };
 
-  // Lưu tất cả
+  // 📌 Lưu tất cả SĐT
   const handleSaveAll = async () => {
     try {
-      await api.post("/api/students/update-phones", { students });
+      await api.post("/api/students/update-phones", students); // ✅ gửi mảng trực tiếp
       alert("Đã lưu thay đổi thành công!");
+      handleLoadStudents();
     } catch (err) {
       console.error("Lỗi khi lưu thay đổi:", err);
       alert("Có lỗi xảy ra khi lưu!");
     }
   };
 
-  // Import Excel
-  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 📌 Import Excel (upload file thật lên backend)
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-      const workbook = XLSX.read(data, { type: "array" });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      const excelData = XLSX.utils.sheet_to_json(sheet);
+    const formData = new FormData();
+    formData.append("file", file);
 
-      // Map dữ liệu Excel thành students
-      const importedStudents = (excelData as any[]).map((row) => ({
-       
-        name: row["Họ tên"] || "",
-        className: row["Lớp"] || "",
-        fatherPhone: row["SĐT Ba"] || "",
-        motherPhone: row["SĐT Mẹ"] || "",
-      }));
-
-      setStudents(importedStudents);
-    };
-    reader.readAsArrayBuffer(file);
+    try {
+      const res = await api.post("/api/students/import", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      alert(`Import thành công: ${res.data.count} học sinh`);
+      handleLoadStudents(); // load lại danh sách lớp hiện tại
+    } catch (err) {
+      console.error("Lỗi import:", err);
+      alert("Import thất bại!");
+    }
   };
 
   return (
     <div>
       <h2>Danh sách học sinh</h2>
 
+      {/* Chọn lớp */}
       <FormControl sx={{ minWidth: 250, mr: 2 }}>
         <InputLabel id="class-select-label">Chọn lớp</InputLabel>
         <Select
@@ -103,7 +97,7 @@ const StudentListPage: React.FC = () => {
           onChange={(e) => setSelectedClass(e.target.value)}
         >
           {classOptions.map((c) => (
-            <MenuItem key={c._id} value={c._id}>
+            <MenuItem key={c._id} value={c.className}>
               {c.className} - GVCN: {c.teacher || "?"}
             </MenuItem>
           ))}
@@ -119,6 +113,7 @@ const StudentListPage: React.FC = () => {
         Load danh sách
       </Button>
 
+      {/* Nút import Excel */}
       <Button
         variant="contained"
         color="secondary"
@@ -134,6 +129,7 @@ const StudentListPage: React.FC = () => {
         />
       </Button>
 
+      {/* Nút lưu thay đổi */}
       <Button
         variant="outlined"
         color="success"
@@ -144,7 +140,7 @@ const StudentListPage: React.FC = () => {
         Lưu thay đổi
       </Button>
 
-      {/* Bảng học sinh */}
+      {/* Bảng danh sách học sinh */}
       <Table sx={{ mt: 3 }}>
         <TableHead>
           <TableRow>
