@@ -1,96 +1,176 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   TextField,
   Typography,
+  Button,
+  Stack,
+  MenuItem,
   Paper,
   Table,
   TableHead,
   TableRow,
   TableCell,
   TableBody,
-  CircularProgress,
 } from "@mui/material";
 import api from "../../api/api";
 
-interface Student {
+interface StudentSuggestion {
   _id: string;
   name: string;
   className: string;
-  fatherPhone?: string;
-  motherPhone?: string;
 }
 
-const RecordViolationPage: React.FC = () => {
-  const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [students, setStudents] = useState<Student[]>([]);
+interface ClassOption {
+  _id: string;
+  className: string;
+  teacher: string;
+}
 
-  const handleSearch = async (value: string) => {
-    setQuery(value);
-    if (value.trim().length < 2) {
-      setStudents([]);
+export default function RecordViolationPage() {
+  const [name, setName] = useState("");
+  const [className, setClassName] = useState("");
+  const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
+  const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
+  const navigate = useNavigate();
+
+  // 🔍 Gọi API gợi ý theo tên học sinh
+  useEffect(() => {
+    if (!name.trim()) {
+      setSuggestions([]);
       return;
     }
-    setLoading(true);
-    try {
-      const res = await api.get(`/students/search?name=${encodeURIComponent(value)}`);
-      setStudents(res.data);
-    } catch (err) {
-      console.error("Lỗi tìm kiếm:", err);
-    } finally {
-      setLoading(false);
-    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await api.get(
+          `/api/students/search?name=${encodeURIComponent(name)}`
+        );
+        setSuggestions(res.data);
+      } catch (err) {
+        console.error("Search error:", err);
+        setSuggestions([]);
+      }
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [name]);
+
+  // 📌 Lấy danh sách lớp
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const res = await api.get("/api/classes/with-teacher");
+        setClassOptions(res.data);
+      } catch (err) {
+        console.error("Lỗi khi lấy danh sách lớp:", err);
+      }
+    };
+    fetchClasses();
+  }, []);
+
+  const handleManualSubmit = () => {
+    if (!name.trim() || !className.trim()) return;
+    navigate(
+      `/violation/violations/${encodeURIComponent(
+        name
+      )}?className=${encodeURIComponent(className)}`
+    );
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h5" gutterBottom>
-        Ghi nhận vi phạm
-      </Typography>
+    <Box
+      sx={{
+        width: "75vw",
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "flex-start",
+        py: 6,
+      }}
+    >
+      <Box sx={{ width: "100%", maxWidth: 1000 }}>
+        <Typography variant="h4" align="center" gutterBottom>
+          Ghi nhận lỗi học sinh vi phạm kỷ luật
+        </Typography>
 
-      {/* Ô tìm kiếm */}
-      <TextField
-        label="Tìm học sinh theo tên"
-        variant="outlined"
-        fullWidth
-        value={query}
-        onChange={(e) => handleSearch(e.target.value)}
-        sx={{ mb: 3 }}
-      />
+        {/* Form nhập thủ công */}
+        <Stack spacing={2}>
+          <TextField
+            label="Nhập tên học sinh"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            fullWidth
+          />
 
-      {/* Loading */}
-      {loading && <CircularProgress size={28} />}
+          <TextField
+            label="Chọn lớp"
+            select
+            value={className}
+            onChange={(e) => setClassName(e.target.value)}
+            fullWidth
+          >
+            {classOptions.map((cls) => (
+              <MenuItem key={cls._id} value={cls.className}>
+                {cls.className} — {cls.teacher}
+              </MenuItem>
+            ))}
+          </TextField>
 
-      {/* Bảng kết quả */}
-      {students.length > 0 && (
-        <Paper sx={{ mt: 2 }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>STT</TableCell>
-                <TableCell>Họ tên</TableCell>
-                <TableCell>Lớp</TableCell>
-                <TableCell>SĐT Ba</TableCell>
-                <TableCell>SĐT Mẹ</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {students.map((s, index) => (
-                <TableRow key={s._id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>{s.name}</TableCell>
-                  <TableCell>{s.className}</TableCell>
-                  <TableCell>{s.fatherPhone || "-"}</TableCell>
-                  <TableCell>{s.motherPhone || "-"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Paper>
-      )}
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleManualSubmit}
+            disabled={!name.trim() || !className.trim()}
+          >
+            Ghi nhận lỗi
+          </Button>
+        </Stack>
+
+        {/* Danh sách gợi ý */}
+        {suggestions.length > 0 && (
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Học sinh gợi ý:
+            </Typography>
+            <Paper elevation={3}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell><b>Tên học sinh</b></TableCell>
+                    <TableCell><b>Lớp</b></TableCell>
+                    <TableCell><b>Thao tác</b></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {suggestions.map((s) => (
+                    <TableRow key={s._id}>
+                      <TableCell>{s.name}</TableCell>
+                      <TableCell>{s.className}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() =>
+                            navigate(
+                              `/violation/violations/${encodeURIComponent(
+                                s.name
+                              )}?className=${encodeURIComponent(s.className)}`
+                            )
+                          }
+                        >
+                          Ghi nhận
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Paper>
+          </Box>
+        )}
+      </Box>
     </Box>
   );
-};
-
-export default RecordViolationPage;
+}
