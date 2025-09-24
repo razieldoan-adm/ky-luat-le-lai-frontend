@@ -1,3 +1,4 @@
+// src/pages/violation/UnhandledViolationsPage.tsx
 import { useState, useEffect } from 'react';
 import {
   Box,
@@ -14,6 +15,7 @@ import {
   TableCell,
   Paper,
   Stack,
+  ListItemText,
 } from '@mui/material';
 import api from '../../api/api';
 import dayjs from 'dayjs';
@@ -23,9 +25,8 @@ interface Violation {
   name: string;
   className: string;
   description: string;
-  time: Date;
+  time: Date | string;
   handlingMethod: string;
-  weekNumber: number; // 🔹 đã lưu trực tiếp khi ghi nhận
 }
 interface Rule {
   _id: string;
@@ -34,10 +35,11 @@ interface Rule {
   content: string;
 }
 interface Week {
-  _id: string;
-  weekNumber: number;
-  start: string;
-  end: string;
+  _id?: string;
+  weekNumber?: number;
+  start?: string;   // hoặc startDate tùy API
+  end?: string;     // hoặc endDate tùy API
+  label?: string;
 }
 
 export default function UnhandledViolationsPage() {
@@ -47,16 +49,17 @@ export default function UnhandledViolationsPage() {
   const [searchName, setSearchName] = useState('');
   const [classList, setClassList] = useState<string[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<string>('all');
+  const [selectedWeek, setSelectedWeek] = useState<string | number | ''>('all');
   const [onlyFrequent, setOnlyFrequent] = useState(false);
 
+  // 🔹 danh sách tuần từ API
   const [weekList, setWeekList] = useState<Week[]>([]);
 
   useEffect(() => {
     fetchViolations();
     fetchClasses();
     fetchRules();
-    fetchWeeks();
+    fetchWeeks(); // gọi API lấy tuần
   }, []);
 
   const fetchViolations = async () => {
@@ -90,6 +93,7 @@ export default function UnhandledViolationsPage() {
     }
   };
 
+  // --- YOUR provided fetchWeeks (kept as-is) ---
   const fetchWeeks = async () => {
     try {
       const res = await api.get('/api/academic-weeks/study-weeks');
@@ -102,21 +106,37 @@ export default function UnhandledViolationsPage() {
   const applyFilters = () => {
     let data = [...violations];
 
-    // Lọc theo lớp
+    // Lọc theo lớp (nếu có chọn) — nếu selectedClasses rỗng => nghĩa là "tất cả"
     if (selectedClasses.length > 0) {
       data = data.filter((v) => selectedClasses.includes(v.className));
     }
 
-    // Lọc theo tuần (dùng weekNumber trực tiếp)
-    if (selectedWeek !== 'all') {
-      data = data.filter((v) => String(v.weekNumber) === selectedWeek);
+    // Lọc theo tuần (dùng start/end trong weekList)
+    if (selectedWeek !== 'all' && selectedWeek !== '') {
+      // selectedWeek có thể là number hoặc string (tùy API), so sánh bằng string để an toàn
+      const week = weekList.find(
+        (w) =>
+          (w.weekNumber !== undefined && String(w.weekNumber) === String(selectedWeek)) ||
+          w.label === selectedWeek
+      );
+      if (week) {
+        const start = (week.start ?? (week as any).startDate) || '';
+        const end = (week.end ?? (week as any).endDate) || '';
+        if (start && end) {
+          data = data.filter(
+            (v) =>
+              dayjs(v.time).isAfter(dayjs(start).subtract(1, 'day')) &&
+              dayjs(v.time).isBefore(dayjs(end).add(1, 'day'))
+          );
+        }
+      }
     }
 
-    // Lọc theo tên
+    // Lọc theo tên (không phân biệt dấu/hoa)
     if (searchName) {
       const keyword = searchName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       data = data.filter((v) => {
-        const studentName = v.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const studentName = (v.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         return studentName.includes(keyword);
       });
     }
@@ -131,11 +151,12 @@ export default function UnhandledViolationsPage() {
       data = data.filter((v) => countMap[v.name.trim().toLowerCase()] >= 3);
     }
 
-    // Sắp xếp theo lớp rồi theo tên
+    // Sắp xếp theo lớp rồi theo tên (giữ giống code cũ)
     data.sort((a, b) => {
       if (a.className === b.className) {
         return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' });
       }
+      // numeric compare để lớp 6A10 sau 6A2 (nếu dạng số)
       return a.className.localeCompare(b.className, 'vi', { numeric: true });
     });
 
@@ -158,39 +179,65 @@ export default function UnhandledViolationsPage() {
 
       <Paper sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mt: 2, p: 2, mb: 4 }} elevation={3}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
-          {/* Lọc nhiều lớp */}
+          {/* === CHỖ CHỌN LỚP ĐÃ ĐƯỢC THAY THẾ ===
+              - Select multiple với checkbox
+              - Mặc định không chọn (interpreted as "tất cả lớp")
+          */}
           <TextField
             label="Chọn lớp"
             select
-            SelectProps={{ multiple: true }}
+            SelectProps={{
+              multiple: true,
+              renderValue: (selected: any) => {
+                if (!selected || (Array.isArray(selected) && selected.length === 0)) return 'Tất cả lớp';
+                return Array.isArray(selected) ? selected.join(', ') : String(selected);
+              },
+            }}
             value={selectedClasses}
             onChange={(e) =>
-              setSelectedClasses(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)
+              setSelectedClasses(typeof e.target.value === 'string' ? e.target.value.split(',') : (e.target.value as string[]))
             }
             sx={{ minWidth: 200 }}
           >
-            <MenuItem value="">Tất cả lớp</MenuItem>
             {classList.map((cls) => (
               <MenuItem key={cls} value={cls}>
-                {cls}
+                <Checkbox checked={selectedClasses.indexOf(cls) > -1} />
+                <ListItemText primary={cls} />
               </MenuItem>
             ))}
           </TextField>
 
-          {/* Dropdown tuần (dùng weekNumber trực tiếp) */}
+          {/* Dropdown tuần (từ API) */}
           <TextField
             label="Chọn tuần"
             select
             value={selectedWeek}
-            onChange={(e) => setSelectedWeek(e.target.value)} // luôn string
+            onChange={(e) =>
+              // giữ khả năng giá trị là "all" | "" | number
+              setSelectedWeek((() => {
+                const v = e.target.value as string;
+                if (v === 'all') return 'all';
+                if (v === '') return '';
+                // nếu weekList cung cấp weekNumber, v sẽ là số dạng string -> chuyển về number
+                return isNaN(Number(v)) ? v : Number(v);
+              })())
+            }
             sx={{ minWidth: 200 }}
           >
             <MenuItem value="all">Tất cả tuần</MenuItem>
-            {weekList.map((w) => (
-              <MenuItem key={w._id} value={String(w.weekNumber)}>
-                Tuần {w.weekNumber}
-              </MenuItem>
-            ))}
+            {weekList.map((w) => {
+              // hiển thị: Tuần X (dd/mm - dd/mm) nếu có start/end, fallback show label hoặc weekNumber
+              const start = (w.start ?? (w as any).startDate) || '';
+              const end = (w.end ?? (w as any).endDate) || '';
+              const weekLabel = w.weekNumber !== undefined ? `Tuần ${w.weekNumber}` : w.label ?? 'Tuần';
+              const rangeText = start && end ? ` (${dayjs(start).format('DD/MM')} - ${dayjs(end).format('DD/MM')})` : '';
+              const value = w.weekNumber !== undefined ? w.weekNumber : (w.label ?? '');
+              return (
+                <MenuItem key={String(value) + (w._id ?? '')} value={value}>
+                  {weekLabel + rangeText}
+                </MenuItem>
+              );
+            })}
           </TextField>
 
           {/* Tìm theo tên */}
