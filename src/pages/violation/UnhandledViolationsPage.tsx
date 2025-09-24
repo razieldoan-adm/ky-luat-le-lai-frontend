@@ -1,233 +1,193 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
   TextField,
   MenuItem,
-  Button,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
   Paper,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
   Stack,
-} from '@mui/material';
-import api from '../../api/api';
-import dayjs from 'dayjs';
-import isoWeek from 'dayjs/plugin/isoWeek';
-
-dayjs.extend(isoWeek);
+  Checkbox,
+  FormControlLabel,
+} from "@mui/material";
+import api from "../../api/api";
 
 interface Violation {
   _id: string;
   name: string;
   className: string;
   description: string;
-  time: Date;
-  handlingMethod: string;
+  week: number;
+  time: string;
 }
 
-interface Rule {
-  _id: string;
-  title: string;
-  point: number;
-  content: string;
+interface GroupedStudent {
+  name: string;
+  className: string;
+  violations: Violation[];
 }
+
+const removeVietnameseTones = (str: string) => {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+};
 
 export default function UnhandledViolationsPage() {
   const [violations, setViolations] = useState<Violation[]>([]);
-  const [filtered, setFiltered] = useState<Violation[]>([]);
-  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
-  const [classList, setClassList] = useState<string[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<string>('all');
-  const [rules, setRules] = useState<Rule[]>([]);
+  const [grouped, setGrouped] = useState<GroupedStudent[]>([]);
+  const [classOptions, setClassOptions] = useState<string[]>([]);
+  const [weekOptions, setWeekOptions] = useState<number[]>([]);
+  const [selectedClass, setSelectedClass] = useState<string>("all");
+  const [selectedWeek, setSelectedWeek] = useState<string>("all");
+  const [searchName, setSearchName] = useState("");
+  const [onlyFrequent, setOnlyFrequent] = useState(false);
 
+  // load dữ liệu violations
   useEffect(() => {
-    fetchViolations();
-    fetchClasses();
-    fetchRules();
+    api
+      .get("/api/violations")
+      .then((res) => {
+        setViolations(res.data);
+
+        const classes = Array.from(new Set(res.data.map((v: Violation) => v.className)));
+        setClassOptions(classes);
+
+        const weeks = Array.from(new Set(res.data.map((v: Violation) => v.week))).sort((a, b) => a - b);
+        setWeekOptions(weeks);
+      })
+      .catch((err) => console.error("Lỗi load vi phạm:", err));
   }, []);
 
-  const fetchViolations = async () => {
-    try {
-      const res = await api.get('/api/violations/all/all-student');
-      setViolations(res.data);
-      setFiltered(res.data);
-    } catch (err) {
-      console.error('Lỗi khi lấy dữ liệu vi phạm:', err);
-    }
-  };
+  // Gom nhóm theo học sinh
+  useEffect(() => {
+    const map: { [key: string]: GroupedStudent } = {};
+    violations.forEach((v) => {
+      const key = v.name.trim().toLowerCase() + "_" + v.className;
+      if (!map[key]) {
+        map[key] = { name: v.name, className: v.className, violations: [v] };
+      } else {
+        map[key].violations.push(v);
+      }
+    });
+    setGrouped(Object.values(map));
+  }, [violations]);
 
-  const fetchClasses = async () => {
-    try {
-      const res = await api.get('/api/classes');
-      const validClasses = res.data
-        .filter((cls: any) => cls.teacher)
-        .map((cls: any) => cls.className);
-      setClassList(validClasses);
-    } catch (err) {
-      console.error('Lỗi khi lấy danh sách lớp:', err);
-    }
-  };
-
-  const fetchRules = async () => {
-    try {
-      const res = await api.get('/api/rules');
-      setRules(res.data);
-    } catch (err) {
-      console.error('Lỗi khi lấy rules:', err);
-    }
-  };
-
-  const applyFilters = () => {
-    let data = [...violations];
-
-    // Lọc theo lớp (nếu có chọn)
-    if (selectedClasses.length > 0) {
-      data = data.filter((v) => selectedClasses.includes(v.className));
-    }
+  // Lọc kết quả
+  const filtered = grouped.filter((g) => {
+    // Lọc theo lớp
+    if (selectedClass !== "all" && g.className !== selectedClass) return false;
 
     // Lọc theo tuần
-    if (selectedWeek !== 'all') {
-      const weekNum = parseInt(selectedWeek, 10);
-      data = data.filter((v) => {
-        const weekOfYear = dayjs(v.time).isoWeek();
-        return weekOfYear === weekNum;
-      });
+    let violationsByWeek = g.violations;
+    if (selectedWeek !== "all") {
+      const weekNum = parseInt(selectedWeek);
+      violationsByWeek = g.violations.filter((v) => v.week === weekNum);
+      if (violationsByWeek.length === 0) return false;
     }
 
-    setFiltered(data);
-  };
+    // Lọc theo tên
+    if (searchName.trim()) {
+      const search = removeVietnameseTones(searchName);
+      if (!removeVietnameseTones(g.name).includes(search)) return false;
+    }
 
-  const clearFilters = () => {
-    setSelectedClasses([]);
-    setSelectedWeek('all');
-    setFiltered(violations);
-  };
+    // Lọc theo checkbox ">= 3 vi phạm"
+    if (onlyFrequent && violationsByWeek.length < 3) return false;
 
-  // Tạo danh sách tuần (1 → 52)
-  const weekOptions = Array.from({ length: 52 }, (_, i) => i + 1);
+    return true;
+  });
 
   return (
-    <Box sx={{ maxWidth: '100%', mx: 'auto', py: 4 }}>
-      <Typography variant="h4" fontWeight="bold" align="center" gutterBottom>
-        Danh sách học sinh vi phạm (trên 3 lần)
+    <Box sx={{ width: "90%", mx: "auto", py: 4 }}>
+      <Typography variant="h4" gutterBottom align="center">
+        Danh sách học sinh vi phạm
       </Typography>
 
-      <Paper
-        sx={{
-          width: '100%',
-          overflowX: 'auto',
-          borderRadius: 3,
-          mt: 2,
-          p: 2,
-          mb: 4,
-        }}
-        elevation={3}
-      >
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={2}
-          alignItems="center"
-          flexWrap="wrap"
+      {/* Bộ lọc */}
+      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+        <TextField
+          label="Tìm theo tên học sinh"
+          value={searchName}
+          onChange={(e) => setSearchName(e.target.value)}
+          fullWidth
+        />
+
+        <TextField
+          select
+          label="Chọn lớp"
+          value={selectedClass}
+          onChange={(e) => setSelectedClass(e.target.value)}
+          sx={{ minWidth: 160 }}
         >
-          {/* Chọn nhiều lớp */}
-          <TextField
-            label="Chọn lớp"
-            select
-            SelectProps={{ multiple: true }}
-            value={selectedClasses}
-            onChange={(e) => {
-              const value =
-                typeof e.target.value === 'string'
-                  ? e.target.value.split(',')
-                  : e.target.value;
+          <MenuItem value="all">Tất cả lớp</MenuItem>
+          {classOptions.map((cls) => (
+            <MenuItem key={cls} value={cls}>
+              {cls}
+            </MenuItem>
+          ))}
+        </TextField>
 
-              if (value.includes('all')) {
-                setSelectedClasses([]); // chọn tất cả lớp
-              } else {
-                setSelectedClasses(value);
-              }
-            }}
-            sx={{ minWidth: 200 }}
-          >
-            <MenuItem value="all">-- Tất cả lớp --</MenuItem>
-            {classList.map((cls) => (
-              <MenuItem key={cls} value={cls}>
-                {cls}
-              </MenuItem>
-            ))}
-          </TextField>
+        <TextField
+          select
+          label="Chọn tuần"
+          value={selectedWeek}
+          onChange={(e) => setSelectedWeek(e.target.value)}
+          sx={{ minWidth: 160 }}
+        >
+          <MenuItem value="all">Tất cả tuần</MenuItem>
+          {weekOptions.map((w) => (
+            <MenuItem key={w} value={w.toString()}>
+              Tuần {w}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Stack>
 
-          {/* Chọn tuần */}
-          <TextField
-            label="Chọn tuần"
-            select
-            value={selectedWeek}
-            onChange={(e) => setSelectedWeek(e.target.value)}
-            sx={{ minWidth: 150 }}
-          >
-            <MenuItem value="all">-- Tất cả tuần --</MenuItem>
-            {weekOptions.map((w) => (
-              <MenuItem key={w} value={w.toString()}>
-                Tuần {w}
-              </MenuItem>
-            ))}
-          </TextField>
+      {/* Checkbox lọc học sinh vi phạm >= 3 lần */}
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={onlyFrequent}
+            onChange={(e) => setOnlyFrequent(e.target.checked)}
+          />
+        }
+        label="Chỉ hiển thị học sinh vi phạm từ 3 lần trở lên"
+      />
 
-          <Button variant="contained" onClick={applyFilters}>
-            Áp dụng
-          </Button>
-          <Button variant="outlined" onClick={clearFilters}>
-            Xóa lọc
-          </Button>
-        </Stack>
-      </Paper>
-
-      <Paper
-        elevation={3}
-        sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mt: 2 }}
-      >
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ backgroundColor: '#87cafe' }}>
-              <TableCell>STT</TableCell>
-              <TableCell>Họ tên</TableCell>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Lỗi vi phạm</TableCell>
-              <TableCell>Thời gian</TableCell>
-              <TableCell>Hình thức xử lý</TableCell>
-              <TableCell>Điểm</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filtered.length > 0 ? (
-              filtered.map((v, i) => (
-                <TableRow key={v._id}>
-                  <TableCell>{i + 1}</TableCell>
-                  <TableCell>{v.name}</TableCell>
-                  <TableCell>{v.className}</TableCell>
-                  <TableCell>{v.description}</TableCell>
-                  <TableCell>
-                    {v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}
-                  </TableCell>
-                  <TableCell>{v.handlingMethod}</TableCell>
-                  <TableCell>
-                    {rules.find((r) => r.title === v.description)?.point || 0}
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  Không có dữ liệu phù hợp.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </Paper>
+      {/* Danh sách */}
+      {filtered.length === 0 ? (
+        <Typography align="center" sx={{ mt: 3 }}>
+          Không có dữ liệu
+        </Typography>
+      ) : (
+        <List>
+          {filtered.map((g, idx) => (
+            <Paper key={idx} sx={{ mb: 2, p: 2 }}>
+              <Typography variant="h6">
+                {g.name} — {g.className} ({g.violations.length} lần vi phạm)
+              </Typography>
+              <Divider sx={{ my: 1 }} />
+              <List dense>
+                {g.violations.map((v) => (
+                  <ListItem key={v._id}>
+                    <ListItemText
+                      primary={`- ${v.description}`}
+                      secondary={`Tuần ${v.week} — ${new Date(v.time).toLocaleString()}`}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          ))}
+        </List>
+      )}
     </Box>
   );
 }
