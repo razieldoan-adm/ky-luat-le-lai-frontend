@@ -25,6 +25,7 @@ interface Violation {
   description: string;
   time: Date;
   handlingMethod: string;
+  weekNumber: number; // 🔹 đã lưu trực tiếp khi ghi nhận
 }
 interface Rule {
   _id: string;
@@ -49,14 +50,13 @@ export default function UnhandledViolationsPage() {
   const [selectedWeek, setSelectedWeek] = useState<string>('all');
   const [onlyFrequent, setOnlyFrequent] = useState(false);
 
-  // 🔹 danh sách tuần từ API
   const [weekList, setWeekList] = useState<Week[]>([]);
 
   useEffect(() => {
     fetchViolations();
     fetchClasses();
     fetchRules();
-    fetchWeeks(); // gọi API lấy tuần
+    fetchWeeks();
   }, []);
 
   const fetchViolations = async () => {
@@ -90,7 +90,6 @@ export default function UnhandledViolationsPage() {
     }
   };
 
-  // 🔹 lấy danh sách tuần
   const fetchWeeks = async () => {
     try {
       const res = await api.get('/api/academic-weeks/study-weeks');
@@ -108,16 +107,9 @@ export default function UnhandledViolationsPage() {
       data = data.filter((v) => selectedClasses.includes(v.className));
     }
 
-    // Lọc theo tuần
+    // Lọc theo tuần (dùng weekNumber trực tiếp)
     if (selectedWeek !== 'all') {
-      const week = weekList.find((w) => String(w.weekNumber) === selectedWeek);
-      if (week) {
-        data = data.filter(
-          (v) =>
-            dayjs(v.time).isAfter(dayjs(week.start).subtract(1, 'day')) &&
-            dayjs(v.time).isBefore(dayjs(week.end).add(1, 'day'))
-        );
-      }
+      data = data.filter((v) => String(v.weekNumber) === selectedWeek);
     }
 
     // Lọc theo tên
@@ -185,7 +177,7 @@ export default function UnhandledViolationsPage() {
             ))}
           </TextField>
 
-          {/* Dropdown tuần */}
+          {/* Dropdown tuần (dùng weekNumber trực tiếp) */}
           <TextField
             label="Chọn tuần"
             select
@@ -196,7 +188,7 @@ export default function UnhandledViolationsPage() {
             <MenuItem value="all">Tất cả tuần</MenuItem>
             {weekList.map((w) => (
               <MenuItem key={w._id} value={String(w.weekNumber)}>
-                Tuần {w.weekNumber} ({dayjs(w.start).format('DD/MM')} - {dayjs(w.end).format('DD/MM')})
+                Tuần {w.weekNumber}
               </MenuItem>
             ))}
           </TextField>
