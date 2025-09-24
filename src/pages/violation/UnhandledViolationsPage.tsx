@@ -17,8 +17,6 @@ import {
 } from '@mui/material';
 import api from '../../api/api';
 import dayjs from 'dayjs';
-import isoWeek from 'dayjs/plugin/isoWeek';
-dayjs.extend(isoWeek);
 
 interface Violation {
   _id: string;
@@ -47,15 +45,17 @@ export default function UnhandledViolationsPage() {
   const [searchName, setSearchName] = useState('');
   const [classList, setClassList] = useState<string[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
-  const [weeks, setWeeks] = useState<Week[]>([]);
   const [selectedWeek, setSelectedWeek] = useState('all');
   const [onlyFrequent, setOnlyFrequent] = useState(false);
+
+  // 🔹 danh sách tuần từ API
+  const [weekList, setWeekList] = useState<Week[]>([]);
 
   useEffect(() => {
     fetchViolations();
     fetchClasses();
     fetchRules();
-    fetchWeeks(); // lấy tuần từ API
+    fetchWeeks(); // gọi API lấy tuần
   }, []);
 
   const fetchViolations = async () => {
@@ -89,11 +89,11 @@ export default function UnhandledViolationsPage() {
     }
   };
 
-  // lấy tuần từ API setting
+  // 🔹 đoạn bạn đưa
   const fetchWeeks = async () => {
     try {
       const res = await api.get('/api/academic-weeks/study-weeks');
-      setWeeks([{ label: 'Tất cả tuần', start: '', end: '' }, ...res.data]);
+      setWeekList(res.data);
     } catch (err) {
       console.error('Lỗi khi lấy danh sách tuần:', err);
     }
@@ -109,7 +109,7 @@ export default function UnhandledViolationsPage() {
 
     // Lọc theo tuần
     if (selectedWeek !== 'all') {
-      const week = weeks.find((w) => w.label === selectedWeek);
+      const week = weekList.find((w) => w.label === selectedWeek);
       if (week) {
         data = data.filter(
           (v) =>
@@ -138,7 +138,7 @@ export default function UnhandledViolationsPage() {
       data = data.filter((v) => countMap[v.name.trim().toLowerCase()] >= 3);
     }
 
-    // Sắp xếp lớp nhỏ → lớn, sau đó theo tên
+    // Sắp xếp theo lớp rồi theo tên
     data.sort((a, b) => {
       if (a.className === b.className) {
         return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' });
@@ -192,7 +192,8 @@ export default function UnhandledViolationsPage() {
             onChange={(e) => setSelectedWeek(e.target.value)}
             sx={{ minWidth: 200 }}
           >
-            {weeks.map((w) => (
+            <MenuItem value="all">Tất cả tuần</MenuItem>
+            {weekList.map((w) => (
               <MenuItem key={w.label} value={w.label}>
                 {w.label}
               </MenuItem>
