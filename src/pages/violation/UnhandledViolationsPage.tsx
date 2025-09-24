@@ -33,6 +33,7 @@ interface Rule {
   content: string;
 }
 interface Week {
+  _id: string;
   label: string;
   start: string;
   end: string;
@@ -109,7 +110,7 @@ export default function UnhandledViolationsPage() {
 
     // Lọc theo tuần
     if (selectedWeek !== 'all') {
-      const week = weekList.find((w) => w.label === selectedWeek);
+      const week = weekList.find((w) => w._id === selectedWeek);
       if (week) {
         data = data.filter(
           (v) =>
@@ -194,7 +195,7 @@ export default function UnhandledViolationsPage() {
           >
             <MenuItem value="all">Tất cả tuần</MenuItem>
             {weekList.map((w) => (
-              <MenuItem key={w.label} value={w.label}>
+              <MenuItem key={w._id} value={w._id}>
                 {w.label}
               </MenuItem>
             ))}
