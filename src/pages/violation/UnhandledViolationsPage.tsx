@@ -199,7 +199,23 @@ export default function UnhandledViolationsPage() {
                 {w.label}
               </MenuItem>
             ))}
-          </TextField>
+          </TextField><TextField
+          label="Chọn tuần"
+          select
+          value={selectedWeek}
+          onChange={(e) =>
+            setSelectedWeek(e.target.value === "all" ? "all" : e.target.value === "" ? "" : Number(e.target.value))
+          }
+          sx={{ minWidth: 150 }}
+        >
+          
+          <MenuItem value="all">-- Xem tất cả --</MenuItem> {/* ✅ có value riêng */}
+          {weekList.map((w) => (
+            <MenuItem key={w._id} value={w.weekNumber}>
+              Tuần {w.weekNumber}
+            </MenuItem>
+          ))}
+        </TextField>
 
           {/* Tìm theo tên */}
           <TextField
