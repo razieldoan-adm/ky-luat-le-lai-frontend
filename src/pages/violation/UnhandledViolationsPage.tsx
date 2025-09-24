@@ -1,216 +1,172 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  Stack,
   TextField,
   MenuItem,
   Button,
   Table,
   TableHead,
+  TableBody,
   TableRow,
   TableCell,
-  TableBody,
   Paper,
-  Collapse,
-  IconButton,
-} from "@mui/material";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
-import api from "../../api/api";
+  Stack,
+} from '@mui/material';
+import api from '../../api/api';
+import dayjs from 'dayjs';
 
 interface Violation {
   _id: string;
   name: string;
   className: string;
-  violationType: string;
-  description?: string;
-  date: string;
+  description: string;
+  time: Date;
+  handlingMethod: string;
 }
-
-interface ClassOption {
+interface Rule {
   _id: string;
-  className: string;
-  teacher: string;
+  title: string;
+  point: number;
+  content: string;
 }
-
-interface StudentViolation {
-  displayName: string;
-  className: string;
-  count: number;
-  details: Violation[];
-}
-
 export default function UnhandledViolationsPage() {
-  const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
-  const [className, setClassName] = useState("");
-  const [name, setName] = useState("");
-  const [students, setStudents] = useState<StudentViolation[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [openRows, setOpenRows] = useState<{ [key: string]: boolean }>({});
+  const [violations, setViolations] = useState<Violation[]>([]);
+  const [filtered, setFiltered] = useState<Violation[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [searchName, setSearchName] = useState('');
+  const [classList, setClassList] = useState<string[]>([]);
+  const [rules, setRules] = useState<Rule[]>([]);
 
-  // 📌 Lấy danh sách lớp
   useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        const res = await api.get("/api/classes/with-teacher");
-        setClassOptions(res.data);
-      } catch (err) {
-        console.error("Lỗi khi lấy danh sách lớp:", err);
-      }
-    };
+    fetchViolations();
     fetchClasses();
+    fetchRules();
   }, []);
 
-  // 📌 Gọi API lấy danh sách vi phạm
   const fetchViolations = async () => {
     try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (className) params.append("className", className);
-      if (name) params.append("name", name);
-
-      const res = await api.get(`/api/violations?${params.toString()}`);
-      const data: Violation[] = res.data;
-
-      // Gom nhóm theo học sinh
-      const countMap: {
-        [key: string]: { className: string; displayName: string; details: Violation[] };
-      } = {};
-
-      data.forEach((v) => {
-        const key = v.name.trim().toLowerCase() + "_" + v.className;
-        if (!countMap[key]) {
-          countMap[key] = {
-            className: v.className,
-            displayName: v.name,
-            details: [v],
-          };
-        } else {
-          countMap[key].details.push(v);
-        }
-      });
-
-      const result: StudentViolation[] = Object.values(countMap)
-        .map((s) => ({
-          displayName: s.displayName,
-          className: s.className,
-          count: s.details.length,
-          details: s.details,
-        }))
-        .filter((s) => s.count > 3);
-
-      setStudents(result);
+      const res = await api.get('/api/violations/all/all-student');
+      setViolations(res.data);
+      setFiltered(res.data);
     } catch (err) {
-      console.error("Lỗi khi tải dữ liệu:", err);
-      setStudents([]);
-    } finally {
-      setLoading(false);
+      console.error('Lỗi khi lấy dữ liệu vi phạm:', err);
     }
   };
 
-  const toggleRow = (key: string) => {
-    setOpenRows((prev) => ({ ...prev, [key]: !prev[key] }));
+  const fetchClasses = async () => {
+    try {
+      const res = await api.get('/api/classes');
+      const validClasses = res.data.filter((cls: any) => cls.teacher).map((cls: any) => cls.className);
+      setClassList(validClasses);
+    } catch (err) {
+      console.error('Lỗi khi lấy danh sách lớp:', err);
+    }
+  };
+
+  const fetchRules = async () => {
+    try {
+      const res = await api.get('/api/rules');
+      setRules(res.data);
+    } catch (err) {
+      console.error('Lỗi khi lấy rules:', err);
+    }
+  };
+
+  const applyFilters = () => {
+    let data = [...violations];
+    if (selectedClasses.length > 0) data = data.filter((v) => selectedClasses.includes(v.className));
+    if (fromDate) data = data.filter((v) => dayjs(v.time).isAfter(dayjs(fromDate).subtract(1, 'day')));
+    if (toDate) data = data.filter((v) => dayjs(v.time).isBefore(dayjs(toDate).add(1, 'day')));
+    if (searchName) data = data.filter((v) => v.name.toLowerCase().includes(searchName.toLowerCase()));
+    setFiltered(data);
+  };
+
+  const clearFilters = () => {
+    setSelectedClasses([]);
+    setFromDate('');
+    setToDate('');
+    setSearchName('');
+    setFiltered(violations);
   };
 
   return (
-    <Box sx={{ width: "90vw", mx: "auto", py: 6 }}>
-      <Typography variant="h4" align="center" gutterBottom>
-        Học sinh vi phạm trên 3 lần
+    <Box sx={{ maxWidth: '100%', mx: 'auto', py: 4 }}>
+      <Typography variant="h4" fontWeight="bold" align="center" gutterBottom>
+        Học sinh vi phạm (báo cáo)
       </Typography>
 
-      {/* Bộ lọc */}
-      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-        <TextField
-          label="Chọn lớp"
-          select
-          value={className}
-          onChange={(e) => setClassName(e.target.value)}
-          sx={{ minWidth: 200 }}
-        >
-          {classOptions.map((cls) => (
-            <MenuItem key={cls._id} value={cls.className}>
-              {cls.className} — {cls.teacher}
-            </MenuItem>
-          ))}
-        </TextField>
+      <Paper sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mt: 2, p: 2, mb: 4 }} elevation={3}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
+          {/* Lọc nhiều lớp */}
+          <TextField
+            label="Chọn lớp"
+            select
+            SelectProps={{ multiple: true }}
+            value={selectedClasses}
+            onChange={(e) => setSelectedClasses(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+            sx={{ minWidth: 200 }}
+          >
+            {classList.map((cls) => (
+              <MenuItem key={cls} value={cls}>
+                {cls}
+              </MenuItem>
+            ))}
+          </TextField>
 
-        <TextField
-          label="Tìm theo tên học sinh"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          sx={{ minWidth: 200 }}
-        />
+          {/* Tìm theo tên */}
+          <TextField
+            label="Tìm theo tên học sinh"
+            value={searchName}
+            onChange={(e) => setSearchName(e.target.value)}
+            sx={{ minWidth: 200 }}
+          />
 
-        <Button variant="contained" onClick={fetchViolations} disabled={loading}>
-          {loading ? "Đang tải..." : "Lọc"}
-        </Button>
-      </Stack>
+          {/* Từ ngày - Đến ngày */}
+          <TextField label="Từ ngày" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <TextField label="Đến ngày" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} InputLabelProps={{ shrink: true }} />
 
-      {/* Danh sách kết quả */}
-      <Paper>
-        <Table>
+          <Button variant="contained" onClick={applyFilters}>
+            Áp dụng
+          </Button>
+          <Button variant="outlined" onClick={clearFilters}>
+            Xóa lọc
+          </Button>
+        </Stack>
+      </Paper>
+
+      <Paper elevation={3} sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mt: 2 }}>
+        <Table size="small">
           <TableHead>
-            <TableRow>
-              <TableCell />
+            <TableRow sx={{ backgroundColor: '#87cafe' }}>
+              <TableCell>STT</TableCell>
               <TableCell>Họ tên</TableCell>
               <TableCell>Lớp</TableCell>
-              <TableCell align="center">Số lần vi phạm</TableCell>
+              <TableCell>Lỗi vi phạm</TableCell>
+              <TableCell>Thời gian</TableCell>
+              <TableCell>Hình thức xử lý</TableCell>
+              <TableCell>Điểm</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {students.length > 0 ? (
-              students.map((s, idx) => {
-                const rowKey = `${s.displayName}_${s.className}_${idx}`;
-                return (
-                  <>
-                    <TableRow key={rowKey}>
-                      <TableCell>
-                        <IconButton size="small" onClick={() => toggleRow(rowKey)}>
-                          {openRows[rowKey] ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
-                        </IconButton>
-                      </TableCell>
-                      <TableCell>{s.displayName}</TableCell>
-                      <TableCell>{s.className}</TableCell>
-                      <TableCell align="center">{s.count}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell colSpan={4} sx={{ p: 0 }}>
-                        <Collapse in={openRows[rowKey]} timeout="auto" unmountOnExit>
-                          <Box sx={{ m: 2 }}>
-                            <Typography variant="subtitle1" gutterBottom>
-                              Chi tiết vi phạm
-                            </Typography>
-                            <Table size="small">
-                              <TableHead>
-                                <TableRow>
-                                  <TableCell>Ngày</TableCell>
-                                  <TableCell>Loại vi phạm</TableCell>
-                                  <TableCell>Mô tả</TableCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {s.details.map((d) => (
-                                  <TableRow key={d._id}>
-                                    <TableCell>
-                                      {new Date(d.date).toLocaleDateString("vi-VN")}
-                                    </TableCell>
-                                    <TableCell>{d.violationType}</TableCell>
-                                    <TableCell>{d.description || "-"}</TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </Box>
-                        </Collapse>
-                      </TableCell>
-                    </TableRow>
-                  </>
-                );
-              })
+            {filtered.length > 0 ? (
+              filtered.map((v, i) => (
+                <TableRow key={v._id}>
+                  <TableCell>{i + 1}</TableCell>
+                  <TableCell>{v.name}</TableCell>
+                  <TableCell>{v.className}</TableCell>
+                  <TableCell>{v.description}</TableCell>
+                  <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
+                  <TableCell>{v.handlingMethod}</TableCell>
+                  <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
+                </TableRow>
+              ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} align="center">
-                  Không có dữ liệu
+                <TableCell colSpan={7} align="center">
+                  Không có dữ liệu phù hợp.
                 </TableCell>
               </TableRow>
             )}
