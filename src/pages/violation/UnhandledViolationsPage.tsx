@@ -35,8 +35,8 @@ interface Rule {
 interface Week {
   _id: string;
   weekNumber: number;
-  start: string;
-  end: string;
+  start: string; // ISO date string
+  end: string;   // ISO date string
 }
 
 export default function UnhandledViolationsPage() {
@@ -46,17 +46,17 @@ export default function UnhandledViolationsPage() {
   const [searchName, setSearchName] = useState('');
   const [classList, setClassList] = useState<string[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<string | number>('all');
+  const [selectedWeek, setSelectedWeek] = useState<string>('all');
   const [onlyFrequent, setOnlyFrequent] = useState(false);
 
-  // 🔹 danh sách tuần từ API
+  // 🔹 danh sách tuần từ API (setting)
   const [weekList, setWeekList] = useState<Week[]>([]);
 
   useEffect(() => {
     fetchViolations();
     fetchClasses();
     fetchRules();
-    fetchWeeks(); // gọi API lấy tuần
+    fetchWeeks(); // gọi API lấy tuần từ setting
   }, []);
 
   const fetchViolations = async () => {
@@ -90,7 +90,6 @@ export default function UnhandledViolationsPage() {
     }
   };
 
-  // 🔹 lấy tuần
   const fetchWeeks = async () => {
     try {
       const res = await api.get('/api/academic-weeks/study-weeks');
@@ -98,6 +97,13 @@ export default function UnhandledViolationsPage() {
     } catch (err) {
       console.error('Lỗi khi lấy danh sách tuần:', err);
     }
+  };
+
+  // 🔹 format hiển thị tuần
+  const formatWeekLabel = (w: Week) => {
+    const start = dayjs(w.start);
+    const end = dayjs(w.end);
+    return `Tuần ${w.weekNumber} (${start.format('DD/MM')} - ${end.format('DD/MM')})`;
   };
 
   const applyFilters = () => {
@@ -108,14 +114,16 @@ export default function UnhandledViolationsPage() {
       data = data.filter((v) => selectedClasses.includes(v.className));
     }
 
-    // Lọc theo tuần
+    // Lọc theo tuần (dùng tuần từ setting)
     if (selectedWeek !== 'all') {
-      const week = weekList.find((w) => w.weekNumber === selectedWeek);
+      const weekNum = parseInt(selectedWeek, 10);
+      const week = weekList.find((w) => w.weekNumber === weekNum);
       if (week) {
+        const start = dayjs(week.start).startOf('day');
+        const end = dayjs(week.end).endOf('day');
         data = data.filter(
           (v) =>
-            dayjs(v.time).isAfter(dayjs(week.start).subtract(1, 'day')) &&
-            dayjs(v.time).isBefore(dayjs(week.end).add(1, 'day'))
+            dayjs(v.time).isAfter(start) && dayjs(v.time).isBefore(end)
         );
       }
     }
@@ -195,8 +203,8 @@ export default function UnhandledViolationsPage() {
           >
             <MenuItem value="all">Tất cả tuần</MenuItem>
             {weekList.map((w) => (
-              <MenuItem key={w._id} value={w.weekNumber}>
-                {`Tuần ${w.weekNumber} (${dayjs(w.start).format('DD/MM')} - ${dayjs(w.end).format('DD/MM')})`}
+              <MenuItem key={w._id} value={w.weekNumber.toString()}>
+                {formatWeekLabel(w)}
               </MenuItem>
             ))}
           </TextField>
