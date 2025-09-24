@@ -12,14 +12,19 @@ import {
   TableCell,
   TableBody,
   Paper,
+  Collapse,
+  IconButton,
 } from "@mui/material";
+import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import api from "../../api/api";
 
 interface Violation {
   _id: string;
   name: string;
   className: string;
-  weekNumber: number;
+  violationType: string;
+  description?: string;
+  date: string;
 }
 
 interface ClassOption {
@@ -28,20 +33,22 @@ interface ClassOption {
   teacher: string;
 }
 
-interface CountedStudent {
+interface StudentViolation {
   displayName: string;
   className: string;
   count: number;
+  details: Violation[];
 }
 
-export default function FrequentViolationsPage() {
-  const [week, setWeek] = useState("");
-  const [className, setClassName] = useState("");
+export default function UnhandledViolationsPage() {
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
-  const [violations, setViolations] = useState<CountedStudent[]>([]);
+  const [className, setClassName] = useState("");
+  const [name, setName] = useState("");
+  const [students, setStudents] = useState<StudentViolation[]>([]);
   const [loading, setLoading] = useState(false);
+  const [openRows, setOpenRows] = useState<{ [key: string]: boolean }>({});
 
-  // 📌 Lấy danh sách lớp để hiển thị select
+  // 📌 Lấy danh sách lớp
   useEffect(() => {
     const fetchClasses = async () => {
       try {
@@ -54,66 +61,65 @@ export default function FrequentViolationsPage() {
     fetchClasses();
   }, []);
 
-  // 📌 Hàm fetch dữ liệu vi phạm theo tuần / lớp
+  // 📌 Gọi API lấy danh sách vi phạm
   const fetchViolations = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (week) params.append("week", week);
       if (className) params.append("className", className);
+      if (name) params.append("name", name);
 
       const res = await api.get(`/api/violations?${params.toString()}`);
-
-      // Gom nhóm và lọc ≥ 3
       const data: Violation[] = res.data;
+
+      // Gom nhóm theo học sinh
       const countMap: {
-        [key: string]: { count: number; className: string; displayName: string };
+        [key: string]: { className: string; displayName: string; details: Violation[] };
       } = {};
 
       data.forEach((v) => {
-        const normalized = v.name.trim().toLowerCase();
-        if (!countMap[normalized]) {
-          countMap[normalized] = {
-            count: 1,
+        const key = v.name.trim().toLowerCase() + "_" + v.className;
+        if (!countMap[key]) {
+          countMap[key] = {
             className: v.className,
             displayName: v.name,
+            details: [v],
           };
         } else {
-          countMap[normalized].count += 1;
+          countMap[key].details.push(v);
         }
       });
 
-      const result = Object.values(countMap).filter((s) => s.count >= 3);
-      setViolations(result);
+      const result: StudentViolation[] = Object.values(countMap)
+        .map((s) => ({
+          displayName: s.displayName,
+          className: s.className,
+          count: s.details.length,
+          details: s.details,
+        }))
+        .filter((s) => s.count > 3);
+
+      setStudents(result);
     } catch (err) {
       console.error("Lỗi khi tải dữ liệu:", err);
-      setViolations([]);
+      setStudents([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const toggleRow = (key: string) => {
+    setOpenRows((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
-    <Box sx={{ width: "80vw", mx: "auto", py: 6 }}>
+    <Box sx={{ width: "90vw", mx: "auto", py: 6 }}>
       <Typography variant="h4" align="center" gutterBottom>
-        Học sinh vi phạm từ 3 lần trở lên
+        Học sinh vi phạm trên 3 lần
       </Typography>
 
+      {/* Bộ lọc */}
       <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-        <TextField
-          label="Chọn tuần"
-          select
-          value={week}
-          onChange={(e) => setWeek(e.target.value)}
-          sx={{ minWidth: 150 }}
-        >
-          {[...Array(20)].map((_, i) => (
-            <MenuItem key={i + 1} value={String(i + 1)}>
-              Tuần {i + 1}
-            </MenuItem>
-          ))}
-        </TextField>
-
         <TextField
           label="Chọn lớp"
           select
@@ -128,37 +134,82 @@ export default function FrequentViolationsPage() {
           ))}
         </TextField>
 
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={fetchViolations}
-          disabled={loading}
-        >
+        <TextField
+          label="Tìm theo tên học sinh"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          sx={{ minWidth: 200 }}
+        />
+
+        <Button variant="contained" onClick={fetchViolations} disabled={loading}>
           {loading ? "Đang tải..." : "Lọc"}
         </Button>
       </Stack>
 
+      {/* Danh sách kết quả */}
       <Paper>
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell />
               <TableCell>Họ tên</TableCell>
               <TableCell>Lớp</TableCell>
               <TableCell align="center">Số lần vi phạm</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {violations.length > 0 ? (
-              violations.map((s, idx) => (
-                <TableRow key={idx}>
-                  <TableCell>{s.displayName}</TableCell>
-                  <TableCell>{s.className}</TableCell>
-                  <TableCell align="center">{s.count}</TableCell>
-                </TableRow>
-              ))
+            {students.length > 0 ? (
+              students.map((s, idx) => {
+                const rowKey = `${s.displayName}_${s.className}_${idx}`;
+                return (
+                  <>
+                    <TableRow key={rowKey}>
+                      <TableCell>
+                        <IconButton size="small" onClick={() => toggleRow(rowKey)}>
+                          {openRows[rowKey] ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+                        </IconButton>
+                      </TableCell>
+                      <TableCell>{s.displayName}</TableCell>
+                      <TableCell>{s.className}</TableCell>
+                      <TableCell align="center">{s.count}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell colSpan={4} sx={{ p: 0 }}>
+                        <Collapse in={openRows[rowKey]} timeout="auto" unmountOnExit>
+                          <Box sx={{ m: 2 }}>
+                            <Typography variant="subtitle1" gutterBottom>
+                              Chi tiết vi phạm
+                            </Typography>
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell>Ngày</TableCell>
+                                  <TableCell>Loại vi phạm</TableCell>
+                                  <TableCell>Mô tả</TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {s.details.map((d) => (
+                                  <TableRow key={d._id}>
+                                    <TableCell>
+                                      {new Date(d.date).toLocaleDateString("vi-VN")}
+                                    </TableCell>
+                                    <TableCell>{d.violationType}</TableCell>
+                                    <TableCell>{d.description || "-"}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </Box>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  </>
+                );
+              })
             ) : (
               <TableRow>
-                <TableCell colSpan={3} align="center">
+                <TableCell colSpan={4} align="center">
                   Không có dữ liệu
                 </TableCell>
               </TableRow>
