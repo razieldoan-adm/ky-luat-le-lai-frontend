@@ -16,7 +16,7 @@ import {
   TableHead,
   TableRow,
 } from "@mui/material";
-import api from "../../utils/api";
+import api from "../../api/api";
 
 interface Violation {
   _id: string;
