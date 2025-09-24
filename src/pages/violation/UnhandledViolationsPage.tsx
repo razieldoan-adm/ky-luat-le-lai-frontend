@@ -34,7 +34,7 @@ interface Rule {
 }
 interface Week {
   _id: string;
-  label: string;
+  weekNumber: number;
   start: string;
   end: string;
 }
@@ -46,7 +46,7 @@ export default function UnhandledViolationsPage() {
   const [searchName, setSearchName] = useState('');
   const [classList, setClassList] = useState<string[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState('all');
+  const [selectedWeek, setSelectedWeek] = useState<string | number>('all');
   const [onlyFrequent, setOnlyFrequent] = useState(false);
 
   // 🔹 danh sách tuần từ API
@@ -90,7 +90,7 @@ export default function UnhandledViolationsPage() {
     }
   };
 
-  // 🔹 đoạn bạn đưa
+  // 🔹 lấy tuần
   const fetchWeeks = async () => {
     try {
       const res = await api.get('/api/academic-weeks/study-weeks');
@@ -110,7 +110,7 @@ export default function UnhandledViolationsPage() {
 
     // Lọc theo tuần
     if (selectedWeek !== 'all') {
-      const week = weekList.find((w) => w._id === selectedWeek);
+      const week = weekList.find((w) => w.weekNumber === selectedWeek);
       if (week) {
         data = data.filter(
           (v) =>
@@ -195,27 +195,11 @@ export default function UnhandledViolationsPage() {
           >
             <MenuItem value="all">Tất cả tuần</MenuItem>
             {weekList.map((w) => (
-              <MenuItem key={w._id} value={w._id}>
-                {w.label}
+              <MenuItem key={w._id} value={w.weekNumber}>
+                {`Tuần ${w.weekNumber} (${dayjs(w.start).format('DD/MM')} - ${dayjs(w.end).format('DD/MM')})`}
               </MenuItem>
             ))}
-          </TextField><TextField
-          label="Chọn tuần"
-          select
-          value={selectedWeek}
-          onChange={(e) =>
-            setSelectedWeek(e.target.value === "all" ? "all" : e.target.value === "" ? "" : Number(e.target.value))
-          }
-          sx={{ minWidth: 150 }}
-        >
-          
-          <MenuItem value="all">-- Xem tất cả --</MenuItem> {/* ✅ có value riêng */}
-          {weekList.map((w) => (
-            <MenuItem key={w._id} value={w.weekNumber}>
-              Tuần {w.weekNumber}
-            </MenuItem>
-          ))}
-        </TextField>
+          </TextField>
 
           {/* Tìm theo tên */}
           <TextField
