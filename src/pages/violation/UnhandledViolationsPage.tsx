@@ -40,7 +40,7 @@ const UnhandledViolationsPage: React.FC = () => {
   const [searchName, setSearchName] = useState<string>("");
   const [filterByCount, setFilterByCount] = useState<boolean>(false);
 
-  // Lấy danh sách vi phạm
+  // lấy danh sách vi phạm
   const fetchViolations = async () => {
     try {
       const res = await api.get("/api/violations");
@@ -50,7 +50,7 @@ const UnhandledViolationsPage: React.FC = () => {
     }
   };
 
-  // Lấy danh sách lớp
+  // lấy danh sách lớp
   const fetchClasses = async () => {
     try {
       const res = await api.get("/api/classes");
@@ -60,7 +60,7 @@ const UnhandledViolationsPage: React.FC = () => {
     }
   };
 
-  // Lấy danh sách tuần từ setting
+  // lấy danh sách tuần từ setting
   const fetchWeeks = async () => {
     try {
       const res = await api.get("/api/academic-weeks/study-weeks");
@@ -76,7 +76,6 @@ const UnhandledViolationsPage: React.FC = () => {
     fetchWeeks();
   }, []);
 
-  // Gom nhóm theo học sinh
   const countMap = useMemo(() => {
     const map = new Map<string, number>();
     violations.forEach((v) => {
@@ -85,7 +84,6 @@ const UnhandledViolationsPage: React.FC = () => {
     return map;
   }, [violations]);
 
-  // Lọc dữ liệu
   const filteredViolations = useMemo(() => {
     let data = [...violations];
 
@@ -115,7 +113,7 @@ const UnhandledViolationsPage: React.FC = () => {
       data = data.filter((v) => (countMap.get(v.studentId) || 0) >= 3);
     }
 
-    // Sắp xếp theo lớp, sau đó theo tên
+    // sắp xếp theo lớp → tên
     data.sort((a, b) => {
       if (a.className === b.className) {
         return a.name.localeCompare(b.name, "vi", { sensitivity: "base" });
@@ -132,9 +130,8 @@ const UnhandledViolationsPage: React.FC = () => {
         Học sinh vi phạm (báo cáo)
       </Typography>
 
-      {/* Bộ lọc */}
       <Box display="flex" gap={2} mb={2} flexWrap="wrap">
-        {/* Dropdown chọn lớp */}
+        {/* chọn lớp */}
         <Select
           value={selectedClass}
           onChange={(e) => setSelectedClass(e.target.value)}
@@ -148,7 +145,7 @@ const UnhandledViolationsPage: React.FC = () => {
           ))}
         </Select>
 
-        {/* Dropdown chọn tuần */}
+        {/* chọn tuần */}
         <Select
           value={selectedWeek}
           onChange={(e) => setSelectedWeek(e.target.value)}
@@ -162,14 +159,13 @@ const UnhandledViolationsPage: React.FC = () => {
           ))}
         </Select>
 
-        {/* Tìm theo tên */}
+        {/* tìm theo tên */}
         <TextField
           placeholder="Tìm theo tên học sinh"
           value={searchName}
           onChange={(e) => setSearchName(e.target.value)}
         />
 
-        {/* Chỉ học sinh >= 3 vi phạm */}
         <FormControlLabel
           control={
             <Checkbox
@@ -193,7 +189,6 @@ const UnhandledViolationsPage: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Bảng danh sách */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
