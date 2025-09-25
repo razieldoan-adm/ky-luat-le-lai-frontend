@@ -241,18 +241,27 @@ export default function WeeklyScoresPage() {
   };
 
   const handleUpdate = async () => {
-    if (!selectedWeek) return;
-    try {
-      await api.put("/api/class-weekly-scores/update", {
-        weekNumber: selectedWeek.weekNumber,
-      });
-      await checkHasData(selectedWeek.weekNumber);
-      setSnackbar({ open: true, message: "Đã cập nhật dữ liệu", severity: "success" });
-    } catch (err) {
-      console.error("Update error:", err);
-      setSnackbar({ open: true, message: "Lỗi khi cập nhật dữ liệu", severity: "error" });
-    }
-  };
+  if (!selectedWeek || !scores.length) return;
+  try {
+    await api.put(`/api/class-weekly-scores/update/${selectedWeek.weekNumber}`, {
+      scores,
+    });
+    await checkHasData(selectedWeek.weekNumber); // load lại dữ liệu mới nhất
+    setSnackbar({
+      open: true,
+      message: "Đã cập nhật & tính lại xếp hạng",
+      severity: "success",
+    });
+  } catch (err) {
+    console.error("Update error:", err);
+    setSnackbar({
+      open: true,
+      message: "Lỗi khi cập nhật dữ liệu",
+      severity: "error",
+    });
+  }
+};
+
 
   const handleExportExcel = () => {
     if (!scores.length) return;
