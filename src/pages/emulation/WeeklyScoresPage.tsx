@@ -51,7 +51,7 @@ export default function WeeklyScoresPage() {
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [hasData, setHasData] = useState<boolean>(false);
   const [gradeFilter, setGradeFilter] = useState<string>("all");
-  const [classList, setClassList] = useState<any[]>([]); // danh sách lớp chuẩn
+  const [classList, setClassList] = useState<any[]>([]);
 
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -79,11 +79,10 @@ export default function WeeklyScoresPage() {
       violationScore: Number(r.violationScore ?? 0),
       hygieneScore: Number(r.hygieneScore ?? 0),
       attendanceScore: Number(r.attendanceScore ?? 0),
-      // fix: backend trả về lineUpScore, frontend dùng lineupScore
       lineupScore: Number(r.lineupScore ?? r.lineUpScore ?? 0),
       totalViolation: Number(r.totalViolation ?? 0),
       totalScore: Number(r.totalScore ?? 0),
-      rank: Number(r.rank ?? r.ranking ?? 0), // thêm fallback cho ranking từ backend
+      rank: Number(r.rank ?? r.ranking ?? 0),
     }));
   };
 
@@ -118,7 +117,7 @@ export default function WeeklyScoresPage() {
   useEffect(() => {
     fetchWeeks();
     fetchSettings();
-    fetchClasses(); // gọi thêm
+    fetchClasses();
   }, []);
 
   const fetchWeeks = async () => {
@@ -147,7 +146,8 @@ export default function WeeklyScoresPage() {
 
   const fetchClasses = async () => {
     try {
-      const res = await api.get("/api/classes");
+      // ✅ chỉ lấy lớp có GVCN
+      const res = await api.get("/api/classes/with-teacher");
       setClassList(res.data || []);
     } catch (err) {
       console.error("Lỗi khi lấy lớp:", err);
@@ -156,7 +156,9 @@ export default function WeeklyScoresPage() {
 
   const checkHasData = async (weekNumber: number) => {
     try {
-      const res = await api.get("/api/class-weekly-scores", { params: { weekNumber } });
+      const res = await api.get("/api/class-weekly-scores", {
+        params: { weekNumber },
+      });
       const existing = normalizeSavedScores(res.data || []);
       const merged = mergeScoresWithClasses(classList, existing, weekNumber);
       setScores(merged);
