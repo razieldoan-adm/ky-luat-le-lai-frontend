@@ -28,8 +28,6 @@ interface Week {
   endDate?: string;
 }
 
-
-
 interface ScoreRow {
   className: string;
   grade: string;
@@ -48,11 +46,13 @@ interface ScoreRow {
 export default function WeeklyScoresPage() {
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
-  
+
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [hasData, setHasData] = useState<boolean>(false);
   const [gradeFilter, setGradeFilter] = useState<string>("all");
+  const [classList, setClassList] = useState<any[]>([]); // danh sách lớp chuẩn
+
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -70,28 +70,55 @@ export default function WeeklyScoresPage() {
   };
 
   const normalizeSavedScores = (arr: any[]): ScoreRow[] => {
-  return (arr || []).map((r: any) => ({
-    className: r.className || "",
-    grade: String(r.grade ?? "undefined"),
-    weekNumber: Number(r.weekNumber ?? selectedWeek?.weekNumber ?? 0),
-    academicScore: Number(r.academicScore ?? 0),
-    bonusScore: Number(r.bonusScore ?? 0),
-    violationScore: Number(r.violationScore ?? 0),
-    hygieneScore: Number(r.hygieneScore ?? 0),
-    attendanceScore: Number(r.attendanceScore ?? 0),
-    // fix: backend trả về lineUpScore, frontend dùng lineupScore
-    lineupScore: Number(r.lineupScore ?? r.lineUpScore ?? 0),
-    totalViolation: Number(r.totalViolation ?? 0),
-    totalScore: Number(r.totalScore ?? 0),
-    rank: Number(r.rank ?? r.ranking ?? 0), // thêm fallback cho ranking từ backend
-  }));
-};
+    return (arr || []).map((r: any) => ({
+      className: r.className || "",
+      grade: String(r.grade ?? "undefined"),
+      weekNumber: Number(r.weekNumber ?? selectedWeek?.weekNumber ?? 0),
+      academicScore: Number(r.academicScore ?? 0),
+      bonusScore: Number(r.bonusScore ?? 0),
+      violationScore: Number(r.violationScore ?? 0),
+      hygieneScore: Number(r.hygieneScore ?? 0),
+      attendanceScore: Number(r.attendanceScore ?? 0),
+      // fix: backend trả về lineUpScore, frontend dùng lineupScore
+      lineupScore: Number(r.lineupScore ?? r.lineUpScore ?? 0),
+      totalViolation: Number(r.totalViolation ?? 0),
+      totalScore: Number(r.totalScore ?? 0),
+      rank: Number(r.rank ?? r.ranking ?? 0), // thêm fallback cho ranking từ backend
+    }));
+  };
 
+  // merge lớp chuẩn với điểm
+  const mergeScoresWithClasses = (
+    classes: any[],
+    scores: ScoreRow[],
+    weekNumber: number
+  ): ScoreRow[] => {
+    return classes.map((cls) => {
+      const found = scores.find((s) => s.className === cls.className);
+      return (
+        found || {
+          className: cls.className,
+          grade: String(cls.grade ?? "undefined"),
+          weekNumber,
+          academicScore: 0,
+          bonusScore: 0,
+          violationScore: 0,
+          hygieneScore: 0,
+          attendanceScore: 0,
+          lineupScore: 0,
+          totalViolation: 0,
+          totalScore: 0,
+          rank: 0,
+        }
+      );
+    });
+  };
 
   // init
   useEffect(() => {
     fetchWeeks();
     fetchSettings();
+    fetchClasses(); // gọi thêm
   }, []);
 
   const fetchWeeks = async () => {
@@ -118,17 +145,22 @@ export default function WeeklyScoresPage() {
     }
   };
 
+  const fetchClasses = async () => {
+    try {
+      const res = await api.get("/api/classes");
+      setClassList(res.data || []);
+    } catch (err) {
+      console.error("Lỗi khi lấy lớp:", err);
+    }
+  };
+
   const checkHasData = async (weekNumber: number) => {
     try {
       const res = await api.get("/api/class-weekly-scores", { params: { weekNumber } });
-      const existing = res.data || [];
-      if (existing.length > 0) {
-        setHasData(true);
-        setScores(normalizeSavedScores(existing));
-      } else {
-        setHasData(false);
-        setScores([]);
-      }
+      const existing = normalizeSavedScores(res.data || []);
+      const merged = mergeScoresWithClasses(classList, existing, weekNumber);
+      setScores(merged);
+      setHasData(existing.length > 0);
     } catch (err) {
       console.error("Check tuần lỗi:", err);
       setHasData(false);
@@ -145,7 +177,9 @@ export default function WeeklyScoresPage() {
       const res = await api.get("/api/class-weekly-scores/temp", {
         params: { weekNumber: selectedWeek.weekNumber },
       });
-      setScores(normalizeSavedScores(res.data));
+      const tempScores = normalizeSavedScores(res.data || []);
+      const merged = mergeScoresWithClasses(classList, tempScores, selectedWeek.weekNumber);
+      setScores(merged);
       setSnackbar({ open: true, message: "Đã load dữ liệu (chưa lưu)", severity: "success" });
     } catch (err) {
       console.error("Load dữ liệu lỗi:", err);
