@@ -70,21 +70,23 @@ export default function WeeklyScoresPage() {
   };
 
   const normalizeSavedScores = (arr: any[]): ScoreRow[] => {
-    return (arr || []).map((r: any) => ({
-      className: r.className || "",
-      grade: String(r.grade ?? "undefined"),
-      weekNumber: Number(r.weekNumber ?? selectedWeek?.weekNumber ?? 0),
-      academicScore: Number(r.academicScore ?? 0),
-      bonusScore: Number(r.bonusScore ?? 0),
-      violationScore: Number(r.violationScore ?? 0),
-      hygieneScore: Number(r.hygieneScore ?? 0),
-      attendanceScore: Number(r.attendanceScore ?? 0),
-      lineupScore: Number(r.lineupScore ?? 0), // sửa lại cho đúng backend
-      totalViolation: Number(r.totalViolation ?? 0),
-      totalScore: Number(r.totalScore ?? 0),
-      rank: Number(r.rank ?? 0),
-    }));
-  };
+  return (arr || []).map((r: any) => ({
+    className: r.className || "",
+    grade: String(r.grade ?? "undefined"),
+    weekNumber: Number(r.weekNumber ?? selectedWeek?.weekNumber ?? 0),
+    academicScore: Number(r.academicScore ?? 0),
+    bonusScore: Number(r.bonusScore ?? 0),
+    violationScore: Number(r.violationScore ?? 0),
+    hygieneScore: Number(r.hygieneScore ?? 0),
+    attendanceScore: Number(r.attendanceScore ?? 0),
+    // fix: backend trả về lineUpScore, frontend dùng lineupScore
+    lineupScore: Number(r.lineupScore ?? r.lineUpScore ?? 0),
+    totalViolation: Number(r.totalViolation ?? 0),
+    totalScore: Number(r.totalScore ?? 0),
+    rank: Number(r.rank ?? r.ranking ?? 0), // thêm fallback cho ranking từ backend
+  }));
+};
+
 
   // init
   useEffect(() => {
