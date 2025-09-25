@@ -243,7 +243,7 @@ export default function WeeklyScoresPage() {
   const handleUpdate = async () => {
   if (!selectedWeek || !scores.length) return;
   try {
-    await api.put(`/api/class-weekly-scores/update/${selectedWeek.weekNumber}`, {
+    await api.put(`/api/class-weekly-scores/update/${weekNumber}`, {
       scores,
     });
     await checkHasData(selectedWeek.weekNumber); // load lại dữ liệu mới nhất
