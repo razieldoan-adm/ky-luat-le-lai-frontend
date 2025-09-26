@@ -225,17 +225,28 @@ export default function WeeklyScoresPage() {
     setScores(updated);
   };
 
-  const handleSave = async () => {
+    const handleSave = async () => {
   if (!selectedWeek || !scores.length) return;
+
   try {
-    await api.post("/api/class-weekly-scores/save", {
-      weekNumber: selectedWeek.weekNumber,
-      scores,
-    });
+    if (hasData) {
+      // Nếu đã có data tuần này thì ghi đè (PUT)
+      await api.put(`/api/class-weekly-scores/update/${selectedWeek.weekNumber}`, {
+        scores,
+      });
+    } else {
+      // Nếu chưa có data tuần này thì lưu mới (POST)
+      await api.post('/api/class-weekly-scores', {
+        weekNumber: selectedWeek.weekNumber,
+        scores,
+      });
+    }
+
+    await checkHasData(selectedWeek.weekNumber); // load lại trạng thái
     setSnackbar({
       open: true,
-      message: "Đã lưu dữ liệu tuần này",
-      severity: "success",
+      message: hasData ? 'Đã lưu cập nhật & tính lại xếp hạng' : 'Đã lưu dữ liệu tuần mới',
+      severity: 'success',
     });
   } catch (err) {
     console.error("Save error:", err);
@@ -246,28 +257,6 @@ export default function WeeklyScoresPage() {
     });
   }
 };
-
-
-  const handleUpdate = async () => {
-  if (!selectedWeek) return;
-  try {
-    await api.post(`/api/class-weekly-scores/update/${selectedWeek.weekNumber}`);
-    await checkHasData(selectedWeek.weekNumber); // load lại dữ liệu mới nhất
-    setSnackbar({
-      open: true,
-      message: "Đã cập nhật & tính lại xếp hạng",
-      severity: "success",
-    });
-  } catch (err) {
-    console.error("Update error:", err);
-    setSnackbar({
-      open: true,
-      message: "Lỗi khi cập nhật dữ liệu",
-      severity: "error",
-    });
-  }
-};
-
 
 
   const handleExportExcel = () => {
@@ -363,26 +352,14 @@ export default function WeeklyScoresPage() {
           Tính xếp hạng
         </Button>
 
-        {!hasData ? (
-          <Button
-            variant="contained"
-            color="success"
-            onClick={handleSave}
-            disabled={!scores.length}
-          >
-            Lưu
-          </Button>
-        ) : (
-          <Button
-            variant="contained"
-            color="warning"
-            onClick={handleUpdate}
-            disabled={!selectedWeek}
-          >
-            Cập nhật
-          </Button>
-        )}
-     
+       <Button
+          variant="contained"
+          color={hasData ? 'warning' : 'success'}
+          onClick={handleSave}
+          disabled={!scores.length || !selectedWeek}
+        >
+          {hasData ? 'Lưu cập nhật' : 'Lưu mới'}
+        </Button>
 
         <Button variant="outlined" onClick={handleExportExcel} disabled={!scores.length}>
           Xuất Excel
