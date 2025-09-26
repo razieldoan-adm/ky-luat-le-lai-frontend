@@ -193,7 +193,7 @@ export default function WeeklyScoresPage() {
     if (!scores.length) return;
     let updated = scores.map((s) => {
       const totalViolation =
-        disciplineMax - (s.violationScore + s.hygieneScore + s.attendanceScore + s.lineupScore);
+        disciplineMax - (s.violationScore + s.hygieneScore + (s.attendanceScore*5) + s.lineupScore);
       const totalScore = s.academicScore + s.bonusScore + totalViolation;
       return { ...s, totalViolation, totalScore };
     });
@@ -230,13 +230,13 @@ export default function WeeklyScoresPage() {
 
   try {
     if (hasData) {
-      // Nếu đã có data tuần này thì ghi đè (PUT)
-      await api.put(`/api/class-weekly-scores/update/${selectedWeek.weekNumber}`, {
+      // đã có dữ liệu thì update
+      await api.post(`/api/class-weekly-scores/update/${selectedWeek.weekNumber}`, {
         scores,
       });
     } else {
-      // Nếu chưa có data tuần này thì lưu mới (POST)
-      await api.post('/api/class-weekly-scores', {
+      // chưa có dữ liệu thì save
+      await api.post(`/api/class-weekly-scores/save`, {
         weekNumber: selectedWeek.weekNumber,
         scores,
       });
