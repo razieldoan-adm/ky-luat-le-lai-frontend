@@ -52,6 +52,8 @@ export default function WeeklyScoresPage() {
   const [hasData, setHasData] = useState<boolean>(false);
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [classList, setClassList] = useState<any[]>([]);
+  const [hasData, setHasData] = useState(false);   // đã lưu dữ liệu hay chưa
+  const [changed, setChanged] = useState(false);   // dữ liệu có thay đổi so với DB hay không
 
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -120,6 +122,8 @@ export default function WeeklyScoresPage() {
     fetchClasses();
   }, []);
 
+
+
   const fetchWeeks = async () => {
     try {
       const res = await api.get("/api/academic-weeks/study-weeks");
@@ -153,6 +157,8 @@ export default function WeeklyScoresPage() {
       console.error("Lỗi khi lấy lớp:", err);
     }
   };
+  
+
 
   const checkHasData = async (weekNumber: number) => {
     try {
@@ -169,7 +175,14 @@ export default function WeeklyScoresPage() {
       setScores([]);
     }
   };
-
+    const checkChanges = async (weekNumber: number) => {
+  try {
+    const res = await api.get(`/api/class-weekly-scores/check-changes/${weekNumber}`);
+    setChanged(res.data.changed);
+  } catch (err) {
+    console.error("Error checkChanges:", err);
+  }
+};
   const handleLoadData = async () => {
     if (!selectedWeek) {
       setSnackbar({ open: true, message: "Vui lòng chọn tuần", severity: "error" });
@@ -287,8 +300,11 @@ export default function WeeklyScoresPage() {
   };
 
   useEffect(() => {
-    if (selectedWeek) checkHasData(selectedWeek.weekNumber);
-  }, [selectedWeek]);
+  if (selectedWeek) {
+    checkHasData(selectedWeek.weekNumber);
+    checkChanges(selectedWeek.weekNumber);
+  }
+}, [selectedWeek]);
 
   // group by grade
   const groupedByGrade: Record<string, ScoreRow[]> = {};
@@ -337,29 +353,28 @@ export default function WeeklyScoresPage() {
           </Select>
         </FormControl>
 
-        {!hasData && (
-          <Button variant="contained" onClick={handleLoadData} disabled={!selectedWeek}>
-            Load dữ liệu
-          </Button>
-        )}
-
         <Button
-          variant="contained"
-          color="secondary"
-          onClick={handleCalculate}
-          disabled={!scores.length}
-        >
-          Tính xếp hạng
-        </Button>
+        variant="contained"
+        color="secondary"
+        onClick={() => console.log("Tính xếp hạng")}
+        disabled={!scores.length}
+      >
+        Tính xếp hạng
+      </Button>
 
-       <Button
-          variant="contained"
-          color={hasData ? 'warning' : 'success'}
-          onClick={handleSave}
-          disabled={!scores.length || !selectedWeek}
-        >
-          {hasData ? 'Lưu cập nhật' : 'Lưu mới'}
+      {!hasData ? (
+        <Button variant="contained" color="success">
+          Lưu
         </Button>
+      ) : changed ? (
+        <Button variant="contained" color="warning">
+          Cập nhật
+        </Button>
+      ) : (
+        <Button variant="outlined" disabled>
+          Đã lưu
+        </Button>
+      )}
 
         <Button variant="outlined" onClick={handleExportExcel} disabled={!scores.length}>
           Xuất Excel
