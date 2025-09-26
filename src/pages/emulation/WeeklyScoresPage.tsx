@@ -381,7 +381,15 @@ export default function WeeklyScoresPage() {
           >
             Cập nhật
           </Button>
+             <Button 
+            variant="contained" 
+            color="success" 
+            onClick={handleSave}
+          >
+            LƯU
+          </Button>
         )}
+     
 
         <Button variant="outlined" onClick={handleExportExcel} disabled={!scores.length}>
           Xuất Excel
