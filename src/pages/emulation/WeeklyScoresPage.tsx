@@ -381,13 +381,6 @@ export default function WeeklyScoresPage() {
           >
             Cập nhật
           </Button>
-             <Button 
-            variant="contained" 
-            color="success" 
-            onClick={handleSave}
-          >
-            LƯU
-          </Button>
         )}
      
 
