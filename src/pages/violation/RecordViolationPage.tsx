@@ -26,6 +26,14 @@ interface ClassOption {
   teacher: string;
 }
 
+function removeVietnameseTones(str: string): string {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // xoá dấu
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D");
+}
+
 export default function RecordViolationPage() {
   const [name, setName] = useState('');
   const [className, setClassName] = useState('');
@@ -42,7 +50,10 @@ export default function RecordViolationPage() {
 
     const timeout = setTimeout(() => {
       const params = new URLSearchParams();
-      if (name.trim()) params.append('name', name.trim());
+      if (name.trim()) {
+        params.append('name', name.trim());
+        params.append('normalizedName', removeVietnameseTones(name.trim())); // 🔥 thêm dòng này
+      }
       if (className.trim()) params.append('className', className.trim());
 
       api
