@@ -226,19 +226,27 @@ export default function WeeklyScoresPage() {
   };
 
   const handleSave = async () => {
-    if (!selectedWeek || !scores.length) return;
-    try {
-      await api.post("/api/class-weekly-scores", {
-        weekNumber: selectedWeek.weekNumber,
-        scores,
-      });
-      setHasData(true);
-      setSnackbar({ open: true, message: "Đã lưu dữ liệu", severity: "success" });
-    } catch (err) {
-      console.error("Save error:", err);
-      setSnackbar({ open: true, message: "Lỗi khi lưu dữ liệu", severity: "error" });
-    }
-  };
+  if (!selectedWeek || !scores.length) return;
+  try {
+    await api.post("/api/class-weekly-scores/save", {
+      weekNumber: selectedWeek.weekNumber,
+      scores,
+    });
+    setSnackbar({
+      open: true,
+      message: "Đã lưu dữ liệu tuần này",
+      severity: "success",
+    });
+  } catch (err) {
+    console.error("Save error:", err);
+    setSnackbar({
+      open: true,
+      message: "Lỗi khi lưu dữ liệu",
+      severity: "error",
+    });
+  }
+};
+
 
   const handleUpdate = async () => {
   if (!selectedWeek) return;
