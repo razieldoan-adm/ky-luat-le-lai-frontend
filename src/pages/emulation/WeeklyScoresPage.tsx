@@ -241,11 +241,9 @@ export default function WeeklyScoresPage() {
   };
 
   const handleUpdate = async () => {
-  if (!selectedWeek || !scores.length) return;
+  if (!selectedWeek) return;
   try {
-    await api.put(`/api/class-weekly-scores/update/${selectedWeek.weekNumber}`, {
-      scores,
-    });
+    await api.post(`/api/class-weekly-scores/update/${selectedWeek.weekNumber}`);
     await checkHasData(selectedWeek.weekNumber); // load lại dữ liệu mới nhất
     setSnackbar({
       open: true,
@@ -261,6 +259,7 @@ export default function WeeklyScoresPage() {
     });
   }
 };
+
 
 
   const handleExportExcel = () => {
