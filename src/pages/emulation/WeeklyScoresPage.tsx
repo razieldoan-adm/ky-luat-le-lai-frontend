@@ -50,8 +50,9 @@ export default function WeeklyScoresPage() {
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [classList, setClassList] = useState<any[]>([]);
-  const [hasData, setHasData] = useState(false); // tuần đã có dữ liệu chưa
-  const [changesDetected, setChangesDetected] = useState(false); // có thay đổi so với DB không
+  const [hasData, setHasData] = useState(false);
+  const [calculated, setCalculated] = useState(false); // đã tính xếp hạng chưa
+  const [saved, setSaved] = useState(false); // đã lưu sau khi tính xong chưa
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -59,7 +60,7 @@ export default function WeeklyScoresPage() {
     severity: "success" | "error" | "info";
   }>({ open: false, message: "", severity: "info" });
 
-  // ================= Helper =================
+  // ============== Helper ==============
   const formatDateShort = (d?: string) => {
     if (!d) return "";
     const date = new Date(d);
@@ -69,8 +70,8 @@ export default function WeeklyScoresPage() {
     return `${dd}/${mm}`;
   };
 
-  const normalizeSavedScores = (arr: any[]): ScoreRow[] => {
-    return (arr || []).map((r: any) => ({
+  const normalizeSavedScores = (arr: any[]): ScoreRow[] =>
+    (arr || []).map((r: any) => ({
       className: r.className || "",
       grade: String(r.grade ?? "undefined"),
       weekNumber: Number(r.weekNumber ?? selectedWeek?.weekNumber ?? 0),
@@ -84,7 +85,6 @@ export default function WeeklyScoresPage() {
       totalScore: Number(r.totalScore ?? 0),
       rank: Number(r.rank ?? r.ranking ?? 0),
     }));
-  };
 
   const mergeScoresWithClasses = (
     classes: any[],
@@ -112,7 +112,7 @@ export default function WeeklyScoresPage() {
     });
   };
 
-  // ================= Init =================
+  // ============== Init ==============
   useEffect(() => {
     fetchWeeks();
     fetchSettings();
@@ -152,59 +152,51 @@ export default function WeeklyScoresPage() {
     }
   };
 
-  // ================= Check data =================
-  const checkHasData = async (weekNumber: number) => {
+  // ============== Check data khi chọn tuần ==============
+  const loadWeekData = async (weekNumber: number) => {
     try {
       const res = await api.get("/api/class-weekly-scores", {
         params: { weekNumber },
       });
       const existing = normalizeSavedScores(res.data || []);
-      const merged = mergeScoresWithClasses(classList, existing, weekNumber);
-      setScores(merged);
-      setHasData(existing.length > 0);
+      if (existing.length > 0) {
+        const merged = mergeScoresWithClasses(classList, existing, weekNumber);
+        setScores(merged);
+        setHasData(true);
+        setCalculated(merged.some((s) => s.rank > 0)); // nếu đã có rank => coi như đã tính
+        setSaved(true);
+      } else {
+        setScores([]);
+        setHasData(false);
+        setCalculated(false);
+        setSaved(false);
+      }
     } catch (err) {
-      console.error("Check tuần lỗi:", err);
-      setHasData(false);
+      console.error("Load tuần lỗi:", err);
       setScores([]);
-    }
-  };
-
-  const checkChanges = async (weekNumber: number) => {
-    try {
-      const res = await api.get(
-        `/api/class-weekly-scores/check-changes/${weekNumber}`
-      );
-      setChangesDetected(res.data.changed);
-    } catch (err) {
-      console.error("Error checkChanges:", err);
+      setHasData(false);
+      setCalculated(false);
+      setSaved(false);
     }
   };
 
   useEffect(() => {
     if (selectedWeek) {
-      checkHasData(selectedWeek.weekNumber);
-      checkChanges(selectedWeek.weekNumber);
+      loadWeekData(selectedWeek.weekNumber);
     } else {
       setScores([]);
       setHasData(false);
     }
-  }, [selectedWeek]);
+  }, [selectedWeek, classList]);
 
-  // ================= Actions =================
-  const handleLoadData = async () => {
+  // ============== Actions ==============
+  const handleLoadData = () => {
     if (!selectedWeek) return;
-    try {
-      const merged = mergeScoresWithClasses(
-        classList,
-        [],
-        selectedWeek.weekNumber
-      );
-      setScores(merged);
-      setHasData(false);
-      setChangesDetected(true);
-    } catch (err) {
-      console.error("Load dữ liệu mới lỗi:", err);
-    }
+    const merged = mergeScoresWithClasses(classList, [], selectedWeek.weekNumber);
+    setScores(merged);
+    setHasData(false);
+    setCalculated(false);
+    setSaved(false);
   };
 
   const handleCalculate = () => {
@@ -242,28 +234,23 @@ export default function WeeklyScoresPage() {
       });
     });
     setScores(updated);
+    setCalculated(true);
+    setSaved(false);
   };
 
   const handleSave = async () => {
     if (!selectedWeek || !scores.length) return;
     try {
-      if (hasData) {
-        await api.post(`/api/class-weekly-scores/update/${selectedWeek.weekNumber}`, {
-          scores,
-        });
-      } else {
-        await api.post("/api/class-weekly-scores/save", {
-          weekNumber: selectedWeek.weekNumber,
-          scores,
-        });
-      }
-      await checkHasData(selectedWeek.weekNumber);
-      await checkChanges(selectedWeek.weekNumber);
+      await api.post(`/api/class-weekly-scores/update/${selectedWeek.weekNumber}`, {
+        scores,
+      });
+      await loadWeekData(selectedWeek.weekNumber);
       setSnackbar({
         open: true,
-        message: hasData ? "Đã cập nhật dữ liệu & xếp hạng" : "Đã lưu dữ liệu tuần mới",
+        message: "Đã lưu dữ liệu & xếp hạng",
         severity: "success",
       });
+      setSaved(true);
     } catch (err) {
       console.error("Save error:", err);
       setSnackbar({
@@ -299,14 +286,15 @@ export default function WeeklyScoresPage() {
     className: string,
     field: keyof ScoreRow,
     value: number
- ) => {
+  ) => {
     setScores((prev) =>
       prev.map((s) => (s.className === className ? { ...s, [field]: value } : s))
     );
-    setChangesDetected(true); // nếu có chỉnh tay thì coi như đã thay đổi
+    setCalculated(false);
+    setSaved(false);
   };
 
-  // ================= Render =================
+  // ============== Render ==============
   const groupedByGrade: Record<string, ScoreRow[]> = {};
   scores.forEach((s) => {
     if (!groupedByGrade[s.grade]) groupedByGrade[s.grade] = [];
@@ -367,16 +355,19 @@ export default function WeeklyScoresPage() {
               Load dữ liệu
             </Button>
           )}
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={handleCalculate}
-            disabled={!scores.length}
-          >
-            Tính xếp hạng
-          </Button>
 
-          {!hasData ? (
+          {hasData && !calculated && (
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleCalculate}
+              disabled={!scores.length}
+            >
+              Tính xếp hạng
+            </Button>
+          )}
+
+          {hasData && calculated && !saved && (
             <Button
               variant="contained"
               color="success"
@@ -385,16 +376,9 @@ export default function WeeklyScoresPage() {
             >
               Lưu
             </Button>
-          ) : changesDetected ? (
-            <Button
-              variant="contained"
-              color="warning"
-              onClick={handleSave}
-              disabled={!scores.length}
-            >
-              Cập nhật
-            </Button>
-          ) : (
+          )}
+
+          {hasData && calculated && saved && (
             <Button variant="outlined" disabled>
               Đã lưu
             </Button>
