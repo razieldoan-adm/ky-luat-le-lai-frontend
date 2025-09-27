@@ -17,6 +17,7 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Stack,
 } from "@mui/material";
 import * as XLSX from "xlsx";
 import api from "../../api/api";
@@ -49,11 +50,12 @@ export default function WeeklyScoresPage() {
 
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
   const [scores, setScores] = useState<ScoreRow[]>([]);
-  const [hasData, setHasData] = useState<boolean>(false);
-  const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [classList, setClassList] = useState<any[]>([]);
-  const [hasData, setHasData] = useState(false);   // đã lưu dữ liệu hay chưa
-  const [changed, setChanged] = useState(false);   // dữ liệu có thay đổi so với DB hay không
+
+  const [hasData, setHasData] = useState(false);          // tuần đã có dữ liệu chưa
+  const [changesDetected, setChangesDetected] = useState(false); // có thay đổi so với DB không
+
+  const [gradeFilter, setGradeFilter] = useState<string>("all");
 
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -61,7 +63,7 @@ export default function WeeklyScoresPage() {
     severity: "success" | "error" | "info";
   }>({ open: false, message: "", severity: "info" });
 
-  // helper
+  // ================= Helper =================
   const formatDateShort = (d?: string) => {
     if (!d) return "";
     const date = new Date(d);
@@ -88,7 +90,6 @@ export default function WeeklyScoresPage() {
     }));
   };
 
-  // merge lớp chuẩn với điểm
   const mergeScoresWithClasses = (
     classes: any[],
     scores: ScoreRow[],
@@ -115,14 +116,12 @@ export default function WeeklyScoresPage() {
     });
   };
 
-  // init
+  // ================= Init =================
   useEffect(() => {
     fetchWeeks();
     fetchSettings();
     fetchClasses();
   }, []);
-
-
 
   const fetchWeeks = async () => {
     try {
@@ -150,16 +149,14 @@ export default function WeeklyScoresPage() {
 
   const fetchClasses = async () => {
     try {
-      // ✅ chỉ lấy lớp có GVCN
       const res = await api.get("/api/classes/with-teacher");
       setClassList(res.data || []);
     } catch (err) {
       console.error("Lỗi khi lấy lớp:", err);
     }
   };
-  
 
-
+  // ================= Check data =================
   const checkHasData = async (weekNumber: number) => {
     try {
       const res = await api.get("/api/class-weekly-scores", {
@@ -175,43 +172,35 @@ export default function WeeklyScoresPage() {
       setScores([]);
     }
   };
-    const checkChanges = async (weekNumber: number) => {
-  try {
-    const res = await api.get(`/api/class-weekly-scores/check-changes/${weekNumber}`);
-    setChanged(res.data.changed);
-  } catch (err) {
-    console.error("Error checkChanges:", err);
-  }
-};
-  const handleLoadData = async () => {
-    if (!selectedWeek) {
-      setSnackbar({ open: true, message: "Vui lòng chọn tuần", severity: "error" });
-      return;
-    }
+
+  const checkChanges = async (weekNumber: number) => {
     try {
-      const res = await api.get("/api/class-weekly-scores/temp", {
-        params: { weekNumber: selectedWeek.weekNumber },
-      });
-      const tempScores = normalizeSavedScores(res.data || []);
-      const merged = mergeScoresWithClasses(classList, tempScores, selectedWeek.weekNumber);
-      setScores(merged);
-      setSnackbar({ open: true, message: "Đã load dữ liệu (chưa lưu)", severity: "success" });
+      const res = await api.get(`/api/class-weekly-scores/check-changes/${weekNumber}`);
+      setChangesDetected(res.data.changed);
     } catch (err) {
-      console.error("Load dữ liệu lỗi:", err);
-      setSnackbar({ open: true, message: "Lỗi khi load dữ liệu", severity: "error" });
+      console.error("Error checkChanges:", err);
     }
   };
 
+  useEffect(() => {
+    if (selectedWeek) {
+      checkHasData(selectedWeek.weekNumber);
+      checkChanges(selectedWeek.weekNumber);
+    }
+  }, [selectedWeek]);
+
+  // ================= Actions =================
   const handleCalculate = () => {
     if (!scores.length) return;
     let updated = scores.map((s) => {
       const totalViolation =
-        disciplineMax - (s.violationScore + s.hygieneScore + (s.attendanceScore*5) + s.lineupScore);
+        disciplineMax -
+        (s.violationScore + s.hygieneScore + s.attendanceScore * 5 + s.lineupScore);
       const totalScore = s.academicScore + s.bonusScore + totalViolation;
       return { ...s, totalViolation, totalScore };
     });
 
-    // xếp hạng trong từng khối
+    // xếp hạng theo khối
     const grouped: Record<string, ScoreRow[]> = {};
     updated.forEach((r) => {
       if (!grouped[r.grade]) grouped[r.grade] = [];
@@ -238,39 +227,38 @@ export default function WeeklyScoresPage() {
     setScores(updated);
   };
 
-    const handleSave = async () => {
-  if (!selectedWeek || !scores.length) return;
+  const handleSave = async () => {
+    if (!selectedWeek || !scores.length) return;
 
-  try {
-    if (hasData) {
-      // đã có dữ liệu thì update
-      await api.post(`/api/class-weekly-scores/update/${selectedWeek.weekNumber}`, {
-        scores,
+    try {
+      if (hasData) {
+        await api.post(`/api/class-weekly-scores/update/${selectedWeek.weekNumber}`, {
+          scores,
+        });
+      } else {
+        await api.post(`/api/class-weekly-scores/save`, {
+          weekNumber: selectedWeek.weekNumber,
+          scores,
+        });
+      }
+
+      await checkHasData(selectedWeek.weekNumber);
+      await checkChanges(selectedWeek.weekNumber);
+
+      setSnackbar({
+        open: true,
+        message: hasData ? "Đã cập nhật dữ liệu & xếp hạng" : "Đã lưu dữ liệu tuần mới",
+        severity: "success",
       });
-    } else {
-      // chưa có dữ liệu thì save
-      await api.post(`/api/class-weekly-scores/save`, {
-        weekNumber: selectedWeek.weekNumber,
-        scores,
+    } catch (err) {
+      console.error("Save error:", err);
+      setSnackbar({
+        open: true,
+        message: "Lỗi khi lưu dữ liệu",
+        severity: "error",
       });
     }
-
-    await checkHasData(selectedWeek.weekNumber); // load lại trạng thái
-    setSnackbar({
-      open: true,
-      message: hasData ? 'Đã lưu cập nhật & tính lại xếp hạng' : 'Đã lưu dữ liệu tuần mới',
-      severity: 'success',
-    });
-  } catch (err) {
-    console.error("Save error:", err);
-    setSnackbar({
-      open: true,
-      message: "Lỗi khi lưu dữ liệu",
-      severity: "error",
-    });
-  }
-};
-
+  };
 
   const handleExportExcel = () => {
     if (!scores.length) return;
@@ -297,16 +285,10 @@ export default function WeeklyScoresPage() {
     setScores((prev) =>
       prev.map((s) => (s.className === className ? { ...s, [field]: value } : s))
     );
+    setChangesDetected(true); // nếu có chỉnh tay thì coi như đã thay đổi
   };
 
-  useEffect(() => {
-  if (selectedWeek) {
-    checkHasData(selectedWeek.weekNumber);
-    checkChanges(selectedWeek.weekNumber);
-  }
-}, [selectedWeek]);
-
-  // group by grade
+  // ================= Render =================
   const groupedByGrade: Record<string, ScoreRow[]> = {};
   scores.forEach((s) => {
     if (!groupedByGrade[s.grade]) groupedByGrade[s.grade] = [];
@@ -353,32 +335,44 @@ export default function WeeklyScoresPage() {
           </Select>
         </FormControl>
 
-        <Button
-        variant="contained"
-        color="secondary"
-        onClick={() => console.log("Tính xếp hạng")}
-        disabled={!scores.length}
-      >
-        Tính xếp hạng
-      </Button>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={handleCalculate}
+            disabled={!scores.length}
+          >
+            Tính xếp hạng
+          </Button>
 
-      {!hasData ? (
-        <Button variant="contained" color="success">
-          Lưu
-        </Button>
-      ) : changed ? (
-        <Button variant="contained" color="warning">
-          Cập nhật
-        </Button>
-      ) : (
-        <Button variant="outlined" disabled>
-          Đã lưu
-        </Button>
-      )}
+          {!hasData ? (
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleSave}
+              disabled={!scores.length}
+            >
+              Lưu
+            </Button>
+          ) : changesDetected ? (
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={handleSave}
+              disabled={!scores.length}
+            >
+              Cập nhật
+            </Button>
+          ) : (
+            <Button variant="outlined" disabled>
+              Đã lưu
+            </Button>
+          )}
 
-        <Button variant="outlined" onClick={handleExportExcel} disabled={!scores.length}>
-          Xuất Excel
-        </Button>
+          <Button variant="outlined" onClick={handleExportExcel} disabled={!scores.length}>
+            Xuất Excel
+          </Button>
+        </Stack>
       </Box>
 
       {gradeKeys
