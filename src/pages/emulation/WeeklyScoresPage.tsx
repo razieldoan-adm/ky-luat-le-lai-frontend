@@ -9,7 +9,7 @@ import {
   TableCell,
   TableBody,
 } from "@mui/material";
-import api from "@/api";
+import api from "../../api/api";
 
 interface Score {
   className: string;
