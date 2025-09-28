@@ -20,7 +20,6 @@ const WeeklyScoresPage: React.FC = () => {
   const [weeks, setWeeks] = useState<number[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
   const [scores, setScores] = useState<any[]>([]);
-  const [originalScores, setOriginalScores] = useState<any[]>([]);
   const [isRanked, setIsRanked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -42,7 +41,6 @@ const WeeklyScoresPage: React.FC = () => {
         `/api/class-weekly-scores?weekNumber=${selectedWeek}`
       );
       setScores(res.data);
-      setOriginalScores(res.data);
       setIsRanked(res.data.some((s: any) => s.ranking && s.ranking > 0));
       setIsSaved(res.data.length > 0);
       setHasChanges(false);
@@ -86,7 +84,6 @@ const WeeklyScoresPage: React.FC = () => {
       `/api/class-weekly-scores/temp?weekNumber=${selectedWeek}`
     );
     setScores(res.data);
-    setOriginalScores(res.data);
     setIsRanked(false);
     setIsSaved(false);
     setHasChanges(true);
@@ -118,7 +115,6 @@ const WeeklyScoresPage: React.FC = () => {
       weekNumber: selectedWeek,
       scores,
     });
-    setOriginalScores(scores);
     setIsSaved(true);
     setHasChanges(false);
   };
