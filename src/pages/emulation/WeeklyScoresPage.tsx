@@ -22,7 +22,7 @@ interface WeeklyScore {
 type PageState = "idle" | "loaded" | "temp" | "ranked" | "saved" | "updated";
 
 const WeeklyScoresPage: React.FC = () => {
-  const [weekNumber, setWeekNumber] = useState<number>(1);
+  const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
   const [scores, setScores] = useState<WeeklyScore[]>([]);
   const [status, setStatus] = useState<PageState>("idle");
 
