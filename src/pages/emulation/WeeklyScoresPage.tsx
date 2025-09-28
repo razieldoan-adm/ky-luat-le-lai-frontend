@@ -1,153 +1,217 @@
-// src/pages/emulation/WeeklyScoresPage.tsx
 import React, { useEffect, useState } from "react";
 import {
-  Box,
   Button,
-  CircularProgress,
-  Paper,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
   TableHead,
   TableRow,
+  TableCell,
+  TableBody,
   TextField,
-  Typography,
+  MenuItem,
+  Paper,
+  Divider,
+  Select,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
-import axios from "axios";
-
-interface WeeklyScore {
-  _id: string;
-  className: string;
-  week: number;
-  score: number;
-  rank?: number;
-}
+import api from "../../api/api";
 
 const WeeklyScoresPage: React.FC = () => {
-  const [scores, setScores] = useState<WeeklyScore[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [editingScores, setEditingScores] = useState<Record<string, number>>({});
-  const [saving, setSaving] = useState<boolean>(false);
+  const [weeks, setWeeks] = useState<number[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  const [scores, setScores] = useState<any[]>([]);
+  const [isRanked, setIsRanked] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
-  // 🔹 Hàm tính hạng từ dữ liệu hiện có
-  const calculateRanks = (data: WeeklyScore[]): WeeklyScore[] => {
-    const sorted = [...data].sort((a, b) => b.score - a.score);
-    return data.map((item) => ({
-      ...item,
-      rank: sorted.findIndex((s) => s._id === item._id) + 1,
-    }));
-  };
-
-  // 🔹 Load dữ liệu từ API
-  const fetchScores = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get<WeeklyScore[]>("/api/class-weekly-scores");
-      setScores(calculateRanks(res.data));
-    } catch (err) {
-      console.error("Error fetching weekly scores:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // load danh sách tuần
   useEffect(() => {
-    fetchScores();
+    const loadWeeks = async () => {
+      const res = await api.get("/api/weeks");
+      setWeeks(res.data);
+    };
+    loadWeeks();
   }, []);
 
-  // 🔹 Khi thay đổi điểm trong ô nhập
-  const handleScoreChange = (id: string, value: number) => {
-    setEditingScores((prev) => ({
-      ...prev,
-      [id]: value,
-    }));
+  // load dữ liệu tuần khi chọn
+  useEffect(() => {
+    if (!selectedWeek) return;
+    const fetchData = async () => {
+      const res = await api.get(
+        `/api/class-weekly-scores?weekNumber=${selectedWeek}`
+      );
+      setScores(res.data);
+      setIsRanked(res.data.some((s: any) => s.ranking && s.ranking > 0));
+      setIsSaved(res.data.length > 0);
+      setHasChanges(false);
+    };
+    fetchData();
+  }, [selectedWeek]);
+
+  // tính tổng điểm
+  const calcTotal = (s: any, field: string, value: number) => {
+    const updated = { ...s, [field]: value };
+    return (
+      (updated.attendanceScore ?? 0) +
+      (updated.hygieneScore ?? 0) +
+      (updated.lineUpScore ?? 0) +
+      (updated.academicScore ?? 0) +
+      (updated.bonusScore ?? 0) -
+      (updated.violationScore ?? 0)
+    );
   };
 
-  // 🔹 Cập nhật điểm + tính lại rank
-  const handleUpdate = async (id: string) => {
-    if (!(id in editingScores)) return;
-    try {
-      setSaving(true);
-      const newScore = editingScores[id];
-      await axios.put(`/api/class-weekly-scores/${id}`, { score: newScore });
+  // chỉnh sửa điểm trực tiếp
+  const handleScoreChange = (
+    className: string,
+    field: string,
+    value: number
+  ) => {
+    const updated = scores.map((s) =>
+      s.className === className
+        ? { ...s, [field]: value, totalScore: calcTotal(s, field, value) }
+        : s
+    );
+    setScores(updated);
+    setIsRanked(false);
+    setIsSaved(false);
+    setHasChanges(true);
+  };
 
-      // Cập nhật local state
-      const updated = scores.map((s) =>
-        s._id === id ? { ...s, score: newScore } : s
-      );
-      setScores(calculateRanks(updated));
+  // load dữ liệu tạm
+  const handleLoadData = async () => {
+    const res = await api.get(
+      `/api/class-weekly-scores/temp?weekNumber=${selectedWeek}`
+    );
+    setScores(res.data);
+    setIsRanked(false);
+    setIsSaved(false);
+    setHasChanges(true);
+  };
 
-      setEditingScores((prev) => {
-        const updatedEdits = { ...prev };
-        delete updatedEdits[id];
-        return updatedEdits;
-      });
-    } catch (err) {
-      console.error("Error updating score:", err);
-    } finally {
-      setSaving(false);
+  // tính + xếp hạng
+  const handleRankScores = () => {
+    const ranked = [...scores].sort((a, b) => b.totalScore - a.totalScore);
+    ranked.forEach((s, i) => (s.ranking = i + 1));
+    setScores(ranked);
+    setIsRanked(true);
+    setIsSaved(false);
+    setHasChanges(true);
+  };
+
+  // cập nhật (tự tính lại + xếp hạng)
+  const handleUpdateScores = () => {
+    const ranked = [...scores].sort((a, b) => b.totalScore - a.totalScore);
+    ranked.forEach((s, i) => (s.ranking = i + 1));
+    setScores(ranked);
+    setIsRanked(true);
+    setIsSaved(false);
+    setHasChanges(true);
+  };
+
+  // lưu dữ liệu
+  const handleSaveScores = async () => {
+    await api.post("/api/class-weekly-scores/save", {
+      weekNumber: selectedWeek,
+      scores,
+    });
+    setIsSaved(true);
+    setHasChanges(false);
+  };
+
+  // render nút theo flow
+  const renderActionButton = () => {
+    if (!scores.length) {
+      return <Button onClick={handleLoadData}>Load dữ liệu</Button>;
     }
+    if (hasChanges && !isRanked) {
+      return <Button onClick={handleUpdateScores}>Cập nhật</Button>;
+    }
+    if (isRanked && !isSaved) {
+      return <Button onClick={handleSaveScores}>Lưu</Button>;
+    }
+    if (isSaved) {
+      return <Button disabled>Đã lưu</Button>;
+    }
+    return <Button onClick={handleRankScores}>Tính xếp hạng</Button>;
   };
 
   return (
-    <Box p={3}>
-      <Typography variant="h5" gutterBottom>
-        Điểm thi đua hàng tuần
-      </Typography>
+    <Paper sx={{ p: 2 }}>
+      <FormControl sx={{ minWidth: 120, mb: 2 }}>
+        <InputLabel>Tuần</InputLabel>
+        <Select
+          value={selectedWeek}
+          label="Tuần"
+          onChange={(e) => setSelectedWeek(e.target.value as number)}
+        >
+          {weeks.map((w) => (
+            <MenuItem key={w} value={w}>
+              Tuần {w}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
 
-      {loading ? (
-        <CircularProgress />
-      ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Lớp</TableCell>
-                <TableCell>Tuần</TableCell>
-                <TableCell>Điểm</TableCell>
-                <TableCell>Xếp hạng</TableCell>
-                <TableCell>Hành động</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {scores.map((row) => (
-                <TableRow key={row._id}>
-                  <TableCell>{row.className}</TableCell>
-                  <TableCell>{row.week}</TableCell>
-                  <TableCell>
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={
-                        editingScores[row._id] !== undefined
-                          ? editingScores[row._id]
-                          : row.score
-                      }
-                      onChange={(e) =>
-                        handleScoreChange(row._id, Number(e.target.value))
-                      }
-                      inputProps={{ min: 0 }}
-                    />
-                  </TableCell>
-                  <TableCell>{row.rank ?? "-"}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      disabled={saving || !(row._id in editingScores)}
-                      onClick={() => handleUpdate(row._id)}
-                    >
-                      Cập nhật
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Box>
+      <Divider sx={{ my: 2 }} />
+
+      {renderActionButton()}
+
+      <Table sx={{ mt: 2 }}>
+        <TableHead>
+          <TableRow>
+            <TableCell>Lớp</TableCell>
+            <TableCell align="center">Chuyên cần</TableCell>
+            <TableCell align="center">Vệ sinh</TableCell>
+            <TableCell align="center">Xếp hàng</TableCell>
+            <TableCell align="center">Vi phạm</TableCell>
+            <TableCell align="center">Học tập</TableCell>
+            <TableCell align="center">Thưởng</TableCell>
+            <TableCell align="center">Tổng</TableCell>
+            <TableCell align="center">Hạng</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {scores.map((row) => (
+            <TableRow key={row.className}>
+              <TableCell>{row.className}</TableCell>
+              <TableCell align="center">{row.attendanceScore}</TableCell>
+              <TableCell align="center">{row.hygieneScore}</TableCell>
+              <TableCell align="center">{row.lineUpScore}</TableCell>
+              <TableCell align="center">{row.violationScore}</TableCell>
+              <TableCell align="center">
+                <TextField
+                  type="number"
+                  value={row.academicScore}
+                  onChange={(e) =>
+                    handleScoreChange(
+                      row.className,
+                      "academicScore",
+                      Number(e.target.value)
+                    )
+                  }
+                />
+              </TableCell>
+              <TableCell align="center">
+                <TextField
+                  type="number"
+                  value={row.bonusScore}
+                  onChange={(e) =>
+                    handleScoreChange(
+                      row.className,
+                      "bonusScore",
+                      Number(e.target.value)
+                    )
+                  }
+                />
+              </TableCell>
+              <TableCell align="center">{row.totalScore}</TableCell>
+              <TableCell align="center">{row.ranking}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Paper>
   );
 };
 
