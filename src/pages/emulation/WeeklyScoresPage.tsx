@@ -49,11 +49,10 @@ export default function WeeklyScoresPage() {
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
   const [scores, setScores] = useState<ScoreRow[]>([]);
-  const [classList, setClassList] = useState<any[]>([]);
-  const [hasData, setHasData] = useState(false);
-  const [calculated, setCalculated] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [needUpdate, setNeedUpdate] = useState(false);
+  const [hasData, setHasData] = useState(false); // có dữ liệu trong DB chưa
+  const [calculated, setCalculated] = useState(false); // đã tính xếp hạng chưa
+  const [saved, setSaved] = useState(false); // đã lưu chưa
+  const [needUpdate, setNeedUpdate] = useState(false); // raw data thay đổi?
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -61,7 +60,7 @@ export default function WeeklyScoresPage() {
     severity: "success" | "error" | "info";
   }>({ open: false, message: "", severity: "info" });
 
-  // ============== Helper ==============
+  // ================= Helper =================
   const formatDateShort = (d?: string) => {
     if (!d) return "";
     const date = new Date(d);
@@ -71,11 +70,11 @@ export default function WeeklyScoresPage() {
     return `${dd}/${mm}`;
   };
 
-  const normalizeSavedScores = (arr: any[]): ScoreRow[] =>
+  const normalizeScores = (arr: any[], weekNumber: number): ScoreRow[] =>
     (arr || []).map((r: any) => ({
       className: r.className || "",
       grade: String(r.grade ?? "undefined"),
-      weekNumber: Number(r.weekNumber ?? selectedWeek?.weekNumber ?? 0),
+      weekNumber,
       academicScore: Number(r.academicScore ?? 0),
       bonusScore: Number(r.bonusScore ?? 0),
       violationScore: Number(r.violationScore ?? 0),
@@ -87,37 +86,10 @@ export default function WeeklyScoresPage() {
       rank: Number(r.rank ?? r.ranking ?? 0),
     }));
 
-  const mergeScoresWithClasses = (
-    classes: any[],
-    scores: ScoreRow[],
-    weekNumber: number
-  ): ScoreRow[] => {
-    return classes.map((cls) => {
-      const found = scores.find((s) => s.className === cls.className);
-      return (
-        found || {
-          className: cls.className,
-          grade: String(cls.grade ?? "undefined"),
-          weekNumber,
-          academicScore: 0,
-          bonusScore: 0,
-          violationScore: 0,
-          hygieneScore: 0,
-          attendanceScore: 0,
-          lineupScore: 0,
-          totalViolation: 0,
-          totalScore: 0,
-          rank: 0,
-        }
-      );
-    });
-  };
-
-  // ============== Init ==============
+  // ================= Init =================
   useEffect(() => {
     fetchWeeks();
     fetchSettings();
-    fetchClasses();
   }, []);
 
   const fetchWeeks = async () => {
@@ -144,29 +116,19 @@ export default function WeeklyScoresPage() {
     }
   };
 
-  const fetchClasses = async () => {
-    try {
-      const res = await api.get("/api/classes/with-teacher");
-      setClassList(res.data || []);
-    } catch (err) {
-      console.error("Lỗi khi lấy lớp:", err);
-    }
-  };
-
-  // ============== Check data khi chọn tuần ==============
+  // ================= Load tuần =================
   const loadWeekData = async (weekNumber: number) => {
     try {
       const res = await api.get("/api/class-weekly-scores", {
         params: { weekNumber },
       });
-      const existing = normalizeSavedScores(res.data?.scores || res.data || []);
+      const existing = normalizeScores(res.data?.scores || [], weekNumber);
       if (existing.length > 0) {
-        const merged = mergeScoresWithClasses(classList, existing, weekNumber);
-        setScores(merged);
+        setScores(existing);
         setHasData(true);
-        setCalculated(merged.some((s) => s.rank > 0));
+        setCalculated(existing.some((s) => s.rank > 0));
         setSaved(true);
-        setNeedUpdate(!!res.data?.rawChanged);
+        setNeedUpdate(res.data?.needUpdate ?? false);
       } else {
         setScores([]);
         setHasData(false);
@@ -176,11 +138,6 @@ export default function WeeklyScoresPage() {
       }
     } catch (err) {
       console.error("Load tuần lỗi:", err);
-      setScores([]);
-      setHasData(false);
-      setCalculated(false);
-      setSaved(false);
-      setNeedUpdate(false);
     }
   };
 
@@ -191,17 +148,24 @@ export default function WeeklyScoresPage() {
       setScores([]);
       setHasData(false);
     }
-  }, [selectedWeek, classList]);
+  }, [selectedWeek]);
 
-  // ============== Actions ==============
-  const handleLoadData = () => {
+  // ================= Actions =================
+  const handleLoadTemp = async () => {
     if (!selectedWeek) return;
-    const merged = mergeScoresWithClasses(classList, [], selectedWeek.weekNumber);
-    setScores(merged);
-    setHasData(false);
-    setCalculated(false);
-    setSaved(false);
-    setNeedUpdate(false);
+    try {
+      const res = await api.get(
+        `/api/class-weekly-scores/temp/${selectedWeek.weekNumber}`
+      );
+      const tempScores = normalizeScores(res.data || [], selectedWeek.weekNumber);
+      setScores(tempScores);
+      setHasData(true);
+      setCalculated(false);
+      setSaved(false);
+      setNeedUpdate(false);
+    } catch (err) {
+      console.error("Load temp error:", err);
+    }
   };
 
   const handleCalculate = () => {
@@ -214,6 +178,7 @@ export default function WeeklyScoresPage() {
       return { ...s, totalViolation, totalScore };
     });
 
+    // xếp hạng theo khối
     const grouped: Record<string, ScoreRow[]> = {};
     updated.forEach((r) => {
       if (!grouped[r.grade]) grouped[r.grade] = [];
@@ -240,7 +205,6 @@ export default function WeeklyScoresPage() {
     setScores(updated);
     setCalculated(true);
     setSaved(false);
-    setNeedUpdate(false);
   };
 
   const handleSave = async () => {
@@ -256,7 +220,6 @@ export default function WeeklyScoresPage() {
         severity: "success",
       });
       setSaved(true);
-      setNeedUpdate(false);
     } catch (err) {
       console.error("Save error:", err);
       setSnackbar({
@@ -298,10 +261,9 @@ export default function WeeklyScoresPage() {
     );
     setCalculated(false);
     setSaved(false);
-    setNeedUpdate(false);
   };
 
-  // ============== Render ==============
+  // ================= Render =================
   const groupedByGrade: Record<string, ScoreRow[]> = {};
   scores.forEach((s) => {
     if (!groupedByGrade[s.grade]) groupedByGrade[s.grade] = [];
@@ -356,10 +318,21 @@ export default function WeeklyScoresPage() {
             <Button
               variant="contained"
               color="info"
-              onClick={handleLoadData}
+              onClick={handleLoadTemp}
               disabled={!selectedWeek}
             >
               Load dữ liệu
+            </Button>
+          )}
+
+          {hasData && needUpdate && (
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={handleLoadTemp}
+              disabled={!selectedWeek}
+            >
+              Cập nhật
             </Button>
           )}
 
@@ -382,17 +355,6 @@ export default function WeeklyScoresPage() {
               disabled={!scores.length}
             >
               Lưu
-            </Button>
-          )}
-
-          {hasData && calculated && saved && needUpdate && (
-            <Button
-              variant="contained"
-              color="warning"
-              onClick={handleSave}
-              disabled={!scores.length}
-            >
-              Cập nhật
             </Button>
           )}
 
