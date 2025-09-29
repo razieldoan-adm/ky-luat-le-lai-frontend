@@ -1,5 +1,5 @@
-// WeeklyScoresPage.tsx
-import { useEffect, useState } from "react";
+hoan toàn khogn đúng yêu cầu của mình, 
+day la doan code tuong doi đúng yêu cầu của minhimport { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -52,9 +52,8 @@ export default function WeeklyScoresPage() {
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [classList, setClassList] = useState<any[]>([]);
   const [hasData, setHasData] = useState(false);
-  const [calculated, setCalculated] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [needsUpdate, setNeedsUpdate] = useState(false); // ⚡ NEW: raw-data thay đổi
+  const [calculated, setCalculated] = useState(false); // đã tính xếp hạng chưa
+  const [saved, setSaved] = useState(false); // đã lưu sau khi tính xong chưa
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -165,18 +164,13 @@ export default function WeeklyScoresPage() {
         const merged = mergeScoresWithClasses(classList, existing, weekNumber);
         setScores(merged);
         setHasData(true);
-        setCalculated(merged.some((s) => s.rank > 0));
+        setCalculated(merged.some((s) => s.rank > 0)); // nếu đã có rank => coi như đã tính
         setSaved(true);
-
-        // ⚡ Check raw-data changes
-        const check = await api.get(`/api/class-weekly-scores/check/${weekNumber}`);
-        setNeedsUpdate(check.data?.changed || false);
       } else {
         setScores([]);
         setHasData(false);
         setCalculated(false);
         setSaved(false);
-        setNeedsUpdate(false);
       }
     } catch (err) {
       console.error("Load tuần lỗi:", err);
@@ -184,7 +178,6 @@ export default function WeeklyScoresPage() {
       setHasData(false);
       setCalculated(false);
       setSaved(false);
-      setNeedsUpdate(false);
     }
   };
 
@@ -205,7 +198,6 @@ export default function WeeklyScoresPage() {
     setHasData(false);
     setCalculated(false);
     setSaved(false);
-    setNeedsUpdate(false);
   };
 
   const handleCalculate = () => {
@@ -250,8 +242,7 @@ export default function WeeklyScoresPage() {
   const handleSave = async () => {
     if (!selectedWeek || !scores.length) return;
     try {
-      await api.post(`/api/class-weekly-scores/save`, {
-        weekNumber: selectedWeek.weekNumber,
+      await api.post(`/api/class-weekly-scores/update/${selectedWeek.weekNumber}`, {
         scores,
       });
       await loadWeekData(selectedWeek.weekNumber);
@@ -266,31 +257,6 @@ export default function WeeklyScoresPage() {
       setSnackbar({
         open: true,
         message: "Lỗi khi lưu dữ liệu",
-        severity: "error",
-      });
-    }
-  };
-
-  const handleUpdate = async () => {
-    if (!selectedWeek) return;
-    try {
-      const res = await api.post(
-        `/api/class-weekly-scores/update/${selectedWeek.weekNumber}`
-      );
-      setScores(normalizeSavedScores(res.data || []));
-      setCalculated(true);
-      setSaved(false);
-      setNeedsUpdate(false);
-      setSnackbar({
-        open: true,
-        message: "Đã cập nhật dữ liệu từ raw-data",
-        severity: "info",
-      });
-    } catch (err) {
-      console.error("Update error:", err);
-      setSnackbar({
-        open: true,
-        message: "Lỗi khi cập nhật dữ liệu",
         severity: "error",
       });
     }
@@ -325,7 +291,7 @@ export default function WeeklyScoresPage() {
     setScores((prev) =>
       prev.map((s) => (s.className === className ? { ...s, [field]: value } : s))
     );
-    setCalculated(false); // ⚡ bắt buộc tính lại
+    setCalculated(false);
     setSaved(false);
   };
 
@@ -379,65 +345,63 @@ export default function WeeklyScoresPage() {
           </Select>
         </FormControl>
 
-        <Stack direction="row" spacing={2}>
-          {!hasData && (
-            <Button
-              variant="contained"
-              color="info"
-              onClick={handleLoadData}
-              disabled={!selectedWeek}
-            >
-              Load dữ liệu
-            </Button>
-          )}
+         <Stack direction="row" spacing={2}>
+    {/* Khi chưa có dữ liệu thì cho phép load */}
+    {!hasData && (
+      <Button
+        variant="contained"
+        color="info"
+        onClick={handleLoadData}
+        disabled={!selectedWeek}
+      >
+        Load dữ liệu
+      </Button>
+    )}
+  
+    {/* Khi đã load dữ liệu nhưng chưa tính xếp hạng */}
+    {hasData && !calculated && (
+      <Button
+        variant="contained"
+        color="secondary"
+        onClick={handleCalculate}
+        disabled={!scores.length}
+      >
+        Tính xếp hạng
+      </Button>
+    )}
+  
+    {/* Khi đã tính nhưng chưa lưu */}
+    {hasData && calculated && !saved && (
+      <Button
+        variant="contained"
+        color="success"
+        onClick={handleSave}
+        disabled={!scores.length}
+      >
+        Lưu
+      </Button>
+    )}
+  
+    {/* Khi đã lưu nhưng backend báo raw-data thay đổi */}
+    {hasData && calculated && saved && needsUpdate && (
+      <Button
+        variant="contained"
+        color="warning"
+        onClick={handleUpdate}
+        disabled={!scores.length}
+      >
+        Cập nhật
+      </Button>
+    )}
+  
+    {/* Nút xuất Excel luôn hiển thị nếu có dữ liệu */}
+    {scores.length > 0 && (
+      <Button variant="outlined" onClick={handleExportExcel}>
+        Xuất Excel
+      </Button>
+    )}
+  </Stack>
 
-          {hasData && !calculated && (
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={handleCalculate}
-              disabled={!scores.length}
-            >
-              Tính xếp hạng
-            </Button>
-          )}
-
-          {hasData && calculated && !saved && (
-            <Button
-              variant="contained"
-              color="success"
-              onClick={handleSave}
-              disabled={!scores.length}
-            >
-              Lưu
-            </Button>
-          )}
-
-          {needsUpdate && saved && (
-            <Button
-              variant="contained"
-              color="warning"
-              onClick={handleUpdate}
-              disabled={!selectedWeek}
-            >
-              Cập nhật
-            </Button>
-          )}
-
-          {hasData && calculated && saved && !needsUpdate && (
-            <Button variant="outlined" disabled>
-              Đã lưu
-            </Button>
-          )}
-
-          <Button
-            variant="outlined"
-            onClick={handleExportExcel}
-            disabled={!scores.length}
-          >
-            Xuất Excel
-          </Button>
-        </Stack>
       </Box>
 
       {gradeKeys
