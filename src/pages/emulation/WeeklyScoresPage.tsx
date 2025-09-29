@@ -1,26 +1,24 @@
 import React, { useEffect, useState } from "react";
 import {
+  Box,
   Button,
-  CircularProgress,
+  MenuItem,
+  Select,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
+  Typography,
   Paper,
 } from "@mui/material";
-import api from "../../api/api";
+import api from "../../api/api"; 
+import * as XLSX from "xlsx";
 
-// Kiểu dữ liệu tuần
-interface Week {
-  weekNumber: number;
-  name: string;
-}
-
-// Kiểu dữ liệu 1 dòng điểm
-interface ScoreRow {
+interface Score {
   className: string;
+  grade: string;
+  weekNumber: number;
   academicScore: number;
   bonusScore: number;
   violationScore: number;
@@ -33,152 +31,199 @@ interface ScoreRow {
 }
 
 const WeeklyScoresPage: React.FC = () => {
-  const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
-  const [scores, setScores] = useState<ScoreRow[]>([]);
+  const [weeks, setWeeks] = useState<number[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  const [scores, setScores] = useState<Score[]>([]);
+  const [saved, setSaved] = useState(false); // có dữ liệu DB chưa
+  const [changed, setChanged] = useState(false); // backend báo raw-data khác DB
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<
-    "idle" | "loaded" | "calculated" | "saved" | "needsUpdate"
-  >("idle");
 
-  // Lấy dữ liệu tuần
-  const fetchWeeks = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get("/api/academic-weeks/study-weeks");
-      const initialWeek: Week = res.data[0];
-      setSelectedWeek(initialWeek);
-      if (initialWeek) {
-        await initializeData(initialWeek.weekNumber);
-      }
-    } catch (err) {
-      console.error("Error fetching weeks:", err);
-    }
-    setLoading(false);
-  };
-
-  // Khởi tạo dữ liệu theo tuần
-  const initializeData = async (weekNumber: number) => {
-    setLoading(true);
-    try {
-      const savedRes = await api.get(
-        `/api/class-weekly-scores?weekNumber=${weekNumber}`
-      );
-      if (savedRes.data.length > 0) {
-        setScores(savedRes.data);
-        setStatus("saved");
-      } else {
-        setStatus("idle");
-      }
-    } catch (err) {
-      console.error("Error initializing data:", err);
-    }
-    setLoading(false);
-  };
-
+  // Lấy danh sách tuần
   useEffect(() => {
-    fetchWeeks();
+    axios.get("/api/study-weeks").then((res) => {
+      setWeeks(res.data.map((w: any) => w.weekNumber));
+    });
   }, []);
 
-  // Load dữ liệu tạm
-  const handleLoadTemp = async () => {
+  // Load dữ liệu từ DB khi chọn tuần
+  useEffect(() => {
     if (!selectedWeek) return;
-    setLoading(true);
-    try {
-      const res = await api.get(
-        `/api/class-weekly-scores/temp?weekNumber=${selectedWeek.weekNumber}`
-      );
-      setScores(res.data);
-      setStatus("loaded");
-    } catch (err) {
-      console.error("Error loading temp scores:", err);
-    }
-    setLoading(false);
-  };
 
-  // Tính xếp hạng
-  const handleCalculate = () => {
-    const sorted = [...scores].sort((a, b) => b.totalScore - a.totalScore);
+    setLoading(true);
+    axios
+      .get(`/api/weekly-scores?weekNumber=${selectedWeek}`)
+      .then((res) => {
+        if (res.data.length > 0) {
+          setScores(res.data);
+          setSaved(true);
+          // check thay đổi
+          axios
+            .get(`/api/weekly-scores/check-changes/${selectedWeek}`)
+            .then((check) => setChanged(check.data.changed));
+        } else {
+          setScores([]);
+          setSaved(false);
+          setChanged(false);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [selectedWeek]);
+
+  // Tính lại xếp hạng
+  const recalcRanking = (list: Score[]) => {
+    const sorted = [...list].sort((a, b) => b.totalScore - a.totalScore);
     let currentRank = 0;
-    let lastScore = null;
+    let lastScore: number | null = null;
     let count = 0;
-    const ranked = sorted.map((s) => {
+
+    sorted.forEach((s) => {
       count++;
       if (s.totalScore !== lastScore) {
         currentRank = count;
         lastScore = s.totalScore;
       }
-      return { ...s, ranking: currentRank };
+      s.ranking = currentRank;
     });
-    setScores(ranked);
-    setStatus("calculated");
+
+    return sorted;
   };
 
-  // Cập nhật dữ liệu từ DB
-  const handleUpdate = async () => {
+  // Load dữ liệu temp
+  const loadTemp = async () => {
     if (!selectedWeek) return;
     setLoading(true);
     try {
-      const res = await api.post(
-        `/api/class-weekly-scores/update/${selectedWeek.weekNumber}`
+      const res = await axios.get(
+        `/api/weekly-scores/temp?weekNumber=${selectedWeek}`
       );
       setScores(res.data);
-      setStatus("calculated");
-    } catch (err) {
-      console.error("Error updating weekly scores:", err);
+      setSaved(false);
+      setChanged(false);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  // Tính xếp hạng (frontend)
+  const calcRanking = () => {
+    const recalculated = scores.map((s) => ({
+      ...s,
+      totalScore: (s.academicScore || 0) + (s.bonusScore || 0) + (s.totalViolation || 0),
+    }));
+    setScores(recalcRanking(recalculated));
   };
 
   // Lưu dữ liệu
-  const handleSave = async () => {
+  const saveScores = async () => {
     if (!selectedWeek) return;
-    setLoading(true);
-    try {
-      await api.post(`/api/class-weekly-scores/save`, {
-        weekNumber: selectedWeek.weekNumber,
-        scores,
-      });
-      setStatus("saved");
-    } catch (err) {
-      console.error("Error saving weekly scores:", err);
-    }
-    setLoading(false);
+    await axios.post("/api/weekly-scores/save", {
+      weekNumber: selectedWeek,
+      scores,
+    });
+    setSaved(true);
+    alert("Đã lưu thành công");
+  };
+
+  // Cập nhật dữ liệu khi raw-data thay đổi
+  const updateScores = async () => {
+    if (!selectedWeek) return;
+    const res = await axios.post(
+      `/api/weekly-scores/update/${selectedWeek}`
+    );
+    setScores(res.data);
+    setSaved(true);
+    setChanged(false);
+  };
+
+  // Xuất Excel
+  const exportExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(scores);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "WeeklyScores");
+    XLSX.writeFile(wb, `WeeklyScores_Week${selectedWeek}.xlsx`);
+  };
+
+  // Chỉnh tay học tập / thưởng
+  const handleChange = (idx: number, field: "academicScore" | "bonusScore", value: number) => {
+    const updated = [...scores];
+    updated[idx][field] = value;
+    updated[idx].totalScore =
+      (updated[idx].academicScore || 0) +
+      (updated[idx].bonusScore || 0) +
+      (updated[idx].totalViolation || 0);
+    setScores(recalcRanking(updated));
   };
 
   return (
-    <div>
-      <h2>Quản lý điểm tuần</h2>
-      {loading && <CircularProgress />}
+    <Box p={2}>
+      <Typography variant="h5" gutterBottom>
+        Điểm thi đua theo tuần
+      </Typography>
 
-      <div style={{ marginBottom: 16 }}>
-        {status === "idle" && (
-          <Button variant="contained" onClick={handleLoadTemp}>
+      {/* Chọn tuần */}
+      <Box mb={2}>
+        <Select
+          value={selectedWeek}
+          onChange={(e) => setSelectedWeek(Number(e.target.value))}
+          displayEmpty
+        >
+          <MenuItem value="">Chọn tuần</MenuItem>
+          {weeks.map((w) => (
+            <MenuItem key={w} value={w}>
+              Tuần {w}
+            </MenuItem>
+          ))}
+        </Select>
+      </Box>
+
+      {/* Nút thao tác */}
+      <Box mb={2}>
+        {!saved && (
+          <Button
+            onClick={loadTemp}
+            variant="contained"
+            sx={{ mr: 2 }}
+            disabled={!selectedWeek}
+          >
             Load dữ liệu
           </Button>
         )}
-        {status === "loaded" && (
-          <Button variant="contained" onClick={handleCalculate}>
-            Tính xếp hạng
-          </Button>
+        {scores.length > 0 && (
+          <>
+            <Button
+              onClick={calcRanking}
+              variant="outlined"
+              sx={{ mr: 2 }}
+            >
+              Tính xếp hạng
+            </Button>
+            <Button
+              onClick={saveScores}
+              variant="contained"
+              color="success"
+              sx={{ mr: 2 }}
+            >
+              Lưu
+            </Button>
+            {changed && (
+              <Button
+                onClick={updateScores}
+                variant="contained"
+                color="warning"
+                sx={{ mr: 2 }}
+              >
+                Cập nhật
+              </Button>
+            )}
+            <Button onClick={exportExcel} variant="outlined" color="primary">
+              Xuất Excel
+            </Button>
+          </>
         )}
-        {status === "calculated" && (
-          <Button variant="contained" onClick={handleSave}>
-            Lưu
-          </Button>
-        )}
-        {status === "saved" && (
-          <Button variant="outlined" disabled>
-            Đã lưu
-          </Button>
-        )}
-        {status === "needsUpdate" && (
-          <Button variant="contained" onClick={handleUpdate}>
-            Cập nhật
-          </Button>
-        )}
-      </div>
+      </Box>
 
-      <TableContainer component={Paper}>
+      {/* Bảng dữ liệu */}
+      <Paper>
         <Table>
           <TableHead>
             <TableRow>
@@ -195,24 +240,42 @@ const WeeklyScoresPage: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {scores.map((row) => (
-              <TableRow key={row.className}>
-                <TableCell>{row.className}</TableCell>
-                <TableCell>{row.academicScore}</TableCell>
-                <TableCell>{row.bonusScore}</TableCell>
-                <TableCell>{row.violationScore}</TableCell>
-                <TableCell>{row.hygieneScore}</TableCell>
-                <TableCell>{row.attendanceScore}</TableCell>
-                <TableCell>{row.lineUpScore}</TableCell>
-                <TableCell>{row.totalViolation}</TableCell>
-                <TableCell>{row.totalScore}</TableCell>
-                <TableCell>{row.ranking}</TableCell>
+            {scores.map((s, idx) => (
+              <TableRow key={s.className}>
+                <TableCell>{s.className}</TableCell>
+                <TableCell>
+                  <input
+                    type="number"
+                    value={s.academicScore}
+                    onChange={(e) =>
+                      handleChange(idx, "academicScore", Number(e.target.value))
+                    }
+                    style={{ width: "60px" }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <input
+                    type="number"
+                    value={s.bonusScore}
+                    onChange={(e) =>
+                      handleChange(idx, "bonusScore", Number(e.target.value))
+                    }
+                    style={{ width: "60px" }}
+                  />
+                </TableCell>
+                <TableCell>{s.violationScore}</TableCell>
+                <TableCell>{s.hygieneScore}</TableCell>
+                <TableCell>{s.attendanceScore}</TableCell>
+                <TableCell>{s.lineUpScore}</TableCell>
+                <TableCell>{s.totalViolation}</TableCell>
+                <TableCell>{s.totalScore}</TableCell>
+                <TableCell>{s.ranking}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </TableContainer>
-    </div>
+      </Paper>
+    </Box>
   );
 };
 
