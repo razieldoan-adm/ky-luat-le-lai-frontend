@@ -55,6 +55,7 @@ export default function WeeklyScoresPage() {
   const [calculated, setCalculated] = useState(false); // đã tính xếp hạng chưa
   const [saved, setSaved] = useState(false); // đã lưu sau khi tính xong chưa
   const [gradeFilter, setGradeFilter] = useState<string>("all");
+  const [needsUpdate, setNeedsUpdate] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
