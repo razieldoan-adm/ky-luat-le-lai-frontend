@@ -31,6 +31,13 @@ interface WeeklyScoreRow {
   ranking: number;
 }
 
+const getRowStyle = (ranking: number) => {
+  if (ranking === 1) return { backgroundColor: "#fff59d" }; // vàng nhạt
+  if (ranking === 2) return { backgroundColor: "#b2ebf2" }; // xanh nhạt
+  if (ranking === 3) return { backgroundColor: "#c8e6c9" }; // xanh lá nhạt
+  return {};
+};
+
 const WeeklyScoresPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [week, setWeek] = useState<number | "">("");
@@ -53,12 +60,10 @@ const WeeklyScoresPage: React.FC = () => {
     try {
       let res;
       if (weeksWithData.includes(weekNumber)) {
-        // đã có dữ liệu => load từ DB
         res = await api.get<WeeklyScoreRow[]>(
           `/api/class-weekly-scores?weekNumber=${weekNumber}`
         );
       } else {
-        // chưa có dữ liệu => load tạm
         res = await api.get<WeeklyScoreRow[]>(
           `/api/class-weekly-scores/temp?weekNumber=${weekNumber}`
         );
@@ -106,10 +111,9 @@ const WeeklyScoresPage: React.FC = () => {
   const handleExport = async () => {
     if (!week) return;
     try {
-      const res = await api.get(
-        `/api/class-weekly-scores/export/${week}`,
-        { responseType: "blob" }
-      );
+      const res = await api.get(`/api/class-weekly-scores/export/${week}`, {
+        responseType: "blob",
+      });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;
@@ -146,6 +150,63 @@ const WeeklyScoresPage: React.FC = () => {
       fetchScores(Number(week));
     }
   }, [week, weeksWithData]);
+
+  // Group theo khối
+  const groupedByGrade: Record<string, WeeklyScoreRow[]> = scores.reduce(
+    (acc, row) => {
+      if (!acc[row.grade]) acc[row.grade] = [];
+      acc[row.grade].push(row);
+      return acc;
+    },
+    {} as Record<string, WeeklyScoreRow[]>
+  );
+
+  const renderTable = (grade: string, rows: WeeklyScoreRow[]) => (
+    <Box key={grade} mb={4}>
+      <Typography variant="h6" gutterBottom>
+        Khối {grade}
+      </Typography>
+      <TableContainer component={Paper}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Lớp</TableCell>
+              <TableCell>Điểm chuyên cần</TableCell>
+              <TableCell>Điểm vệ sinh</TableCell>
+              <TableCell>Điểm xếp hàng</TableCell>
+              <TableCell>Điểm vi phạm</TableCell>
+              <TableCell>Điểm học tập</TableCell>
+              <TableCell>Điểm thưởng</TableCell>
+              <TableCell>Tổng vi phạm</TableCell>
+              <TableCell>Tổng điểm</TableCell>
+              <TableCell>Xếp hạng</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows
+              .sort((a, b) => a.className.localeCompare(b.className))
+              .map((row) => (
+                <TableRow
+                  key={row.className}
+                  sx={getRowStyle(row.ranking)}
+                >
+                  <TableCell>{row.className}</TableCell>
+                  <TableCell>{row.attendanceScore}</TableCell>
+                  <TableCell>{row.hygieneScore}</TableCell>
+                  <TableCell>{row.lineUpScore}</TableCell>
+                  <TableCell>{row.violationScore}</TableCell>
+                  <TableCell>{row.academicScore}</TableCell>
+                  <TableCell>{row.bonusScore}</TableCell>
+                  <TableCell>{row.totalViolation}</TableCell>
+                  <TableCell>{row.totalScore}</TableCell>
+                  <TableCell>{row.ranking}</TableCell>
+                </TableRow>
+              ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
 
   return (
     <Box p={3}>
@@ -194,11 +255,7 @@ const WeeklyScoresPage: React.FC = () => {
         >
           Cập nhật
         </Button>
-        <Button
-          variant="outlined"
-          onClick={handleExport}
-          disabled={!week}
-        >
+        <Button variant="outlined" onClick={handleExport} disabled={!week}>
           Xuất Excel
         </Button>
         <Button
@@ -214,42 +271,9 @@ const WeeklyScoresPage: React.FC = () => {
       {loading ? (
         <CircularProgress />
       ) : scores.length > 0 ? (
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Lớp</TableCell>
-                <TableCell>Khối</TableCell>
-                <TableCell>Điểm chuyên cần</TableCell>
-                <TableCell>Điểm vệ sinh</TableCell>
-                <TableCell>Điểm xếp hàng</TableCell>
-                <TableCell>Điểm vi phạm</TableCell>
-                <TableCell>Điểm học tập</TableCell>
-                <TableCell>Điểm thưởng</TableCell>
-                <TableCell>Tổng vi phạm</TableCell>
-                <TableCell>Tổng điểm</TableCell>
-                <TableCell>Xếp hạng</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {scores.map((row) => (
-                <TableRow key={row.className}>
-                  <TableCell>{row.className}</TableCell>
-                  <TableCell>{row.grade}</TableCell>
-                  <TableCell>{row.attendanceScore}</TableCell>
-                  <TableCell>{row.hygieneScore}</TableCell>
-                  <TableCell>{row.lineUpScore}</TableCell>
-                  <TableCell>{row.violationScore}</TableCell>
-                  <TableCell>{row.academicScore}</TableCell>
-                  <TableCell>{row.bonusScore}</TableCell>
-                  <TableCell>{row.totalViolation}</TableCell>
-                  <TableCell>{row.totalScore}</TableCell>
-                  <TableCell>{row.ranking}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        Object.keys(groupedByGrade)
+          .sort()
+          .map((grade) => renderTable(grade, groupedByGrade[grade]))
       ) : (
         week !== "" && <Typography>Không có dữ liệu tuần này.</Typography>
       )}
