@@ -28,7 +28,12 @@ interface WeeklyScoreRow {
   bonusScore: number;
   totalViolation: number;
   totalScore: number;
-  ranking: number;
+}
+
+interface ClassInfo {
+  name: string;
+  grade: string;
+  homeroomTeacher?: string; // để kiểm tra có GVCN
 }
 
 const getRowStyle = (ranking: number) => {
@@ -43,6 +48,18 @@ const WeeklyScoresPage: React.FC = () => {
   const [week, setWeek] = useState<number | "">("");
   const [weeksWithData, setWeeksWithData] = useState<number[]>([]);
   const [scores, setScores] = useState<WeeklyScoreRow[]>([]);
+  const [classes, setClasses] = useState<ClassInfo[]>([]);
+
+  // Lấy danh sách lớp có GVCN
+  const fetchClasses = async () => {
+    try {
+      const res = await api.get<ClassInfo[]>("/api/classes");
+      const filtered = (res.data || []).filter((cls) => !!cls.homeroomTeacher);
+      setClasses(filtered);
+    } catch (err) {
+      console.error("Load classes error:", err);
+    }
+  };
 
   // Lấy danh sách tuần đã có dữ liệu
   const fetchWeeksWithData = async () => {
@@ -68,7 +85,11 @@ const WeeklyScoresPage: React.FC = () => {
           `/api/class-weekly-scores/temp?weekNumber=${weekNumber}`
         );
       }
-      setScores(res.data || []);
+      // chỉ giữ những lớp có GVCN
+      const filtered = res.data.filter((row) =>
+        classes.some((cls) => cls.name === row.className)
+      );
+      setScores(filtered || []);
     } catch (err) {
       console.error("Load scores error:", err);
     } finally {
@@ -99,7 +120,10 @@ const WeeklyScoresPage: React.FC = () => {
       const res = await api.post<WeeklyScoreRow[]>(
         `/api/class-weekly-scores/update/${week}`
       );
-      setScores(res.data || []);
+      const filtered = res.data.filter((row) =>
+        classes.some((cls) => cls.name === row.className)
+      );
+      setScores(filtered || []);
       alert("Đã cập nhật dữ liệu tuần!");
     } catch (err) {
       console.error("Update error:", err);
@@ -142,14 +166,15 @@ const WeeklyScoresPage: React.FC = () => {
   };
 
   useEffect(() => {
+    fetchClasses();
     fetchWeeksWithData();
   }, []);
 
   useEffect(() => {
-    if (week !== "") {
+    if (week !== "" && classes.length > 0) {
       fetchScores(Number(week));
     }
-  }, [week, weeksWithData]);
+  }, [week, weeksWithData, classes]);
 
   // Group theo khối
   const groupedByGrade: Record<string, WeeklyScoreRow[]> = scores.reduce(
@@ -161,35 +186,38 @@ const WeeklyScoresPage: React.FC = () => {
     {} as Record<string, WeeklyScoreRow[]>
   );
 
-  const renderTable = (grade: string, rows: WeeklyScoreRow[]) => (
-    <Box key={grade} mb={4}>
-      <Typography variant="h6" gutterBottom>
-        Khối {grade}
-      </Typography>
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Điểm chuyên cần</TableCell>
-              <TableCell>Điểm vệ sinh</TableCell>
-              <TableCell>Điểm xếp hàng</TableCell>
-              <TableCell>Điểm vi phạm</TableCell>
-              <TableCell>Điểm học tập</TableCell>
-              <TableCell>Điểm thưởng</TableCell>
-              <TableCell>Tổng vi phạm</TableCell>
-              <TableCell>Tổng điểm</TableCell>
-              <TableCell>Xếp hạng</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows
-              .sort((a, b) => a.className.localeCompare(b.className))
-              .map((row) => (
-                <TableRow
-                  key={row.className}
-                  sx={getRowStyle(row.ranking)}
-                >
+  const renderTable = (grade: string, rows: WeeklyScoreRow[]) => {
+    // sort theo điểm và gán ranking mới trong từng khối
+    const sorted = [...rows].sort((a, b) => b.totalScore - a.totalScore);
+    const ranked = sorted.map((row, index) => ({
+      ...row,
+      ranking: index + 1,
+    }));
+
+    return (
+      <Box key={grade} mb={4}>
+        <Typography variant="h6" gutterBottom>
+          Khối {grade}
+        </Typography>
+        <TableContainer component={Paper}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Lớp</TableCell>
+                <TableCell>Điểm chuyên cần</TableCell>
+                <TableCell>Điểm vệ sinh</TableCell>
+                <TableCell>Điểm xếp hàng</TableCell>
+                <TableCell>Điểm vi phạm</TableCell>
+                <TableCell>Điểm học tập</TableCell>
+                <TableCell>Điểm thưởng</TableCell>
+                <TableCell>Tổng vi phạm</TableCell>
+                <TableCell>Tổng điểm</TableCell>
+                <TableCell>Xếp hạng</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {ranked.map((row) => (
+                <TableRow key={row.className} sx={getRowStyle(row.ranking)}>
                   <TableCell>{row.className}</TableCell>
                   <TableCell>{row.attendanceScore}</TableCell>
                   <TableCell>{row.hygieneScore}</TableCell>
@@ -202,11 +230,12 @@ const WeeklyScoresPage: React.FC = () => {
                   <TableCell>{row.ranking}</TableCell>
                 </TableRow>
               ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
-  );
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+    );
+  };
 
   return (
     <Box p={3}>
