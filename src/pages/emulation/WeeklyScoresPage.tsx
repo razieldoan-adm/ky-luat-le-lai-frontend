@@ -28,6 +28,7 @@ interface WeeklyScoreRow {
   academicScore: number;
   bonusScore: number;
   totalViolation: number;
+  totalDiscipline: number;
   totalScore: number;
   ranking: number;
 }
@@ -77,13 +78,11 @@ export default function WeeklyScoresPage() {
 
   const fetchClassesWithGVCN = async () => {
     try {
-      const res = await api.get<any[]>("/api/classes");
+      const res = await api.get<any[]>("/api/classes/with-teacher");
       const arr = res.data || [];
       const set = new Set<string>();
       arr.forEach((c) => {
-        const hasGvcn =
-          !!c.homeroomTeacher || !!c.teacher || !!c.gvcn || !!c.gvcnhome;
-        if (hasGvcn && c.name) set.add(String(c.name));
+        if (c?.name) set.add(String(c.name));
       });
       setHomeroomSet(set);
     } catch (err) {
@@ -152,8 +151,10 @@ export default function WeeklyScoresPage() {
 
       const totalViolation = violation + lineup + hygiene + attendance * 5;
       const totalDiscipline = Number(disciplineMax) - totalViolation;
+
       row.totalViolation = totalViolation;
-      row.totalScore = totalDiscipline + bonus + academic; // bạn đã sửa thành cộng
+      row.totalDiscipline = totalDiscipline;
+      row.totalScore = totalDiscipline + bonus + academic;
     });
 
     const byGrade: Record<string, WeeklyScoreRow[]> = {};
@@ -395,7 +396,7 @@ export default function WeeklyScoresPage() {
                         sx={{ width: 80 }}
                       />
                     </TableCell>
-                    <TableCell>{row.totalViolation}</TableCell>
+                    <TableCell>{row.totalDiscipline}</TableCell>
                     <TableCell>{row.totalScore}</TableCell>
                     <TableCell>{row.ranking}</TableCell>
                   </TableRow>
@@ -464,7 +465,6 @@ export default function WeeklyScoresPage() {
           Lưu
         </Button>
 
-        {/* nút cập nhật chỉ sáng khi có localEdited hoặc externalChangeAvailable */}
         <Button
           variant="outlined"
           color="secondary"
