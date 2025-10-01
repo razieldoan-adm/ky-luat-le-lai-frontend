@@ -38,6 +38,7 @@ const WeeklyScoresPage: React.FC = () => {
   const [weeksWithData, setWeeksWithData] = useState<number[]>([]);
   const [scores, setScores] = useState<WeeklyScoreRow[]>([]);
   const [isTempLoaded, setIsTempLoaded] = useState(false);
+  const [disciplineMax, setDisciplineMax] = useState(100); // lấy từ settings nếu có
 
   // lấy danh sách tuần đã có dữ liệu
   const fetchWeeksWithData = async () => {
@@ -75,6 +76,51 @@ const WeeklyScoresPage: React.FC = () => {
     }
   };
 
+  // tính lại totalScore + ranking trong từng khối
+  const recalcScores = (data: WeeklyScoreRow[]) => {
+    // nhóm theo grade
+    const grouped: { [grade: string]: WeeklyScoreRow[] } = {};
+    data.forEach((row) => {
+      if (!grouped[row.grade]) grouped[row.grade] = [];
+      grouped[row.grade].push(row);
+    });
+
+    // xử lý từng khối
+    Object.keys(grouped).forEach((grade) => {
+      grouped[grade].forEach((row) => {
+        const totalDiscipline =
+          disciplineMax -
+          (row.violationScore +
+            row.lineUpScore +
+            row.hygieneScore +
+            row.attendanceScore * 5);
+        row.totalViolation = row.violationScore + row.lineUpScore + row.hygieneScore + row.attendanceScore * 5;
+        row.totalScore = totalDiscipline + row.bonusScore - row.academicScore;
+      });
+
+      // sắp xếp theo totalScore giảm dần để gán ranking
+      grouped[grade]
+        .sort((a, b) => b.totalScore - a.totalScore)
+        .forEach((row, idx) => {
+          row.ranking = idx + 1;
+        });
+    });
+
+    return Object.values(grouped).flat();
+  };
+
+  // nhập trực tiếp điểm
+  const handleScoreChange = (
+    index: number,
+    field: "bonusScore" | "academicScore",
+    value: number
+  ) => {
+    const updated = [...scores];
+    updated[index] = { ...updated[index], [field]: value };
+    const recalculated = recalcScores(updated);
+    setScores(recalculated);
+  };
+
   // lưu dữ liệu tuần
   const handleSave = async () => {
     if (!week || scores.length === 0) return;
@@ -99,7 +145,8 @@ const WeeklyScoresPage: React.FC = () => {
       const res = await api.post<WeeklyScoreRow[]>(
         `/api/class-weekly-scores/update/${week}`
       );
-      setScores(res.data || []);
+      const recalculated = recalcScores(res.data || []);
+      setScores(recalculated);
       alert("Đã cập nhật dữ liệu tuần!");
     } catch (err) {
       console.error("Update error:", err);
@@ -142,30 +189,99 @@ const WeeklyScoresPage: React.FC = () => {
     }
   };
 
-  // nhập trực tiếp điểm
-  const handleScoreChange = (
-    index: number,
-    field: "bonusScore" | "academicScore",
-    value: number
-  ) => {
-    const updated = [...scores];
-    updated[index] = { ...updated[index], [field]: value };
-    setScores(updated);
-  };
-
   useEffect(() => {
     fetchWeeksWithData();
   }, []);
 
   useEffect(() => {
     if (week !== "" && weeksWithData.includes(Number(week))) {
-      // nếu tuần đã có dữ liệu thì load luôn
       fetchScores(Number(week));
     } else {
       setScores([]);
       setIsTempLoaded(false);
     }
   }, [week, weeksWithData]);
+
+  // render bảng theo từng khối
+  const renderTableByGrade = (grade: string, rows: WeeklyScoreRow[]) => {
+    if (rows.length === 0) return null;
+    return (
+      <Box key={grade} mt={3}>
+        <Typography variant="h6" gutterBottom>
+          Khối {grade}
+        </Typography>
+        <TableContainer component={Paper}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Lớp</TableCell>
+                <TableCell>Chuyên cần</TableCell>
+                <TableCell>Vệ sinh</TableCell>
+                <TableCell>Xếp hàng</TableCell>
+                <TableCell>Vi phạm</TableCell>
+                <TableCell>Học tập</TableCell>
+                <TableCell>Thưởng</TableCell>
+                <TableCell>Tổng VP</TableCell>
+                <TableCell>Tổng điểm</TableCell>
+                <TableCell>Xếp hạng</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((row, idx) => (
+                <TableRow key={row.className}>
+                  <TableCell>{row.className}</TableCell>
+                  <TableCell>{row.attendanceScore}</TableCell>
+                  <TableCell>{row.hygieneScore}</TableCell>
+                  <TableCell>{row.lineUpScore}</TableCell>
+                  <TableCell>{row.violationScore}</TableCell>
+                  <TableCell>
+                    <TextField
+                      type="number"
+                      size="small"
+                      value={row.academicScore}
+                      onChange={(e) =>
+                        handleScoreChange(
+                          scores.findIndex((s) => s.className === row.className),
+                          "academicScore",
+                          Number(e.target.value)
+                        )
+                      }
+                      sx={{ width: 70 }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <TextField
+                      type="number"
+                      size="small"
+                      value={row.bonusScore}
+                      onChange={(e) =>
+                        handleScoreChange(
+                          scores.findIndex((s) => s.className === row.className),
+                          "bonusScore",
+                          Number(e.target.value)
+                        )
+                      }
+                      sx={{ width: 70 }}
+                    />
+                  </TableCell>
+                  <TableCell>{row.totalViolation}</TableCell>
+                  <TableCell>{row.totalScore}</TableCell>
+                  <TableCell>{row.ranking}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+    );
+  };
+
+  // nhóm lại theo grade
+  const groupedScores: { [grade: string]: WeeklyScoreRow[] } = {};
+  scores.forEach((s) => {
+    if (!groupedScores[s.grade]) groupedScores[s.grade] = [];
+    groupedScores[s.grade].push(s);
+  });
 
   return (
     <Box p={3}>
@@ -239,62 +355,11 @@ const WeeklyScoresPage: React.FC = () => {
       {loading ? (
         <CircularProgress />
       ) : scores.length > 0 ? (
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Lớp</TableCell>
-                <TableCell>Khối</TableCell>
-                <TableCell>Chuyên cần</TableCell>
-                <TableCell>Vệ sinh</TableCell>
-                <TableCell>Xếp hàng</TableCell>
-                <TableCell>Vi phạm</TableCell>
-                <TableCell>Học tập</TableCell>
-                <TableCell>Thưởng</TableCell>
-                <TableCell>Tổng VP</TableCell>
-                <TableCell>Tổng điểm</TableCell>
-                <TableCell>Xếp hạng</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {scores.map((row, idx) => (
-                <TableRow key={row.className}>
-                  <TableCell>{row.className}</TableCell>
-                  <TableCell>{row.grade}</TableCell>
-                  <TableCell>{row.attendanceScore}</TableCell>
-                  <TableCell>{row.hygieneScore}</TableCell>
-                  <TableCell>{row.lineUpScore}</TableCell>
-                  <TableCell>{row.violationScore}</TableCell>
-                  <TableCell>
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={row.academicScore}
-                      onChange={(e) =>
-                        handleScoreChange(idx, "academicScore", Number(e.target.value))
-                      }
-                      sx={{ width: 70 }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={row.bonusScore}
-                      onChange={(e) =>
-                        handleScoreChange(idx, "bonusScore", Number(e.target.value))
-                      }
-                      sx={{ width: 70 }}
-                    />
-                  </TableCell>
-                  <TableCell>{row.totalViolation}</TableCell>
-                  <TableCell>{row.totalScore}</TableCell>
-                  <TableCell>{row.ranking}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <>
+          {["6", "7", "8", "9"].map((grade) =>
+            renderTableByGrade(grade, groupedScores[grade] || [])
+          )}
+        </>
       ) : (
         week !== "" && <Typography>Chưa có dữ liệu tuần này.</Typography>
       )}
