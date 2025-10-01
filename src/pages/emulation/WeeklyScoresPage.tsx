@@ -38,7 +38,7 @@ export default function WeeklyScoresPage() {
   const [week, setWeek] = useState<number | "">("");
   const [weeksWithData, setWeeksWithData] = useState<number[]>([]);
   const [scores, setScores] = useState<WeeklyScoreRow[]>([]);
-  const [originalScores, setOriginalScores] = useState<WeeklyScoreRow[]>([]);
+  const [isTempLoaded, setIsTempLoaded] = useState(false);
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
   const [homeroomSet, setHomeroomSet] = useState<Set<string>>(new Set());
   const [localEdited, setLocalEdited] = useState(false);
@@ -103,9 +103,8 @@ export default function WeeklyScoresPage() {
           data = data.filter((r) => homeroomSet.has(r.className));
         const recalced = recalcAndRank(data);
         setScores(recalced);
-        setOriginalScores(JSON.parse(JSON.stringify(recalced)));
+        setIsTempLoaded(false);
         setLocalEdited(false);
-        setExternalChangeAvailable(false);
         checkExternalChange(weekNumber);
       } else {
         res = await api.get<WeeklyScoreRow[]>("/api/class-weekly-scores/temp", {
@@ -116,7 +115,7 @@ export default function WeeklyScoresPage() {
           data = data.filter((r) => homeroomSet.has(r.className));
         const recalced = recalcAndRank(data);
         setScores(recalced);
-        setOriginalScores(JSON.parse(JSON.stringify(recalced)));
+        setIsTempLoaded(true);
         setLocalEdited(false);
         setExternalChangeAvailable(false);
       }
@@ -212,7 +211,7 @@ export default function WeeklyScoresPage() {
     updated[index] = { ...updated[index], [field]: value };
     const recalced = recalcAndRank(updated);
     setScores(recalced);
-    setLocalEdited(JSON.stringify(recalced) !== JSON.stringify(originalScores));
+    setLocalEdited(true);
     setExternalChangeAvailable(false);
   };
 
@@ -221,13 +220,13 @@ export default function WeeklyScoresPage() {
     try {
       await api.post("/api/class-weekly-scores/save", {
         weekNumber: week,
-        scores: scores.filter((r) => homeroomSet.has(r.className)),
+        scores,
       });
       alert("Đã lưu dữ liệu tuần thành công!");
-      setOriginalScores(JSON.parse(JSON.stringify(scores)));
+      setIsTempLoaded(false);
       setLocalEdited(false);
-      setExternalChangeAvailable(false);
       fetchWeeksWithData();
+      checkExternalChange(Number(week));
     } catch (err) {
       console.error("Save error:", err);
       alert("Lỗi khi lưu dữ liệu.");
@@ -240,13 +239,12 @@ export default function WeeklyScoresPage() {
       if (localEdited) {
         await api.post("/api/class-weekly-scores/save", {
           weekNumber: week,
-          scores: scores.filter((r) => homeroomSet.has(r.className)),
+          scores,
         });
-        setOriginalScores(JSON.parse(JSON.stringify(scores)));
         setLocalEdited(false);
-        setExternalChangeAvailable(false);
         alert("Đã lưu chỉnh sửa và cập nhật xong!");
         fetchWeeksWithData();
+        checkExternalChange(Number(week));
       } else if (externalChangeAvailable) {
         const res = await api.post<WeeklyScoreRow[]>(
           `/api/class-weekly-scores/update/${week}`
@@ -256,7 +254,6 @@ export default function WeeklyScoresPage() {
           data = data.filter((r) => homeroomSet.has(r.className));
         const recalced = recalcAndRank(data);
         setScores(recalced);
-        setOriginalScores(JSON.parse(JSON.stringify(recalced)));
         setExternalChangeAvailable(false);
         alert("Đã cập nhật dữ liệu tuần từ các bảng gốc!");
       } else {
@@ -293,8 +290,8 @@ export default function WeeklyScoresPage() {
       await api.delete(`/api/class-weekly-scores/${week}`);
       alert("Đã xoá dữ liệu tuần!");
       setScores([]);
-      setOriginalScores([]);
       fetchWeeksWithData();
+      setIsTempLoaded(false);
       setLocalEdited(false);
       setExternalChangeAvailable(false);
     } catch (err) {
@@ -306,7 +303,7 @@ export default function WeeklyScoresPage() {
   useEffect(() => {
     if (week === "") {
       setScores([]);
-      setOriginalScores([]);
+      setIsTempLoaded(false);
       setLocalEdited(false);
       setExternalChangeAvailable(false);
       return;
@@ -315,7 +312,7 @@ export default function WeeklyScoresPage() {
       fetchScores(Number(week), false);
     } else {
       setScores([]);
-      setOriginalScores([]);
+      setIsTempLoaded(false);
       setLocalEdited(false);
       setExternalChangeAvailable(false);
     }
@@ -356,6 +353,7 @@ export default function WeeklyScoresPage() {
                     String(s.grade) === String(row.grade)
                 );
 
+                // tô màu top 1-2-3
                 let bg = "transparent";
                 if (row.ranking === 1) bg = "#fff9c4"; // vàng nhạt
                 else if (row.ranking === 2) bg = "#e0e0e0"; // bạc
@@ -462,7 +460,7 @@ export default function WeeklyScoresPage() {
           variant="contained"
           color="success"
           onClick={handleSave}
-          disabled={scores.length === 0}
+          disabled={!isTempLoaded && !localEdited}
         >
           Lưu
         </Button>
