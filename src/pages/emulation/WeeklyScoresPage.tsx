@@ -169,7 +169,7 @@ export default function WeeklyScoresPage() {
       const totalViolation = violation + lineup + hygiene + attendance * 5;
       const totalDiscipline = Number(disciplineMax) - totalViolation;
       row.totalViolation = totalViolation;
-      row.totalScore = totalDiscipline + bonus - academic;
+      row.totalScore = totalDiscipline + bonus + academic;
     });
 
     // tính ranking theo từng khối, nhưng không đổi thứ tự ban đầu — chỉ gán ranking
