@@ -38,16 +38,16 @@ export default function WeeklyScoresPage() {
   const [week, setWeek] = useState<number | "">("");
   const [weeksWithData, setWeeksWithData] = useState<number[]>([]);
   const [scores, setScores] = useState<WeeklyScoreRow[]>([]);
-  const [_isTempLoaded, setIsTempLoaded] = useState(false);
+  const [originalScores, setOriginalScores] = useState<WeeklyScoreRow[]>([]);
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
-  const [classOptions, setClassOptions] = useState<any[]>([]);
+  const [homeroomSet, setHomeroomSet] = useState<Set<string>>(new Set());
   const [localEdited, setLocalEdited] = useState(false);
   const [externalChangeAvailable, setExternalChangeAvailable] = useState(false);
 
   useEffect(() => {
     fetchWeeksWithData();
     fetchSettings();
-    fetchClasses();
+    fetchClassesWithGVCN();
   }, []);
 
   const fetchWeeksWithData = async () => {
@@ -76,12 +76,17 @@ export default function WeeklyScoresPage() {
     }
   };
 
-  const fetchClasses = async () => {
+  const fetchClassesWithGVCN = async () => {
     try {
-      const res = await api.get("/api/classes/with-teacher");
-      setClassOptions(res.data || []);
+      const res = await api.get<any[]>("/api/classes/with-teacher");
+      const arr = res.data || [];
+      const set = new Set<string>();
+      arr.forEach((c) => {
+        if (c?.name) set.add(String(c.name));
+      });
+      setHomeroomSet(set);
     } catch (err) {
-      console.error("Lỗi khi lấy danh sách lớp:", err);
+      console.error("Load classes error:", err);
     }
   };
 
@@ -94,24 +99,24 @@ export default function WeeklyScoresPage() {
           `/api/class-weekly-scores?weekNumber=${weekNumber}`
         );
         let data = res.data || [];
-        // chỉ lấy lớp có trong classOptions
-        const validClassNames = classOptions.map((c) => c.name);
-        data = data.filter((r) => validClassNames.includes(r.className));
+        if (homeroomSet.size > 0)
+          data = data.filter((r) => homeroomSet.has(r.className));
         const recalced = recalcAndRank(data);
         setScores(recalced);
-        setIsTempLoaded(false);
+        setOriginalScores(JSON.parse(JSON.stringify(recalced)));
         setLocalEdited(false);
+        setExternalChangeAvailable(false);
         checkExternalChange(weekNumber);
       } else {
         res = await api.get<WeeklyScoreRow[]>("/api/class-weekly-scores/temp", {
           params: { weekNumber },
         });
         let data = res.data || [];
-        const validClassNames = classOptions.map((c) => c.name);
-        data = data.filter((r) => validClassNames.includes(r.className));
+        if (homeroomSet.size > 0)
+          data = data.filter((r) => homeroomSet.has(r.className));
         const recalced = recalcAndRank(data);
         setScores(recalced);
-        setIsTempLoaded(true);
+        setOriginalScores(JSON.parse(JSON.stringify(recalced)));
         setLocalEdited(false);
         setExternalChangeAvailable(false);
       }
@@ -153,7 +158,6 @@ export default function WeeklyScoresPage() {
       row.totalScore = totalDiscipline + bonus + academic;
     });
 
-    // xếp hạng theo từng khối
     const byGrade: Record<string, WeeklyScoreRow[]> = {};
     arr.forEach((r) => {
       const g = String(r.grade ?? "Khác");
@@ -208,8 +212,26 @@ export default function WeeklyScoresPage() {
     updated[index] = { ...updated[index], [field]: value };
     const recalced = recalcAndRank(updated);
     setScores(recalced);
-    setLocalEdited(true);
+    setLocalEdited(JSON.stringify(recalced) !== JSON.stringify(originalScores));
     setExternalChangeAvailable(false);
+  };
+
+  const handleSave = async () => {
+    if (!week || scores.length === 0) return;
+    try {
+      await api.post("/api/class-weekly-scores/save", {
+        weekNumber: week,
+        scores: scores.filter((r) => homeroomSet.has(r.className)),
+      });
+      alert("Đã lưu dữ liệu tuần thành công!");
+      setOriginalScores(JSON.parse(JSON.stringify(scores)));
+      setLocalEdited(false);
+      setExternalChangeAvailable(false);
+      fetchWeeksWithData();
+    } catch (err) {
+      console.error("Save error:", err);
+      alert("Lỗi khi lưu dữ liệu.");
+    }
   };
 
   const handleUpdate = async () => {
@@ -218,28 +240,86 @@ export default function WeeklyScoresPage() {
       if (localEdited) {
         await api.post("/api/class-weekly-scores/save", {
           weekNumber: week,
-          scores,
+          scores: scores.filter((r) => homeroomSet.has(r.className)),
         });
+        setOriginalScores(JSON.parse(JSON.stringify(scores)));
         setLocalEdited(false);
+        setExternalChangeAvailable(false);
         alert("Đã lưu chỉnh sửa và cập nhật xong!");
         fetchWeeksWithData();
-        checkExternalChange(Number(week));
       } else if (externalChangeAvailable) {
         const res = await api.post<WeeklyScoreRow[]>(
           `/api/class-weekly-scores/update/${week}`
         );
         let data = res.data || [];
-        const validClassNames = classOptions.map((c) => c.name);
-        data = data.filter((r) => validClassNames.includes(r.className));
+        if (homeroomSet.size > 0)
+          data = data.filter((r) => homeroomSet.has(r.className));
         const recalced = recalcAndRank(data);
         setScores(recalced);
+        setOriginalScores(JSON.parse(JSON.stringify(recalced)));
         setExternalChangeAvailable(false);
         alert("Đã cập nhật dữ liệu tuần từ các bảng gốc!");
+      } else {
+        alert("Không có thay đổi để cập nhật.");
       }
     } catch (err) {
       console.error("Update error:", err);
+      alert("Lỗi khi cập nhật dữ liệu.");
     }
   };
+
+  const handleExport = async () => {
+    if (!week) return;
+    try {
+      const res = await api.get(`/api/class-weekly-scores/export/${week}`, {
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `weekly_scores_${week}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+    } catch (err) {
+      console.error("Export error:", err);
+      alert("Lỗi khi xuất Excel.");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!week) return;
+    if (!window.confirm(`Bạn có chắc muốn xoá dữ liệu tuần ${week}?`)) return;
+    try {
+      await api.delete(`/api/class-weekly-scores/${week}`);
+      alert("Đã xoá dữ liệu tuần!");
+      setScores([]);
+      setOriginalScores([]);
+      fetchWeeksWithData();
+      setLocalEdited(false);
+      setExternalChangeAvailable(false);
+    } catch (err) {
+      console.error("Delete error:", err);
+      alert("Lỗi khi xoá dữ liệu.");
+    }
+  };
+
+  useEffect(() => {
+    if (week === "") {
+      setScores([]);
+      setOriginalScores([]);
+      setLocalEdited(false);
+      setExternalChangeAvailable(false);
+      return;
+    }
+    if (weeksWithData.includes(Number(week))) {
+      fetchScores(Number(week), false);
+    } else {
+      setScores([]);
+      setOriginalScores([]);
+      setLocalEdited(false);
+      setExternalChangeAvailable(false);
+    }
+  }, [week, weeksWithData, homeroomSet, disciplineMax]);
 
   const renderTableByGrade = (grade: string, rows: WeeklyScoreRow[]) => {
     const displayRows = [...rows].sort((a, b) =>
@@ -379,12 +459,34 @@ export default function WeeklyScoresPage() {
         )}
 
         <Button
+          variant="contained"
+          color="success"
+          onClick={handleSave}
+          disabled={scores.length === 0}
+        >
+          Lưu
+        </Button>
+
+        <Button
           variant="outlined"
           color="secondary"
           onClick={handleUpdate}
           disabled={!week || (!localEdited && !externalChangeAvailable)}
         >
           Cập nhật
+        </Button>
+
+        <Button variant="outlined" onClick={handleExport} disabled={!week}>
+          Xuất Excel
+        </Button>
+
+        <Button
+          variant="outlined"
+          color="error"
+          onClick={handleDelete}
+          disabled={!week}
+        >
+          Xoá tuần
         </Button>
       </Box>
 
