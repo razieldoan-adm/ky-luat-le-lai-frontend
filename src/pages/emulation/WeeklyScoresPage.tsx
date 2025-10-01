@@ -44,10 +44,14 @@ export default function WeeklyScoresPage() {
   const [localEdited, setLocalEdited] = useState(false);
   const [externalChangeAvailable, setExternalChangeAvailable] = useState(false);
 
+  // helper: chuẩn hóa tên lớp để so sánh chính xác
+  const normalizeClassName = (v: any) => String(v ?? "").trim().toUpperCase();
+
   useEffect(() => {
     fetchWeeksWithData();
     fetchSettings();
     fetchClassesWithGVCN();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchWeeksWithData = async () => {
@@ -82,7 +86,10 @@ export default function WeeklyScoresPage() {
       const arr = res.data || [];
       const set = new Set<string>();
       arr.forEach((c) => {
-        if (c?.name) set.add(String(c.name));
+        if (c?.name) {
+          // chuẩn hóa trước khi add vào set
+          set.add(normalizeClassName(c.name));
+        }
       });
       setHomeroomSet(set);
     } catch (err) {
@@ -99,8 +106,12 @@ export default function WeeklyScoresPage() {
           `/api/class-weekly-scores?weekNumber=${weekNumber}`
         );
         let data = res.data || [];
-        if (homeroomSet.size > 0)
-          data = data.filter((r) => homeroomSet.has(r.className));
+        // lọc chỉ lớp có GVCN — so sánh bằng tên đã chuẩn hoá
+        if (homeroomSet.size > 0) {
+          data = data.filter((r) =>
+            homeroomSet.has(normalizeClassName(r.className))
+          );
+        }
         const recalced = recalcAndRank(data);
         setScores(recalced);
         setIsTempLoaded(false);
@@ -111,8 +122,11 @@ export default function WeeklyScoresPage() {
           params: { weekNumber },
         });
         let data = res.data || [];
-        if (homeroomSet.size > 0)
-          data = data.filter((r) => homeroomSet.has(r.className));
+        if (homeroomSet.size > 0) {
+          data = data.filter((r) =>
+            homeroomSet.has(normalizeClassName(r.className))
+          );
+        }
         const recalced = recalcAndRank(data);
         setScores(recalced);
         setIsTempLoaded(true);
@@ -191,7 +205,7 @@ export default function WeeklyScoresPage() {
       sorted.forEach((rSorted) => {
         const original = arr.find(
           (x) =>
-            x.className === rSorted.className &&
+            normalizeClassName(x.className) === normalizeClassName(rSorted.className) &&
             String(x.grade) === String(rSorted.grade)
         );
         if (original) original.ranking = rSorted.ranking;
@@ -250,8 +264,11 @@ export default function WeeklyScoresPage() {
           `/api/class-weekly-scores/update/${week}`
         );
         let data = res.data || [];
-        if (homeroomSet.size > 0)
-          data = data.filter((r) => homeroomSet.has(r.className));
+        if (homeroomSet.size > 0) {
+          data = data.filter((r) =>
+            homeroomSet.has(normalizeClassName(r.className))
+          );
+        }
         const recalced = recalcAndRank(data);
         setScores(recalced);
         setExternalChangeAvailable(false);
@@ -316,6 +333,7 @@ export default function WeeklyScoresPage() {
       setLocalEdited(false);
       setExternalChangeAvailable(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [week, weeksWithData, homeroomSet, disciplineMax]);
 
   const renderTableByGrade = (grade: string, rows: WeeklyScoreRow[]) => {
@@ -349,11 +367,11 @@ export default function WeeklyScoresPage() {
               {displayRows.map((row) => {
                 const idx = scores.findIndex(
                   (s) =>
-                    s.className === row.className &&
+                    normalizeClassName(s.className) === normalizeClassName(row.className) &&
                     String(s.grade) === String(row.grade)
                 );
 
-                // tô màu top 1-2-3
+                // tô màu top 1-2-3 (theo từng khối)
                 let bg = "transparent";
                 if (row.ranking === 1) bg = "#fff9c4"; // vàng nhạt
                 else if (row.ranking === 2) bg = "#e0e0e0"; // bạc
@@ -435,11 +453,7 @@ export default function WeeklyScoresPage() {
             const w = i + 1;
             const hasData = weeksWithData.includes(w);
             return (
-              <MenuItem
-                key={w}
-                value={w}
-                sx={hasData ? { color: "green" } : {}}
-              >
+              <MenuItem key={w} value={w} sx={hasData ? { color: "green" } : {}}>
                 Tuần {w} {hasData ? "(Đã có dữ liệu)" : ""}
               </MenuItem>
             );
