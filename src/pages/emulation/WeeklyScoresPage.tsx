@@ -38,7 +38,7 @@ export default function WeeklyScoresPage() {
   const [week, setWeek] = useState<number | "">("");
   const [weeksWithData, setWeeksWithData] = useState<number[]>([]);
   const [scores, setScores] = useState<WeeklyScoreRow[]>([]);
-  const [isTempLoaded, setIsTempLoaded] = useState(false);
+  const [_isTempLoaded, setIsTempLoaded] = useState(false);
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
   const [classOptions, setClassOptions] = useState<any[]>([]);
   const [localEdited, setLocalEdited] = useState(false);
