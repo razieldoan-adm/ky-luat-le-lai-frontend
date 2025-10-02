@@ -53,7 +53,7 @@ const violations = [
 export default function ClassLineUpSummaryPage() {
 const [weekList, setWeekList] = useState<any[]>([]);
 const [weekHasData, setWeekHasData] = useState<Record<string, boolean>>({});
-const [selectedWeek, setSelectedWeek] = useState<any>(null); // object tuần
+const [selectedWeek, setSelectedWeek] = useState<any>(null);
 const [classes, setClasses] = useState<ClassFromAPI[]>([]);
 const [data, setData] = useState<{ [key: string]: ClassType[] }>({});
 const [snackbar, setSnackbar] = useState({
@@ -62,36 +62,31 @@ message: '',
 severity: 'success' as 'success' | 'error' | 'info' | 'warning',
 });
 const [loading, setLoading] = useState(false);
-const [rankingPoint, setRankingPoint] = useState<number>(10); // load từ settings
+const [rankingPoint, setRankingPoint] = useState<number>(10);
 
-// --- On mount: fetch settings, classes, weeks
+// --- On mount
 useEffect(() => {
 fetchSettings();
 fetchClasses();
 fetchWeeks();
 }, []);
 
-// Khi selectedWeek hoặc classes thay đổi: khởi tạo data
 useEffect(() => {
 if (!selectedWeek) return;
-// chỉ initialize khi đã load classes (để không bị rỗng)
 initializeData(selectedWeek.weekNumber);
 // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [selectedWeek, classes]);
 
-// --- fetch settings (ranking point)
 const fetchSettings = async () => {
 try {
 const res = await api.get('/api/settings');
-const ranking =
-res.data?.disciplinePointDeduction?.ranking ?? 10;
+const ranking = res.data?.disciplinePointDeduction?.ranking ?? 10;
 setRankingPoint(ranking);
 } catch (err) {
 console.error('Error fetching settings:', err);
 }
 };
 
-// --- fetch classes
 const fetchClasses = async () => {
 try {
 const res = await api.get('/api/classes');
@@ -101,7 +96,6 @@ console.error('Error fetching classes:', err);
 }
 };
 
-// --- fetch weeks and check which week already has data
 const fetchWeeks = async () => {
 setLoading(true);
 try {
@@ -110,12 +104,10 @@ const weeks = res.data || [];
 setWeekList(weeks);
 
 ```
-  // default select first week (if có)
   if (weeks.length > 0) {
     setSelectedWeek(weeks[0]);
   }
 
-  // Kiểm tra tuần nào đã có data: gọi API class-lineup-summaries?weekNumber=
   const checks = await Promise.all(
     weeks.map(async (w: any) => {
       try {
@@ -124,7 +116,7 @@ setWeekList(weeks);
         });
         const has = Array.isArray(r.data) && r.data.length > 0;
         return { id: w._id, has };
-      } catch (e) {
+      } catch {
         return { id: w._id, has: false };
       }
     })
@@ -144,14 +136,11 @@ setWeekList(weeks);
 
 };
 
-// --- initialize data for selected week using classes list
 const initializeData = async (weekNumber: number) => {
 setLoading(true);
-
-```
 const initial: { [key: string]: ClassType[] } = {};
 
-// Lấy lớp theo khối từ classes API
+```
 grades.forEach((grade) => {
   const classesForGrade = classes
     .filter((c) => String(c.grade) === String(grade))
@@ -160,16 +149,13 @@ grades.forEach((grade) => {
       grade: c.grade,
       scores: Array(10).fill(0),
     }));
-
   initial[grade] = classesForGrade;
 });
 
-// Load saved summaries cho tuần nếu có
 try {
   const res = await api.get('/api/class-lineup-summaries', {
     params: { weekNumber },
   });
-
   const saved = res.data || [];
 
   saved.forEach((s: any) => {
@@ -182,7 +168,6 @@ try {
     }
   });
 } catch (err) {
-  // không bắt buộc có dữ liệu
   console.error('Error loading summaries for week:', err);
 }
 
@@ -192,7 +177,6 @@ setLoading(false);
 
 };
 
-// --- khi thay đổi ô điểm
 const handleChange = (
 grade: string,
 classIdx: number,
@@ -200,40 +184,28 @@ scoreIdx: number,
 value: string
 ) => {
 const updated = { ...data };
-
-```
-// bảo vệ nếu chưa có grade/classIdx
 if (!updated[grade] || !updated[grade][classIdx]) return;
 
+```
 const num = Number(value);
-
-// chỉ chấp nhận 1..violations.length (4) theo business, else 0
 updated[grade][classIdx].scores[scoreIdx] =
   num >= 1 && num <= violations.length ? num : 0;
-
 setData(updated);
 ```
 
 };
 
-// --- tính tổng (số ô khác 0 * rankingPoint)
 const calcTotals = () => {
 const updated = { ...data };
-
-```
 grades.forEach((grade) => {
-  updated[grade]?.forEach((cls) => {
-    const count = cls.scores.filter((v) => v !== 0).length;
-    cls.total = count * rankingPoint;
-  });
+updated[grade]?.forEach((cls) => {
+const count = cls.scores.filter((v) => v !== 0).length;
+cls.total = count * rankingPoint;
 });
-
+});
 setData(updated);
-```
-
 };
 
-// --- lưu dữ liệu; sau khi lưu thành công mark tuần là đã có dữ liệu
 const handleSave = async () => {
 if (!selectedWeek) {
 setSnackbar({
@@ -243,10 +215,9 @@ severity: 'warning',
 });
 return;
 }
-
-```
 setLoading(true);
 
+```
 try {
   const payload = {
     weekNumber: selectedWeek.weekNumber,
@@ -262,7 +233,6 @@ try {
 
   await api.post('/api/class-lineup-summaries', payload);
 
-  // mark tuần vừa lưu là đã có dữ liệu (đổi màu)
   setWeekHasData((prev) => ({
     ...prev,
     [selectedWeek._id]: true,
@@ -287,13 +257,11 @@ try {
 
 };
 
-// --- khi đổi tuần từ combobox
 const handleWeekChange = (e: any) => {
 const w = weekList.find((x) => x._id === e.target.value);
 setSelectedWeek(w || null);
 };
 
-// --- UI
 return (
 <Box sx={{ p: 2 }}> <Typography variant="h5" fontWeight="bold" gutterBottom>
 📝 Nhập điểm xếp hàng theo tuần </Typography>
@@ -317,8 +285,7 @@ return (
             fontWeight: weekHasData[w._id] ? 600 : 400,
           }}
         >
-          {`Tuần ${w.weekNumber}`}
-          {weekHasData[w._id] ? '  — (Đã có dữ liệu)' : ''}
+          {`Tuần ${w.weekNumber}`} {weekHasData[w._id] ? '— (Đã có dữ liệu)' : ''}
         </MenuItem>
       ))}
     </TextField>
@@ -337,7 +304,6 @@ return (
       <Typography variant="h6" fontWeight="bold" color="primary">
         Khối {grade}
       </Typography>
-
       <Box sx={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <thead>
@@ -345,7 +311,6 @@ return (
               <th style={{ border: '1px solid #ccc', padding: '6px' }}>
                 Lớp
               </th>
-
               {colLabels.map((label) => (
                 <th
                   key={label}
@@ -354,13 +319,11 @@ return (
                   {label}
                 </th>
               ))}
-
               <th style={{ border: '1px solid #ccc', padding: '6px' }}>
                 Tổng
               </th>
             </tr>
           </thead>
-
           <tbody>
             {data[grade]?.map((cls, idx) => (
               <tr key={cls.className}>
@@ -373,7 +336,6 @@ return (
                 >
                   {cls.className}
                 </td>
-
                 {cls.scores.map((value, scoreIdx) => (
                   <td
                     key={scoreIdx}
@@ -396,7 +358,6 @@ return (
                     />
                   </td>
                 ))}
-
                 <td
                   style={{
                     border: '1px solid #ccc',
@@ -418,7 +379,6 @@ return (
     <Button variant="contained" color="primary" onClick={calcTotals}>
       ➕ Tính tổng
     </Button>
-
     <Button variant="contained" color="success" onClick={handleSave}>
       💾 Lưu điểm
     </Button>
@@ -430,9 +390,7 @@ return (
     onClose={() => setSnackbar({ ...snackbar, open: false })}
     anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
   >
-    <Alert severity={snackbar.severity as any}>
-      {snackbar.message}
-    </Alert>
+    <Alert severity={snackbar.severity as any}>{snackbar.message}</Alert>
   </Snackbar>
 
   <Backdrop open={loading} sx={{ color: '#fff', zIndex: 9999 }}>
