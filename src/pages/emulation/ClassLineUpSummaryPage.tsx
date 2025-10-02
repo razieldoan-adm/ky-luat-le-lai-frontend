@@ -16,18 +16,22 @@ CircularProgress
 interface ClassType {
 className: string;
 grade: string;
-scores: number[];
+scores: number[]; // 10 ô nhập điểm vi phạm
 total?: number;
 }
 
 const grades = ['6', '7', '8', '9'];
-
 const colLabels = [
-'Lần 1', 'Lần 2',
-'Lần 3', 'Lần 4',
-'Lần 5', 'Lần 6',
-'Lần 7', 'Lần 8',
-'Lần 9', 'Lần 10'
+'Lần 1',
+'Lần 2',
+'Lần 3',
+'Lần 4',
+'Lần 5',
+'Lần 6',
+'Lần 7',
+'Lần 8',
+'Lần 9',
+'Lần 10',
 ];
 
 const violations = [
@@ -45,13 +49,18 @@ const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: '
 const [loading, setLoading] = useState(false);
 const [rankingPoint, setRankingPoint] = useState<number>(10);
 const [classList, setClassList] = useState<any[]>([]);
-const [weeksWithData, setWeeksWithData] = useState<number[]>([]);
 
 useEffect(() => {
 fetchWeeks();
 fetchSettings();
 fetchClasses();
 }, []);
+
+useEffect(() => {
+if (selectedWeek && classList.length > 0) {
+initializeData(selectedWeek.weekNumber);
+}
+}, [selectedWeek, classList]);
 
 const fetchSettings = async () => {
 try {
@@ -62,50 +71,48 @@ console.error('Error fetching settings:', err);
 }
 };
 
-const fetchClasses = async () => {
-try {
-const res = await api.get('/api/classes');
-setClassList(res.data);
-} catch (err) {
-console.error('Error fetching classes:', err);
-}
-};
-
 const fetchWeeks = async () => {
 setLoading(true);
 try {
 const res = await api.get('/api/academic-weeks/study-weeks');
 setWeekList(res.data);
-
-
-  const resExisting = await api.get('/api/class-lineup-summaries/weeks');
-  setWeeksWithData(resExisting.data || []);
-
-  const initialWeek = res.data[0];
-  setSelectedWeek(initialWeek);
-  if (initialWeek) await initializeData(initialWeek.weekNumber);
+const initialWeek = res.data[0];
+setSelectedWeek(initialWeek);
 } catch (err) {
-  console.error('Error fetching weeks:', err);
+console.error('Error fetching weeks:', err);
 }
 setLoading(false);
+};
 
-
+const fetchClasses = async () => {
+try {
+const res = await api.get('/api/classes');
+setClassList(res.data || []);
+} catch (err) {
+console.error('Lỗi khi lấy lớp:', err);
+}
 };
 
 const initializeData = async (weekNumber: number) => {
+if (!classList.length) return;
+
 setLoading(true);
 const initial: { [key: string]: ClassType[] } = {};
+
 grades.forEach(grade => {
-const classes: ClassType[] = [];
-classList.filter(c => c.grade === grade && c.homeroomTeacher).forEach((cls: any) => {
-classes.push({
-className: cls.className,
-grade: cls.grade,
-scores: Array(10).fill(0),
+  const classes: ClassType[] = [];
+  classList
+    .filter(c => c.grade === grade && c.homeroomTeacher) // chỉ lớp có GVCN
+    .forEach((cls: any) => {
+      classes.push({
+        className: cls.className,
+        grade: cls.grade,
+        scores: Array(10).fill(0),
+      });
+    });
+  initial[grade] = classes;
 });
-});
-initial[grade] = classes;
-});
+
 try {
   const res = await api.get('/api/class-lineup-summaries', { params: { weekNumber } });
   res.data.forEach((cls: any) => {
@@ -121,6 +128,7 @@ try {
 
 setData(initial);
 setLoading(false);
+
 };
 
 const handleChange = (grade: string, classIdx: number, scoreIdx: number, value: string) => {
@@ -156,24 +164,29 @@ total: c.total || 0,
 }))
 )
 };
-await api.post('/api/class-lineup-summaries', payload);
-setSnackbar({ open: true, message: 'Đã lưu điểm xếp hàng thành công!', severity: 'success' });
+
+
+  await api.post('/api/class-lineup-summaries', payload);
+  setSnackbar({ open: true, message: 'Đã lưu điểm xếp hàng thành công!', severity: 'success' });
 } catch (err) {
-console.error('Save error:', err);
-setSnackbar({ open: true, message: 'Lỗi khi lưu.', severity: 'error' });
+  console.error('Save error:', err);
+  setSnackbar({ open: true, message: 'Lỗi khi lưu.', severity: 'error' });
 }
 setLoading(false);
+
+
 };
 
 const handleWeekChange = (e: any) => {
 const w = weekList.find(w => w._id === e.target.value);
 setSelectedWeek(w || null);
-if (w) initializeData(w.weekNumber);
 };
 
 return (
 <Box sx={{ p: 2 }}> <Typography variant="h5" fontWeight="bold" gutterBottom>
 📝 Nhập điểm xếp hàng theo tuần </Typography>
+
+```
   <Stack direction="row" spacing={2} mb={2} alignItems="center">
     <TextField
       select
@@ -183,12 +196,7 @@ return (
       sx={{ width: 180 }}
     >
       {weekList.map(w => (
-        <MenuItem
-          key={w._id}
-          value={w._id}
-          disabled={weeksWithData.includes(w.weekNumber)}
-          style={weeksWithData.includes(w.weekNumber) ? { color: 'gray' } : {}}
-        >
+        <MenuItem key={w._id} value={w._id}>
           Tuần {w.weekNumber}
         </MenuItem>
       ))}
