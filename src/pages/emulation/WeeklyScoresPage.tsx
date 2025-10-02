@@ -15,7 +15,7 @@ import {
   Paper,
   TextField,
   Alert,
-  Grid, // Đảm bảo đã import Grid
+  // Grid KHÔNG CÒN ĐƯỢC SỬ DỤNG
 } from "@mui/material";
 import api from "../../api/api";
 
@@ -56,7 +56,7 @@ export default function WeeklyScoresPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- HÀM TÍNH TOÁN
+  // --- HÀM TÍNH TOÁN (Giữ nguyên)
   const recalcAndRank = useCallback((list: WeeklyScoreRow[]) => {
     const arr = list.map((r) => ({ ...r }));
 
@@ -68,7 +68,6 @@ export default function WeeklyScoresPage() {
         const bonus = Number(row.bonusScore ?? 0);
         const academic = Number(row.academicScore ?? 0);
 
-        // Giả định: Chuyên cần nhân 5 điểm phạt (hoặc theo quy tắc của bạn)
         const totalViolation = violation + lineup + hygiene + attendance * 5; 
         const totalDiscipline = Number(disciplineMax) - totalViolation;
 
@@ -121,7 +120,7 @@ export default function WeeklyScoresPage() {
     return arr;
   }, [disciplineMax]);
 
-  // --- HÀM LẤY CÀI ĐẶT & LỚP GVCN
+  // --- HÀM LẤY DATA (Giữ nguyên)
   const fetchWeeksWithData = async () => {
     try {
       const res = await api.get<number[]>("/api/class-weekly-scores/weeks");
@@ -166,7 +165,6 @@ export default function WeeklyScoresPage() {
     }
   };
   
-  // --- HÀM LẤY ĐIỂM TUẦN (Bao gồm logic LỌC LỚP có GVCN)
   const fetchScores = useCallback(async (weekNumber: number, isTemp = false) => {
     setLoading(true);
     try {
@@ -180,7 +178,7 @@ export default function WeeklyScoresPage() {
 
       let data = res.data || [];
       
-      // **LỌC LỚP KHÔNG CÓ GVCN**
+      // LỌC LỚP KHÔNG CÓ GVCN
       if (homeroomSet.size > 0) {
         data = data.filter((r) =>
           homeroomSet.has(normalizeClassName(r.className))
@@ -218,9 +216,8 @@ export default function WeeklyScoresPage() {
     }
   };
   
-  // --- HIỆU ỨNG TẢI DỮ LIỆU CHÍNH
+  // --- HIỆU ỨNG TẢI DỮ LIỆU CHÍNH (Giữ nguyên logic đồng bộ)
   useEffect(() => {
-    // Chỉ chạy khi week VÀ homeroomSet đã load xong
     if (week === "" || !isHomeroomLoaded) {
       setScores([]);
       setIsTempLoaded(false);
@@ -229,11 +226,9 @@ export default function WeeklyScoresPage() {
       return;
     }
     
-    // Nếu tuần đã có dữ liệu, load dữ liệu đã lưu
     if (weeksWithData.includes(Number(week))) {
       fetchScores(Number(week), false);
     } else {
-      // Nếu tuần chưa có dữ liệu, clear bảng
       setScores([]);
       setIsTempLoaded(false);
       setLocalEdited(false);
@@ -242,7 +237,7 @@ export default function WeeklyScoresPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [week, weeksWithData, isHomeroomLoaded]); 
 
-  // --- HÀM XỬ LÝ SỰ KIỆN
+  // --- HÀM XỬ LÝ SỰ KIỆN (Giữ nguyên)
   const handleScoreChange = (
     index: number,
     field: "bonusScore" | "academicScore",
@@ -292,7 +287,7 @@ export default function WeeklyScoresPage() {
         );
         let data = res.data || [];
         
-        // **LỌC LỚP KHÔNG CÓ GVCN**
+        // LỌC LỚP KHÔNG CÓ GVCN
         if (homeroomSet.size > 0) {
           data = data.filter((r) =>
             homeroomSet.has(normalizeClassName(r.className))
@@ -453,15 +448,20 @@ export default function WeeklyScoresPage() {
         Quản lý Điểm thi đua Tuần
       </Typography>
 
-      <Grid container spacing={2} alignItems="center" mb={4}>
+      {/* Thay thế Grid bằng Box display="flex" để tránh lỗi TS2769 */}
+      <Box 
+        display="flex" 
+        flexWrap="wrap" 
+        alignItems="center" 
+        gap={2} // Tương đương spacing
+        mb={4}
+      >
         
-        {/* Sửa lỗi TS2769: Thêm prop xs */}
-        <Grid item xs="auto"> 
+        <Box>
             <Typography fontWeight="bold">Chọn tuần:</Typography>
-        </Grid>
+        </Box>
         
-        {/* Sửa lỗi TS2769: Thêm prop xs */}
-        <Grid item xs="auto"> 
+        <Box> 
             <Select
                 value={week}
                 onChange={(e) => setWeek(e.target.value as number)}
@@ -481,11 +481,11 @@ export default function WeeklyScoresPage() {
                     );
                 })}
             </Select>
-        </Grid>
+        </Box>
         
-        {/* Nút Load dữ liệu cho tuần mới - Sửa lỗi TS2769: Thêm prop xs */}
+        {/* Nút Load dữ liệu cho tuần mới */}
         {!weeksWithData.includes(Number(week)) && week !== "" && (
-          <Grid item xs="auto">
+          <Box>
             <Button
               variant="contained"
               color="primary"
@@ -494,11 +494,11 @@ export default function WeeklyScoresPage() {
             >
               {loading ? <CircularProgress size={24} /> : "📥 Load dữ liệu"}
             </Button>
-          </Grid>
+          </Box>
         )}
         
-        {/* Nút Lưu - Sửa lỗi TS2769: Thêm prop xs */}
-        <Grid item xs="auto">
+        {/* Nút Lưu */}
+        <Box>
             <Button
                 variant="contained"
                 color="success"
@@ -507,10 +507,10 @@ export default function WeeklyScoresPage() {
             >
                 {loading && !isUpdateDisabled ? <CircularProgress size={24} /> : "💾 Lưu"}
             </Button>
-        </Grid>
+        </Box>
 
-        {/* Nút Cập nhật - Sửa lỗi TS2769: Thêm prop xs */}
-        <Grid item xs="auto">
+        {/* Nút Cập nhật */}
+        <Box>
             <Button
                 variant="outlined"
                 color="secondary"
@@ -519,18 +519,18 @@ export default function WeeklyScoresPage() {
             >
                 {loading && isUpdateDisabled ? <CircularProgress size={24} /> : (externalChangeAvailable ? "♻️ Cập nhật & Lưu" : "⬆️ Cập nhật")}
             </Button>
-        </Grid>
+        </Box>
 
-        {/* Nút Xuất Excel - Sửa lỗi TS2769: Thêm prop xs */}
-        <Grid item xs="auto">
+        {/* Nút Xuất Excel */}
+        <Box>
             <Button variant="outlined" onClick={handleExport} disabled={!week}>
                 ⬇️ Xuất Excel
             </Button>
-        </Grid>
+        </Box>
 
-        {/* Nút Xoá tuần - Sửa lỗi TS2769: Thêm prop xs */}
+        {/* Nút Xoá tuần */}
         {weeksWithData.includes(Number(week)) && (
-            <Grid item xs="auto">
+            <Box>
                 <Button
                     variant="outlined"
                     color="error"
@@ -539,9 +539,9 @@ export default function WeeklyScoresPage() {
                 >
                     ❌ Xoá tuần
                 </Button>
-            </Grid>
+            </Box>
         )}
-      </Grid>
+      </Box>
       
       {/* Thông báo trạng thái */}
       {!isHomeroomLoaded && (
