@@ -15,29 +15,27 @@ import {
   Paper,
   TextField,
   Alert,
-  Grid,
+  Grid, // Đảm bảo đã import Grid
 } from "@mui/material";
 import api from "../../api/api";
 
-// ... (Các interface WeeklyScoreRow, normalizeClassName giữ nguyên)
 interface WeeklyScoreRow {
-    className: string;
-    grade: string;
-    weekNumber: number;
-    attendanceScore: number;
-    hygieneScore: number;
-    lineUpScore: number;
-    violationScore: number;
-    academicScore: number;
-    bonusScore: number;
-    totalViolation: number;
-    totalDiscipline: number;
-    totalScore: number;
-    ranking: number;
-  }
-  
-  const normalizeClassName = (v: any) => String(v ?? "").trim().toUpperCase();
-// ...
+  className: string;
+  grade: string;
+  weekNumber: number;
+  attendanceScore: number;
+  hygieneScore: number;
+  lineUpScore: number;
+  violationScore: number;
+  academicScore: number;
+  bonusScore: number;
+  totalViolation: number;
+  totalDiscipline: number;
+  totalScore: number;
+  ranking: number;
+}
+
+const normalizeClassName = (v: any) => String(v ?? "").trim().toUpperCase();
 
 export default function WeeklyScoresPage() {
   const [loading, setLoading] = useState(false);
@@ -46,7 +44,6 @@ export default function WeeklyScoresPage() {
   const [scores, setScores] = useState<WeeklyScoreRow[]>([]);
   const [isTempLoaded, setIsTempLoaded] = useState(false);
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
-  // Thay đổi: Thêm cờ để biết homeroomSet đã load xong chưa
   const [isHomeroomLoaded, setIsHomeroomLoaded] = useState(false); 
   const [homeroomSet, setHomeroomSet] = useState<Set<string>>(new Set());
   const [localEdited, setLocalEdited] = useState(false);
@@ -59,9 +56,8 @@ export default function WeeklyScoresPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- HÀM TÍNH TOÁN (Giữ nguyên)
+  // --- HÀM TÍNH TOÁN
   const recalcAndRank = useCallback((list: WeeklyScoreRow[]) => {
-    // ... (Giữ nguyên logic recalcAndRank của bạn, sử dụng disciplineMax)
     const arr = list.map((r) => ({ ...r }));
 
     arr.forEach((row) => {
@@ -72,7 +68,8 @@ export default function WeeklyScoresPage() {
         const bonus = Number(row.bonusScore ?? 0);
         const academic = Number(row.academicScore ?? 0);
 
-        const totalViolation = violation + lineup + hygiene + attendance * 5;
+        // Giả định: Chuyên cần nhân 5 điểm phạt (hoặc theo quy tắc của bạn)
+        const totalViolation = violation + lineup + hygiene + attendance * 5; 
         const totalDiscipline = Number(disciplineMax) - totalViolation;
 
         row.totalViolation = totalViolation;
@@ -124,7 +121,7 @@ export default function WeeklyScoresPage() {
     return arr;
   }, [disciplineMax]);
 
-  // --- HÀM LẤY CÀI ĐẶT & TUẦN (Giữ nguyên)
+  // --- HÀM LẤY CÀI ĐẶT & LỚP GVCN
   const fetchWeeksWithData = async () => {
     try {
       const res = await api.get<number[]>("/api/class-weekly-scores/weeks");
@@ -151,7 +148,6 @@ export default function WeeklyScoresPage() {
     }
   };
 
-  // --- HÀM LẤY LỚP GVCN VÀ ĐẶT CỜ
   const fetchClassesWithGVCN = async () => {
     try {
       const res = await api.get<any[]>("/api/classes/with-teacher");
@@ -166,26 +162,25 @@ export default function WeeklyScoresPage() {
     } catch (err) {
       console.error("Load classes error:", err);
     } finally {
-        setIsHomeroomLoaded(true); // Đánh dấu đã load xong homeroomSet
+        setIsHomeroomLoaded(true); 
     }
   };
   
-  // --- HÀM LẤY ĐIỂM TUẦN (Sử dụng useCallback)
+  // --- HÀM LẤY ĐIỂM TUẦN (Bao gồm logic LỌC LỚP có GVCN)
   const fetchScores = useCallback(async (weekNumber: number, isTemp = false) => {
     setLoading(true);
     try {
-      let res;
       const apiPath = !isTemp && weeksWithData.includes(weekNumber) 
         ? `/api/class-weekly-scores?weekNumber=${weekNumber}` 
         : "/api/class-weekly-scores/temp";
 
-      res = await api.get<WeeklyScoreRow[]>(apiPath, {
+      const res = await api.get<WeeklyScoreRow[]>(apiPath, {
           params: !isTemp && weeksWithData.includes(weekNumber) ? undefined : { weekNumber },
       });
 
       let data = res.data || [];
       
-      // **LỌC LỚP BẮT BUỘC**
+      // **LỌC LỚP KHÔNG CÓ GVCN**
       if (homeroomSet.size > 0) {
         data = data.filter((r) =>
           homeroomSet.has(normalizeClassName(r.className))
@@ -209,7 +204,7 @@ export default function WeeklyScoresPage() {
     } finally {
       setLoading(false);
     }
-  }, [weeksWithData, homeroomSet, recalcAndRank]); // Đưa homeroomSet và recalcAndRank vào dependencies
+  }, [weeksWithData, homeroomSet, recalcAndRank]);
 
   const checkExternalChange = async (weekNumber: number) => {
     try {
@@ -223,9 +218,9 @@ export default function WeeklyScoresPage() {
     }
   };
   
-  // --- HIỆU ỨNG TẢI DỮ LIỆU CHÍNH (Đã điều chỉnh)
+  // --- HIỆU ỨNG TẢI DỮ LIỆU CHÍNH
   useEffect(() => {
-    // Chỉ chạy khi week và homeroomSet đã load xong
+    // Chỉ chạy khi week VÀ homeroomSet đã load xong
     if (week === "" || !isHomeroomLoaded) {
       setScores([]);
       setIsTempLoaded(false);
@@ -234,20 +229,20 @@ export default function WeeklyScoresPage() {
       return;
     }
     
-    // Nếu tuần đã có dữ liệu, load dữ liệu đã lưu (không phải temp)
+    // Nếu tuần đã có dữ liệu, load dữ liệu đã lưu
     if (weeksWithData.includes(Number(week))) {
       fetchScores(Number(week), false);
     } else {
-      // Nếu tuần chưa có dữ liệu, clear bảng điểm và chờ người dùng chọn "Load dữ liệu"
+      // Nếu tuần chưa có dữ liệu, clear bảng
       setScores([]);
       setIsTempLoaded(false);
       setLocalEdited(false);
       setExternalChangeAvailable(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [week, weeksWithData, isHomeroomLoaded]); // Chỉ phụ thuộc vào cờ load homeroom, không phải cả Set
+  }, [week, weeksWithData, isHomeroomLoaded]); 
 
-  // --- HÀM XỬ LÝ SỰ KIỆN (Giữ nguyên phần còn lại)
+  // --- HÀM XỬ LÝ SỰ KIỆN
   const handleScoreChange = (
     index: number,
     field: "bonusScore" | "academicScore",
@@ -290,16 +285,14 @@ export default function WeeklyScoresPage() {
     setLoading(true);
     try {
       if (localEdited) {
-        // Lưu local changes trước khi update (nếu có)
         await handleSave(); 
       } else if (externalChangeAvailable) {
-        // Gọi API update để lấy dữ liệu nề nếp mới nhất
         const res = await api.post<WeeklyScoreRow[]>(
           `/api/class-weekly-scores/update/${week}`
         );
         let data = res.data || [];
         
-        // **LỌC LỚP BẮT BUỘC**
+        // **LỌC LỚP KHÔNG CÓ GVCN**
         if (homeroomSet.size > 0) {
           data = data.filter((r) =>
             homeroomSet.has(normalizeClassName(r.className))
@@ -461,10 +454,14 @@ export default function WeeklyScoresPage() {
       </Typography>
 
       <Grid container spacing={2} alignItems="center" mb={4}>
-        <Grid item>
+        
+        {/* Sửa lỗi TS2769: Thêm prop xs */}
+        <Grid item xs="auto"> 
             <Typography fontWeight="bold">Chọn tuần:</Typography>
         </Grid>
-        <Grid item>
+        
+        {/* Sửa lỗi TS2769: Thêm prop xs */}
+        <Grid item xs="auto"> 
             <Select
                 value={week}
                 onChange={(e) => setWeek(e.target.value as number)}
@@ -486,9 +483,9 @@ export default function WeeklyScoresPage() {
             </Select>
         </Grid>
         
-        {/* Nút Load dữ liệu cho tuần mới */}
+        {/* Nút Load dữ liệu cho tuần mới - Sửa lỗi TS2769: Thêm prop xs */}
         {!weeksWithData.includes(Number(week)) && week !== "" && (
-          <Grid item>
+          <Grid item xs="auto">
             <Button
               variant="contained"
               color="primary"
@@ -500,8 +497,8 @@ export default function WeeklyScoresPage() {
           </Grid>
         )}
         
-        {/* Nút Lưu */}
-        <Grid item>
+        {/* Nút Lưu - Sửa lỗi TS2769: Thêm prop xs */}
+        <Grid item xs="auto">
             <Button
                 variant="contained"
                 color="success"
@@ -512,8 +509,8 @@ export default function WeeklyScoresPage() {
             </Button>
         </Grid>
 
-        {/* Nút Cập nhật */}
-        <Grid item>
+        {/* Nút Cập nhật - Sửa lỗi TS2769: Thêm prop xs */}
+        <Grid item xs="auto">
             <Button
                 variant="outlined"
                 color="secondary"
@@ -524,16 +521,16 @@ export default function WeeklyScoresPage() {
             </Button>
         </Grid>
 
-        {/* Nút Xuất Excel */}
-        <Grid item>
+        {/* Nút Xuất Excel - Sửa lỗi TS2769: Thêm prop xs */}
+        <Grid item xs="auto">
             <Button variant="outlined" onClick={handleExport} disabled={!week}>
                 ⬇️ Xuất Excel
             </Button>
         </Grid>
 
-        {/* Nút Xoá tuần */}
+        {/* Nút Xoá tuần - Sửa lỗi TS2769: Thêm prop xs */}
         {weeksWithData.includes(Number(week)) && (
-            <Grid item>
+            <Grid item xs="auto">
                 <Button
                     variant="outlined"
                     color="error"
