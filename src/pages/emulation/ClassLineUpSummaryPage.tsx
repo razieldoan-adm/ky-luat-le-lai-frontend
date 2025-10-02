@@ -25,10 +25,8 @@ const colLabels = ['Lần 1', 'Lần 2',
 const violations = [
   '1. Lớp xếp hàng chậm',
   '2. Nhiều hs ngồi trong lớp giờ chơi, không ra xếp hàng',
-  '3. Mở đèn quạt giờ chơi',
-  '4. Vệ sinh chỗ xếp hàng không sạch',
-  '5. Mất trật tự trong khi xếp hàng giờ SHDC',
-  '6. Ồn ào, đùa giỡn khi di chuyển lên lớp'
+  '3. Mất trật tự trong khi xếp hàng giờ SHDC',
+  '4. Ồn ào, đùa giỡn khi di chuyển lên lớp'
 ];
 
 export default function ClassLineUpSummaryPage() {
@@ -244,4 +242,4 @@ export default function ClassLineUpSummaryPage() {
       </Backdrop>
     </Box>
   );
-} ban nhớ từng lam doan code này chứ 
+}
