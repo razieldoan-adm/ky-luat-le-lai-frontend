@@ -1,205 +1,209 @@
 import { useEffect, useState } from "react";
 import {
-Box,
-Button,
-CircularProgress,
-MenuItem,
-Select,
-Table,
-TableBody,
-TableCell,
-TableContainer,
-TableHead,
-TableRow,
-TextField,
-Typography,
-Paper,
+  Box,
+  Button,
+  CircularProgress,
+  MenuItem,
+  Select,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+  Paper,
 } from "@mui/material";
 import api from "../../api/api";
 
-interface ClassLineUpSummary {
-className: string;
-week: number;
-scores: number[];
-total: number;
+interface AcademicWeek {
+  _id: string;
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
 }
+
+type ErrorType = "" | "Lỗi 1" | "Lỗi 2" | "Lỗi 3" | "Lỗi 4";
+
+interface ClassLineUpSummary {
+  className: string;
+  week: number;
+  errors: ErrorType[]; // 10 ô, mỗi ô chọn 1 lỗi
+  totalScore: number;
+}
+
+const errorOptions: ErrorType[] = ["", "Lỗi 1", "Lỗi 2", "Lỗi 3", "Lỗi 4"];
 
 const ClassLineUpSummaryPage = () => {
-const [week, setWeek] = useState<number>(1);
-const [loading, setLoading] = useState(false);
-const [classList, setClassList] = useState<string[]>([]);
-const [summaries, setSummaries] = useState<ClassLineUpSummary[]>([]);
+  const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number>(1);
+  const [classList, setClassList] = useState<string[]>([]);
+  const [summaries, setSummaries] = useState<ClassLineUpSummary[]>([]);
+  const [loading, setLoading] = useState(false);
 
-// Lấy danh sách lớp
-const fetchClasses = async () => {
-try {
-const res = await api.get("/api/classes");
-// giả sử trong CSDL chỉ có lớp có GVCN
-const validClasses = res.data.map((cls: any) => cls.className);
-setClassList(validClasses);
-} catch (err) {
-console.error("Lỗi khi lấy danh sách lớp:", err);
-}
-};
+  useEffect(() => {
+    fetchWeeks();
+    fetchClasses();
+  }, []);
 
-// Lấy dữ liệu điểm theo tuần
-const fetchSummaries = async (selectedWeek: number) => {
-try {
-setLoading(true);
-const res = await api.get(`/api/class-lineup-summaries?week=${selectedWeek}`);
-const data: ClassLineUpSummary[] = res.data;
+  useEffect(() => {
+    if (classList.length > 0) {
+      initSummaries();
+    }
+  }, [classList, selectedWeek]);
 
-  // Nếu chưa có dữ liệu thì khởi tạo mặc định
-  const filled = classList.map((cls) => {
-    const exist = data.find((d) => d.className === cls);
-    return (
-      exist || {
-        className: cls,
-        week: selectedWeek,
-        scores: Array(10).fill(0),
-        total: 0,
-      }
+  const fetchWeeks = async () => {
+    try {
+      const res = await api.get("/api/academic-weeks/study-weeks");
+      setWeekList(res.data);
+    } catch (err) {
+      console.error("Lỗi khi lấy tuần:", err);
+    }
+  };
+
+  const fetchClasses = async () => {
+    try {
+      const res = await api.get("/api/classes");
+      setClassList(res.data);
+    } catch (err) {
+      console.error("Lỗi khi lấy lớp:", err);
+    }
+  };
+
+  const initSummaries = () => {
+    const initData = classList.map((cls) => ({
+      className: cls,
+      week: selectedWeek,
+      errors: Array(10).fill(""),
+      totalScore: 0,
+    }));
+    setSummaries(initData);
+  };
+
+  const handleErrorChange = (
+    className: string,
+    index: number,
+    value: ErrorType
+  ) => {
+    setSummaries((prev) =>
+      prev.map((item) =>
+        item.className === className
+          ? {
+              ...item,
+              errors: item.errors.map((err, i) =>
+                i === index ? value : err
+              ),
+              totalScore: item.errors.filter((e, i) =>
+                i === index ? value !== "" : e !== ""
+              ).length * 10,
+            }
+          : item
+      )
     );
-  });
-  setSummaries(filled);
-} catch (err) {
-  console.error("Lỗi khi lấy dữ liệu:", err);
-} finally {
-  setLoading(false);
-}
+  };
 
-};
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      await api.post("/api/class-lineup-summaries", summaries);
+      alert("Lưu thành công!");
+    } catch (err) {
+      console.error("Lỗi khi lưu:", err);
+      alert("Lỗi khi lưu dữ liệu");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-// Khởi tạo
-useEffect(() => {
-const init = async () => {
-await fetchClasses();
-};
-init();
-}, []);
+  const getWeekLabel = (week: AcademicWeek) => {
+    const today = new Date();
+    const start = new Date(week.startDate);
+    const end = new Date(week.endDate);
 
-useEffect(() => {
-if (classList.length > 0) {
-fetchSummaries(week);
-}
-}, [week, classList]);
+    if (today < start) return `Tuần ${week.weekNumber} (chưa diễn ra)`;
+    if (today > end) return `Tuần ${week.weekNumber} (đã qua)`;
+    return `Tuần ${week.weekNumber} (hiện tại)`;
+  };
 
-// Cập nhật điểm
-const handleScoreChange = (className: string, index: number, value: number) => {
-setSummaries((prev) =>
-prev.map((s) =>
-s.className === className
-? {
-...s,
-scores: s.scores.map((sc, i) => (i === index ? value : sc)),
-}
-: s
-)
-);
-};
+  return (
+    <Box p={3}>
+      <Typography variant="h5" gutterBottom>
+        Nhập điểm xếp hạng theo tuần
+      </Typography>
 
-// Tính tổng
-const calculateTotal = () => {
-setSummaries((prev) =>
-prev.map((s) => ({
-...s,
-total: s.scores.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0),
-}))
-);
-};
-
-// Lưu dữ liệu
-const saveData = async () => {
-try {
-setLoading(true);
-await api.post("/api/class-lineup-summaries", summaries);
-alert("Lưu thành công!");
-} catch (err) {
-console.error("Lỗi khi lưu:", err);
-alert("Lỗi khi lưu dữ liệu");
-} finally {
-setLoading(false);
-}
-};
-
-// Render bảng theo khối
-const renderTableForGrade = (grade: number) => {
-const classesInGrade = summaries.filter((s) => s.className.startsWith(`6`) && grade === 6
-|| s.className.startsWith(`7`) && grade === 7
-|| s.className.startsWith(`8`) && grade === 8
-|| s.className.startsWith(`9`) && grade === 9
-);
-if (classesInGrade.length === 0) return null;
-return (
-  <Box key={grade} mb={4}>
-    <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
-      Khối {grade}
-    </Typography>
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Lớp</TableCell>
-            {[...Array(10)].map((_, i) => (
-              <TableCell key={i}>Lần {i + 1}</TableCell>
-            ))}
-            <TableCell>Tổng</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {classesInGrade.map((row) => (
-            <TableRow key={row.className}>
-              <TableCell>{row.className}</TableCell>
-              {row.scores.map((sc, i) => (
-                <TableCell key={i}>
-                  <TextField
-                    type="number"
-                    size="small"
-                    value={sc}
-                    onChange={(e) =>
-                      handleScoreChange(row.className, i, Number(e.target.value))
-                    }
-                  />
-                </TableCell>
-              ))}
-              <TableCell>{row.total}</TableCell>
-            </TableRow>
+      <Box mb={2}>
+        <Select
+          value={selectedWeek}
+          onChange={(e) => setSelectedWeek(Number(e.target.value))}
+        >
+          {weekList.map((week) => (
+            <MenuItem key={week._id} value={week.weekNumber}>
+              {getWeekLabel(week)}
+            </MenuItem>
           ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  </Box>
-);
-};
+        </Select>
+      </Box>
 
-return ( <Box p={3}> <Typography variant="h5" gutterBottom>
-Nhập điểm xếp hàng theo tuần </Typography> <Box display="flex" alignItems="center" mb={2}> <Typography mr={2}>Chọn tuần:</Typography>
-<Select
-value={week}
-onChange={(e) => setWeek(Number(e.target.value))}
-size="small"
->
-{[...Array(10)].map((_, i) => (
-<MenuItem key={i + 1} value={i + 1}>
-Tuần {i + 1} </MenuItem>
-))} </Select> </Box>
-{loading ? ( <CircularProgress />
-) : (
-<>
-<Typography variant="body2" sx={{ mb: 2 }}>
-1. Lớp xếp hàng chậm <br />
-2. Nhiều HS ngồi trong lớp giờ chơi, không ra xếp hàng <br />
-3. Mất trật tự trong khi xếp hàng giờ SHDC <br />
-4. Ồn ào, đùa giỡn khi di chuyển lên lớp </Typography>
-{renderTableForGrade(6)}
-{renderTableForGrade(7)}
-{renderTableForGrade(8)}
-{renderTableForGrade(9)} <Box mt={2} display="flex" gap={2}> <Button variant="contained" color="primary" onClick={calculateTotal}>
-TÍNH TỔNG </Button> <Button variant="contained" color="success" onClick={saveData}>
-LƯU ĐIỂM </Button> </Box>
-</>
-)} </Box>
-);
+      {loading ? (
+        <CircularProgress />
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Lớp</TableCell>
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <TableCell key={i}>Ô {i + 1}</TableCell>
+                ))}
+                <TableCell>Tổng điểm</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {summaries.map((row) => (
+                <TableRow key={row.className}>
+                  <TableCell>{row.className}</TableCell>
+                  {row.errors.map((err, i) => (
+                    <TableCell key={i}>
+                      <Select
+                        value={err}
+                        onChange={(e) =>
+                          handleErrorChange(
+                            row.className,
+                            i,
+                            e.target.value as ErrorType
+                          )
+                        }
+                        displayEmpty
+                        fullWidth
+                      >
+                        {errorOptions.map((opt) => (
+                          <MenuItem key={opt} value={opt}>
+                            {opt === "" ? "Trống" : opt}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </TableCell>
+                  ))}
+                  <TableCell>{row.totalScore}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      <Box mt={2}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleSave}
+          disabled={loading}
+        >
+          Lưu dữ liệu
+        </Button>
+      </Box>
+    </Box>
+  );
 };
 
 export default ClassLineUpSummaryPage;
