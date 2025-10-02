@@ -13,6 +13,7 @@ TableContainer,
 TableHead,
 TableRow,
 Typography,
+TextField,
 } from '@mui/material';
 import api from '../../api/api';
 
@@ -34,15 +35,16 @@ fetchClasses();
 }, []);
 
 useEffect(() => {
-if (week) {
+if (classList.length > 0 && week) {
 fetchSummaries(week);
 }
-}, [week]);
+}, [week, classList]);
 
 const fetchClasses = async () => {
 try {
 const res = await api.get('/api/classes');
-setClassList(res.data);
+// API đã trả sẵn danh sách lớp có GVCN trong DB
+setClassList(res.data.map((cls: any) => cls.className));
 } catch (err) {
 console.error('Lỗi khi lấy lớp:', err);
 }
@@ -72,7 +74,9 @@ setLoading(false);
 
 const handleScoreChange = (className: string, value: number) => {
 setSummaries((prev) =>
-prev.map((s) => (s.className === className ? { ...s, totalScore: value } : s))
+prev.map((s) =>
+s.className === className ? { ...s, totalScore: value } : s
+)
 );
 };
 
@@ -83,25 +87,25 @@ await api.post('/api/class-lineup-summaries', summaries);
 alert('Lưu dữ liệu thành công!');
 } catch (err) {
 console.error('Lỗi khi lưu dữ liệu:', err);
-alert('Lỗi khi lưu dữ liệu');
+alert('Có lỗi xảy ra khi lưu dữ liệu.');
 } finally {
 setSaving(false);
 }
 };
 
 return ( <Box p={3}> <Typography variant="h5" gutterBottom>
-Tổng kết điểm xếp hàng theo tuần </Typography>
+Tổng kết điểm xếp hàng theo tuần </Typography> <Box mb={2}> <Typography component="span" mr={2}>
+Chọn tuần: </Typography>
+<Select
+value={week}
+onChange={(e) => setWeek(Number(e.target.value))}
+size="small"
+>
+{Array.from({ length: 35 }, (_, i) => (
+<MenuItem key={i + 1} value={i + 1}>
+Tuần {i + 1} </MenuItem>
+))} </Select> </Box>
 
-  <Box mb={2} display="flex" alignItems="center">
-    <Typography mr={2}>Chọn tuần:</Typography>
-    <Select value={week} onChange={(e) => setWeek(Number(e.target.value))}>
-      {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
-        <MenuItem key={w} value={w}>
-          Tuần {w}
-        </MenuItem>
-      ))}
-    </Select>
-  </Box>
 
   {loading ? (
     <CircularProgress />
@@ -119,11 +123,13 @@ Tổng kết điểm xếp hàng theo tuần </Typography>
             <TableRow key={s.className}>
               <TableCell>{s.className}</TableCell>
               <TableCell>
-                <input
+                <TextField
                   type="number"
                   value={s.totalScore}
-                  onChange={(e) => handleScoreChange(s.className, Number(e.target.value))}
-                  style={{ width: '80px' }}
+                  onChange={(e) =>
+                    handleScoreChange(s.className, Number(e.target.value))
+                  }
+                  size="small"
                 />
               </TableCell>
             </TableRow>
@@ -132,15 +138,17 @@ Tổng kết điểm xếp hàng theo tuần </Typography>
       </Table>
     </TableContainer>
   )}
-
   <Box mt={2}>
-    <Button variant="contained" color="primary" onClick={handleSave} disabled={saving}>
-      {saving ? 'Đang lưu...' : 'Lưu dữ liệu'}
+    <Button
+      variant="contained"
+      color="primary"
+      onClick={handleSave}
+      disabled={saving}
+    >
+      {saving ? 'Đang lưu...' : 'LƯU DỮ LIỆU'}
     </Button>
   </Box>
 </Box>
-
-
 );
 };
 
