@@ -1,275 +1,231 @@
-import { useState, useEffect } from 'react';
-import api from '../../api/api';
+import { useEffect, useState } from "react";
 import {
-Box,
-Typography,
-TextField,
-Button,
-MenuItem,
-Stack,
-Snackbar,
-Alert,
-Backdrop,
-CircularProgress
-} from '@mui/material';
+  Box,
+  Button,
+  CircularProgress,
+  MenuItem,
+  Select,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+  Paper,
+  TextField,
+} from "@mui/material";
+import api from "../../api/api";
 
-interface ClassType {
-className: string;
-grade: string;
-scores: number[]; // 10 ô nhập điểm vi phạm
-total?: number;
+interface ClassData {
+  _id: string;
+  name: string;
+  grade: number;
 }
 
-const grades = ['6', '7', '8', '9'];
-const colLabels = [
-'Lần 1',
-'Lần 2',
-'Lần 3',
-'Lần 4',
-'Lần 5',
-'Lần 6',
-'Lần 7',
-'Lần 8',
-'Lần 9',
-'Lần 10',
-];
+interface ScoreData {
+  [classId: string]: {
+    [attempt: number]: number;
+  };
+}
 
-const violations = [
-'1. Lớp xếp hàng chậm',
-'2. Nhiều hs ngồi trong lớp giờ chơi, không ra xếp hàng',
-'3. Mất trật tự trong khi xếp hàng giờ SHDC',
-'4. Ồn ào, đùa giỡn khi di chuyển lên lớp'
-];
+const attempts = Array.from({ length: 10 }, (_, i) => i + 1);
 
 export default function ClassLineUpSummaryPage() {
-const [weekList, setWeekList] = useState<any[]>([]);
-const [selectedWeek, setSelectedWeek] = useState<any>(null);
-const [data, setData] = useState<{ [key: string]: ClassType[] }>({});
-const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-const [loading, setLoading] = useState(false);
-const [rankingPoint, setRankingPoint] = useState<number>(10);
-const [classList, setClassList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [classes, setClasses] = useState<ClassData[]>([]);
+  const [scores, setScores] = useState<ScoreData>({});
+  const [weeks, setWeeks] = useState<number[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number>(1);
 
-useEffect(() => {
-fetchWeeks();
-fetchSettings();
-fetchClasses();
-}, []);
+  useEffect(() => {
+    fetchClasses();
+    fetchWeeks();
+  }, []);
 
-useEffect(() => {
-if (selectedWeek && classList.length > 0) {
-initializeData(selectedWeek.weekNumber);
-}
-}, [selectedWeek, classList]);
-
-const fetchSettings = async () => {
-try {
-const res = await api.get('/api/settings');
-setRankingPoint(res.data.disciplinePointDeduction?.ranking || 10);
-} catch (err) {
-console.error('Error fetching settings:', err);
-}
-};
-
-const fetchWeeks = async () => {
-setLoading(true);
-try {
-const res = await api.get('/api/academic-weeks/study-weeks');
-setWeekList(res.data);
-const initialWeek = res.data[0];
-setSelectedWeek(initialWeek);
-} catch (err) {
-console.error('Error fetching weeks:', err);
-}
-setLoading(false);
-};
-
-const fetchClasses = async () => {
-try {
-const res = await api.get('/api/classes');
-setClassList(res.data || []);
-} catch (err) {
-console.error('Lỗi khi lấy lớp:', err);
-}
-};
-
-const initializeData = async (weekNumber: number) => {
-if (!classList.length) return;
-
-setLoading(true);
-const initial: { [key: string]: ClassType[] } = {};
-
-grades.forEach(grade => {
-  const classes: ClassType[] = [];
-  classList
-    .filter(c => c.grade === grade && c.homeroomTeacher) // chỉ lớp có GVCN
-    .forEach((cls: any) => {
-      classes.push({
-        className: cls.className,
-        grade: cls.grade,
-        scores: Array(10).fill(0),
-      });
-    });
-  initial[grade] = classes;
-});
-
-try {
-  const res = await api.get('/api/class-lineup-summaries', { params: { weekNumber } });
-  res.data.forEach((cls: any) => {
-    const target = initial[cls.grade]?.find(c => c.className === cls.className);
-    if (target) {
-      target.scores = cls.data || Array(10).fill(0);
-      target.total = cls.total || 0;
+  useEffect(() => {
+    if (selectedWeek) {
+      fetchScores(selectedWeek);
     }
-  });
-} catch (err) {
-  console.error('Error loading summaries:', err);
-}
+  }, [selectedWeek]);
 
-setData(initial);
-setLoading(false);
+  const fetchClasses = async () => {
+    try {
+      const res = await api.get("/classes");
+      setClasses(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-};
+  const fetchWeeks = async () => {
+    try {
+      const res = await api.get("/weekly-scores/weeks");
+      setWeeks(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-const handleChange = (grade: string, classIdx: number, scoreIdx: number, value: string) => {
-const updated = { ...data };
-const num = Number(value);
-updated[grade][classIdx].scores[scoreIdx] = (num >= 1 && num <= 6) ? num : 0;
-setData(updated);
-};
+  const fetchScores = async (week: number) => {
+    try {
+      setLoading(true);
+      const res = await api.get(`/class-lineup-summaries?week=${week}`);
+      const formatted: ScoreData = {};
+      res.data.forEach((item: any) => {
+        formatted[item.classId] = {};
+        attempts.forEach((a) => {
+          formatted[item.classId][a] = item.scores?.[a] || 0;
+        });
+      });
+      setScores(formatted);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-const calcTotals = () => {
-const updated = { ...data };
-grades.forEach(grade => {
-updated[grade].forEach(cls => {
-const count = cls.scores.filter(v => v !== 0).length;
-cls.total = count * rankingPoint;
-});
-});
-setData(updated);
-};
+  const handleScoreChange = (classId: string, attempt: number, value: string) => {
+    setScores((prev) => ({
+      ...prev,
+      [classId]: {
+        ...prev[classId],
+        [attempt]: Number(value),
+      },
+    }));
+  };
 
-const handleSave = async () => {
-if (!selectedWeek) return;
-setLoading(true);
-try {
-const payload = {
-weekNumber: selectedWeek.weekNumber,
-summaries: grades.flatMap(g =>
-data[g].map(c => ({
-className: c.className,
-grade: c.grade,
-data: c.scores,
-total: c.total || 0,
-}))
-)
-};
+  const calculateTotals = () => {
+    const updated: ScoreData = {};
+    Object.keys(scores).forEach((classId) => {
+      updated[classId] = { ...scores[classId] };
+      let total = 0;
+      attempts.forEach((a) => {
+        total += updated[classId][a] || 0;
+      });
+      updated[classId][11] = total; // dùng key 11 cho cột Tổng
+    });
+    setScores(updated);
+  };
 
+  const saveScores = async () => {
+    try {
+      const payload = Object.keys(scores).map((classId) => ({
+        classId,
+        week: selectedWeek,
+        scores: scores[classId],
+      }));
+      await api.post("/class-lineup-summaries", payload);
+      alert("Lưu điểm thành công!");
+      fetchWeeks();
+    } catch (err) {
+      console.error(err);
+      alert("Lưu thất bại!");
+    }
+  };
 
-  await api.post('/api/class-lineup-summaries', payload);
-  setSnackbar({ open: true, message: 'Đã lưu điểm xếp hàng thành công!', severity: 'success' });
-} catch (err) {
-  console.error('Save error:', err);
-  setSnackbar({ open: true, message: 'Lỗi khi lưu.', severity: 'error' });
-}
-setLoading(false);
-
-
-};
-
-const handleWeekChange = (e: any) => {
-const w = weekList.find(w => w._id === e.target.value);
-setSelectedWeek(w || null);
-};
-
-return (
-<Box sx={{ p: 2 }}> <Typography variant="h5" fontWeight="bold" gutterBottom>
-📝 Nhập điểm xếp hàng theo tuần </Typography>
-
-```
-  <Stack direction="row" spacing={2} mb={2} alignItems="center">
-    <TextField
-      select
-      label="Chọn tuần"
-      value={selectedWeek?._id || ''}
-      onChange={handleWeekChange}
-      sx={{ width: 180 }}
-    >
-      {weekList.map(w => (
-        <MenuItem key={w._id} value={w._id}>
-          Tuần {w.weekNumber}
-        </MenuItem>
-      ))}
-    </TextField>
-  </Stack>
-
-  <Box mb={2}>
-    {violations.map(v => (
-      <Typography key={v} variant="body2">{v}</Typography>
-    ))}
-  </Box>
-
-  {grades.map((grade) => (
-    <Box key={grade} sx={{ my: 2 }}>
-      <Typography variant="h6" fontWeight="bold" color="primary">
-        Khối {grade}
+  return (
+    <Box p={3}>
+      <Typography variant="h5" gutterBottom>
+        Nhập điểm xếp hạng theo tuần
       </Typography>
-      <Box sx={{ overflowX: 'auto' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f0f0f0' }}>
-              <th style={{ border: '1px solid #ccc', padding: '4px' }}>Lớp</th>
-              {colLabels.map(label => (
-                <th key={label} style={{ border: '1px solid #ccc', padding: '4px' }}>{label}</th>
-              ))}
-              <th style={{ border: '1px solid #ccc', padding: '4px' }}>Tổng</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data[grade]?.map((cls, idx) => (
-              <tr key={cls.className}>
-                <td style={{ border: '1px solid #ccc', padding: '4px', fontWeight: 'bold' }}>{cls.className}</td>
-                {cls.scores.map((value, scoreIdx) => (
-                  <td key={scoreIdx} style={{ border: '1px solid #ccc', padding: '4px', textAlign: 'center' }}>
-                    <input
-                      type="number"
-                      value={value}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleChange(grade, idx, scoreIdx, e.target.value)}
-                      min="1"
-                      max="6"
-                      style={{ width: '50px', textAlign: 'center' }}
-                    />
-                  </td>
-                ))}
-                <td style={{ border: '1px solid #ccc', padding: '4px', textAlign: 'center' }}>
-                  {cls.total || 0}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+      <Box mb={2}>
+        <Typography variant="body2">Chọn tuần</Typography>
+        <Select
+          value={selectedWeek}
+          onChange={(e) => setSelectedWeek(Number(e.target.value))}
+          size="small"
+        >
+          {Array.from({ length: 20 }, (_, i) => i + 1).map((week) => (
+            <MenuItem
+              key={week}
+              value={week}
+              style={{
+                backgroundColor: weeks.includes(week) ? "#f0f0f0" : "white",
+                color: weeks.includes(week) ? "gray" : "black",
+              }}
+              disabled={weeks.includes(week)}
+            >
+              Tuần {week}
+            </MenuItem>
+          ))}
+        </Select>
+      </Box>
+
+      <Typography variant="body2" color="textSecondary" mb={2}>
+        1. Lớp xếp hàng chậm  
+        <br />2. Nhiều HS ngồi trong lớp giữ chỗ, không ra xếp hàng  
+        <br />3. Mất trật tự trong khi xếp hàng giờ SHDC  
+        <br />4. Ồn ào, đùa giỡn khi di chuyển lên lớp
+      </Typography>
+
+      {loading ? (
+        <CircularProgress />
+      ) : (
+        <>
+          {[6, 7, 8, 9].map((grade) => (
+            <Box key={grade} mb={3}>
+              <Typography variant="h6">Khối {grade}</Typography>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Lớp</TableCell>
+                      {attempts.map((a) => (
+                        <TableCell key={a} align="center">
+                          Lần {a}
+                        </TableCell>
+                      ))}
+                      <TableCell align="center">Tổng</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {classes
+                      .filter((c) => c.grade === grade)
+                      .map((c) => (
+                        <TableRow key={c._id}>
+                          <TableCell>{c.name}</TableCell>
+                          {attempts.map((a) => (
+                            <TableCell key={a} align="center">
+                              <TextField
+                                type="number"
+                                variant="outlined"
+                                size="small"
+                                value={scores[c._id]?.[a] || ""}
+                                onChange={(e) =>
+                                  handleScoreChange(c._id, a, e.target.value)
+                                }
+                                inputProps={{
+                                  min: 0,
+                                  max: 10,
+                                  style: { textAlign: "center", width: "50px" },
+                                }}
+                              />
+                            </TableCell>
+                          ))}
+                          <TableCell align="center">
+                            {scores[c._id]?.[11] || 0}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          ))}
+        </>
+      )}
+
+      <Box mt={2} display="flex" gap={2}>
+        <Button variant="contained" color="primary" onClick={calculateTotals}>
+          TÍNH TỔNG
+        </Button>
+        <Button variant="contained" color="success" onClick={saveScores}>
+          LƯU ĐIỂM
+        </Button>
       </Box>
     </Box>
-  ))}
-
-  <Stack direction="row" spacing={2} mt={3}>
-    <Button variant="contained" color="primary" onClick={calcTotals}>➕ Tính tổng</Button>
-    <Button variant="contained" color="success" onClick={handleSave}>💾 Lưu điểm</Button>
-  </Stack>
-
-  <Snackbar
-    open={snackbar.open}
-    autoHideDuration={3000}
-    onClose={() => setSnackbar({ ...snackbar, open: false })}
-    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-  >
-    <Alert severity={snackbar.severity as any}>{snackbar.message}</Alert>
-  </Snackbar>
-
-  <Backdrop open={loading} sx={{ color: '#fff', zIndex: 9999 }}>
-    <CircularProgress color="inherit" />
-  </Backdrop>
-</Box>
-);
+  );
 }
