@@ -19,8 +19,6 @@ export default function ViewFullClassSummary() {
   const lineupRuleList = [
     'Xếp hàng chậm',
     'Nhiều hs ngồi trong lớp giờ chơi, không ra xếp hàng',
-    'Mở đèn quạt giờ chơi',
-    'Vệ sinh chỗ xếp hàng không sạch',
     'Mất trật tự trong khi xếp hàng giờ SHDC',
     'Ồn ào, đùa giỡn khi di chuyển lên lớp'
   ];
