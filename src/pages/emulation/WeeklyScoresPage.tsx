@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, TextField, Button, Grid, Typography
+  Paper, TextField, Button, Grid, Typography, MenuItem // Thêm MenuItem cho Select
 } from '@mui/material';
 import api from '../../api/api';
 
@@ -12,8 +12,9 @@ const WeeklyScoresPage: React.FC = () => {
   const [weeks, setWeeks] = useState<string[]>([]);
   const [disciplineMax, setDisciplineMax] = useState<number>(100);
   const [isDirty, setIsDirty] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Thêm state loading
 
-  // Lấy danh sách tuần đã có dữ liệu
+  // --- 1. Lấy danh sách tuần đã có dữ liệu
   useEffect(() => {
     const fetchWeeks = async () => {
       try {
@@ -26,10 +27,11 @@ const WeeklyScoresPage: React.FC = () => {
     fetchWeeks();
   }, []);
 
-  // Lấy danh sách lớp có GVCN
+  // --- 2. Lấy danh sách lớp có GVCN (Dữ liệu nền)
   useEffect(() => {
     const fetchClasses = async () => {
       try {
+        // Endpoint này đảm bảo chỉ lấy các lớp CÓ GVCN
         const res = await api.get('/api/classes/with-teacher');
         setClassOptions(res.data);
       } catch (err) {
@@ -39,30 +41,36 @@ const WeeklyScoresPage: React.FC = () => {
     fetchClasses();
   }, []);
 
-  // Lấy điểm của tuần
+  // --- 3. Lấy điểm của tuần
   const fetchWeeklyScores = async (week: string) => {
+    if (!week) return;
+    setIsLoading(true);
     try {
+      // Endpoint này nên chỉ trả về điểm của các lớp có trong classOptions
       const res = await api.get(`/weekly-scores?week=${week}`);
       const data = res.data.map((row: any) => ({
         ...row,
-        academicScore: row.academicScore ?? 0,
+        // Đảm bảo các trường điểm có giá trị mặc định để tránh lỗi tính toán
+        academicScore: row.academicScore ?? 0, 
         bonusScore: row.bonusScore ?? 0
       }));
       setWeeklyData(recalculate(data));
       setIsDirty(false);
     } catch (err) {
       console.error('Lỗi khi lấy điểm tuần:', err);
+    } finally {
+        setIsLoading(false);
     }
   };
 
-  // Hàm tính toán lại totalScore & ranking
+  // --- 4. Hàm tính toán lại totalScore & ranking
   const recalculate = (data: any[]) => {
     // Tính totalScore
     const withTotal = data.map(row => ({
       ...row,
       totalScore:
         disciplineMax -
-        (row.attendanceScore * 5 +
+        (row.attendanceScore * 5 + // Ví dụ: nhân chuyên cần với 5
           row.hygieneScore +
           row.lineUpScore +
           row.violationScore) +
@@ -76,7 +84,8 @@ const WeeklyScoresPage: React.FC = () => {
 
     grades.forEach(grade => {
       const inGrade = withTotal.filter(r => r.grade === grade);
-      const sorted = [...inGrade].sort((a, b) => b.totalScore - a.totalScore);
+      // Sắp xếp giảm dần theo totalScore
+      const sorted = [...inGrade].sort((a, b) => b.totalScore - a.totalScore); 
       sorted.forEach((row, idx) => {
         result.push({ ...row, ranking: idx + 1 });
       });
@@ -85,20 +94,26 @@ const WeeklyScoresPage: React.FC = () => {
     return result;
   };
 
-  // Xử lý thay đổi điểm học tập/thưởng
+  // --- 5. Xử lý thay đổi điểm học tập/thưởng
   const handleScoreChange = (classId: string, field: string, value: number) => {
+    // Đảm bảo giá trị là số và không âm (hoặc theo logic nghiệp vụ của bạn)
+    const numericValue = Math.max(0, Number(value)); 
+
     const updated = weeklyData.map(row =>
-      row.classId === classId ? { ...row, [field]: value } : row
+      row.classId === classId ? { ...row, [field]: numericValue } : row
     );
-    setWeeklyData(recalculate(updated));
+    // Tính toán lại ngay lập tức khi điểm thay đổi
+    setWeeklyData(recalculate(updated)); 
     setIsDirty(true);
   };
 
-  // Lưu cập nhật
+  // --- 6. Lưu cập nhật
   const handleUpdate = async () => {
+    setIsLoading(true);
     try {
       await api.post('/weekly-scores/update', {
         week: selectedWeek,
+        // Chỉ gửi những trường cần thiết để cập nhật (academicScore và bonusScore)
         data: weeklyData.map(({ classId, academicScore, bonusScore }) => ({
           classId,
           academicScore,
@@ -106,73 +121,82 @@ const WeeklyScoresPage: React.FC = () => {
         }))
       });
       setIsDirty(false);
+      alert('Cập nhật thành công!');
     } catch (err) {
       console.error('Lỗi khi cập nhật:', err);
+      alert('Cập nhật thất bại. Vui lòng kiểm tra console.');
+    } finally {
+        setIsLoading(false);
     }
   };
 
-  // Xuất Excel
+  // --- 7. Xuất Excel (Giữ nguyên)
   const handleExport = async () => {
+    // ... (logic export giữ nguyên)
     try {
-      const res = await api.get(`/weekly-scores/export?week=${selectedWeek}`, {
-        responseType: 'blob'
-      });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `weekly_scores_${selectedWeek}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+        const res = await api.get(`/weekly-scores/export?week=${selectedWeek}`, {
+            responseType: 'blob'
+        });
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `weekly_scores_${selectedWeek}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     } catch (err) {
-      console.error('Lỗi khi xuất Excel:', err);
+        console.error('Lỗi khi xuất Excel:', err);
     }
   };
 
-  // Render bảng theo từng khối
+  // --- 8. Render bảng theo từng khối
   const renderTable = (grade: number) => {
-    const rows = weeklyData.filter(row => row.grade === grade);
+    // Lớp đã được lọc từ API /weekly-scores (thường chỉ bao gồm các lớp có GVCN)
+    const rows = weeklyData.filter(row => row.grade === grade); 
     if (rows.length === 0) return null;
 
     return (
       <TableContainer component={Paper} style={{ marginBottom: 32 }}>
-        <Typography variant="h6" align="center" sx={{ padding: 1 }}>
+        <Typography variant="h6" align="center" sx={{ padding: 1, backgroundColor: '#f5f5f5' }}>
           Khối {grade}
         </Typography>
-        <Table>
+        <Table size="small">
           <TableHead>
-            <TableRow>
+            <TableRow style={{ backgroundColor: '#e0e0e0' }}>
               <TableCell>Lớp</TableCell>
-              <TableCell>Điểm chuyên cần</TableCell>
-              <TableCell>Điểm vệ sinh</TableCell>
-              <TableCell>Điểm xếp hàng</TableCell>
-              <TableCell>Điểm vi phạm</TableCell>
-              <TableCell>Học tập</TableCell>
-              <TableCell>Thưởng</TableCell>
-              <TableCell>Tổng điểm</TableCell>
-              <TableCell>Xếp hạng</TableCell>
+              <TableCell align="center">Chuyên cần (x5)</TableCell>
+              <TableCell align="center">Vệ sinh</TableCell>
+              <TableCell align="center">Xếp hàng</TableCell>
+              <TableCell align="center">Vi phạm</TableCell>
+              <TableCell align="center">Học tập **(Cập nhật)**</TableCell>
+              <TableCell align="center">Thưởng **(Cập nhật)**</TableCell>
+              <TableCell align="center">Tổng điểm</TableCell>
+              <TableCell align="center">Xếp hạng</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.map(row => (
               <TableRow
                 key={row.classId}
+                hover
                 style={{
+                  // Màu sắc nổi bật cho Top 3
                   backgroundColor:
-                    row.ranking === 1
-                      ? '#FFD700'
-                      : row.ranking === 2
-                      ? '#C0C0C0'
-                      : row.ranking === 3
-                      ? '#CD7F32'
-                      : 'transparent'
+                    row.ranking === 1 ? '#FFD70030' // Vàng nhạt
+                      : row.ranking === 2 ? '#C0C0C030' // Bạc nhạt
+                        : row.ranking === 3 ? '#CD7F3230' // Đồng nhạt
+                          : 'transparent'
                 }}
               >
-                <TableCell>{row.className}</TableCell>
-                <TableCell>{row.attendanceScore}</TableCell>
-                <TableCell>{row.hygieneScore}</TableCell>
-                <TableCell>{row.lineUpScore}</TableCell>
-                <TableCell>{row.violationScore}</TableCell>
+                <TableCell component="th" scope="row">
+                    **{row.className}**
+                </TableCell>
+                <TableCell align="center">{row.attendanceScore}</TableCell>
+                <TableCell align="center">{row.hygieneScore}</TableCell>
+                <TableCell align="center">{row.lineUpScore}</TableCell>
+                <TableCell align="center">{row.violationScore}</TableCell>
+                
+                {/* Trường nhập điểm Học tập */}
                 <TableCell>
                   <TextField
                     type="number"
@@ -185,8 +209,12 @@ const WeeklyScoresPage: React.FC = () => {
                       )
                     }
                     size="small"
+                    variant="outlined"
+                    sx={{ width: 80 }}
                   />
                 </TableCell>
+
+                {/* Trường nhập điểm Thưởng */}
                 <TableCell>
                   <TextField
                     type="number"
@@ -199,10 +227,17 @@ const WeeklyScoresPage: React.FC = () => {
                       )
                     }
                     size="small"
+                    variant="outlined"
+                    sx={{ width: 80 }}
                   />
                 </TableCell>
-                <TableCell>{row.totalScore}</TableCell>
-                <TableCell>{row.ranking}</TableCell>
+                
+                <TableCell align="center">
+                    **{row.totalScore.toFixed(2)}** {/* Hiển thị 2 chữ số thập phân */}
+                </TableCell>
+                <TableCell align="center">
+                    **#{row.ranking}**
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -213,23 +248,28 @@ const WeeklyScoresPage: React.FC = () => {
 
   return (
     <div>
-      <Grid container spacing={2} alignItems="center" sx={{ marginBottom: 2 }}>
+      <Typography variant="h4" gutterBottom>
+          Quản lý Điểm thi đua Tuần
+      </Typography>
+      <Grid container spacing={2} alignItems="center" sx={{ marginBottom: 4 }}>
         <Grid item>
+            {/* Thay thế select native bằng TextField select của Material-UI để đẹp hơn */}
           <TextField
             select
-            SelectProps={{ native: true }}
             label="Chọn tuần"
             value={selectedWeek}
             onChange={e => {
               setSelectedWeek(e.target.value);
               fetchWeeklyScores(e.target.value);
             }}
+            size="small"
+            sx={{ minWidth: 150 }}
           >
-            <option value="">--Chọn tuần--</option>
+            <MenuItem value="">--Chọn tuần--</MenuItem>
             {weeks.map(week => (
-              <option key={week} value={week}>
-                {week}
-              </option>
+              <MenuItem key={week} value={week}>
+                Tuần {week}
+              </MenuItem>
             ))}
           </TextField>
         </Grid>
@@ -238,9 +278,10 @@ const WeeklyScoresPage: React.FC = () => {
             variant="contained"
             color="primary"
             onClick={handleUpdate}
-            disabled={!isDirty || !selectedWeek}
+            // Vô hiệu hóa khi chưa chọn tuần, không có thay đổi hoặc đang loading
+            disabled={!isDirty || !selectedWeek || isLoading} 
           >
-            Cập nhật
+            {isLoading ? 'Đang lưu...' : '💾 Cập nhật'}
           </Button>
         </Grid>
         <Grid item>
@@ -248,17 +289,30 @@ const WeeklyScoresPage: React.FC = () => {
             variant="outlined"
             color="secondary"
             onClick={handleExport}
-            disabled={!selectedWeek}
+            disabled={!selectedWeek || isLoading}
           >
-            Xuất Excel
+            ⬇️ Xuất Excel
           </Button>
         </Grid>
       </Grid>
 
-      {renderTable(6)}
-      {renderTable(7)}
-      {renderTable(8)}
-      {renderTable(9)}
+      {/* Thông báo loading hoặc chưa chọn tuần */}
+      {isLoading && <Typography variant="body1" color="textSecondary">Đang tải dữ liệu...</Typography>}
+      {!selectedWeek && !isLoading && (
+        <Typography variant="body1" color="textSecondary">
+            Vui lòng chọn một tuần để xem dữ liệu.
+        </Typography>
+      )}
+
+      {/* Render bảng điểm của các khối */}
+      {selectedWeek && !isLoading && (
+        <>
+            {renderTable(6)}
+            {renderTable(7)}
+            {renderTable(8)}
+            {renderTable(9)}
+        </>
+      )}
     </div>
   );
 };
