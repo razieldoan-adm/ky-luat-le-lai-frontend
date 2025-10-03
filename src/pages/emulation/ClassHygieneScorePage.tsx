@@ -51,13 +51,11 @@ export default function ClassHygieneScorePage() {
   const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<AcademicWeek | null>(null);
   const [classes, setClasses] = useState<ClassInfo[]>([]);
-  const [data, setData] = useState<Record<string, ClassType[]>>({}); // keyed by grade
+  const [data, setData] = useState<Record<string, ClassType[]>>({});
   const [hygienePoint, setHygienePoint] = useState<number>(1);
   const [snackbar, setSnackbar] = useState({ open: false, msg: "", sev: "success" as "success" | "error" });
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // helper: tạo label ngày từ startDate (5 ngày liên tiếp)
   const getWeekDays = (startDate: string) => {
     const start = new Date(startDate);
     const labels: string[] = [];
@@ -69,12 +67,9 @@ export default function ClassHygieneScorePage() {
     return labels;
   };
 
-  // load settings, classes, weeks (run once)
   useEffect(() => {
     const init = async () => {
       try {
-        setLoading(true);
-        // fetch settings, classes, weeks in parallel
         const [settingsRes, classesRes, weeksRes] = await Promise.all([
           api.get("/api/settings").catch(() => ({ data: null })),
           api.get("/api/classes").catch(() => ({ data: [] })),
@@ -84,7 +79,6 @@ export default function ClassHygieneScorePage() {
         const point = settingsRes?.data?.disciplinePointDeduction?.hygiene;
         if (typeof point === "number") setHygienePoint(point);
 
-        // classes: expect array of { className, grade } or { name, grade } -> normalize
         const rawClasses = classesRes?.data || [];
         const normalized: ClassInfo[] = rawClasses.map((c: any) => ({
           className: c.className || c.name,
@@ -95,32 +89,23 @@ export default function ClassHygieneScorePage() {
         const wk = weeksRes?.data || [];
         setWeekList(wk);
 
-        // pick first week if exists
         if (wk.length > 0) {
           setSelectedWeek(wk[0]);
-          // init data only after classes loaded
           initializeData(wk[0].weekNumber, normalized);
         } else {
-          // still init with classes if no weeks
           initializeData(undefined, normalized);
         }
       } catch (err) {
         console.error("Init error:", err);
-      } finally {
-        setLoading(false);
       }
     };
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // initialize/merge data
   const initializeData = async (weekNumber: number | undefined, classListParam?: ClassInfo[]) => {
-    setLoading(true);
     try {
       const classList = classListParam ?? classes;
-
-      // build initial map grouped by grade
       const initial: Record<string, ClassType[]> = {};
       GRADES.forEach((grade) => {
         const gradeClasses = classList.filter((c) => String(c.grade) === String(grade));
@@ -131,7 +116,6 @@ export default function ClassHygieneScorePage() {
             scores: Array(TOTAL_SLOTS).fill(0),
           }));
         } else {
-          // fallback create A1..A10
           initial[grade] = Array.from({ length: 10 }).map((_, i) => ({
             className: `${grade}A${i + 1}`,
             grade,
@@ -140,14 +124,12 @@ export default function ClassHygieneScorePage() {
         }
       });
 
-      // if weekNumber provided, fetch saved scores and merge
       if (typeof weekNumber === "number") {
         const res = await api.get("/api/class-hygiene-scores", { params: { weekNumber } });
         const db: any[] = res.data || [];
         db.forEach((rec) => {
           const target = initial[rec.grade]?.find((c) => c.className === rec.className);
           if (target) {
-            // expect rec.scores as flat array length TOTAL_SLOTS
             target.scores = Array.isArray(rec.scores) && rec.scores.length === TOTAL_SLOTS
               ? rec.scores
               : Array(TOTAL_SLOTS).fill(0);
@@ -158,19 +140,15 @@ export default function ClassHygieneScorePage() {
       setData(initial);
     } catch (err) {
       console.error("Lỗi initializeData:", err);
-    } finally {
-      setLoading(false);
     }
   };
 
-  // when selecting a week from dropdown
   const handleWeekChange = (weekId: string) => {
     const w = weekList.find((x) => x._id === weekId) || null;
     setSelectedWeek(w);
     if (w) initializeData(w.weekNumber);
   };
 
-  // toggle a checkbox: index is flat index in scores
   const handleToggle = (grade: string, classIdx: number, index: number) => {
     setData((prev) => {
       const copy = { ...prev };
@@ -187,7 +165,6 @@ export default function ClassHygieneScorePage() {
 
   const calculateTotal = (scores: number[]) => scores.filter((s) => s === 1).length * hygienePoint;
 
-  // save: send weekNumber and array of {className, grade, scores, total}
   const handleSave = async () => {
     if (!selectedWeek) {
       setSnackbar({ open: true, msg: "Vui lòng chọn tuần trước khi lưu.", sev: "error" });
@@ -216,8 +193,9 @@ export default function ClassHygieneScorePage() {
     }
   };
 
-  // small UI helpers
-  const daysLabels = selectedWeek?.startDate ? getWeekDays(selectedWeek.startDate) : Array.from({ length: DAYS_COUNT }).map((_, i) => `Ngày ${i + 2}`);
+  const daysLabels = selectedWeek?.startDate
+    ? getWeekDays(selectedWeek.startDate)
+    : Array.from({ length: DAYS_COUNT }).map((_, i) => `Ngày ${i + 2}`);
 
   return (
     <Box sx={{ p: 3 }}>
