@@ -17,6 +17,13 @@ Paper,
 } from "@mui/material";
 import api from "../../api/api";
 
+
+
+
+
+
+
+
 interface AcademicWeek {
 _id: string;
 weekNumber: number;
@@ -32,22 +39,24 @@ total: number;
 }
 
 const ClassLineUpSummaryPage = () => {
+
 const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
 const [selectedWeek, setSelectedWeek] = useState<number>(1);
+
 const [loading, setLoading] = useState(false);
 const [classList, setClassList] = useState<string[]>([]);
 const [summaries, setSummaries] = useState<ClassLineUpSummary[]>([]);
 
 // Lấy tuần từ API
+
+
+
+
+
 const fetchWeeks = async () => {
 try {
 const res = await api.get("/api/academic-weeks/study-weeks");
-setWeekList(res.data);
-if (res.data.length > 0) {
-setSelectedWeek(res.data[0].weekNumber);
-}
-} catch (err) {
-console.error("Lỗi khi lấy tuần:", err);
+@@ -51,181 +58,94 @@
 }
 };
 
@@ -77,7 +86,7 @@ let initial: ClassLineUpSummary[] = classList.map((cls) => ({
 try {
   // Bước 2: lấy dữ liệu từ DB
   const res = await api.get("/api/class-lineup-summaries", {
-    params: { week: weekNumber },
+    params: { weekNumber },
   });
 
   const dbData: ClassLineUpSummary[] = res.data;
@@ -96,12 +105,9 @@ try {
 } catch (err) {
   console.error("Error loading summaries:", err);
 }
-
 setSummaries(initial);
 setLoading(false);
-
 };
-
 // Khởi tạo
 useEffect(() => {
 const init = async () => {
@@ -149,7 +155,7 @@ weekNumber: selectedWeek,
 summaries: summaries.map((s) => ({
 className: s.className,
 weekNumber: selectedWeek,
-scores: s.scores,
+scores: s.scores, 
 total: s.total,
 })),
 };
@@ -175,6 +181,7 @@ if (today < start) return `Tuần ${week.weekNumber} (chưa diễn ra)`;
 if (today > end) return `Tuần ${week.weekNumber} (đã qua)`;
 return `Tuần ${week.weekNumber} (hiện tại)`;
 };
+
 
 // Render bảng
 const renderTableForGrade = (grade: number) => {
@@ -229,24 +236,7 @@ Nhập điểm xếp hạng theo tuần </Typography>
   <Box display="flex" alignItems="center" mb={2}>
     <Typography mr={2}>Chọn tuần:</Typography>
     <Select
-      value={selectedWeek}
-      onChange={(e) => {
-        const value = Number(e.target.value);
-        if (value === selectedWeek) {
-          initializeData(value); // reload nếu chọn lại cùng tuần
-        }
-        setSelectedWeek(value);
-      }}
-      size="small"
-    >
-      {weekList.map((w) => (
-        <MenuItem key={w._id} value={w.weekNumber}>
-          {getWeekLabel(w)}
-        </MenuItem>
-      ))}
-    </Select>
-  </Box>
-
+@@ -250,31 +170,67 @@
   {loading ? (
     <CircularProgress />
   ) : (
@@ -276,5 +266,4 @@ Nhập điểm xếp hạng theo tuần </Typography>
 </Box>
 );
 };
-
 export default ClassLineUpSummaryPage;
