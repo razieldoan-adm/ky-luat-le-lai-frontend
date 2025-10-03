@@ -77,7 +77,7 @@ let initial: ClassLineUpSummary[] = classList.map((cls) => ({
 try {
   // Bước 2: lấy dữ liệu từ DB
   const res = await api.get("/api/class-lineup-summaries", {
-    params: { week: weekNumber },
+    params: { weekNumber },
   });
 
   const dbData: ClassLineUpSummary[] = res.data;
