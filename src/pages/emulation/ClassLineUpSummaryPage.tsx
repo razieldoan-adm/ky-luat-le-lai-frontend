@@ -11,11 +11,17 @@ TableCell,
 TableContainer,
 TableHead,
 TableRow,
-TextField,
 Typography,
 Paper,
 } from "@mui/material";
 import api from "../../api/api";
+
+interface ClassScore {
+className: string;
+grade: string;
+scores: number[]; // mảng 15 phần tử (5 ngày x 3 buổi)
+totalScore: number;
+}
 
 interface AcademicWeek {
 _id: string;
@@ -24,21 +30,22 @@ startDate: string;
 endDate: string;
 }
 
-interface ClassLineUpSummary {
-className: string;
-weekNumber: number;
-scores: number[];
-total: number;
-}
+const sessionsPerDay = 3;
+const daysPerWeek = 5;
 
-const ClassLineUpSummaryPage = () => {
+const ClassHygieneScorePage = () => {
+const [classes, setClasses] = useState<ClassScore[]>([]);
 const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
-const [selectedWeek, setSelectedWeek] = useState<number>(1);
-const [loading, setLoading] = useState(false);
-const [classList, setClassList] = useState<string[]>([]);
-const [summaries, setSummaries] = useState<ClassLineUpSummary[]>([]);
+const [selectedWeek, setSelectedWeek] = useState<number | "">("");
 
-// Lấy tuần từ API
+const [loading, setLoading] = useState(false);
+
+const getWeekLabel = (w: AcademicWeek) => {
+const start = new Date(w.startDate).toLocaleDateString("vi-VN");
+const end = new Date(w.endDate).toLocaleDateString("vi-VN");
+return `Tuần ${w.weekNumber} (${start} - ${end})`;
+};
+
 const fetchWeeks = async () => {
 try {
 const res = await api.get("/api/academic-weeks/study-weeks");
@@ -51,181 +58,94 @@ console.error("Lỗi khi lấy tuần:", err);
 }
 };
 
-// Lấy danh sách lớp
-const fetchClasses = async () => {
-try {
-const res = await api.get("/api/classes");
-const validClasses = res.data.map((cls: any) => cls.className);
-setClassList(validClasses);
-} catch (err) {
-console.error("Lỗi khi lấy danh sách lớp:", err);
-}
-};
-
-// Khởi tạo dữ liệu (đồng bộ với initializeData bạn gửi)
 const initializeData = async (weekNumber: number) => {
 setLoading(true);
-
-// Bước 1: tạo dữ liệu mặc định cho tất cả lớp
-let initial: ClassLineUpSummary[] = classList.map((cls) => ({
-  className: cls,
-  weekNumber,
-  scores: Array(10).fill(0),
-  total: 0,
-}));
-
 try {
-  // Bước 2: lấy dữ liệu từ DB
-  const res = await api.get("/api/class-lineup-summaries", {
-    params: { weekNumber },
-  });
+const res = await api.get("/api/class-hygiene-scores", {
+params: { weekNumber },
+});
+const data = res.data;
 
-  const dbData: ClassLineUpSummary[] = res.data;
 
-  // Bước 3: merge vào initial
-  initial = initial.map((cls) => {
-    const exist = dbData.find((d) => d.className === cls.className);
-    return exist
-      ? {
-          ...cls,
-          scores: exist.scores || Array(10).fill(0),
-          total: exist.total || 0,
-        }
-      : cls;
-  });
+  if (data.length > 0) {
+    setClasses(
+      data.map((c: any) => ({
+        className: c.className,
+        grade: c.grade,
+        scores: c.scores || Array(daysPerWeek * sessionsPerDay).fill(0),
+        totalScore: c.totalScore || 0,
+      }))
+    );
+  } else {
+    const classRes = await api.get("/api/classes");
+    setClasses(
+      classRes.data.map((cls: any) => ({
+        className: cls.name,
+        grade: cls.grade,
+        scores: Array(daysPerWeek * sessionsPerDay).fill(0),
+        totalScore: 0,
+      }))
+    );
+  }
 } catch (err) {
-  console.error("Error loading summaries:", err);
+  console.error("Lỗi khi load dữ liệu:", err);
+} finally {
+  setLoading(false);
 }
 
-setSummaries(initial);
-setLoading(false);
 
 };
 
-// Khởi tạo
-useEffect(() => {
-const init = async () => {
-await fetchWeeks();
-await fetchClasses();
+const toggleScore = (classIdx: number, dayIdx: number, sessionIdx: number) => {
+setClasses((prev) => {
+const updated = [...prev];
+const scores = [...updated[classIdx].scores];
+const index = dayIdx * sessionsPerDay + sessionIdx;
+scores[index] = scores[index] === 1 ? 0 : 1;
+const totalScore = scores.reduce((a, b) => a + b, 0);
+updated[classIdx] = {
+...updated[classIdx],
+scores,
+totalScore,
 };
-init();
-}, []);
-
-// Load dữ liệu khi có classList hoặc tuần thay đổi
-useEffect(() => {
-if (classList.length > 0 && selectedWeek) {
-initializeData(selectedWeek);
-}
-}, [selectedWeek, classList]);
-
-// Thay đổi điểm
-const handleScoreChange = (className: string, index: number, value: number) => {
-if (value < 0 || value > 4) return;
-setSummaries((prev) =>
-prev.map((s) =>
-s.className === className
-? { ...s, scores: s.scores.map((sc, i) => (i === index ? value : sc)) }
-: s
-)
-);
+return updated;
+});
 };
 
-// Tính tổng
-const calculateTotal = () => {
-setSummaries((prev) =>
-prev.map((s) => ({
-...s,
-total: s.scores.filter((sc) => sc > 0).length * 10,
-}))
-);
-};
-
-// Lưu dữ liệu
-const saveData = async () => {
+const saveScores = async () => {
+if (!selectedWeek) return;
 try {
-setLoading(true);
-const payload = {
+await api.post("/api/class-hygiene-scores", {
 weekNumber: selectedWeek,
-summaries: summaries.map((s) => ({
-className: s.className,
-weekNumber: selectedWeek,
-scores: s.scores, 
-total: s.total,
+scores: classes.map((c) => ({
+className: c.className,
+grade: c.grade,
+scores: c.scores,
+totalScore: c.totalScore,
 })),
-};
-await api.post("/api/class-lineup-summaries", payload);
-alert("Lưu thành công!");
-// load lại
-initializeData(selectedWeek);
+});
+alert("Lưu điểm vệ sinh thành công!");
 } catch (err) {
 console.error("Lỗi khi lưu:", err);
-alert("Lỗi khi lưu dữ liệu");
-} finally {
-setLoading(false);
+alert("Lỗi khi lưu điểm.");
 }
 };
 
-// Label tuần
-const getWeekLabel = (week: AcademicWeek) => {
-const today = new Date();
-const start = new Date(week.startDate);
-const end = new Date(week.endDate);
+useEffect(() => {
+fetchWeeks();
+}, []);
 
-if (today < start) return `Tuần ${week.weekNumber} (chưa diễn ra)`;
-if (today > end) return `Tuần ${week.weekNumber} (đã qua)`;
-return `Tuần ${week.weekNumber} (hiện tại)`;
-};
+useEffect(() => {
+if (selectedWeek) {
+initializeData(Number(selectedWeek));
+}
+}, [selectedWeek]);
 
-// Render bảng
-const renderTableForGrade = (grade: number) => {
-const classesInGrade = summaries.filter((s) => s.className.startsWith(String(grade)));
-if (classesInGrade.length === 0) return null;
-return (
-  <Box key={grade} mb={4}>
-    <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
-      Khối {grade}
-    </Typography>
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Lớp</TableCell>
-            {[...Array(10)].map((_, i) => (
-              <TableCell key={i}>Lần {i + 1}</TableCell>
-            ))}
-            <TableCell>Tổng</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {classesInGrade.map((row) => (
-            <TableRow key={row.className}>
-              <TableCell>{row.className}</TableCell>
-              {row.scores.map((sc, i) => (
-                <TableCell key={i}>
-                  <TextField
-                    type="number"
-                    size="small"
-                    value={sc}
-                    inputProps={{ min: 0, max: 4 }}
-                    onChange={(e) =>
-                      handleScoreChange(row.className, i, Number(e.target.value))
-                    }
-                  />
-                </TableCell>
-              ))}
-              <TableCell>{row.total}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  </Box>
-);
+return ( <Box p={2}> <Typography variant="h5" gutterBottom>
+Quản lý điểm vệ sinh lớp học </Typography>
 
-};
 
-return ( <Box p={3}> <Typography variant="h5" gutterBottom>
-Nhập điểm xếp hạng theo tuần </Typography>
+  {/* Chọn tuần */}
   <Box display="flex" alignItems="center" mb={2}>
     <Typography mr={2}>Chọn tuần:</Typography>
     <Select
@@ -250,31 +170,67 @@ Nhập điểm xếp hạng theo tuần </Typography>
   {loading ? (
     <CircularProgress />
   ) : (
-    <>
-      <Typography variant="body2" sx={{ mb: 2 }}>
-        1. Lớp xếp hàng chậm <br />
-        2. Nhiều HS ngồi trong lớp giờ chơi, không ra xếp hàng <br />
-        3. Mất trật tự trong khi xếp hàng giờ SHDC <br />
-        4. Ồn ào, đùa giỡn khi di chuyển lên lớp
-      </Typography>
-
-      {renderTableForGrade(6)}
-      {renderTableForGrade(7)}
-      {renderTableForGrade(8)}
-      {renderTableForGrade(9)}
-
-      <Box mt={2} display="flex" gap={2}>
-        <Button variant="contained" color="primary" onClick={calculateTotal}>
-          TÍNH TỔNG
-        </Button>
-        <Button variant="contained" color="success" onClick={saveData}>
-          LƯU ĐIỂM
-        </Button>
-      </Box>
-    </>
+    <TableContainer component={Paper}>
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Lớp</TableCell>
+            {[...Array(daysPerWeek)].map((_, d) => (
+              <TableCell key={d} align="center" colSpan={sessionsPerDay}>
+                Thứ {d + 2}
+              </TableCell>
+            ))}
+            <TableCell align="center">Tổng</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell></TableCell>
+            {[...Array(daysPerWeek * sessionsPerDay)].map((_, idx) => (
+              <TableCell key={idx} align="center">
+                Ca {idx % sessionsPerDay + 1}
+              </TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {classes.map((c, classIdx) => (
+            <TableRow key={c.className}>
+              <TableCell>{c.className}</TableCell>
+              {c.scores.map((val, idx) => (
+                <TableCell
+                  key={idx}
+                  align="center"
+                  onClick={() =>
+                    toggleScore(
+                      classIdx,
+                      Math.floor(idx / sessionsPerDay),
+                      idx % sessionsPerDay
+                    )
+                  }
+                  style={{
+                    cursor: "pointer",
+                    backgroundColor: val ? "#4caf50" : "#f5f5f5",
+                  }}
+                >
+                  {val ? "✓" : ""}
+                </TableCell>
+              ))}
+              <TableCell align="center">{c.totalScore}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   )}
+
+  <Box mt={2}>
+    <Button variant="contained" onClick={saveScores}>
+      Lưu
+    </Button>
+  </Box>
 </Box>
+
+
 );
 };
 
-export default ClassLineUpSummaryPage;
+export default ClassHygieneScorePage;
