@@ -149,7 +149,7 @@ weekNumber: selectedWeek,
 summaries: summaries.map((s) => ({
 className: s.className,
 weekNumber: selectedWeek,
-data: s.scores,
+scores: s.scores, 
 total: s.total,
 })),
 };
