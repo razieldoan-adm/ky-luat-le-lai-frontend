@@ -26,7 +26,7 @@ endDate: string;
 
 interface ClassLineUpSummary {
 className: string;
-week: number;
+weekNumber: number;
 scores: number[]; // 10 ô nhập số (1-4)
 total: number;
 }
@@ -68,13 +68,12 @@ try {
 setLoading(true);
 const res = await api.get(`/api/class-lineup-summaries?week=${weekNumber}`);
 const data: ClassLineUpSummary[] = res.data;
-
   const filled = classList.map((cls) => {
     const exist = data.find((d) => d.className === cls);
     return (
       exist || {
         className: cls,
-        week: weekNumber,
+        weekNumber,
         scores: Array(10).fill(0),
         total: 0,
       }
@@ -86,7 +85,6 @@ const data: ClassLineUpSummary[] = res.data;
 } finally {
   setLoading(false);
 }
-
 };
 
 // Khởi tạo
@@ -129,7 +127,6 @@ total: s.scores.filter((sc) => sc > 0).length * 10,
 }))
 );
 };
-
 // Lưu dữ liệu
 const saveData = async () => {
 try {
@@ -164,7 +161,6 @@ const end = new Date(week.endDate);
 if (today < start) return `Tuần ${week.weekNumber} (chưa diễn ra)`;
 if (today > end) return `Tuần ${week.weekNumber} (đã qua)`;
 return `Tuần ${week.weekNumber} (hiện tại)`;
-
 };
 
 // Render bảng theo khối
@@ -177,7 +173,6 @@ const classesInGrade = summaries.filter(
 (s.className.startsWith("9") && grade === 9)
 );
 if (classesInGrade.length === 0) return null;
-
 return (
   <Box key={grade} mb={4}>
     <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
@@ -219,18 +214,22 @@ return (
     </TableContainer>
   </Box>
 );
-
 };
 
-return ( <Box p={3}> <Typography variant="h5" gutterBottom>
-Nhập điểm xếp hạng theo tuần </Typography>
+return ( <Box p={3}> <Typography variant="h5" gutterBottom> Nhập điểm xếp hàng theo tuần </Typography>
 
-```
   <Box display="flex" alignItems="center" mb={2}>
     <Typography mr={2}>Chọn tuần:</Typography>
     <Select
       value={selectedWeek}
-      onChange={(e) => setSelectedWeek(Number(e.target.value))}
+      onChange={(e) => {
+        const value = Number(e.target.value);
+        if (value === selectedWeek) {
+          // chọn lại cùng tuần vẫn reload
+          fetchSummaries(value);
+        }
+        setSelectedWeek(value);
+      }}
       size="small"
     >
       {weekList.map((w) => (
@@ -271,5 +270,4 @@ Nhập điểm xếp hạng theo tuần </Typography>
 
 );
 };
-
 export default ClassLineUpSummaryPage;
