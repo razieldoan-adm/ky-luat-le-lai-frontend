@@ -180,8 +180,6 @@ return `Tuần ${week.weekNumber} (hiện tại)`;
 const renderTableForGrade = (grade: number) => {
 const classesInGrade = summaries.filter((s) => s.className.startsWith(String(grade)));
 if (classesInGrade.length === 0) return null;
-
-```
 return (
   <Box key={grade} mb={4}>
     <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
