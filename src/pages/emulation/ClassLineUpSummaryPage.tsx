@@ -27,7 +27,7 @@ endDate: string;
 interface ClassLineUpSummary {
 className: string;
 weekNumber: number;
-scores: number[]; // 10 ô nhập số (1-4)
+scores: number[];
 total: number;
 }
 
@@ -62,29 +62,44 @@ console.error("Lỗi khi lấy danh sách lớp:", err);
 }
 };
 
-// Lấy dữ liệu điểm theo tuần
-const fetchSummaries = async (weekNumber: number) => {
-try {
+// Khởi tạo dữ liệu (đồng bộ với initializeData bạn gửi)
+const initializeData = async (weekNumber: number) => {
 setLoading(true);
-const res = await api.get(`/api/class-lineup-summaries?week=${weekNumber}`);
-const data: ClassLineUpSummary[] = res.data;
-  const filled = classList.map((cls) => {
-    const exist = data.find((d) => d.className === cls);
-    return (
-      exist || {
-        className: cls,
-        weekNumber,
-        scores: Array(10).fill(0),
-        total: 0,
-      }
-    );
+
+// Bước 1: tạo dữ liệu mặc định cho tất cả lớp
+let initial: ClassLineUpSummary[] = classList.map((cls) => ({
+  className: cls,
+  weekNumber,
+  scores: Array(10).fill(0),
+  total: 0,
+}));
+
+try {
+  // Bước 2: lấy dữ liệu từ DB
+  const res = await api.get("/api/class-lineup-summaries", {
+    params: { week: weekNumber },
   });
-  setSummaries(filled);
+
+  const dbData: ClassLineUpSummary[] = res.data;
+
+  // Bước 3: merge vào initial
+  initial = initial.map((cls) => {
+    const exist = dbData.find((d) => d.className === cls.className);
+    return exist
+      ? {
+          ...cls,
+          scores: exist.scores || Array(10).fill(0),
+          total: exist.total || 0,
+        }
+      : cls;
+  });
 } catch (err) {
-  console.error("Lỗi khi lấy dữ liệu:", err);
-} finally {
-  setLoading(false);
+  console.error("Error loading summaries:", err);
 }
+
+setSummaries(initial);
+setLoading(false);
+
 };
 
 // Khởi tạo
@@ -96,23 +111,20 @@ await fetchClasses();
 init();
 }, []);
 
-// Khi đổi tuần hoặc có classList thì load dữ liệu
+// Load dữ liệu khi có classList hoặc tuần thay đổi
 useEffect(() => {
 if (classList.length > 0 && selectedWeek) {
-fetchSummaries(selectedWeek);
+initializeData(selectedWeek);
 }
 }, [selectedWeek, classList]);
 
-// Cập nhật lỗi (số từ 1 → 4)
+// Thay đổi điểm
 const handleScoreChange = (className: string, index: number, value: number) => {
-if (value < 0 || value > 4) return; // chỉ cho nhập 0-4
+if (value < 0 || value > 4) return;
 setSummaries((prev) =>
 prev.map((s) =>
 s.className === className
-? {
-...s,
-scores: s.scores.map((sc, i) => (i === index ? value : sc)),
-}
+? { ...s, scores: s.scores.map((sc, i) => (i === index ? value : sc)) }
 : s
 )
 );
@@ -127,6 +139,7 @@ total: s.scores.filter((sc) => sc > 0).length * 10,
 }))
 );
 };
+
 // Lưu dữ liệu
 const saveData = async () => {
 try {
@@ -142,8 +155,8 @@ total: s.total,
 };
 await api.post("/api/class-lineup-summaries", payload);
 alert("Lưu thành công!");
-// 👉 load lại ngay dữ liệu vừa lưu
-fetchSummaries(selectedWeek);
+// load lại
+initializeData(selectedWeek);
 } catch (err) {
 console.error("Lỗi khi lưu:", err);
 alert("Lỗi khi lưu dữ liệu");
@@ -152,7 +165,7 @@ setLoading(false);
 }
 };
 
-// Hiển thị nhãn tuần
+// Label tuần
 const getWeekLabel = (week: AcademicWeek) => {
 const today = new Date();
 const start = new Date(week.startDate);
@@ -163,16 +176,12 @@ if (today > end) return `Tuần ${week.weekNumber} (đã qua)`;
 return `Tuần ${week.weekNumber} (hiện tại)`;
 };
 
-// Render bảng theo khối
+// Render bảng
 const renderTableForGrade = (grade: number) => {
-const classesInGrade = summaries.filter(
-(s) =>
-(s.className.startsWith("6") && grade === 6) ||
-(s.className.startsWith("7") && grade === 7) ||
-(s.className.startsWith("8") && grade === 8) ||
-(s.className.startsWith("9") && grade === 9)
-);
+const classesInGrade = summaries.filter((s) => s.className.startsWith(String(grade)));
 if (classesInGrade.length === 0) return null;
+
+```
 return (
   <Box key={grade} mb={4}>
     <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
@@ -214,10 +223,11 @@ return (
     </TableContainer>
   </Box>
 );
+
 };
 
-return ( <Box p={3}> <Typography variant="h5" gutterBottom> Nhập điểm xếp hàng theo tuần </Typography>
-
+return ( <Box p={3}> <Typography variant="h5" gutterBottom>
+Nhập điểm xếp hạng theo tuần </Typography>
   <Box display="flex" alignItems="center" mb={2}>
     <Typography mr={2}>Chọn tuần:</Typography>
     <Select
@@ -225,8 +235,7 @@ return ( <Box p={3}> <Typography variant="h5" gutterBottom> Nhập điểm xếp
       onChange={(e) => {
         const value = Number(e.target.value);
         if (value === selectedWeek) {
-          // chọn lại cùng tuần vẫn reload
-          fetchSummaries(value);
+          initializeData(value); // reload nếu chọn lại cùng tuần
         }
         setSelectedWeek(value);
       }}
@@ -267,7 +276,7 @@ return ( <Box p={3}> <Typography variant="h5" gutterBottom> Nhập điểm xếp
     </>
   )}
 </Box>
-
 );
 };
+
 export default ClassLineUpSummaryPage;
