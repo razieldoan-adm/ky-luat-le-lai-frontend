@@ -1,4 +1,4 @@
-```tsx
+
 import { useState, useEffect } from "react";
 import {
   Box,
@@ -296,4 +296,3 @@ export default function ClassHygieneScorePage() {
     </Box>
   );
 }
-```
