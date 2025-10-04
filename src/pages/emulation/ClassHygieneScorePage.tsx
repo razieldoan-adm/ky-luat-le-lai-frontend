@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   Box,
@@ -12,209 +13,228 @@ import {
   TableRow,
   Typography,
   Paper,
-  Grid,
+  Stack,
+  TextField,
 } from "@mui/material";
 import api from "../../api/api";
 
-interface ClassHygieneScore {
-  _id?: string;
-  classId: string;
-  className?: string;
-  grade?: number;
-  date: string;
-  weekNumber: number;
-  absentDuty: number;
-  noLightFan: number;
-  notClosedDoor: number;
-}
-
-interface WeekOption {
+interface AcademicWeek {
+  _id: string;
   weekNumber: number;
   startDate: string;
   endDate: string;
 }
 
-export default function ClassHygieneScorePage() {
-  const [weeks, setWeeks] = useState<WeekOption[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
-  const [scores, setScores] = useState<Record<string, ClassHygieneScore[]>>({});
-  const [loading, setLoading] = useState(false);
+interface HygieneScore {
+  classId: string;
+  className: string;
+  grade: number;
+  date: string;
+  weekNumber: number;
+  absentDuty: number;
+  noLightFan: number;
+  notClosedDoor: number;
+  total?: number;
+}
 
+export default function ClassHygieneScorePage() {
+  const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [scores, setScores] = useState<Record<number, HygieneScore[]>>({}); // group theo khối
+
+  // Load danh sách tuần
   useEffect(() => {
+    const fetchWeeks = async () => {
+      try {
+        const res = await api.get("/weekly-scores/weeks");
+        setWeeks(res.data);
+      } catch (err) {
+        console.error("❌ Lỗi khi load weeks:", err);
+      }
+    };
     fetchWeeks();
   }, []);
 
+  // Load dữ liệu hygiene khi đổi tuần
   useEffect(() => {
-    if (selectedWeek) {
-      fetchScores(selectedWeek);
-    }
+    if (!selectedWeek) return;
+    const fetchScores = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get(
+          `/class-hygiene-scores/by-week?weekNumber=${selectedWeek}`
+        );
+
+        const grouped: Record<number, HygieneScore[]> = {};
+        res.data.forEach((s: HygieneScore) => {
+          if (!grouped[s.grade]) grouped[s.grade] = [];
+          grouped[s.grade].push(s);
+        });
+
+        setScores(grouped);
+      } catch (err) {
+        console.error("❌ Lỗi khi load hygiene scores:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchScores();
   }, [selectedWeek]);
 
-  const fetchWeeks = async () => {
-    try {
-      const res = await api.get("/class-hygiene-scores/weeks");
-      setWeeks(res.data);
-      if (res.data.length > 0) {
-        setSelectedWeek(res.data[0].weekNumber);
-      }
-    } catch (err) {
-      console.error("Lỗi tải tuần:", err);
-    }
-  };
-
-  const fetchScores = async (weekNumber: number) => {
-    try {
-      setLoading(true);
-      const res = await api.get(`/class-hygiene-scores/week/${weekNumber}`);
-      // res.data = { grade6: [...], grade7: [...], ... }
-      setScores(res.data);
-    } catch (err) {
-      console.error("Lỗi tải điểm:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Xử lý thay đổi input
   const handleChangeScore = (
-    grade: string,
+    grade: number,
     classId: string,
     date: string,
-    field: keyof ClassHygieneScore,
+    field: keyof HygieneScore,
     value: number
   ) => {
     setScores((prev) => {
       const updated = { ...prev };
-      updated[grade] = updated[grade].map((item) =>
-        item.classId === classId && item.date === date
-          ? { ...item, [field]: value }
-          : item
+      updated[grade] = updated[grade].map((s) =>
+        s.classId === classId && s.date === date ? { ...s, [field]: value } : s
       );
       return updated;
     });
   };
 
+  // Lưu hygiene scores
   const handleSave = async () => {
+    if (!selectedWeek) return;
     try {
-      const payload: ClassHygieneScore[] = [];
-      Object.values(scores).forEach((gradeScores) => {
-        payload.push(...gradeScores);
+      const allScores = Object.values(scores).flat();
+      await api.post("/class-hygiene-scores/save", {
+        weekNumber: selectedWeek,
+        scores: allScores,
       });
-      await api.post("/class-hygiene-scores/bulk", payload);
-      alert("Lưu thành công!");
+      alert("✅ Lưu điểm vệ sinh thành công!");
     } catch (err) {
-      console.error("Lỗi lưu:", err);
-      alert("Lỗi khi lưu dữ liệu");
+      console.error("❌ Lỗi khi lưu:", err);
+      alert("❌ Lỗi khi lưu điểm vệ sinh!");
     }
   };
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom>
-        🧹 Nhập điểm vệ sinh lớp theo tuần
+      <Typography variant="h5" gutterBottom>
+        🧹 Nhập điểm vệ sinh lớp theo tuần (2 buổi × 3 loại lỗi)
       </Typography>
 
-      <Box display="flex" alignItems="center" mb={2}>
+      <Stack direction="row" spacing={2} mb={2} alignItems="center">
         <Select
           value={selectedWeek || ""}
+          displayEmpty
           onChange={(e) => setSelectedWeek(Number(e.target.value))}
+          size="small"
+          sx={{ minWidth: 200 }}
         >
+          <MenuItem value="">-- Chọn tuần --</MenuItem>
           {weeks.map((w) => (
-            <MenuItem key={w.weekNumber} value={w.weekNumber}>
+            <MenuItem key={w._id} value={w.weekNumber}>
               Tuần {w.weekNumber} ({w.startDate} - {w.endDate})
             </MenuItem>
           ))}
         </Select>
-
         <Button
           variant="contained"
           color="success"
-          sx={{ ml: 2 }}
           onClick={handleSave}
+          disabled={!selectedWeek}
         >
-          Lưu điểm vệ sinh
+          LƯU ĐIỂM VỆ SINH
         </Button>
-      </Box>
+      </Stack>
+
+      <Typography variant="body2" color="text.secondary" mb={2}>
+        Chú thích: 🚫 Không trực vệ sinh | 💡 Không tắt đèn/quạt đầu giờ hoặc giờ
+        chơi | 🚪 Không đóng cửa lớp
+      </Typography>
 
       {loading ? (
         <CircularProgress />
       ) : (
-        Object.keys(scores).map((grade) => (
+        Object.entries(scores).map(([grade, rows]) => (
           <Paper key={grade} sx={{ p: 2, mb: 3 }}>
-            <Typography variant="h6">Khối {grade.replace("grade", "")}</Typography>
-            <Grid container spacing={2}>
-              {scores[grade].map((row) => (
-                <Grid item xs={12} md={6} key={row.classId + row.date}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Lớp {row.className}</TableCell>
-                        <TableCell>Ngày {new Date(row.date).toLocaleDateString()}</TableCell>
-                        <TableCell>Không trực</TableCell>
-                        <TableCell>Không tắt đèn/quạt</TableCell>
-                        <TableCell>Không đóng cửa</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell />
-                        <TableCell />
-                        <TableCell>
-                          <input
-                            type="number"
-                            value={row.absentDuty}
-                            onChange={(e) =>
-                              handleChangeScore(
-                                grade,
-                                row.classId,
-                                row.date,
-                                "absentDuty",
-                                Number(e.target.value)
-                              )
-                            }
-                            style={{ width: "40px" }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <input
-                            type="number"
-                            value={row.noLightFan}
-                            onChange={(e) =>
-                              handleChangeScore(
-                                grade,
-                                row.classId,
-                                row.date,
-                                "noLightFan",
-                                Number(e.target.value)
-                              )
-                            }
-                            style={{ width: "40px" }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <input
-                            type="number"
-                            value={row.notClosedDoor}
-                            onChange={(e) =>
-                              handleChangeScore(
-                                grade,
-                                row.classId,
-                                row.date,
-                                "notClosedDoor",
-                                Number(e.target.value)
-                              )
-                            }
-                            style={{ width: "40px" }}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </Grid>
-              ))}
-            </Grid>
+            <Typography variant="h6">Khối {grade}</Typography>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Lớp</TableCell>
+                  <TableCell>Ngày</TableCell>
+                  <TableCell>🚫</TableCell>
+                  <TableCell>💡</TableCell>
+                  <TableCell>🚪</TableCell>
+                  <TableCell>Tổng</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rows.map((row, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell>{row.className}</TableCell>
+                    <TableCell>{new Date(row.date).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <TextField
+                        type="number"
+                        size="small"
+                        value={row.absentDuty}
+                        onChange={(e) =>
+                          handleChangeScore(
+                            Number(grade),
+                            row.classId,
+                            row.date,
+                            "absentDuty",
+                            Number(e.target.value)
+                          )
+                        }
+                        sx={{ width: 60 }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        type="number"
+                        size="small"
+                        value={row.noLightFan}
+                        onChange={(e) =>
+                          handleChangeScore(
+                            Number(grade),
+                            row.classId,
+                            row.date,
+                            "noLightFan",
+                            Number(e.target.value)
+                          )
+                        }
+                        sx={{ width: 60 }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        type="number"
+                        size="small"
+                        value={row.notClosedDoor}
+                        onChange={(e) =>
+                          handleChangeScore(
+                            Number(grade),
+                            row.classId,
+                            row.date,
+                            "notClosedDoor",
+                            Number(e.target.value)
+                          )
+                        }
+                        sx={{ width: 60 }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {row.absentDuty + row.noLightFan + row.notClosedDoor}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </Paper>
         ))
       )}
     </Box>
   );
 }
+
