@@ -243,9 +243,12 @@ return (
       select
       label="Chọn tuần"
       value={selectedWeek?._id || ""}
-      onChange={(e) => handleWeekChange(e.target.value)}
+      onChange={(e) => {
+    const value = Number(e.target.value);
+    setSelectedWeek(value);
+    fetchData(value); // gọi API để load lại dữ liệu tuần mới
+  }}
       sx={{ width: 300 }}
-        fetchData(value) 
     >
       <MenuItem value="">-- Chọn tuần --</MenuItem>
       {weekList.map((w) => (
