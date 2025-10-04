@@ -37,8 +37,8 @@ scores: number[];
 }
 
 const GRADES = ["6", "7", "8", "9"];
-const DAYS_COUNT = 5; // chỉ tính T2 -> T6
-const SESSIONS_PER_DAY = 2;
+const DAYS_COUNT = 5; // chỉ T2 -> T6
+const SESSIONS_PER_DAY = 2; // Sáng, Chiều
 const TYPES_PER_SESSION = 3;
 const SLOT_PER_DAY = SESSIONS_PER_DAY * TYPES_PER_SESSION;
 const TOTAL_SLOTS = DAYS_COUNT * SLOT_PER_DAY;
@@ -52,30 +52,17 @@ const [selectedWeek, setSelectedWeek] = useState<AcademicWeek | null>(null);
 const [classes, setClasses] = useState<ClassInfo[]>([]);
 const [data, setData] = useState<Record<string, ClassType[]>>({});
 const [hygienePoint, setHygienePoint] = useState<number>(1);
-const [snackbar, setSnackbar] = useState({
-open: false,
-msg: "",
-sev: "success" as "success" | "error",
-});
+const [snackbar, setSnackbar] = useState({ open: false, msg: "", sev: "success" as "success" | "error" });
 const [saving, setSaving] = useState(false);
 
-// chỉ lấy từ T2 -> T6, bỏ T7 CN
+// Sinh nhãn ngày từ ngày bắt đầu tuần (bỏ T7, CN)
 const getWeekDays = (startDate: string) => {
 const start = new Date(startDate);
 const labels: string[] = [];
-let d = new Date(start);
-while (labels.length < DAYS_COUNT) {
-const day = d.getDay(); // 0=CN, 6=T7
-if (day >= 1 && day <= 5) {
-labels.push(
-d.toLocaleDateString("vi-VN", {
-weekday: "short",
-day: "2-digit",
-month: "2-digit",
-})
-);
-}
-d.setDate(d.getDate() + 1);
+for (let i = 0; i < DAYS_COUNT; i++) {
+const d = new Date(start);
+d.setDate(start.getDate() + i);
+labels.push(d.toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit" }));
 }
 return labels;
 };
@@ -86,10 +73,9 @@ try {
 const [settingsRes, classesRes, weeksRes] = await Promise.all([
 api.get("/api/settings").catch(() => ({ data: null })),
 api.get("/api/classes").catch(() => ({ data: [] })),
-api.get("/api/academic-weeks/study-weeks").catch(() => ({ data: [] })),
+api.get("/weekly-scores/weeks").catch(() => ({ data: [] })),
 ]);
 
-```
     const point = settingsRes?.data?.disciplinePointDeduction?.hygiene;
     if (typeof point === "number") setHygienePoint(point);
 
@@ -104,14 +90,9 @@ api.get("/api/academic-weeks/study-weeks").catch(() => ({ data: [] })),
     setWeekList(wk);
 
     if (wk.length > 0) {
-      const today = new Date();
-      const current =
-        wk.find(
-          (w: AcademicWeek) =>
-            new Date(w.startDate) <= today && today <= new Date(w.endDate)
-        ) || wk[0];
-      setSelectedWeek(current);
-      initializeData(current.weekNumber, normalized);
+      const firstWeek = wk[0];
+      setSelectedWeek(firstWeek);
+      fetchData(firstWeek.weekNumber, normalized);
     } else {
       initializeData(undefined, normalized);
     }
@@ -120,67 +101,54 @@ api.get("/api/academic-weeks/study-weeks").catch(() => ({ data: [] })),
   }
 };
 init();
-```
+// eslint-disable-next-line react-hooks/exhaustive-deps
 
 }, []);
 
-const initializeData = async (
-weekNumber: number | undefined,
-classListParam?: ClassInfo[]
-) => {
-try {
+const initializeData = async (weekNumber: number | undefined, classListParam?: ClassInfo[]) => {
 const classList = classListParam ?? classes;
 const initial: Record<string, ClassType[]> = {};
 GRADES.forEach((grade) => {
-const gradeClasses = classList.filter(
-(c) => String(c.grade) === String(grade)
-);
+const gradeClasses = classList.filter((c) => String(c.grade) === String(grade));
 if (gradeClasses.length > 0) {
 initial[grade] = gradeClasses.map((c) => ({
 className: c.className,
 grade,
 scores: Array(TOTAL_SLOTS).fill(0),
 }));
-} else {
-initial[grade] = Array.from({ length: 10 }).map((_, i) => ({
-className: `${grade}A${i + 1}`,
-grade,
-scores: Array(TOTAL_SLOTS).fill(0),
-}));
 }
 });
+setData(initial);
+};
 
-```
-  if (typeof weekNumber === "number") {
-    const res = await api.get("/api/class-hygiene-scores", {
-      params: { weekNumber },
-    });
-    const db: any[] = res.data || [];
-    db.forEach((rec) => {
-      const target = initial[rec.grade]?.find(
-        (c) => c.className === rec.className
-      );
-      if (target) {
-        target.scores =
-          Array.isArray(rec.scores) && rec.scores.length === TOTAL_SLOTS
-            ? rec.scores
-            : Array(TOTAL_SLOTS).fill(0);
-      }
-    });
-  }
+const fetchData = async (weekNumber: number, classListParam?: ClassInfo[]) => {
+try {
+const classList = classListParam ?? classes;
+await initializeData(weekNumber, classList);
+const res = await api.get("/api/class-hygiene-scores", { params: { weekNumber } });
+const db: any[] = res.data || [];
+const newData = { ...data };
 
-  setData(initial);
+  db.forEach((rec) => {
+    const target = newData[rec.grade]?.find((c) => c.className === rec.className);
+    if (target) {
+      target.scores = Array.isArray(rec.scores) && rec.scores.length === TOTAL_SLOTS
+        ? rec.scores
+        : Array(TOTAL_SLOTS).fill(0);
+    }
+  });
+
+  setData({ ...newData });
 } catch (err) {
-  console.error("Lỗi initializeData:", err);
+  console.error("Lỗi fetchData:", err);
 }
-```
 
 };
 
 const handleWeekChange = (weekId: string) => {
 const w = weekList.find((x) => x._id === weekId) || null;
 setSelectedWeek(w);
-if (w) initializeData(w.weekNumber, classes); // luôn truyền classes hiện tại
+if (w) fetchData(w.weekNumber);
 };
 
 const handleToggle = (grade: string, classIdx: number, index: number) => {
@@ -197,16 +165,11 @@ return copy;
 });
 };
 
-const calculateTotal = (scores: number[]) =>
-scores.filter((s) => s === 1).length * hygienePoint;
+const calculateTotal = (scores: number[]) => scores.filter((s) => s === 1).length * hygienePoint;
 
 const handleSave = async () => {
 if (!selectedWeek) {
-setSnackbar({
-open: true,
-msg: "Vui lòng chọn tuần trước khi lưu.",
-sev: "error",
-});
+setSnackbar({ open: true, msg: "Vui lòng chọn tuần trước khi lưu.", sev: "error" });
 return;
 }
 setSaving(true);
@@ -223,11 +186,7 @@ total: calculateTotal(c.scores),
 ),
 };
 await api.post("/api/class-hygiene-scores", payload);
-setSnackbar({
-open: true,
-msg: "Đã lưu điểm vệ sinh thành công!",
-sev: "success",
-});
+setSnackbar({ open: true, msg: "Đã lưu điểm vệ sinh thành công!", sev: "success" });
 } catch (err) {
 console.error("Lỗi save:", err);
 setSnackbar({ open: true, msg: "Lỗi khi lưu điểm.", sev: "error" });
@@ -244,7 +203,6 @@ return (
 <Box sx={{ p: 3 }}> <Typography variant="h5" gutterBottom>
 🧹 Nhập điểm vệ sinh lớp theo tuần (2 buổi × 3 loại lỗi) </Typography>
 
-```
   <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
     <TextField
       select
@@ -256,27 +214,88 @@ return (
       <MenuItem value="">-- Chọn tuần --</MenuItem>
       {weekList.map((w) => (
         <MenuItem key={w._id} value={w._id}>
-          Tuần {w.weekNumber} (
-          {new Date(w.startDate).toLocaleDateString()} -{" "}
-          {new Date(w.endDate).toLocaleDateString()})
+          Tuần {w.weekNumber} ({new Date(w.startDate).toLocaleDateString()} - {new Date(w.endDate).toLocaleDateString()})
         </MenuItem>
       ))}
     </TextField>
 
-    <Button
-      variant="contained"
-      color="success"
-      onClick={handleSave}
-      disabled={saving}
-    >
+    <Button variant="contained" color="success" onClick={handleSave} disabled={saving}>
       {saving ? "Đang lưu..." : "💾 Lưu điểm vệ sinh"}
     </Button>
   </Stack>
 
-  {/* phần table giữ nguyên như trước */}
-  ...
+  <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap>
+    {GRADES.map((grade) => (
+      <Box key={grade} sx={{ flex: "1 1 420px" }}>
+        <Paper sx={{ p: 2, minWidth: 420 }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Khối {grade}
+          </Typography>
+
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Lớp</TableCell>
+                {daysLabels.map((label, dIdx) => (
+                  <TableCell key={dIdx} align="center">
+                    {label}
+                    <Box component="div" sx={{ fontSize: 11, color: "text.secondary" }}>
+                      (Sáng / Chiều) — 3 lỗi mỗi buổi
+                    </Box>
+                  </TableCell>
+                ))}
+                <TableCell align="center">Tổng</TableCell>
+              </TableRow>
+            </TableHead>
+
+            <TableBody>
+              {(data[grade] || []).map((cls, classIdx) => (
+                <TableRow key={cls.className}>
+                  <TableCell sx={{ fontWeight: "bold" }}>{cls.className}</TableCell>
+
+                  {Array.from({ length: DAYS_COUNT }).map((_, dIdx) => (
+                    <TableCell key={dIdx} align="center">
+                      <Box sx={{ display: "flex", gap: 1, justifyContent: "center", alignItems: "center" }}>
+                        {Array.from({ length: SESSIONS_PER_DAY }).map((_, sIdx) => (
+                          <Box key={sIdx} sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
+                            {Array.from({ length: TYPES_PER_SESSION }).map((_, tIdx) => {
+                              const idx = dIdx * SLOT_PER_DAY + sIdx * TYPES_PER_SESSION + tIdx;
+                              const checked = cls.scores?.[idx] === 1;
+                              return (
+                                <Checkbox
+                                  key={tIdx}
+                                  checked={checked}
+                                  onChange={() => handleToggle(grade, classIdx, idx)}
+                                  title={`${SESSIONS_LABEL[sIdx]} - ${VIOLATION_LABELS[tIdx]}`}
+                                  size="small"
+                                />
+                              );
+                            })}
+                          </Box>
+                        ))}
+                      </Box>
+                    </TableCell>
+                  ))}
+
+                  <TableCell align="center">{calculateTotal(cls.scores)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Paper>
+      </Box>
+    ))}
+  </Stack>
+
+  <Snackbar
+    open={snackbar.open}
+    autoHideDuration={3000}
+    onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+    anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+  >
+    <Alert severity={snackbar.sev}>{snackbar.msg}</Alert>
+  </Snackbar>
 </Box>
-```
 
 );
 }
