@@ -245,6 +245,7 @@ return (
       value={selectedWeek?._id || ""}
       onChange={(e) => handleWeekChange(e.target.value)}
       sx={{ width: 300 }}
+        fetchData(value); 
     >
       <MenuItem value="">-- Chọn tuần --</MenuItem>
       {weekList.map((w) => (
