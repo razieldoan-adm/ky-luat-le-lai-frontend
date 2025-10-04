@@ -127,6 +127,7 @@ api.get("/api/academic-weeks/study-weeks").catch(() => ({ data: [] })),
 };
 init();
 // eslint-disable-next-line react-hooks/exhaustive-deps
+
 }, []);
 
 // Tạo data mặc định và (nếu có weekNumber) merge dữ liệu từ DB
@@ -137,7 +138,6 @@ classListParam?: ClassInfo[]
 try {
 const classList = classListParam ?? classes;
 const initial: Record<string, ClassType[]> = {};
-
   GRADES.forEach((grade) => {
     const gradeClasses = classList.filter((c) => String(c.grade) === String(grade));
     if (gradeClasses.length > 0) {
@@ -242,7 +242,6 @@ const daysLabels = selectedWeek?.startDate
 return (
 <Box sx={{ p: 3 }}> <Typography variant="h5" gutterBottom>
 🧹 Nhập điểm vệ sinh lớp theo tuần (2 buổi × 3 loại lỗi) </Typography>
-
   <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
     <TextField
       select
@@ -388,6 +387,5 @@ return (
     <Alert severity={snackbar.sev}>{snackbar.msg}</Alert>
   </Snackbar>
 </Box>
-
 );
 }
