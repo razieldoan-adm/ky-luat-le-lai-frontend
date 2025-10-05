@@ -230,7 +230,7 @@ open: true,
 msg: "Đã lưu điểm vệ sinh thành công!",
 sev: "success",
 });
-await initializeData(selectedWeek.weekNumber, classes);
+await initializeData(selectedWeek.weekNumber);
 } catch (err) {
 console.error("Lỗi save:", err);
 setSnackbar({ open: true, msg: "Lỗi khi lưu điểm.", sev: "error" });
