@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -362,7 +362,8 @@ export default function ClassHygieneScorePage() {
                                       size="small"
                                       sx={{
                                         padding: CHECKBOX_PADDING,
-                                        "& .MuiSvgIcon-root": { fontSize: 16 },
+                                        "& .MuiSvgIcon-root": { fontSize: 16 }
+                                        title={`${SESSIONS_LABEL[sIdx]} - ${VIOLATION_LABELS[tIdx]}`}
                                       }}
                                     />
                                   );
