@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 
 // --- Giả định API Service ---
-// Giả định bạn có một service hoặc instance axios để gọi API
+// THAY THẾ CHÚNG BẰNG CÁC LỜI GỌI API THỰC TẾ CỦA BẠN
 const api = {
     // Giả định hàm này trả về danh sách lớp với className và grade
     getClasses: () => Promise.resolve([
@@ -19,7 +19,7 @@ const api = {
     ]),
     // Hàm này gọi API POST để lưu dữ liệu
     saveScores: (payload: any) => {
-        // Thay thế bằng endpoint POST thực tế của bạn
+        // Endpoint: /api/class-hygiene-scores
         console.log("Saving Payload:", payload);
         return fetch('/api/class-hygiene-scores', {
             method: 'POST',
@@ -29,7 +29,7 @@ const api = {
     },
     // Hàm này gọi API GET để lấy dữ liệu tuần
     getScoresByWeek: (weekNumber: number) => {
-        // Thay thế bằng endpoint GET thực tế của bạn
+        // Endpoint: /api/class-hygiene-scores/by-week?weekNumber=X
         return fetch(`/api/class-hygiene-scores/by-week?weekNumber=${weekNumber}`)
             .then(res => res.json());
     },
@@ -37,7 +37,6 @@ const api = {
 
 // --- CÁC HẰNG SỐ VÀ CẤU TRÚC DỮ LIỆU ---
 
-// Danh sách các khối học để nhóm lớp
 const GRADES = ['6', '7', '8', '9'];
 
 // Mô tả các cột (tương đương 6 ô check/ngày)
@@ -52,7 +51,6 @@ const COLUMN_HEADERS = [
 const DAYS_OF_WEEK = ['T2', 'T3', 'T4', 'T5', 'T6'];
 const SLOTS_PER_DAY = 6; // 6 lỗi/ngày
 
-// Cấu trúc dữ liệu lớp học
 interface ClassData {
     className: string;
     grade: string;
@@ -60,31 +58,28 @@ interface ClassData {
     total: number;
 }
 
-// Cấu trúc dữ liệu tuần (Giả định lấy được từ một hàm tính tuần)
 interface WeekOption {
     weekNumber: number;
     label: string;
     startDate: string; // Quan trọng để gửi lên Backend
 }
 
-// Hàm giả định tính toán các tuần
+// THAY THẾ BẰNG LOGIC TÍNH TOÁN TUẦN THỰC TẾ
 const generateWeekOptions = (): WeekOption[] => {
-    // Đây chỉ là dữ liệu giả định, bạn cần thay thế bằng logic tính tuần thực tế
     const today = new Date();
-    const currentWeekNumber = Math.ceil((today.getDate() + 6) / 7); // Rất thô sơ, chỉ dùng ví dụ
+    const currentWeekNumber = Math.ceil((today.getDate() + 6) / 7); 
     
     return Array.from({ length: 4 }, (_, i) => {
         const weekNum = currentWeekNumber + i;
-        const startDate = new Date(); // Cần tính ngày bắt đầu tuần thực tế
+        const startDate = new Date(); 
         return {
             weekNumber: weekNum,
-            label: `Tuần ${weekNum} (01/10 - 05/10)`, // Ví dụ
+            label: `Tuần ${weekNum} (Ví dụ: 01/10 - 05/10)`, 
             startDate: startDate.toISOString().split('T')[0],
         };
     });
 };
 
-// Hàm tính tổng số lỗi (số lần giá trị là 1 trong mảng 30 điểm)
 const calculateTotal = (scores: number[]): number => {
     return scores.filter(s => s === 1).length;
 };
@@ -93,7 +88,7 @@ const calculateTotal = (scores: number[]): number => {
 
 const ClassHygieneScorePage: React.FC = () => {
     const [classes, setClasses] = useState<any[]>([]);
-    const [data, setData] = useState<{ [key: string]: ClassData[] }>({}); // Nhóm theo khối (grade)
+    const [data, setData] = useState<{ [key: string]: ClassData[] }>({}); 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -106,7 +101,6 @@ const ClassHygieneScorePage: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            // Lấy điểm từ Backend (trả về mảng 30 điểm/lớp)
             const savedScores = await api.getScoresByWeek(weekNum);
             
             const initialData: { [key: string]: ClassData[] } = {};
@@ -114,10 +108,8 @@ const ClassHygieneScorePage: React.FC = () => {
             allClasses.forEach(cls => {
                 const className = cls.className;
                 
-                // Tìm dữ liệu đã lưu cho lớp này
                 const existingData = savedScores.find((s: any) => s.className === className);
                 
-                // Khởi tạo mảng 30 điểm (fill 0 nếu chưa có)
                 const scores = existingData ? existingData.scores : Array(30).fill(0);
                 
                 const classEntry: ClassData = {
@@ -133,7 +125,6 @@ const ClassHygieneScorePage: React.FC = () => {
                 initialData[cls.grade].push(classEntry);
             });
 
-            // Sắp xếp lớp theo tên lớp trong từng khối (6A1, 6A2...)
             GRADES.forEach(grade => {
                 if (initialData[grade]) {
                     initialData[grade].sort((a, b) => a.className.localeCompare(b.className));
@@ -157,7 +148,6 @@ const ClassHygieneScorePage: React.FC = () => {
                 const fetchedClasses = await api.getClasses();
                 setClasses(fetchedClasses);
                 
-                // Chọn tuần đầu tiên mặc định
                 if (weekOptions.length > 0) {
                     setSelectedWeek(weekOptions[0]);
                     initializeData(weekOptions[0].weekNumber, fetchedClasses);
@@ -183,12 +173,11 @@ const ClassHygieneScorePage: React.FC = () => {
     const handleToggle = (grade: string, className: string, index: number) => {
         setData(prevData => {
             const gradeData = prevData[grade];
-            const classIdx = gradeData.findIndex(c => c.className === className);
-            
+            const classIdx = gradeData.findIndex(c => c.className === className); // Đã sửa tên biến
+
             if (classIdx === -1) return prevData;
 
             const newScores = [...gradeData[classIdx].scores];
-            // Toggle giá trị: 1 thành 0, 0 thành 1
             newScores[index] = newScores[index] === 1 ? 0 : 1;
 
             const newClassEntry: ClassData = {
@@ -214,14 +203,12 @@ const ClassHygieneScorePage: React.FC = () => {
         setError(null);
 
         try {
-            // Chuẩn bị payload tương thích với Controller Backend
             const payload = {
                 weekNumber: selectedWeek.weekNumber,
-                weekStartDate: selectedWeek.startDate, // Truyền ngày bắt đầu tuần
+                weekStartDate: selectedWeek.startDate, 
                 scores: GRADES.flatMap((g) => 
                     (data[g] || []).map((c) => ({
-                        // Gửi className (thay vì classId) lên Backend
-                        className: c.className, 
+                        className: c.className, // Dùng className
                         grade: c.grade,
                         scores: c.scores, // Mảng 30 điểm
                     }))
@@ -230,13 +217,14 @@ const ClassHygieneScorePage: React.FC = () => {
 
             const response = await api.saveScores(payload);
             if (!response.ok) {
-                throw new Error("Lỗi Server khi lưu.");
+                const errorDetail = await response.json();
+                throw new Error(errorDetail.message || "Lỗi Server khi lưu.");
             }
             
             alert('Lưu điểm thành công!');
         } catch (err) {
             console.error("Lỗi khi lưu điểm:", err);
-            setError('Lưu dữ liệu thất bại. Vui lòng kiểm tra console.');
+            setError(`Lưu dữ liệu thất bại: ${err instanceof Error ? err.message : 'Lỗi không xác định'}`);
         } finally {
             setSaving(false);
         }
@@ -306,7 +294,7 @@ const ClassHygieneScorePage: React.FC = () => {
                                         <TableCell sx={{ fontWeight: 'bold', width: '80px' }}>Lớp</TableCell>
                                         
                                         {/* Cột Điểm chi tiết (5 ngày * 6 lỗi) */}
-                                        {DAYS_OF_WEEK.map((day) => ( // Đã bỏ dIdx
+                                        {DAYS_OF_WEEK.map((day) => (
                                             <TableCell key={day} colSpan={SLOTS_PER_DAY} align="center" sx={{ fontWeight: 'bold', borderLeft: '1px solid #ddd' }}>
                                                 {day}
                                             </TableCell>
@@ -317,7 +305,7 @@ const ClassHygieneScorePage: React.FC = () => {
                                     <TableRow>
                                         <TableCell></TableCell>
                                         {/* Cột Chi tiết 6 lỗi (Lỗi 1, 2, 3 Sáng/Chiều) */}
-                                        {DAYS_OF_WEEK.map((day) => ( // Đã bỏ dIdx
+                                        {DAYS_OF_WEEK.map((day) => (
                                             <React.Fragment key={`detail-${day}`}>
                                                 {COLUMN_HEADERS.map((header, hIdx) => (
                                                     <TableCell 
@@ -334,7 +322,7 @@ const ClassHygieneScorePage: React.FC = () => {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {gradeData.map((cls) => ( // Đã bỏ classIndex
+                                    {gradeData.map((cls) => (
                                         <TableRow key={cls.className}>
                                             <TableCell sx={{ fontWeight: 'bold' }}>{cls.className}</TableCell>
                                             
