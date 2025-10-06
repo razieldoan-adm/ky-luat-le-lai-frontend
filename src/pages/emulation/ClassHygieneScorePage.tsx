@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -26,22 +27,21 @@ interface AcademicWeek {
 }
 
 interface ClassInfo {
+  _id: string;
   className: string;
   grade: string | number;
 }
 
-interface ClassType {
-  className: string;
-  grade: string | number;
-  scores: number[];
+interface HygieneRecord {
+  absentDuty: number;
+  noLightFan: number;
+  notClosedDoor: number;
 }
 
 const GRADES = ["6", "7", "8", "9"];
 const DAYS_COUNT = 5;
 const SESSIONS_PER_DAY = 2;
 const TYPES_PER_SESSION = 3;
-const SLOT_PER_DAY = SESSIONS_PER_DAY * TYPES_PER_SESSION;
-const TOTAL_SLOTS = DAYS_COUNT * SLOT_PER_DAY;
 
 const SESSIONS_LABEL = ["Sáng", "Chiều"];
 const VIOLATION_LABELS = [
@@ -54,8 +54,7 @@ export default function ClassHygieneScorePage() {
   const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<AcademicWeek | null>(null);
   const [classes, setClasses] = useState<ClassInfo[]>([]);
-  const [data, setData] = useState<Record<string, ClassType[]>>({});
-  const [hygienePoint, setHygienePoint] = useState<number>(1);
+  const [data, setData] = useState<Record<string, Record<string, HygieneRecord[]>>>({});
   const [snackbar, setSnackbar] = useState({
     open: false,
     msg: "",
@@ -63,22 +62,23 @@ export default function ClassHygieneScorePage() {
   });
   const [saving, setSaving] = useState(false);
 
-  const CHECKBOX_PADDING = "2px"; // nhỏ lại theo yêu cầu
+  const CHECKBOX_PADDING = "2px";
 
   const getWeekDays = (startDate: string) => {
     const start = new Date(startDate);
-    const labels: string[] = [];
+    const labels: { label: string; date: Date }[] = [];
     let d = new Date(start);
     while (labels.length < DAYS_COUNT) {
       const day = d.getDay();
       if (day >= 1 && day <= 5) {
-        labels.push(
-          d.toLocaleDateString("vi-VN", {
+        labels.push({
+          label: d.toLocaleDateString("vi-VN", {
             weekday: "short",
             day: "2-digit",
             month: "2-digit",
-          })
-        );
+          }),
+          date: new Date(d),
+        });
       }
       d.setDate(d.getDate() + 1);
     }
@@ -88,17 +88,14 @@ export default function ClassHygieneScorePage() {
   useEffect(() => {
     const init = async () => {
       try {
-        const [settingsRes, classesRes, weeksRes] = await Promise.all([
-          api.get("/api/settings").catch(() => ({ data: null })),
+        const [classesRes, weeksRes] = await Promise.all([
           api.get("/api/classes").catch(() => ({ data: [] })),
           api.get("/api/academic-weeks/study-weeks").catch(() => ({ data: [] })),
         ]);
 
-        const point = settingsRes?.data?.disciplinePointDeduction?.hygiene;
-        if (typeof point === "number") setHygienePoint(point);
-
         const rawClasses = classesRes?.data || [];
         const normalized: ClassInfo[] = rawClasses.map((c: any) => ({
+          _id: c._id,
           className: c.className || c.name,
           grade: String(c.grade || (c.className ? c.className.charAt(0) : "")),
         }));
@@ -116,8 +113,6 @@ export default function ClassHygieneScorePage() {
             ) || wk[0];
           setSelectedWeek(current);
           await initializeData(current.weekNumber, normalized);
-        } else {
-          await initializeData(undefined, normalized);
         }
       } catch (err) {
         console.error("Init error:", err);
@@ -126,54 +121,66 @@ export default function ClassHygieneScorePage() {
     init();
   }, []);
 
-  const initializeData = async (
-    weekNumber: number | undefined,
-    classListParam?: ClassInfo[]
-  ) => {
+  const initializeData = async (weekNumber: number, classList: ClassInfo[]) => {
     try {
-      const classList = classListParam ?? classes;
-      const initial: Record<string, ClassType[]> = {};
+      const initial: Record<string, Record<string, HygieneRecord[]>> = {};
       GRADES.forEach((grade) => {
-        const gradeClasses = classList.filter(
-          (c) => String(c.grade) === String(grade)
-        );
-        if (gradeClasses.length > 0) {
-          initial[grade] = gradeClasses.map((c) => ({
-            className: c.className,
-            grade: c.grade,
-            scores: Array(TOTAL_SLOTS).fill(0),
-          }));
-        } else {
-          initial[grade] = Array.from({ length: 10 }).map((_, i) => ({
-            className: `${grade}A${i + 1}`,
-            grade,
-            scores: Array(TOTAL_SLOTS).fill(0),
-          }));
-        }
+        initial[grade] = {};
+        classList
+          .filter((c) => String(c.grade) === String(grade))
+          .forEach((c) => {
+            initial[grade][c._id] = Array(DAYS_COUNT).fill(null).map(() => ({
+              absentDuty: 0,
+              noLightFan: 0,
+              notClosedDoor: 0,
+            }));
+          });
       });
 
-      if (typeof weekNumber === "number") {
-        const res = await api.get("/api/class-hygiene-scores/by-week", {
-          params: { weekNumber },
-        });
-        const db: any[] = res.data || [];
-        db.forEach((rec) => {
-          const target = initial[rec.grade]?.find(
-            (c) => c.className === rec.className
-          );
-          if (target) {
-            target.scores =
-              Array.isArray(rec.scores) && rec.scores.length === TOTAL_SLOTS
-                ? rec.scores
-                : Array(TOTAL_SLOTS).fill(0);
-          }
-        });
-      }
+      const res = await api.get("/api/class-hygiene-scores/by-week", {
+        params: { weekNumber },
+      });
+      const db: any[] = res.data || [];
+
+      db.forEach((rec) => {
+        const cls = classList.find((c) => c._id === rec.classId?._id);
+        if (!cls) return;
+        const grade = String(cls.grade);
+        const idx = getDayIndex(rec.date, selectedWeek?.startDate || "");
+        if (idx !== -1 && initial[grade]?.[cls._id]) {
+          initial[grade][cls._id][idx] = {
+            absentDuty: rec.absentDuty,
+            noLightFan: rec.noLightFan,
+            notClosedDoor: rec.notClosedDoor,
+          };
+        }
+      });
 
       setData(initial);
     } catch (err) {
       console.error("Lỗi initializeData:", err);
     }
+  };
+
+  const getDayIndex = (dateStr: string, startDate: string) => {
+    const base = new Date(startDate);
+    const target = new Date(dateStr);
+    let idx = 0;
+    let d = new Date(base);
+    while (idx < DAYS_COUNT) {
+      if (d.getDay() >= 1 && d.getDay() <= 5) {
+        if (
+          d.getFullYear() === target.getFullYear() &&
+          d.getMonth() === target.getMonth() &&
+          d.getDate() === target.getDate()
+        ) {
+          return idx;
+        }
+        idx++;
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    return -1;
   };
 
   const handleWeekChange = async (weekId: string) => {
@@ -184,52 +191,65 @@ export default function ClassHygieneScorePage() {
     }
   };
 
-  const handleToggle = (grade: string, classIdx: number, index: number) => {
+  const handleToggle = (
+    grade: string,
+    classId: string,
+    dayIdx: number,
+    session: number,
+    type: number
+  ) => {
     setData((prev) => {
       const copy = { ...prev };
-      const classesArr = [...(copy[grade] || [])];
-      const cls = { ...classesArr[classIdx] };
-      const newScores = cls.scores.slice();
-      newScores[index] = newScores[index] === 1 ? 0 : 1;
-      cls.scores = newScores;
-      classesArr[classIdx] = cls;
-      copy[grade] = classesArr;
+      const clsDays = [...copy[grade][classId]];
+      const rec = { ...clsDays[dayIdx] };
+
+      if (type === 0) rec.absentDuty = rec.absentDuty ^ (1 << session);
+      if (type === 1) rec.noLightFan = rec.noLightFan ^ (1 << session);
+      if (type === 2) rec.notClosedDoor = rec.notClosedDoor ^ (1 << session);
+
+      clsDays[dayIdx] = rec;
+      copy[grade][classId] = clsDays;
       return copy;
     });
   };
 
-  const calculateTotal = (scores: number[]) =>
-    scores.filter((s) => s === 1).length * hygienePoint;
-
   const handleSave = async () => {
     if (!selectedWeek) {
-      setSnackbar({
-        open: true,
-        msg: "Vui lòng chọn tuần trước khi lưu.",
-        sev: "error",
-      });
+      setSnackbar({ open: true, msg: "Vui lòng chọn tuần.", sev: "error" });
       return;
     }
     setSaving(true);
     try {
-      const payload = {
+      const payload: any[] = [];
+      const daysLabels = getWeekDays(selectedWeek.startDate);
+
+      GRADES.forEach((g) => {
+        Object.entries(data[g] || {}).forEach(([classId, records]) => {
+          records.forEach((r, idx) => {
+            const date = daysLabels[idx]?.date;
+            if (!date) return;
+            payload.push({
+              classId,
+              weekNumber: selectedWeek.weekNumber,
+              date,
+              absentDuty: r.absentDuty,
+              noLightFan: r.noLightFan,
+              notClosedDoor: r.notClosedDoor,
+            });
+          });
+        });
+      });
+
+      await api.post("/api/class-hygiene-scores", {
         weekNumber: selectedWeek.weekNumber,
-        scores: GRADES.flatMap((g) =>
-          (data[g] || []).map((c) => ({
-            className: c.className,
-            grade: c.grade,
-            scores: c.scores,
-            total: calculateTotal(c.scores),
-          }))
-        ),
-      };
-      await api.post("/api/class-hygiene-scores", payload);
+        scores: payload,
+      });
+
       setSnackbar({
         open: true,
         msg: "Đã lưu điểm vệ sinh thành công!",
         sev: "success",
       });
-      // IMPORTANT: reload from DB and pass current classes (không dùng closure cũ)
       await initializeData(selectedWeek.weekNumber, classes);
     } catch (err) {
       console.error("Lỗi save:", err);
@@ -241,12 +261,12 @@ export default function ClassHygieneScorePage() {
 
   const daysLabels = selectedWeek?.startDate
     ? getWeekDays(selectedWeek.startDate)
-    : Array.from({ length: DAYS_COUNT }).map((_, i) => `Ngày ${i + 2}`);
+    : [];
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" gutterBottom>
-        🧹 Nhập điểm vệ sinh lớp theo tuần (2 buổi × 3 loại lỗi)
+        🧹 Nhập điểm vệ sinh lớp theo tuần
       </Typography>
 
       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
@@ -269,7 +289,7 @@ export default function ClassHygieneScorePage() {
               <MenuItem
                 key={w._id}
                 value={w._id}
-                disabled={new Date(w.startDate) > today} // disable tuần chưa tới
+                disabled={new Date(w.startDate) > today}
               >
                 Tuần {w.weekNumber}
                 {status}
@@ -288,13 +308,6 @@ export default function ClassHygieneScorePage() {
         </Button>
       </Stack>
 
-      <Box sx={{ mb: 1 }}>
-        <Typography variant="body2">
-          Chú thích: ① {VIOLATION_LABELS[0]} — ② {VIOLATION_LABELS[1]} — ③ {" "}
-          {VIOLATION_LABELS[2]}
-        </Typography>
-      </Box>
-
       <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap>
         {GRADES.map((grade) => (
           <Box key={grade} sx={{ flex: "1 1 420px" }}>
@@ -303,115 +316,64 @@ export default function ClassHygieneScorePage() {
                 Khối {grade}
               </Typography>
 
-              <Table size="small" sx={{ tableLayout: "fixed" }}>
+              <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell rowSpan={3} sx={{ fontSize: 12, padding: "4px 6px" }}>
-                      Lớp
-                    </TableCell>
-                    {daysLabels.map((label, dIdx) => (
-                      <TableCell key={dIdx} align="center" colSpan={2} sx={{ fontSize: 11, padding: "4px 6px" }}>
-                        {label}
-                        <Box
-                          component="div"
-                          sx={{ fontSize: 11, color: "text.secondary" }}
-                        >
-                          (Sáng / Chiều)
-                        </Box>
+                    <TableCell>Lớp</TableCell>
+                    {daysLabels.map((label, idx) => (
+                      <TableCell key={idx} align="center">
+                        {label.label}
                       </TableCell>
-                    ))}
-                    <TableCell rowSpan={3} align="center" sx={{ fontSize: 12, padding: "4px 6px" }}>
-                      Tổng
-                    </TableCell>
-                  </TableRow>
-
-                  <TableRow>
-                    {daysLabels.map((_, dIdx) => (
-                      <React.Fragment key={dIdx}>
-                        <TableCell align="center" sx={{ fontSize: 11, padding: "2px 6px" }}>Sáng</TableCell>
-                        <TableCell align="center" sx={{ fontSize: 11, padding: "2px 6px" }}>Chiều</TableCell>
-                      </React.Fragment>
-                    ))}
-                  </TableRow>
-
-                  <TableRow>
-                    {daysLabels.map((_, dIdx) => (
-                      <React.Fragment key={dIdx}>
-                        <TableCell align="center" sx={{ fontSize: 11, padding: "2px 6px" }}>1&nbsp;&nbsp;2&nbsp;&nbsp;3</TableCell>
-                        <TableCell align="center" sx={{ fontSize: 11, padding: "2px 6px" }}>1&nbsp;&nbsp;2&nbsp;&nbsp;3</TableCell>
-                      </React.Fragment>
                     ))}
                   </TableRow>
                 </TableHead>
-
                 <TableBody>
-                  {(data[grade] || []).map((cls, classIdx) => (
-                    <TableRow key={cls.className}>
-                      <TableCell sx={{ fontWeight: "bold", fontSize: 12, padding: "4px 6px" }}>
-                        {cls.className}
-                      </TableCell>
-
-                      {Array.from({ length: DAYS_COUNT }).map((_, dIdx) => (
-                        <React.Fragment key={dIdx}>
-                          <TableCell align="center" sx={{ padding: "2px 6px" }}>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                gap: '4px', // nhỏ khoảng cách giữa các ô check
-                                justifyContent: "center",
-                                alignItems: 'center'
-                              }}
-                            >
-                              {Array.from({ length: TYPES_PER_SESSION }).map((__, tIdx) => {
-                                const idx = dIdx * SLOT_PER_DAY + 0 * TYPES_PER_SESSION + tIdx;
-                                const checked = cls.scores?.[idx] === 1;
-                                return (
-                                  <Checkbox
-                                    key={tIdx}
-                                    checked={checked}
-                                    onChange={() => handleToggle(grade, classIdx, idx)}
-                                    title={`${SESSIONS_LABEL[0]} - ${VIOLATION_LABELS[tIdx]}`}
-                                    size="small"
-                                    sx={{ padding: CHECKBOX_PADDING, margin: 0, '& .MuiSvgIcon-root': { fontSize: 16 } }}
-                                  />
-                                );
-                              })}
-                            </Box>
+                  {Object.entries(data[grade] || {}).map(([classId, records]) => {
+                    const cls = classes.find((c) => c._id === classId);
+                    if (!cls) return null;
+                    return (
+                      <TableRow key={classId}>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          {cls.className}
+                        </TableCell>
+                        {records.map((r, dIdx) => (
+                          <TableCell key={dIdx} align="center">
+                            {Array.from({ length: SESSIONS_PER_DAY }).map((_, sIdx) => (
+                              <Box
+                                key={sIdx}
+                                sx={{
+                                  display: "flex",
+                                  gap: "4px",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                {Array.from({ length: TYPES_PER_SESSION }).map((__, tIdx) => {
+                                  const checked =
+                                    (tIdx === 0 && (r.absentDuty >> sIdx) & 1) ||
+                                    (tIdx === 1 && (r.noLightFan >> sIdx) & 1) ||
+                                    (tIdx === 2 && (r.notClosedDoor >> sIdx) & 1);
+                                  return (
+                                    <Checkbox
+                                      key={tIdx}
+                                      checked={!!checked}
+                                      onChange={() =>
+                                        handleToggle(grade, classId, dIdx, sIdx, tIdx)
+                                      }
+                                      size="small"
+                                      sx={{
+                                        padding: CHECKBOX_PADDING,
+                                        "& .MuiSvgIcon-root": { fontSize: 16 },
+                                      }}
+                                    />
+                                  );
+                                })}
+                              </Box>
+                            ))}
                           </TableCell>
-
-                          <TableCell align="center" sx={{ padding: "2px 6px" }}>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                gap: '4px', // nhỏ khoảng cách giữa các ô check
-                                justifyContent: "center",
-                                alignItems: 'center'
-                              }}
-                            >
-                              {Array.from({ length: TYPES_PER_SESSION }).map((__, tIdx) => {
-                                const idx = dIdx * SLOT_PER_DAY + 1 * TYPES_PER_SESSION + tIdx;
-                                const checked = cls.scores?.[idx] === 1;
-                                return (
-                                  <Checkbox
-                                    key={tIdx}
-                                    checked={checked}
-                                    onChange={() => handleToggle(grade, classIdx, idx)}
-                                    title={`${SESSIONS_LABEL[1]} - ${VIOLATION_LABELS[tIdx]}`}
-                                    size="small"
-                                    sx={{ padding: CHECKBOX_PADDING, margin: 0, '& .MuiSvgIcon-root': { fontSize: 16 } }}
-                                  />
-                                );
-                              })}
-                            </Box>
-                          </TableCell>
-                        </React.Fragment>
-                      ))}
-
-                      <TableCell align="center" sx={{ fontSize: 12, padding: "4px 6px" }}>
-                        {calculateTotal(cls.scores)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        ))}
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </Paper>
