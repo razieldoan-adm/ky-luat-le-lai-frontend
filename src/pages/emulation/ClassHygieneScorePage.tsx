@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-    Container, Typography, Box, Grid, Table, 
+    Container, Typography, Box, Table, 
     TableBody, TableCell, TableContainer, TableHead, 
     TableRow, Paper, Checkbox, Select, MenuItem, 
     FormControl, InputLabel, Button, LinearProgress, Alert 
@@ -183,22 +183,22 @@ const ClassHygieneScorePage: React.FC = () => {
     const handleToggle = (grade: string, className: string, index: number) => {
         setData(prevData => {
             const gradeData = prevData[grade];
-            const classIndex = gradeData.findIndex(c => c.className === className);
+            const classIdx = gradeData.findIndex(c => c.className === className);
             
-            if (classIndex === -1) return prevData;
+            if (classIdx === -1) return prevData;
 
-            const newScores = [...gradeData[classIndex].scores];
+            const newScores = [...gradeData[classIdx].scores];
             // Toggle giá trị: 1 thành 0, 0 thành 1
             newScores[index] = newScores[index] === 1 ? 0 : 1;
 
             const newClassEntry: ClassData = {
-                ...gradeData[classIndex],
+                ...gradeData[classIdx],
                 scores: newScores,
                 total: calculateTotal(newScores),
             };
 
             const newGradeData = [...gradeData];
-            newGradeData[classIndex] = newClassEntry;
+            newGradeData[classIdx] = newClassEntry;
 
             return {
                 ...prevData,
@@ -306,7 +306,7 @@ const ClassHygieneScorePage: React.FC = () => {
                                         <TableCell sx={{ fontWeight: 'bold', width: '80px' }}>Lớp</TableCell>
                                         
                                         {/* Cột Điểm chi tiết (5 ngày * 6 lỗi) */}
-                                        {DAYS_OF_WEEK.map((day, dIdx) => (
+                                        {DAYS_OF_WEEK.map((day) => ( // Đã bỏ dIdx
                                             <TableCell key={day} colSpan={SLOTS_PER_DAY} align="center" sx={{ fontWeight: 'bold', borderLeft: '1px solid #ddd' }}>
                                                 {day}
                                             </TableCell>
@@ -317,7 +317,7 @@ const ClassHygieneScorePage: React.FC = () => {
                                     <TableRow>
                                         <TableCell></TableCell>
                                         {/* Cột Chi tiết 6 lỗi (Lỗi 1, 2, 3 Sáng/Chiều) */}
-                                        {DAYS_OF_WEEK.map((day, dIdx) => (
+                                        {DAYS_OF_WEEK.map((day) => ( // Đã bỏ dIdx
                                             <React.Fragment key={`detail-${day}`}>
                                                 {COLUMN_HEADERS.map((header, hIdx) => (
                                                     <TableCell 
@@ -334,7 +334,7 @@ const ClassHygieneScorePage: React.FC = () => {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {gradeData.map((cls, classIndex) => (
+                                    {gradeData.map((cls) => ( // Đã bỏ classIndex
                                         <TableRow key={cls.className}>
                                             <TableCell sx={{ fontWeight: 'bold' }}>{cls.className}</TableCell>
                                             
