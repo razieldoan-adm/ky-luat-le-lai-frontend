@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from "react";
 import {
 Box,
 Typography,
@@ -16,6 +15,7 @@ Checkbox,
 Snackbar,
 Alert,
 } from "@mui/material";
+import { useState, useEffect } from "react";
 import api from "../../api/api";
 
 interface AcademicWeek {
@@ -42,7 +42,6 @@ const SESSIONS_PER_DAY = 2;
 const TYPES_PER_SESSION = 3;
 const SLOT_PER_DAY = SESSIONS_PER_DAY * TYPES_PER_SESSION;
 const TOTAL_SLOTS = DAYS_COUNT * SLOT_PER_DAY;
-
 const SESSION_LABELS = ["Sáng", "Chiều"];
 
 export default function ClassHygieneScorePage() {
@@ -57,8 +56,6 @@ msg: "",
 sev: "success" as "success" | "error",
 });
 const [saving, setSaving] = useState(false);
-
-const CHECKBOX_PADDING = "2px";
 
 const getWeekDays = (startDate: string) => {
 const start = new Date(startDate);
@@ -88,7 +85,6 @@ api.get("/api/settings").catch(() => ({ data: null })),
 api.get("/api/classes").catch(() => ({ data: [] })),
 api.get("/api/academic-weeks/study-weeks").catch(() => ({ data: [] })),
 ]);
-
 
     const point = settingsRes?.data?.disciplinePointDeduction?.hygiene;
     if (typeof point === "number") setHygienePoint(point);
@@ -121,7 +117,6 @@ api.get("/api/academic-weeks/study-weeks").catch(() => ({ data: [] })),
 };
 init();
 
-
 }, []);
 
 const initializeData = async (
@@ -131,7 +126,6 @@ classListParam?: ClassInfo[]
 try {
 const classList = classListParam ?? classes;
 const initial: Record<string, ClassType[]> = {};
-
 
   GRADES.forEach((grade) => {
     const gradeClasses = classList.filter(
@@ -165,7 +159,6 @@ const initial: Record<string, ClassType[]> = {};
 } catch (err) {
   console.error("initializeData error:", err);
 }
-
 
 };
 
@@ -227,12 +220,11 @@ setSaving(false);
 
 const daysLabels = selectedWeek?.startDate
 ? getWeekDays(selectedWeek.startDate)
-: Array.from({ length: DAYS_COUNT }).map((_, i) => `Ngày ${i + 2}`);
+: Array.from({ length: DAYS_COUNT }).map((_, idx) => `Ngày ${idx + 2}`);
 
 return (
 <Box sx={{ p: 3 }}> <Typography variant="h5" gutterBottom>
 🧹 Quản lý điểm vệ sinh lớp học theo tuần </Typography>
-
 
   <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
     <TextField
@@ -282,8 +274,8 @@ return (
             <TableHead>
               <TableRow>
                 <TableCell rowSpan={3}>Lớp</TableCell>
-                {daysLabels.map((label, i) => (
-                  <TableCell key={i} align="center" colSpan={2}>
+                {daysLabels.map((label) => (
+                  <TableCell key={label} align="center" colSpan={2}>
                     {label}
                     <Box sx={{ fontSize: 11, color: "text.secondary" }}>
                       (Sáng / Chiều)
@@ -295,19 +287,19 @@ return (
                 </TableCell>
               </TableRow>
               <TableRow>
-                {daysLabels.map((_, i) => (
-                  <>
+                {daysLabels.map((label) => (
+                  <Box key={label} component="span">
                     <TableCell align="center">Sáng</TableCell>
                     <TableCell align="center">Chiều</TableCell>
-                  </>
+                  </Box>
                 ))}
               </TableRow>
               <TableRow>
-                {daysLabels.map((_, i) => (
-                  <>
+                {daysLabels.map((label) => (
+                  <Box key={label} component="span">
                     <TableCell align="center">1 2 3</TableCell>
                     <TableCell align="center">1 2 3</TableCell>
-                  </>
+                  </Box>
                 ))}
               </TableRow>
             </TableHead>
@@ -319,7 +311,7 @@ return (
                     {cls.className}
                   </TableCell>
                   {Array.from({ length: DAYS_COUNT }).map((_, dIdx) => (
-                    <>
+                    <Box key={dIdx} component="span">
                       {SESSION_LABELS.map((session, sIdx) => (
                         <TableCell align="center" key={session}>
                           <Box
@@ -345,7 +337,7 @@ return (
                                     }
                                     size="small"
                                     sx={{
-                                      padding: CHECKBOX_PADDING,
+                                      p: "2px",
                                       "& .MuiSvgIcon-root": { fontSize: 16 },
                                     }}
                                   />
@@ -355,7 +347,7 @@ return (
                           </Box>
                         </TableCell>
                       ))}
-                    </>
+                    </Box>
                   ))}
                   <TableCell align="center">
                     {calculateTotal(cls.scores)}
@@ -378,7 +370,6 @@ return (
     <Alert severity={snackbar.sev}>{snackbar.msg}</Alert>
   </Snackbar>
 </Box>
-
 
 );
 }
