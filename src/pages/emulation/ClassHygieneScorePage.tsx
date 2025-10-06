@@ -30,6 +30,14 @@ interface HygieneRecord {
   notClosedDoorAfternoon: boolean;
 }
 
+type HygieneField =
+  | "absentDutyMorning"
+  | "noLightFanMorning"
+  | "notClosedDoorMorning"
+  | "absentDutyAfternoon"
+  | "noLightFanAfternoon"
+  | "notClosedDoorAfternoon";
+
 interface WeekOption {
   weekNumber: number;
   startDate: string;
@@ -49,7 +57,6 @@ export default function ClassHygieneScorePage() {
     severity: "success" as "success" | "error",
   });
 
-  // 🔹 Lấy danh sách tuần từ settings backend
   useEffect(() => {
     const fetchWeeks = async () => {
       try {
@@ -64,7 +71,6 @@ export default function ClassHygieneScorePage() {
     fetchWeeks();
   }, []);
 
-  // 🔹 Tải dữ liệu khi chọn tuần
   useEffect(() => {
     if (selectedWeek) fetchRecords(selectedWeek);
   }, [selectedWeek]);
@@ -73,24 +79,16 @@ export default function ClassHygieneScorePage() {
     try {
       setLoading(true);
       const res = await api.get(`/class-hygiene/week/${week}`);
-
       if (res.data?.records?.length > 0) {
         setRecords(res.data.records);
       } else {
-        // 🔹 Nếu chưa có dữ liệu thì tạo mới 5 ngày (thứ 2 → thứ 6)
         const weekInfo = weeks.find((w) => w.weekNumber === week);
         if (!weekInfo) return;
-
         const start = new Date(weekInfo.startDate);
         const end = new Date(weekInfo.endDate);
         const days: HygieneRecord[] = [];
-
-        for (
-          let d = new Date(start);
-          d <= end;
-          d.setDate(d.getDate() + 1)
-        ) {
-          const day = d.getDay(); // 0=CN, 6=Thứ 7
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const day = d.getDay();
           if (day === 0 || day === 6) continue; // bỏ T7, CN
           days.push({
             date: d.toISOString().split("T")[0],
@@ -111,16 +109,7 @@ export default function ClassHygieneScorePage() {
     }
   };
 
-  const handleCheckboxChange = (
-    index: number,
-    field:
-      | "absentDutyMorning"
-      | "noLightFanMorning"
-      | "notClosedDoorMorning"
-      | "absentDutyAfternoon"
-      | "noLightFanAfternoon"
-      | "notClosedDoorAfternoon"
-  ) => {
+  const handleCheckboxChange = (index: number, field: HygieneField) => {
     setRecords((prev) => {
       const updated = [...prev];
       updated[index][field] = !updated[index][field];
@@ -132,22 +121,11 @@ export default function ClassHygieneScorePage() {
     if (!selectedWeek) return;
     try {
       setSaving(true);
-      await api.post("/class-hygiene/save", {
-        weekNumber: selectedWeek,
-        records,
-      });
-      setSnackbar({
-        open: true,
-        message: "Lưu điểm vệ sinh thành công!",
-        severity: "success",
-      });
+      await api.post("/class-hygiene/save", { weekNumber: selectedWeek, records });
+      setSnackbar({ open: true, message: "Lưu điểm vệ sinh thành công!", severity: "success" });
     } catch (err) {
       console.error("Lỗi lưu:", err);
-      setSnackbar({
-        open: true,
-        message: "Lỗi khi lưu dữ liệu!",
-        severity: "error",
-      });
+      setSnackbar({ open: true, message: "Lỗi khi lưu dữ liệu!", severity: "error" });
     } finally {
       setSaving(false);
     }
@@ -165,8 +143,7 @@ export default function ClassHygieneScorePage() {
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>
-        Quản lý điểm vệ sinh lớp học{" "}
-        {selectedWeek ? `(Tuần ${selectedWeek})` : ""}
+        Quản lý điểm vệ sinh lớp học {selectedWeek ? `(Tuần ${selectedWeek})` : ""}
       </Typography>
 
       <Box mb={2}>
@@ -221,27 +198,17 @@ export default function ClassHygieneScorePage() {
                       })}
                     </TableCell>
 
-                    {[
-                      "absentDutyMorning",
-                      "noLightFanMorning",
-                      "notClosedDoorMorning",
-                      "absentDutyAfternoon",
-                      "noLightFanAfternoon",
-                      "notClosedDoorAfternoon",
-                    ].map((field) => (
-                      <TableCell key={field} align="center">
-                        <Checkbox
-                          checked={r[field as keyof HygieneRecord] as boolean}
-                          disabled={disableEditing}
-                          onChange={() =>
-                            handleCheckboxChange(
-                              i,
-                              field as keyof HygieneRecord
-                            )
-                          }
-                        />
-                      </TableCell>
-                    ))}
+                    {(Object.keys(r) as (keyof HygieneRecord)[])
+                      .filter((f): f is HygieneField => f !== "date")
+                      .map((field) => (
+                        <TableCell key={field} align="center">
+                          <Checkbox
+                            checked={r[field]}
+                            disabled={disableEditing}
+                            onChange={() => handleCheckboxChange(i, field)}
+                          />
+                        </TableCell>
+                      ))}
                   </TableRow>
                 ))}
               </TableBody>
@@ -250,11 +217,7 @@ export default function ClassHygieneScorePage() {
 
           {!disableEditing && (
             <Box mt={2} textAlign="right">
-              <Button
-                variant="contained"
-                onClick={handleSave}
-                disabled={saving}
-              >
+              <Button variant="contained" onClick={handleSave} disabled={saving}>
                 {saving ? "Đang lưu..." : "Lưu điểm"}
               </Button>
             </Box>
