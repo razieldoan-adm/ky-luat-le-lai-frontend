@@ -1,370 +1,294 @@
-
 import { useEffect, useState } from "react";
 import {
   Box,
-  Typography,
-  TextField,
   Button,
+  CircularProgress,
   Paper,
   Table,
+  TableBody,
+  TableCell,
+  TableContainer,
   TableHead,
   TableRow,
-  TableCell,
-  TableBody,
-  MenuItem,
-  Stack,
-  Checkbox,
+  Typography,
   Snackbar,
   Alert,
-  CircularProgress,
 } from "@mui/material";
 import api from "../../api/api";
 
-interface AcademicWeek {
-  _id: string;
-  weekNumber: number;
-  startDate: string;
-  endDate: string;
-}
-
-interface ClassInfo {
-  _id: string;
-  className: string;
-  grade: string | number;
-}
+type Session = "Morning" | "Afternoon";
 
 interface HygieneRecord {
+  _id?: string;
+  classId: string;
+  className?: string;
+  date: string;
+  weekNumber: number;
   absentDutyMorning: number;
   absentDutyAfternoon: number;
   noLightFanMorning: number;
   noLightFanAfternoon: number;
   notClosedDoorMorning: number;
   notClosedDoorAfternoon: number;
+  total?: number;
 }
 
-const GRADES = ["6", "7", "8", "9"];
-const DAYS_COUNT = 5;
-const VIOLATION_LABELS = [
-  "Không trực vệ sinh lớp",
-  "Không tắt đèn/quạt đầu giờ hoặc giờ chơi",
-  "Không đóng cửa lớp",
-];
-const SESSIONS_LABEL = ["Sáng", "Chiều"];
+interface ClassOption {
+  _id: string;
+  name: string;
+}
 
-export default function ClassHygieneScorePage() {
-  const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<AcademicWeek | null>(null);
-  const [classes, setClasses] = useState<ClassInfo[]>([]);
-  const [data, setData] = useState<Record<string, Record<string, HygieneRecord[]>>>({});
+const ClassHygieneScorePage = () => {
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    msg: "",
-    sev: "success" as "success" | "error",
-  });
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [scores, setScores] = useState<HygieneRecord[]>([]);
+  const [weekNumber, setWeekNumber] = useState<number>(1);
+  const [notification, setNotification] = useState<string | null>(null);
 
-  const CHECKBOX_PADDING = "2px";
-
-  const getWeekDays = (startDate: string) => {
-    const start = new Date(startDate);
-    const labels: { label: string; date: Date }[] = [];
-    let d = new Date(start);
-    while (labels.length < DAYS_COUNT) {
-      const day = d.getDay();
-      if (day >= 1 && day <= 5) {
-        labels.push({
-          label: d.toLocaleDateString("vi-VN", {
-            weekday: "short",
-            day: "2-digit",
-            month: "2-digit",
-          }),
-          date: new Date(d),
-        });
+  // 🧩 Load danh sách lớp
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const res = await api.get("/classes");
+        setClasses(res.data);
+      } catch (err) {
+        console.error("Lỗi khi tải lớp:", err);
       }
-      d.setDate(d.getDate() + 1);
-    }
-    return labels;
-  };
+    };
+    fetchClasses();
+  }, []);
 
-  const getDayIndex = (dateStr: string, startDate: string) => {
-    const base = new Date(startDate);
-    const target = new Date(dateStr);
-    let idx = 0;
-    let d = new Date(base);
-    while (idx < DAYS_COUNT) {
-      if (d.getDay() >= 1 && d.getDay() <= 5) {
-        if (
-          d.getFullYear() === target.getFullYear() &&
-          d.getMonth() === target.getMonth() &&
-          d.getDate() === target.getDate()
-        ) {
-          return idx;
+  // 🧩 Load điểm vệ sinh theo tuần
+  const fetchScores = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get(`/class-hygiene-scores?weekNumber=${weekNumber}`);
+      const existingScores: HygieneRecord[] = res.data;
+
+      // Danh sách ngày trong tuần (thứ 2 → CN)
+      const weekDates = Array.from({ length: 7 }).map((_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - d.getDay() + 1 + i); // bắt đầu từ thứ 2
+        return d.toISOString().split("T")[0];
+      });
+
+      // Tạo danh sách đầy đủ (nếu thiếu dữ liệu)
+      const filledScores: HygieneRecord[] = [];
+      for (const cls of classes) {
+        for (const date of weekDates) {
+          const exist = existingScores.find(
+            (s) => s.classId === cls._id && s.date === date
+          );
+          filledScores.push(
+            exist || {
+              classId: cls._id,
+              className: cls.name,
+              date,
+              weekNumber,
+              absentDutyMorning: 0,
+              absentDutyAfternoon: 0,
+              noLightFanMorning: 0,
+              noLightFanAfternoon: 0,
+              notClosedDoorMorning: 0,
+              notClosedDoorAfternoon: 0,
+            }
+          );
         }
-        idx++;
       }
-      d.setDate(d.getDate() + 1);
+
+      setScores(filledScores);
+    } catch (err) {
+      console.error("Lỗi khi tải điểm:", err);
+    } finally {
+      setLoading(false);
     }
-    return -1;
   };
 
   useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      try {
-        const [classesRes, weeksRes] = await Promise.all([
-          api.get("/api/classes"),
-          api.get("/api/academic-weeks/study-weeks"),
-        ]);
+    if (classes.length > 0) fetchScores();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classes, weekNumber]);
 
-        const cls = (classesRes.data || []).map((c: any) => ({
-          _id: c._id,
-          className: c.className || c.name,
-          grade: String(c.grade || (c.className ? c.className.charAt(0) : "")),
-        }));
-        setClasses(cls);
-
-        const wk = weeksRes.data || [];
-        setWeekList(wk);
-
-        if (wk.length > 0) {
-          const today = new Date();
-          const current =
-            wk.find(
-              (w: AcademicWeek) =>
-                new Date(w.startDate) <= today && today <= new Date(w.endDate)
-            ) || wk[0];
-          setSelectedWeek(current);
-          await initializeData(current.weekNumber, cls);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
-  }, []);
-
-  const initializeData = async (weekNumber: number, classList: ClassInfo[]) => {
-    const initial: Record<string, Record<string, HygieneRecord[]>> = {};
-    GRADES.forEach((g) => {
-      initial[g] = {};
-      classList
-        .filter((c) => String(c.grade) === String(g))
-        .forEach((c) => {
-          initial[g][c._id] = Array(DAYS_COUNT).fill(null).map(() => ({
-            absentDutyMorning: 0,
-            absentDutyAfternoon: 0,
-            noLightFanMorning: 0,
-            noLightFanAfternoon: 0,
-            notClosedDoorMorning: 0,
-            notClosedDoorAfternoon: 0,
-          }));
-        });
-    });
-
-    try {
-      const res = await api.get("/api/class-hygiene/by-week", {
-        params: { weekNumber },
-      });
-      const db: any[] = res.data || [];
-      db.forEach((rec) => {
-        const cls = classList.find((c) => c._id === rec.classId?._id);
-        if (!cls) return;
-        const grade = String(cls.grade);
-        const idx = getDayIndex(rec.date, selectedWeek?.startDate || "");
-        if (idx !== -1 && initial[grade]?.[cls._id]) {
-          initial[grade][cls._id][idx] = {
-            absentDutyMorning: rec.absentDutyMorning,
-            absentDutyAfternoon: rec.absentDutyAfternoon,
-            noLightFanMorning: rec.noLightFanMorning,
-            noLightFanAfternoon: rec.noLightFanAfternoon,
-            notClosedDoorMorning: rec.notClosedDoorMorning,
-            notClosedDoorAfternoon: rec.notClosedDoorAfternoon,
-          };
-        }
-      });
-      setData(initial);
-    } catch (err) {
-      console.error("Lỗi khi load hygiene:", err);
-    }
-  };
-
-  const handleToggle = (
-    grade: string,
+  // 🧩 Toggle checkbox
+  const handleCheckChange = (
     classId: string,
-    dayIdx: number,
-    session: "Morning" | "Afternoon",
-    type: number
+    date: string,
+    session: Session,
+    field: "absentDuty" | "noLightFan" | "notClosedDoor",
+    value: number
   ) => {
-    setData((prev) => {
-      const copy = structuredClone(prev);
-      const rec = copy[grade][classId][dayIdx];
-      if (type === 0) rec[`absentDuty${session}`] ^= 1;
-      if (type === 1) rec[`noLightFan${session}`] ^= 1;
-      if (type === 2) rec[`notClosedDoor${session}`] ^= 1;
-      return copy;
+    const updated = scores.map((s) => {
+      if (s.classId === classId && s.date === date) {
+        const key = `${field}${session}` as keyof HygieneRecord;
+        return { ...s, [key]: value };
+      }
+      return s;
     });
+    setScores(updated);
   };
 
+  // 🧩 Lưu dữ liệu
   const handleSave = async () => {
-    if (!selectedWeek) return;
-    setSaving(true);
     try {
-      const payload: any[] = [];
-      const days = getWeekDays(selectedWeek.startDate);
-      GRADES.forEach((g) => {
-        Object.entries(data[g] || {}).forEach(([classId, recs]) => {
-          recs.forEach((r, idx) => {
-            const date = days[idx]?.date;
-            if (!date) return;
-            payload.push({
-              classId,
-              weekNumber: selectedWeek.weekNumber,
-              date,
-              ...r,
-            });
-          });
-        });
+      setLoading(true);
+      await api.post("/class-hygiene-scores/save", {
+        weekNumber,
+        scores,
       });
-      await api.post("/api/class-hygiene/save", {
-        weekNumber: selectedWeek.weekNumber,
-        scores: payload,
-      });
-      setSnackbar({
-        open: true,
-        msg: "Đã lưu điểm vệ sinh thành công!",
-        sev: "success",
-      });
+      setNotification("Đã lưu điểm vệ sinh thành công!");
     } catch (err) {
-      console.error(err);
-      setSnackbar({ open: true, msg: "Lỗi khi lưu điểm!", sev: "error" });
+      console.error("❌ Lỗi khi lưu:", err);
+      setNotification("Lỗi khi lưu điểm vệ sinh!");
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  if (loading) return <CircularProgress />;
-
-  const daysLabels = selectedWeek?.startDate ? getWeekDays(selectedWeek.startDate) : [];
-
+  // 🧩 Render bảng
   return (
-    <Box sx={{ p: 3 }}>
+    <Box p={3}>
       <Typography variant="h5" gutterBottom>
-        🧹 Nhập điểm vệ sinh lớp (2 buổi / ngày)
+        Quản lý điểm vệ sinh lớp học (Tuần {weekNumber})
       </Typography>
 
-      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-        <TextField
-          select
-          label="Chọn tuần"
-          value={selectedWeek?._id || ""}
-          onChange={(e) => {
-            const w = weekList.find((wk) => wk._id === e.target.value) || null;
-            setSelectedWeek(w);
-            if (w) initializeData(w.weekNumber, classes);
-          }}
-          sx={{ width: 300 }}
-        >
-          {weekList.map((w) => (
-            <MenuItem key={w._id} value={w._id}>
-              Tuần {w.weekNumber}
-            </MenuItem>
-          ))}
-        </TextField>
+      {loading ? (
+        <CircularProgress />
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Lớp</TableCell>
+                <TableCell>Ngày</TableCell>
+                <TableCell align="center">Buổi sáng - Trực nhật vắng</TableCell>
+                <TableCell align="center">Buổi sáng - Quạt/Đèn</TableCell>
+                <TableCell align="center">Buổi sáng - Cửa</TableCell>
+                <TableCell align="center">Buổi chiều - Trực nhật vắng</TableCell>
+                <TableCell align="center">Buổi chiều - Quạt/Đèn</TableCell>
+                <TableCell align="center">Buổi chiều - Cửa</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {scores.map((row, index) => (
+                <TableRow key={index}>
+                  <TableCell>{row.className}</TableCell>
+                  <TableCell>{row.date}</TableCell>
 
-        <Button
-          variant="contained"
-          color="success"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? "Đang lưu..." : "💾 Lưu"}
+                  {/* Sáng */}
+                  <TableCell align="center">
+                    <input
+                      type="checkbox"
+                      checked={row.absentDutyMorning === 1}
+                      onChange={(e) =>
+                        handleCheckChange(
+                          row.classId,
+                          row.date,
+                          "Morning",
+                          "absentDuty",
+                          e.target.checked ? 1 : 0
+                        )
+                      }
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    <input
+                      type="checkbox"
+                      checked={row.noLightFanMorning === 1}
+                      onChange={(e) =>
+                        handleCheckChange(
+                          row.classId,
+                          row.date,
+                          "Morning",
+                          "noLightFan",
+                          e.target.checked ? 1 : 0
+                        )
+                      }
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    <input
+                      type="checkbox"
+                      checked={row.notClosedDoorMorning === 1}
+                      onChange={(e) =>
+                        handleCheckChange(
+                          row.classId,
+                          row.date,
+                          "Morning",
+                          "notClosedDoor",
+                          e.target.checked ? 1 : 0
+                        )
+                      }
+                    />
+                  </TableCell>
+
+                  {/* Chiều */}
+                  <TableCell align="center">
+                    <input
+                      type="checkbox"
+                      checked={row.absentDutyAfternoon === 1}
+                      onChange={(e) =>
+                        handleCheckChange(
+                          row.classId,
+                          row.date,
+                          "Afternoon",
+                          "absentDuty",
+                          e.target.checked ? 1 : 0
+                        )
+                      }
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    <input
+                      type="checkbox"
+                      checked={row.noLightFanAfternoon === 1}
+                      onChange={(e) =>
+                        handleCheckChange(
+                          row.classId,
+                          row.date,
+                          "Afternoon",
+                          "noLightFan",
+                          e.target.checked ? 1 : 0
+                        )
+                      }
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    <input
+                      type="checkbox"
+                      checked={row.notClosedDoorAfternoon === 1}
+                      onChange={(e) =>
+                        handleCheckChange(
+                          row.classId,
+                          row.date,
+                          "Afternoon",
+                          "notClosedDoor",
+                          e.target.checked ? 1 : 0
+                        )
+                      }
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      <Box mt={2}>
+        <Button variant="contained" color="primary" onClick={handleSave} disabled={loading}>
+          Lưu điểm vệ sinh
         </Button>
-      </Stack>
-
-      <Stack direction="row" flexWrap="wrap" spacing={2}>
-        {GRADES.map((g) => (
-          <Box key={g} sx={{ flex: "1 1 400px" }}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6">Khối {g}</Typography>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Lớp</TableCell>
-                    {daysLabels.map((d, idx) => (
-                      <TableCell key={idx} align="center">
-                        {d.label}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {Object.entries(data[g] || {}).map(([classId, recs]) => {
-                    const cls = classes.find((c) => c._id === classId);
-                    if (!cls) return null;
-                    return (
-                      <TableRow key={classId}>
-                        <TableCell>{cls.className}</TableCell>
-                        {recs.map((r, dIdx) => (
-                          <TableCell key={dIdx} align="center">
-                            {["Morning", "Afternoon"].map((sess) => (
-                              <Box
-                                key={sess}
-                                sx={{
-                                  display: "flex",
-                                  gap: "3px",
-                                  justifyContent: "center",
-                                  mb: 0.5,
-                                }}
-                              >
-                                {VIOLATION_LABELS.map((_, tIdx) => {
-                                  const checked =
-                                    tIdx === 0
-                                      ? r[`absentDuty${sess}`]
-                                      : tIdx === 1
-                                      ? r[`noLightFan${sess}`]
-                                      : r[`notClosedDoor${sess}`];
-                                  return (
-                                    <Checkbox
-                                      key={tIdx}
-                                      checked={!!checked}
-                                      onChange={() =>
-                                        handleToggle(g, classId, dIdx, sess as "Morning" | "Afternoon", tIdx)
-                                      }
-                                      size="small"
-                                      sx={{
-                                        padding: CHECKBOX_PADDING,
-                                        "& .MuiSvgIcon-root": { fontSize: 16 },
-                                      }}
-                                      title={`${sess} - ${VIOLATION_LABELS[tIdx]}`}
-                                    />
-                                  );
-                                })}
-                              </Box>
-                            ))}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </Paper>
-          </Box>
-        ))}
-      </Stack>
+      </Box>
 
       <Snackbar
-        open={snackbar.open}
+        open={!!notification}
         autoHideDuration={3000}
-        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        onClose={() => setNotification(null)}
       >
-        <Alert severity={snackbar.sev}>{snackbar.msg}</Alert>
+        <Alert severity="success">{notification}</Alert>
       </Snackbar>
     </Box>
   );
-}
+};
 
+export default ClassHygieneScorePage;
