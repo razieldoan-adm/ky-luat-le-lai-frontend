@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
 Box,
 Typography,
@@ -43,11 +43,6 @@ const TYPES_PER_SESSION = 3;
 const SLOT_PER_DAY = SESSIONS_PER_DAY * TYPES_PER_SESSION;
 const TOTAL_SLOTS = DAYS_COUNT * SLOT_PER_DAY;
 
-const VIOLATION_LABELS = [
-"Không trực vệ sinh lớp",
-"Không tắt đèn/quạt",
-"Không khóa cửa lớp",
-];
 const SESSION_LABELS = ["Sáng", "Chiều"];
 
 export default function ClassHygieneScorePage() {
@@ -94,6 +89,7 @@ api.get("/api/classes").catch(() => ({ data: [] })),
 api.get("/api/academic-weeks/study-weeks").catch(() => ({ data: [] })),
 ]);
 
+
     const point = settingsRes?.data?.disciplinePointDeduction?.hygiene;
     if (typeof point === "number") setHygienePoint(point);
 
@@ -125,6 +121,7 @@ api.get("/api/academic-weeks/study-weeks").catch(() => ({ data: [] })),
 };
 init();
 
+
 }, []);
 
 const initializeData = async (
@@ -134,6 +131,7 @@ classListParam?: ClassInfo[]
 try {
 const classList = classListParam ?? classes;
 const initial: Record<string, ClassType[]> = {};
+
 
   GRADES.forEach((grade) => {
     const gradeClasses = classList.filter(
@@ -167,6 +165,7 @@ const initial: Record<string, ClassType[]> = {};
 } catch (err) {
   console.error("initializeData error:", err);
 }
+
 
 };
 
@@ -234,6 +233,7 @@ return (
 <Box sx={{ p: 3 }}> <Typography variant="h5" gutterBottom>
 🧹 Quản lý điểm vệ sinh lớp học theo tuần </Typography>
 
+
   <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
     <TextField
       select
@@ -248,11 +248,7 @@ return (
         const notStarted = new Date(w.startDate) > today;
         const ended = new Date(w.endDate) < today;
         return (
-          <MenuItem
-            key={w._id}
-            value={w._id}
-            disabled={notStarted}
-          >
+          <MenuItem key={w._id} value={w._id} disabled={notStarted}>
             Tuần {w.weekNumber}
             {ended ? " (đã qua)" : notStarted ? " (chưa diễn ra)" : " (hiện tại)"}
           </MenuItem>
@@ -300,18 +296,18 @@ return (
               </TableRow>
               <TableRow>
                 {daysLabels.map((_, i) => (
-                  <React.Fragment key={i}>
+                  <>
                     <TableCell align="center">Sáng</TableCell>
                     <TableCell align="center">Chiều</TableCell>
-                  </React.Fragment>
+                  </>
                 ))}
               </TableRow>
               <TableRow>
                 {daysLabels.map((_, i) => (
-                  <React.Fragment key={i}>
+                  <>
                     <TableCell align="center">1 2 3</TableCell>
                     <TableCell align="center">1 2 3</TableCell>
-                  </React.Fragment>
+                  </>
                 ))}
               </TableRow>
             </TableHead>
@@ -323,7 +319,7 @@ return (
                     {cls.className}
                   </TableCell>
                   {Array.from({ length: DAYS_COUNT }).map((_, dIdx) => (
-                    <React.Fragment key={dIdx}>
+                    <>
                       {SESSION_LABELS.map((session, sIdx) => (
                         <TableCell align="center" key={session}>
                           <Box
@@ -359,7 +355,7 @@ return (
                           </Box>
                         </TableCell>
                       ))}
-                    </React.Fragment>
+                    </>
                   ))}
                   <TableCell align="center">
                     {calculateTotal(cls.scores)}
