@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import {
   Box,
@@ -252,4 +251,3 @@ const ClassHygieneScorePage = () => {
 };
 
 export default ClassHygieneScorePage;
-
