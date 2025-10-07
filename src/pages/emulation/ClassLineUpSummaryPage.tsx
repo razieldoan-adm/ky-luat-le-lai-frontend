@@ -1,275 +1,278 @@
-import { useEffect, useState } from "react";
+
+import { useState, useEffect } from 'react';
 import {
-Box,
-Button,
-CircularProgress,
-MenuItem,
-Select,
-Table,
-TableBody,
-TableCell,
-TableContainer,
-TableHead,
-TableRow,
-TextField,
-Typography,
-Paper,
-} from "@mui/material";
-import api from "../../api/api";
+  Box,
+  Typography,
+  TextField,
+  MenuItem,
+  Button,
+  Divider,
+  Paper,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Stack,
+  Select,
+  Snackbar,
+  Alert,
+} from '@mui/material';
+import api from '../../api/api';
+import moment from 'moment';
 
-interface AcademicWeek {
-_id: string;
-weekNumber: number;
-startDate: string;
-endDate: string;
+interface Violation {
+  _id: string;
+  className: string;
+  date: string;
+  session: string;
+  violation: string;
+  studentName?: string;
+  note?: string;
+  recorder: string;
 }
 
-interface ClassLineUpSummary {
-className: string;
-weekNumber: number;
-scores: number[];
-total: number;
+interface WeeklyScore {
+  _id: string;
+  className: string;
+  weekNumber: number;
+  year: number;
+  lineUpScore: number;
+  violationCount: number;
 }
 
-const ClassLineUpSummaryPage = () => {
-const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
-const [selectedWeek, setSelectedWeek] = useState<number>(1);
-
-const [loading, setLoading] = useState(false);
-const [classList, setClassList] = useState<string[]>([]);
-const [summaries, setSummaries] = useState<ClassLineUpSummary[]>([]);
-
-// Lấy tuần
-const fetchWeeks = async () => {
-try {
-const res = await api.get("/api/academic-weeks/study-weeks");
-setWeekList(res.data);
-if (res.data.length > 0) {
-setSelectedWeek(res.data[0].weekNumber);
-}
-} catch (err) {
-console.error("Lỗi khi lấy tuần:", err);
-}
-};
-
-// Lấy danh sách lớp
-const fetchClasses = async () => {
-try {
-const res = await api.get("/api/classes");
-const validClasses = res.data.map((cls: any) => cls.className);
-setClassList(validClasses);
-} catch (err) {
-console.error("Lỗi khi lấy danh sách lớp:", err);
-}
-};
-
-// Khởi tạo dữ liệu
-const initializeData = async (weekNumber: number) => {
-setLoading(true);
-
-
-// B1: dữ liệu mặc định
-let initial: ClassLineUpSummary[] = classList.map((cls) => ({
-  className: cls,
-  weekNumber,
-  scores: Array(10).fill(0),
-  total: 0,
-}));
-
-try {
-  // B2: lấy dữ liệu DB
-  const res = await api.get("/api/class-lineup-summaries", {
-    params: { weekNumber },
+export default function ClassLineUpSummaryPage() {
+  const [className, setClassName] = useState('');
+  const [violation, setViolation] = useState('');
+  const [recorder, setRecorder] = useState('');
+  const [note, setNote] = useState('');
+  const [date, setDate] = useState(moment().format('YYYY-MM-DD'));
+  const [mode, setMode] = useState<'day' | 'week'>('day');
+  const [violations, setViolations] = useState<Violation[]>([]);
+  const [weeklyScores, setWeeklyScores] = useState<WeeklyScore[]>([]);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; type: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    type: 'success',
   });
-  const dbData: ClassLineUpSummary[] = res.data;
 
-  // B3: merge
-  initial = initial.map((cls) => {
-    const exist = dbData.find((d) => d.className === cls.className);
-    return exist
-      ? {
-          ...cls,
-          scores: exist.scores || Array(10).fill(0),
-          total: exist.total || 0,
-        }
-      : cls;
-  });
-} catch (err) {
-  console.error("Error loading summaries:", err);
-}
+  const classOptions = ['10A1', '10A2', '10A3'];
+  const violationOptions = [
+    'Xếp hàng chậm',
+    'Mất trật tự giờ chào cờ',
+    'Nhiều HS ngồi trong lớp giờ xếp hàng',
+    'Di chuyển mất trật tự không theo hàng',
+  ];
+  const recorderOptions = ['Thầy Năm', 'Thầy Huy'];
 
-setSummaries(initial);
-setLoading(false);
+  // 🔹 Ghi nhận vi phạm
+  const handleSubmit = async () => {
+    if (!className || !violation || !recorder) {
+      setSnackbar({ open: true, message: 'Vui lòng chọn đầy đủ thông tin', type: 'error' });
+      return;
+    }
 
-};
+    try {
+      await api.post('/class-lineup-summaries', {
+        className,
+        violation,
+        recorder,
+        note,
+        date,
+      });
+      setSnackbar({ open: true, message: 'Ghi nhận thành công', type: 'success' });
+      loadViolations();
+      loadWeeklyScores();
+    } catch (error) {
+      setSnackbar({ open: true, message: 'Lỗi khi ghi nhận', type: 'error' });
+    }
+  };
 
-// Init
-useEffect(() => {
-const init = async () => {
-await fetchWeeks();
-await fetchClasses();
-};
-init();
-}, []);
+  // 🔹 Xoá vi phạm
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Bạn có chắc muốn xóa vi phạm này?')) return;
+    try {
+      await api.delete(`/class-lineup-summaries/${id}`);
+      setSnackbar({ open: true, message: 'Đã xóa vi phạm', type: 'success' });
+      loadViolations();
+      loadWeeklyScores();
+    } catch (error) {
+      setSnackbar({ open: true, message: 'Lỗi khi xóa', type: 'error' });
+    }
+  };
 
-// Khi đổi tuần hoặc có classList
-useEffect(() => {
-if (classList.length > 0 && selectedWeek) {
-initializeData(selectedWeek);
-}
-}, [selectedWeek, classList]);
+  // 🔹 Load danh sách vi phạm
+  const loadViolations = async () => {
+    try {
+      const res = await api.get('/class-lineup-summaries', {
+        params: mode === 'day' ? { date } : { week: moment(date).week() },
+      });
+      setViolations(res.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
-// Đổi điểm
-const handleScoreChange = (
-className: string,
-index: number,
-value: number
-) => {
-if (value < 0 || value > 4) return;
-setSummaries((prev) =>
-prev.map((s) =>
-s.className === className
-? {
-...s,
-scores: s.scores.map((sc, i) => (i === index ? value : sc)),
-}
-: s
-)
-);
-};
+  // 🔹 Load tổng điểm xếp hạng tuần
+  const loadWeeklyScores = async () => {
+    try {
+      const res = await api.get('/class-lineup-summaries/weekly-summary', {
+        params: { week: moment(date).week(), year: moment(date).year() },
+      });
+      setWeeklyScores(res.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
-// Tính tổng
-const calculateTotal = () => {
-setSummaries((prev) =>
-prev.map((s) => ({
-...s,
-total: s.scores.filter((sc) => sc > 0).length * 10,
-}))
-);
-};
+  useEffect(() => {
+    loadViolations();
+    loadWeeklyScores();
+  }, [date, mode]);
 
-// Lưu dữ liệu
-const saveData = async () => {
-try {
-setLoading(true);
-const payload = {
-weekNumber: selectedWeek,
-summaries: summaries.map((s) => ({
-className: s.className,
-weekNumber: selectedWeek,
-scores: s.scores,
-total: s.total,
-})),
-};
-await api.post("/api/class-lineup-summaries", payload);
-alert("Lưu thành công!");
-initializeData(selectedWeek);
-} catch (err) {
-console.error("Lỗi khi lưu:", err);
-alert("Lỗi khi lưu dữ liệu");
-} finally {
-setLoading(false);
-}
-};
-
-// Label tuần
-const getWeekLabel = (week: AcademicWeek) => {
-const today = new Date();
-const start = new Date(week.startDate);
-const end = new Date(week.endDate);
-
-if (today < start) return `Tuần ${week.weekNumber} (chưa diễn ra)`;
-if (today > end) return `Tuần ${week.weekNumber} (đã qua)`;
-return `Tuần ${week.weekNumber} (hiện tại)`;
-
-};
-
-// Render bảng cho khối
-const renderTableForGrade = (grade: number) => {
-const classesInGrade = summaries.filter((s) =>
-s.className.startsWith(String(grade))
-);
-if (classesInGrade.length === 0) return null;
-return ( <Box key={grade} mb={4}>
-<Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
-Khối {grade} </Typography> <TableContainer component={Paper}> <Table> <TableHead> <TableRow> <TableCell>Lớp</TableCell>
-{[...Array(10)].map((_, i) => ( <TableCell key={i}>Lần {i + 1}</TableCell>
-))} <TableCell>Tổng</TableCell> </TableRow> </TableHead> <TableBody>
-{classesInGrade.map((row) => ( <TableRow key={row.className}> <TableCell>{row.className}</TableCell>
-{row.scores.map((sc, i) => ( <TableCell key={i}>
-<TextField
-type="number"
-size="small"
-value={sc}
-inputProps={{ min: 0, max: 4 }}
-onChange={(e) =>
-handleScoreChange(
-row.className,
-i,
-Number(e.target.value)
-)
-}
-/> </TableCell>
-))} <TableCell>{row.total}</TableCell> </TableRow>
-))} </TableBody> </Table> </TableContainer> </Box>
-);
-};
-
-return ( <Box p={3}> <Typography variant="h5" gutterBottom>
-Nhập điểm xếp hạng theo tuần </Typography>
-
-```
-  <Box display="flex" alignItems="center" mb={2}>
-    <Typography mr={2}>Chọn tuần:</Typography>
-    <Select
-      value={selectedWeek}
-      onChange={(e) => {
-        const value = Number(e.target.value);
-        if (value === selectedWeek) {
-          initializeData(value); // reload nếu chọn lại
-        }
-        setSelectedWeek(value);
-      }}
-      size="small"
-    >
-      {weekList.map((w) => (
-        <MenuItem key={w._id} value={w.weekNumber}>
-          {getWeekLabel(w)}
-        </MenuItem>
-      ))}
-    </Select>
-  </Box>
-
-  {loading ? (
-    <CircularProgress />
-  ) : (
-    <>
-      <Typography variant="body2" sx={{ mb: 2 }}>
-        1. Lớp xếp hàng chậm <br />
-        2. Nhiều HS ngồi trong lớp giờ chơi, không ra xếp hàng <br />
-        3. Mất trật tự trong khi xếp hàng giờ SHDC <br />
-        4. Ồn ào, đùa giỡn khi di chuyển lên lớp
+  return (
+    <Box p={3}>
+      <Typography variant="h5" fontWeight="bold" mb={2}>
+        Ghi nhận vi phạm xếp hàng
       </Typography>
 
-      {renderTableForGrade(6)}
-      {renderTableForGrade(7)}
-      {renderTableForGrade(8)}
-      {renderTableForGrade(9)}
+      {/* 🔹 Khu vực nhập liệu */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Stack direction="row" spacing={2} mb={2}>
+          <TextField select label="Lớp" value={className} onChange={(e) => setClassName(e.target.value)} fullWidth>
+            {classOptions.map((c) => (
+              <MenuItem key={c} value={c}>
+                {c}
+              </MenuItem>
+            ))}
+          </TextField>
 
-      <Box mt={2} display="flex" gap={2}>
-        <Button variant="contained" color="primary" onClick={calculateTotal}>
-          TÍNH TỔNG
-        </Button>
-        <Button variant="contained" color="success" onClick={saveData}>
-          LƯU ĐIỂM
-        </Button>
-      </Box>
-    </>
-  )}
-</Box>
+          <TextField select label="Lỗi vi phạm" value={violation} onChange={(e) => setViolation(e.target.value)} fullWidth>
+            {violationOptions.map((v) => (
+              <MenuItem key={v} value={v}>
+                {v}
+              </MenuItem>
+            ))}
+          </TextField>
 
+          <TextField select label="Người ghi nhận" value={recorder} onChange={(e) => setRecorder(e.target.value)} fullWidth>
+            {recorderOptions.map((r) => (
+              <MenuItem key={r} value={r}>
+                {r}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
 
-);
-};
+        <Stack direction="row" spacing={2} mb={2}>
+          <TextField
+            label="Ghi chú"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Ngày"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            sx={{ width: 200 }}
+          />
+          <Button variant="contained" color="primary" onClick={handleSubmit}>
+            Ghi nhận
+          </Button>
+        </Stack>
+      </Paper>
 
-export default ClassLineUpSummaryPage;
+      <Divider sx={{ my: 2 }} />
+
+      {/* 🔹 Bộ lọc xem dữ liệu */}
+      <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+        <Typography>Xem theo:</Typography>
+        <Select value={mode} onChange={(e) => setMode(e.target.value as 'day' | 'week')} sx={{ width: 150 }}>
+          <MenuItem value="day">Ngày</MenuItem>
+          <MenuItem value="week">Tuần</MenuItem>
+        </Select>
+      </Stack>
+
+      {/* 🔹 Bảng danh sách vi phạm */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" mb={2}>
+          Danh sách vi phạm ({mode === 'day' ? moment(date).format('DD/MM/YYYY') : `Tuần ${moment(date).week()}`})
+        </Typography>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Ngày</TableCell>
+              <TableCell>Lớp</TableCell>
+              <TableCell>Lỗi vi phạm</TableCell>
+              <TableCell>Người ghi nhận</TableCell>
+              <TableCell>Ghi chú</TableCell>
+              <TableCell>Thao tác</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {violations.map((v) => (
+              <TableRow key={v._id}>
+                <TableCell>{moment(v.date).format('DD/MM')}</TableCell>
+                <TableCell>{v.className}</TableCell>
+                <TableCell>{v.violation}</TableCell>
+                <TableCell>{v.recorder}</TableCell>
+                <TableCell>{v.note}</TableCell>
+                <TableCell>
+                  <Button color="error" onClick={() => handleDelete(v._id)}>
+                    Xóa
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+            {violations.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Paper>
+
+      {/* 🔹 Bảng tổng điểm xếp hạng */}
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="h6" mb={2}>
+          Tổng điểm xếp hàng trong tuần {moment(date).week()}
+        </Typography>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Lớp</TableCell>
+              <TableCell align="right">Tổng điểm</TableCell>
+              <TableCell align="right">Số lần vi phạm</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {weeklyScores.map((c) => (
+              <TableRow key={c._id}>
+                <TableCell>{c.className}</TableCell>
+                <TableCell align="right">{c.lineUpScore}</TableCell>
+                <TableCell align="right">{c.violationCount}</TableCell>
+              </TableRow>
+            ))}
+            {weeklyScores.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={3} align="center">
+                  Chưa có dữ liệu tuần này
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Paper>
+
+      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert severity={snackbar.type}>{snackbar.message}</Alert>
+      </Snackbar>
+    </Box>
+  );
+}
+
