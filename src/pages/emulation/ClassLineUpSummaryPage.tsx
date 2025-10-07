@@ -1,141 +1,158 @@
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 import {
   Box,
-  Typography,
-  TextField,
-  MenuItem,
   Button,
-  Divider,
+  MenuItem,
   Paper,
+  Select,
+  Stack,
+  TextField,
+  Typography,
   Table,
+  TableBody,
+  TableCell,
+  TableContainer,
   TableHead,
   TableRow,
-  TableCell,
-  TableBody,
-  Stack,
-  Select,
-  Snackbar,
-  Alert,
-} from '@mui/material';
-import api from '../../api/api';
+} from "@mui/material";
+import api from "../../api/api";
 
-// 🔧 Hàm tiện ích thay thế moment
-const getWeekNumber = (dateStr: string) => {
-  const date = new Date(dateStr);
-  const firstJan = new Date(date.getFullYear(), 0, 1);
-  const days = Math.floor((date.getTime() - firstJan.getTime()) / 86400000);
-  return Math.ceil((days + firstJan.getDay() + 1) / 7);
-};
-const formatDate = (dateStr: string) => {
-  const d = new Date(dateStr);
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
-const formatInputDate = (date: Date) => date.toISOString().split('T')[0];
-
-interface Violation {
+interface ClassOption {
   _id: string;
   className: string;
-  date: string;
-  session: string;
+  grade: string;
+}
+
+interface StudentSuggestion {
+  _id: string;
+  name: string;
+}
+
+interface ViolationRecord {
+  _id: string;
+  className: string;
   violation: string;
-  studentName?: string;
-  note?: string;
+  studentName: string;
   recorder: string;
+  note?: string;
+  date: string;
 }
 
 interface WeeklyScore {
   _id: string;
   className: string;
-  weekNumber: number;
-  year: number;
   lineUpScore: number;
-  violationCount: number;
+  totalScore: number;
 }
 
-export default function ClassLineUpSummaryPage() {
-  const [className, setClassName] = useState('');
-  const [violation, setViolation] = useState('');
-  const [recorder, setRecorder] = useState('');
-  const [note, setNote] = useState('');
-  const [date, setDate] = useState(formatInputDate(new Date()));
-  const [mode, setMode] = useState<'day' | 'week'>('day');
-  const [violations, setViolations] = useState<Violation[]>([]);
+function removeVietnameseTones(str: string): string {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D");
+}
+
+export default function ClassLineupSummaryPage() {
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [violations, setViolations] = useState<ViolationRecord[]>([]);
   const [weeklyScores, setWeeklyScores] = useState<WeeklyScore[]>([]);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; type: 'success' | 'error' }>({
-    open: false,
-    message: '',
-    type: 'success',
-  });
+  const [selectedViolation, setSelectedViolation] = useState("");
+  const [studentName, setStudentName] = useState("");
+  const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<
+    StudentSuggestion[]
+  >([]);
+  const [recorder, setRecorder] = useState("");
+  const [date, setDate] = useState<string>(
+    new Date().toISOString().substring(0, 10)
+  );
 
-  const classOptions = ['10A1', '10A2', '10A3'];
-  const violationOptions = [
-    'Xếp hàng chậm',
-    'Mất trật tự giờ chào cờ',
-    'Nhiều HS ngồi trong lớp giờ xếp hàng',
-    'Di chuyển mất trật tự không theo hàng',
-  ];
-  const recorderOptions = ['Thầy Năm', 'Thầy Huy'];
+  // Lấy danh sách lớp
+  useEffect(() => {
+    api
+      .get("/api/classes")
+      .then((res) => setClasses(res.data))
+      .catch((err) => console.error("Fetch classes error:", err));
+  }, []);
 
-  const handleSubmit = async () => {
-    if (!className || !violation || !recorder) {
-      setSnackbar({ open: true, message: 'Vui lòng chọn đầy đủ thông tin', type: 'error' });
+  // Lấy danh sách học sinh theo lớp
+  useEffect(() => {
+    if (!selectedClassId) {
+      setSuggestions([]);
       return;
     }
+    api
+      .get(`/api/students/by-class/${selectedClassId}`)
+      .then((res) => setSuggestions(res.data))
+      .catch((err) => console.error("Fetch students error:", err));
+  }, [selectedClassId]);
+
+  // Lọc học sinh theo tên
+  useEffect(() => {
+    if (!studentName.trim()) {
+      setFilteredSuggestions([]);
+      return;
+    }
+    const lower = removeVietnameseTones(studentName.toLowerCase());
+    const filtered = suggestions.filter((s) =>
+      removeVietnameseTones(s.name.toLowerCase()).includes(lower)
+    );
+    setFilteredSuggestions(filtered);
+  }, [studentName, suggestions]);
+
+  // Lấy danh sách vi phạm trong ngày
+  const fetchViolations = () => {
+    api
+      .get(`/api/class-lineup-summaries?date=${date}`)
+      .then((res) => setViolations(res.data))
+      .catch((err) => console.error("Fetch violations error:", err));
+  };
+
+  useEffect(() => {
+    fetchViolations();
+  }, [date]);
+
+  // Lấy tổng điểm tuần
+  useEffect(() => {
+    api
+      .get("/api/class-lineup-summaries/weekly-summary")
+      .then((res) => setWeeklyScores(res.data))
+      .catch((err) => console.error("Fetch weekly scores error:", err));
+  }, []);
+
+  const handleSave = async () => {
+    if (!selectedClassId || !selectedViolation || !studentName || !recorder)
+      return alert("Vui lòng nhập đầy đủ thông tin");
 
     try {
-      await api.post('/class-lineup-summaries', {
-        className,
-        violation,
+      await api.post("/api/class-lineup-summaries", {
+        className:
+          classes.find((c) => c._id === selectedClassId)?.className || "",
+        violation: selectedViolation,
+        studentName,
         recorder,
-        note,
         date,
       });
-      setSnackbar({ open: true, message: 'Ghi nhận thành công', type: 'success' });
-      loadViolations();
-      loadWeeklyScores();
-    } catch {
-      setSnackbar({ open: true, message: 'Lỗi khi ghi nhận', type: 'error' });
+      setStudentName("");
+      fetchViolations();
+    } catch (err) {
+      console.error("Save error:", err);
+      alert("Lỗi khi ghi nhận");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Bạn có chắc muốn xóa vi phạm này?')) return;
+    if (!window.confirm("Xóa ghi nhận này?")) return;
     try {
-      await api.delete(`/class-lineup-summaries/${id}`);
-      setSnackbar({ open: true, message: 'Đã xóa vi phạm', type: 'success' });
-      loadViolations();
-      loadWeeklyScores();
-    } catch {
-      setSnackbar({ open: true, message: 'Lỗi khi xóa', type: 'error' });
+      await api.delete(`/api/class-lineup-summaries/${id}`);
+      fetchViolations();
+    } catch (err) {
+      console.error("Delete error:", err);
     }
   };
-
-  const loadViolations = async () => {
-    try {
-      const params = mode === 'day' ? { date } : { week: getWeekNumber(date) };
-      const res = await api.get('/class-lineup-summaries', { params });
-      setViolations(res.data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const loadWeeklyScores = async () => {
-    try {
-      const res = await api.get('/class-lineup-summaries/weekly-summary', {
-        params: { week: getWeekNumber(date), year: new Date(date).getFullYear() },
-      });
-      setWeeklyScores(res.data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  useEffect(() => {
-    loadViolations();
-    loadWeeklyScores();
-  }, [date, mode]);
 
   return (
     <Box p={3}>
@@ -143,127 +160,170 @@ export default function ClassLineUpSummaryPage() {
         Ghi nhận vi phạm xếp hàng
       </Typography>
 
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Stack direction="row" spacing={2} mb={2}>
-          <TextField select label="Lớp" value={className} onChange={(e) => setClassName(e.target.value)} fullWidth>
-            {classOptions.map((c) => (
-              <MenuItem key={c} value={c}>
-                {c}
+      {/* Form ghi nhận */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack direction="row" spacing={2}>
+          <Select
+            value={selectedClassId}
+            onChange={(e) => setSelectedClassId(e.target.value)}
+            displayEmpty
+            fullWidth
+          >
+            <MenuItem value="">Chọn lớp</MenuItem>
+            {classes.map((cls) => (
+              <MenuItem key={cls._id} value={cls._id}>
+                {cls.className}
               </MenuItem>
             ))}
-          </TextField>
+          </Select>
 
-          <TextField select label="Lỗi vi phạm" value={violation} onChange={(e) => setViolation(e.target.value)} fullWidth>
-            {violationOptions.map((v) => (
-              <MenuItem key={v} value={v}>
-                {v}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Select
+            value={selectedViolation}
+            onChange={(e) => setSelectedViolation(e.target.value)}
+            displayEmpty
+            fullWidth
+          >
+            <MenuItem value="">Chọn lỗi vi phạm</MenuItem>
+            <MenuItem value="Không xếp hàng">Không xếp hàng</MenuItem>
+            <MenuItem value="Nói chuyện">Nói chuyện</MenuItem>
+            <MenuItem value="Mất trật tự">Mất trật tự</MenuItem>
+          </Select>
 
-          <TextField select label="Người ghi nhận" value={recorder} onChange={(e) => setRecorder(e.target.value)} fullWidth>
-            {recorderOptions.map((r) => (
-              <MenuItem key={r} value={r}>
-                {r}
-              </MenuItem>
-            ))}
-          </TextField>
+          <TextField
+            label="Người ghi nhận"
+            value={recorder}
+            onChange={(e) => setRecorder(e.target.value)}
+            fullWidth
+          />
+
+          <TextField
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            fullWidth
+          />
         </Stack>
 
-        <Stack direction="row" spacing={2} mb={2}>
-          <TextField label="Ghi chú" value={note} onChange={(e) => setNote(e.target.value)} fullWidth />
-          <TextField label="Ngày" type="date" value={date} onChange={(e) => setDate(e.target.value)} sx={{ width: 200 }} />
-          <Button variant="contained" color="primary" onClick={handleSubmit}>
+        <Box sx={{ mt: 2, position: "relative" }}>
+          <TextField
+            label="Tên học sinh vi phạm"
+            value={studentName}
+            onChange={(e) => setStudentName(e.target.value)}
+            fullWidth
+            autoComplete="off"
+          />
+          {studentName && filteredSuggestions.length > 0 && (
+            <Paper
+              sx={{
+                position: "absolute",
+                zIndex: 10,
+                width: "100%",
+                maxHeight: 200,
+                overflowY: "auto",
+              }}
+            >
+              {filteredSuggestions.map((s) => (
+                <MenuItem key={s._id} onClick={() => setStudentName(s.name)}>
+                  {s.name}
+                </MenuItem>
+              ))}
+            </Paper>
+          )}
+        </Box>
+
+        <Box textAlign="right" mt={2}>
+          <Button variant="contained" onClick={handleSave}>
             Ghi nhận
           </Button>
-        </Stack>
+        </Box>
       </Paper>
 
-      <Divider sx={{ my: 2 }} />
-
-      <Stack direction="row" spacing={2} alignItems="center" mb={2}>
-        <Typography>Xem theo:</Typography>
-        <Select value={mode} onChange={(e) => setMode(e.target.value as 'day' | 'week')} sx={{ width: 150 }}>
-          <MenuItem value="day">Ngày</MenuItem>
-          <MenuItem value="week">Tuần</MenuItem>
-        </Select>
-      </Stack>
-
+      {/* Danh sách vi phạm */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" mb={2}>
-          Danh sách vi phạm ({mode === 'day' ? date.split('-').reverse().join('/') : `Tuần ${getWeekNumber(date)}`})
+        <Typography fontWeight="bold" mb={2}>
+          Danh sách vi phạm ({new Date(date).toLocaleDateString("vi-VN")})
         </Typography>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Ngày</TableCell>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Lỗi vi phạm</TableCell>
-              <TableCell>Người ghi nhận</TableCell>
-              <TableCell>Ghi chú</TableCell>
-              <TableCell>Thao tác</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {violations.map((v) => (
-              <TableRow key={v._id}>
-                <TableCell>{formatDate(v.date)}</TableCell>
-                <TableCell>{v.className}</TableCell>
-                <TableCell>{v.violation}</TableCell>
-                <TableCell>{v.recorder}</TableCell>
-                <TableCell>{v.note}</TableCell>
-                <TableCell>
-                  <Button color="error" onClick={() => handleDelete(v._id)}>
-                    Xóa
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-            {violations.length === 0 && (
+        <TableContainer>
+          <Table>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={6} align="center">
-                  Không có dữ liệu
-                </TableCell>
+                <TableCell>Ngày</TableCell>
+                <TableCell>Lớp</TableCell>
+                <TableCell>Lỗi vi phạm</TableCell>
+                <TableCell>Tên học sinh</TableCell>
+                <TableCell>Người ghi nhận</TableCell>
+                <TableCell>Thao tác</TableCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {violations.length > 0 ? (
+                violations.map((v) => (
+                  <TableRow key={v._id}>
+                    <TableCell>
+                      {new Date(v.date).toLocaleDateString("vi-VN")}
+                    </TableCell>
+                    <TableCell>{v.className}</TableCell>
+                    <TableCell>{v.violation}</TableCell>
+                    <TableCell>{v.studentName}</TableCell>
+                    <TableCell>{v.recorder}</TableCell>
+                    <TableCell>
+                      <Button
+                        color="error"
+                        onClick={() => handleDelete(v._id)}
+                        size="small"
+                      >
+                        Xóa
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    Không có dữ liệu
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Paper>
 
+      {/* Tổng điểm tuần */}
       <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" mb={2}>
-          Tổng điểm xếp hàng trong tuần {getWeekNumber(date)}
+        <Typography fontWeight="bold" mb={2}>
+          Tổng điểm xếp hàng trong tuần
         </Typography>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Lớp</TableCell>
-              <TableCell align="right">Tổng điểm</TableCell>
-              <TableCell align="right">Số lần vi phạm</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {weeklyScores.map((c) => (
-              <TableRow key={c._id}>
-                <TableCell>{c.className}</TableCell>
-                <TableCell align="right">{c.lineUpScore}</TableCell>
-                <TableCell align="right">{c.violationCount}</TableCell>
-              </TableRow>
-            ))}
-            {weeklyScores.length === 0 && (
+        <TableContainer>
+          <Table>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={3} align="center">
-                  Chưa có dữ liệu tuần này
-                </TableCell>
+                <TableCell>Lớp</TableCell>
+                <TableCell>Tổng điểm</TableCell>
+                <TableCell>Điểm xếp hàng</TableCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {weeklyScores.length > 0 ? (
+                weeklyScores.map((w) => (
+                  <TableRow key={w._id}>
+                    <TableCell>{w.className}</TableCell>
+                    <TableCell>{w.totalScore}</TableCell>
+                    <TableCell>{w.lineUpScore}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={3} align="center">
+                    Chưa có dữ liệu tuần này
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Paper>
-
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert severity={snackbar.type}>{snackbar.message}</Alert>
-      </Snackbar>
     </Box>
   );
 }
+
