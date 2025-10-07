@@ -19,7 +19,19 @@ import {
   Alert,
 } from '@mui/material';
 import api from '../../api/api';
-import moment from 'moment';
+
+// 🔧 Hàm tiện ích thay thế moment
+const getWeekNumber = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const firstJan = new Date(date.getFullYear(), 0, 1);
+  const days = Math.floor((date.getTime() - firstJan.getTime()) / 86400000);
+  return Math.ceil((days + firstJan.getDay() + 1) / 7);
+};
+const formatDate = (dateStr: string) => {
+  const d = new Date(dateStr);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+const formatInputDate = (date: Date) => date.toISOString().split('T')[0];
 
 interface Violation {
   _id: string;
@@ -46,7 +58,7 @@ export default function ClassLineUpSummaryPage() {
   const [violation, setViolation] = useState('');
   const [recorder, setRecorder] = useState('');
   const [note, setNote] = useState('');
-  const [date, setDate] = useState(moment().format('YYYY-MM-DD'));
+  const [date, setDate] = useState(formatInputDate(new Date()));
   const [mode, setMode] = useState<'day' | 'week'>('day');
   const [violations, setViolations] = useState<Violation[]>([]);
   const [weeklyScores, setWeeklyScores] = useState<WeeklyScore[]>([]);
@@ -65,7 +77,6 @@ export default function ClassLineUpSummaryPage() {
   ];
   const recorderOptions = ['Thầy Năm', 'Thầy Huy'];
 
-  // 🔹 Ghi nhận vi phạm
   const handleSubmit = async () => {
     if (!className || !violation || !recorder) {
       setSnackbar({ open: true, message: 'Vui lòng chọn đầy đủ thông tin', type: 'error' });
@@ -83,12 +94,11 @@ export default function ClassLineUpSummaryPage() {
       setSnackbar({ open: true, message: 'Ghi nhận thành công', type: 'success' });
       loadViolations();
       loadWeeklyScores();
-    } catch (error) {
+    } catch {
       setSnackbar({ open: true, message: 'Lỗi khi ghi nhận', type: 'error' });
     }
   };
 
-  // 🔹 Xoá vi phạm
   const handleDelete = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn xóa vi phạm này?')) return;
     try {
@@ -96,28 +106,25 @@ export default function ClassLineUpSummaryPage() {
       setSnackbar({ open: true, message: 'Đã xóa vi phạm', type: 'success' });
       loadViolations();
       loadWeeklyScores();
-    } catch (error) {
+    } catch {
       setSnackbar({ open: true, message: 'Lỗi khi xóa', type: 'error' });
     }
   };
 
-  // 🔹 Load danh sách vi phạm
   const loadViolations = async () => {
     try {
-      const res = await api.get('/class-lineup-summaries', {
-        params: mode === 'day' ? { date } : { week: moment(date).week() },
-      });
+      const params = mode === 'day' ? { date } : { week: getWeekNumber(date) };
+      const res = await api.get('/class-lineup-summaries', { params });
       setViolations(res.data);
     } catch (error) {
       console.error(error);
     }
   };
 
-  // 🔹 Load tổng điểm xếp hạng tuần
   const loadWeeklyScores = async () => {
     try {
       const res = await api.get('/class-lineup-summaries/weekly-summary', {
-        params: { week: moment(date).week(), year: moment(date).year() },
+        params: { week: getWeekNumber(date), year: new Date(date).getFullYear() },
       });
       setWeeklyScores(res.data);
     } catch (error) {
@@ -136,7 +143,6 @@ export default function ClassLineUpSummaryPage() {
         Ghi nhận vi phạm xếp hàng
       </Typography>
 
-      {/* 🔹 Khu vực nhập liệu */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack direction="row" spacing={2} mb={2}>
           <TextField select label="Lớp" value={className} onChange={(e) => setClassName(e.target.value)} fullWidth>
@@ -165,19 +171,8 @@ export default function ClassLineUpSummaryPage() {
         </Stack>
 
         <Stack direction="row" spacing={2} mb={2}>
-          <TextField
-            label="Ghi chú"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Ngày"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            sx={{ width: 200 }}
-          />
+          <TextField label="Ghi chú" value={note} onChange={(e) => setNote(e.target.value)} fullWidth />
+          <TextField label="Ngày" type="date" value={date} onChange={(e) => setDate(e.target.value)} sx={{ width: 200 }} />
           <Button variant="contained" color="primary" onClick={handleSubmit}>
             Ghi nhận
           </Button>
@@ -186,7 +181,6 @@ export default function ClassLineUpSummaryPage() {
 
       <Divider sx={{ my: 2 }} />
 
-      {/* 🔹 Bộ lọc xem dữ liệu */}
       <Stack direction="row" spacing={2} alignItems="center" mb={2}>
         <Typography>Xem theo:</Typography>
         <Select value={mode} onChange={(e) => setMode(e.target.value as 'day' | 'week')} sx={{ width: 150 }}>
@@ -195,10 +189,9 @@ export default function ClassLineUpSummaryPage() {
         </Select>
       </Stack>
 
-      {/* 🔹 Bảng danh sách vi phạm */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" mb={2}>
-          Danh sách vi phạm ({mode === 'day' ? moment(date).format('DD/MM/YYYY') : `Tuần ${moment(date).week()}`})
+          Danh sách vi phạm ({mode === 'day' ? date.split('-').reverse().join('/') : `Tuần ${getWeekNumber(date)}`})
         </Typography>
         <Table>
           <TableHead>
@@ -214,7 +207,7 @@ export default function ClassLineUpSummaryPage() {
           <TableBody>
             {violations.map((v) => (
               <TableRow key={v._id}>
-                <TableCell>{moment(v.date).format('DD/MM')}</TableCell>
+                <TableCell>{formatDate(v.date)}</TableCell>
                 <TableCell>{v.className}</TableCell>
                 <TableCell>{v.violation}</TableCell>
                 <TableCell>{v.recorder}</TableCell>
@@ -237,10 +230,9 @@ export default function ClassLineUpSummaryPage() {
         </Table>
       </Paper>
 
-      {/* 🔹 Bảng tổng điểm xếp hạng */}
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6" mb={2}>
-          Tổng điểm xếp hàng trong tuần {moment(date).week()}
+          Tổng điểm xếp hàng trong tuần {getWeekNumber(date)}
         </Typography>
         <Table>
           <TableHead>
@@ -275,4 +267,3 @@ export default function ClassLineUpSummaryPage() {
     </Box>
   );
 }
-
