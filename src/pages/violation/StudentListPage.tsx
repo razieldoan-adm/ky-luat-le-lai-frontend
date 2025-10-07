@@ -36,7 +36,7 @@ const StudentListPage: React.FC = () => {
   const handleLoadStudents = async () => {
     if (!selectedClass) return;
     try {
-      const res = await api.get("/api/students", {
+      const res = await api.get("/api/students/by-class", {
         params: { className: selectedClass }, // ✅ backend dùng className
       });
       setStudents(res.data);
