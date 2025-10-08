@@ -29,7 +29,7 @@ const drawerWidth = 240;
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar>
-        <Typography variant="h6" noWrap>Ghi nhận kỷ luật</Typography>
+        <Typography variant="h6" noWrap>Ghi nhận kỷ luật/Lỗi Xếp hàng</Typography>
       </Toolbar>
 
       {/* Danh sách menu chính */}
@@ -38,8 +38,12 @@ const drawerWidth = 240;
           <ListItemIcon><MenuBook /></ListItemIcon>
           <ListItemText primary="Ghi nhận vi phạm" />
         </ListItemButton>
-       
-
+       <ListItemButton onClick={() => navigate('/violation/class-lineup-list')}>
+          <ListItemIcon><MenuBook /></ListItemIcon>
+          <ListItemText primary="Ghi nhận lỗi xếp hàng" />
+        </ListItemButton>
+          
+        
         <ListItemButton onClick={() => navigate('/violation/unhandled')}>
           <ListItemIcon><ClassIcon /></ListItemIcon>
           <ListItemText primary="Danh sách vi phạm chưa xử lý" />
