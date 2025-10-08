@@ -11,7 +11,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  Divider,
   Table,
   TableBody,
   TableCell,
