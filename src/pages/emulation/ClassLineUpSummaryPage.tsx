@@ -41,8 +41,8 @@ export default function ClassLineUpSummaryPage() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [violation, setViolation] = useState("");
   const [recorder, setRecorder] = useState("th Huy");
-  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [records, setRecords] = useState<ViolationRecord[]>([]);
+  const [hasRecord, setHasRecord] = useState(false);
 
   // 🔹 Load danh sách lớp
   useEffect(() => {
@@ -81,6 +81,7 @@ export default function ClassLineUpSummaryPage() {
     try {
       const res = await api.get("/api/class-lineup-summaries");
       setRecords(res.data);
+      setHasRecord(res.data.length > 0);
     } catch (err) {
       console.error("Lỗi khi lấy danh sách vi phạm:", err);
     }
@@ -91,17 +92,19 @@ export default function ClassLineUpSummaryPage() {
 
   // 🔹 Ghi nhận vi phạm
   const handleSave = async () => {
-    if (!className || !violation || !recorder) return alert("Vui lòng nhập đủ thông tin");
+    if (!className || !violation || !recorder)
+      return alert("Vui lòng nhập đủ thông tin");
 
     try {
       const payload = {
         className,
-        date: new Date(date),
         violation,
         recorder,
         studentName: selectedStudents.join(", "),
+        date: new Date().toISOString(), // ✅ Tự động lấy thời gian hệ thống
       };
       await api.post("/api/class-lineup-summaries", payload);
+      setHasRecord(true);
       setStudentName("");
       setSelectedStudents([]);
       setViolation("");
@@ -148,6 +151,25 @@ export default function ClassLineUpSummaryPage() {
             ))}
           </TextField>
 
+          {/* --- Lỗi vi phạm --- */}
+          <TextField
+            select
+            fullWidth
+            label="Lỗi vi phạm"
+            value={violation}
+            onChange={(e) => setViolation(e.target.value)}
+          >
+            <MenuItem value="Tập trung xếp hàng quá thời gian quy định">
+              Tập trung xếp hàng quá thời gian quy định
+            </MenuItem>
+            <MenuItem value="Mất trật tự, đùa giỡn khi xếp hàng">
+              Mất trật tự, đùa giỡn khi xếp hàng
+            </MenuItem>
+            <MenuItem value="Di chuyển lộn xộn không theo hàng lối">
+              Di chuyển lộn xộn không theo hàng lối
+            </MenuItem>
+          </TextField>
+
           {/* --- Học sinh vi phạm --- */}
           <Box>
             <TextField
@@ -184,7 +206,6 @@ export default function ClassLineUpSummaryPage() {
                 ))}
               </Paper>
             )}
-            {/* Hiển thị danh sách học sinh đã chọn */}
             <Stack direction="row" spacing={1} mt={1}>
               {selectedStudents.map((s) => (
                 <Paper
@@ -203,25 +224,6 @@ export default function ClassLineUpSummaryPage() {
             </Stack>
           </Box>
 
-          {/* --- Lỗi vi phạm --- */}
-          <TextField
-            select
-            fullWidth
-            label="Lỗi vi phạm"
-            value={violation}
-            onChange={(e) => setViolation(e.target.value)}
-          >
-            <MenuItem value="Tập trung xếp hàng quá thời gian quy định">
-              Tập trung xếp hàng quá thời gian quy định
-            </MenuItem>
-            <MenuItem value="Mất trật tự, đùa giỡn khi xếp hàng">
-              Mất trật tự, đùa giỡn khi xếp hàng
-            </MenuItem>
-            <MenuItem value="Di chuyển lộn xộn không theo hàng lối">
-              Di chuyển lộn xộn không theo hàng lối
-            </MenuItem>
-          </TextField>
-
           {/* --- Người ghi nhận --- */}
           <TextField
             select
@@ -234,15 +236,6 @@ export default function ClassLineUpSummaryPage() {
             <MenuItem value="th Năm">th Năm</MenuItem>
           </TextField>
 
-          {/* --- Thời gian --- */}
-          <TextField
-            type="date"
-            label="Ngày ghi nhận"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
-
           <Button variant="contained" onClick={handleSave}>
             Lưu ghi nhận
           </Button>
@@ -250,41 +243,44 @@ export default function ClassLineUpSummaryPage() {
       </Paper>
 
       {/* --- Danh sách vi phạm --- */}
-      <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" mb={1}>
-          Danh sách vi phạm
-        </Typography>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Học sinh</TableCell>
-              <TableCell>Lỗi vi phạm</TableCell>
-              <TableCell>Ngày</TableCell>
-              <TableCell>Người ghi nhận</TableCell>
-              <TableCell></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {records.map((r) => (
-              <TableRow key={r._id}>
-                <TableCell>{r.className}</TableCell>
-                <TableCell>{r.studentName || "-"}</TableCell>
-                <TableCell>{r.violation}</TableCell>
-                <TableCell>
-                  {new Date(r.date).toLocaleDateString("vi-VN")}
-                </TableCell>
-                <TableCell>{r.recorder}</TableCell>
-                <TableCell>
-                  <IconButton color="error" onClick={() => handleDelete(r._id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
+      {hasRecord && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h6" mb={1}>
+            Danh sách vi phạm
+          </Typography>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Lớp</TableCell>
+                <TableCell>Lỗi vi phạm</TableCell>
+                <TableCell>Học sinh</TableCell>
+                <TableCell>Ngày</TableCell>
+                <TableCell>Người ghi nhận</TableCell>
+                <TableCell></TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
+            </TableHead>
+            <TableBody>
+              {records.map((r) => (
+                <TableRow key={r._id}>
+                  <TableCell>{r.className}</TableCell>
+                  <TableCell>{r.violation}</TableCell>
+                  <TableCell>{r.studentName || "-"}</TableCell>
+                  <TableCell>
+                    {new Date(r.date).toLocaleString("vi-VN")}
+                  </TableCell>
+                  <TableCell>{r.recorder}</TableCell>
+                  <TableCell>
+                    <IconButton color="error" onClick={() => handleDelete(r._id)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Paper>
+      )}
     </Box>
   );
 }
+
