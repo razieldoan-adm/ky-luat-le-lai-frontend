@@ -1,156 +1,126 @@
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
-  Button,
-  MenuItem,
+  Typography,
   Paper,
-  Select,
   Stack,
   TextField,
-  Typography,
+  MenuItem,
+  Button,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
 } from "@mui/material";
 import api from "../../api/api";
 
-interface ClassOption {
-  _id: string;
-  className: string;
-  grade: string;
-}
-
-interface StudentSuggestion {
+interface Student {
   _id: string;
   name: string;
+  className: string;
 }
 
 interface ViolationRecord {
   _id: string;
   className: string;
-  violation: string;
   studentName: string;
+  violation: string;
   recorder: string;
-  note?: string;
   date: string;
+  session: string;
 }
 
-interface WeeklyScore {
-  _id: string;
-  className: string;
-  lineUpScore: number;
-  totalScore: number;
-}
-
-function removeVietnameseTones(str: string): string {
-  return str
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "D");
-}
-
-export default function ClassLineupSummaryPage() {
-  const [classes, setClasses] = useState<ClassOption[]>([]);
-  const [selectedClassId, setSelectedClassId] = useState("");
-  const [violations, setViolations] = useState<ViolationRecord[]>([]);
-  const [weeklyScores, setWeeklyScores] = useState<WeeklyScore[]>([]);
-  const [selectedViolation, setSelectedViolation] = useState("");
+export default function ClassLineUpSummaryPage() {
+  const [classes, setClasses] = useState<string[]>([]);
+  const [selectedClass, setSelectedClass] = useState("");
+  const [students, setStudents] = useState<Student[]>([]);
   const [studentName, setStudentName] = useState("");
-  const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
-  const [filteredSuggestions, setFilteredSuggestions] = useState<
-    StudentSuggestion[]
-  >([]);
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [violation, setViolation] = useState("");
   const [recorder, setRecorder] = useState("");
-  const [date, setDate] = useState<string>(
-    new Date().toISOString().substring(0, 10)
-  );
+  const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 16));
+  const [records, setRecords] = useState<ViolationRecord[]>([]);
 
-  // Lấy danh sách lớp
+  // --- Load danh sách lớp ---
   useEffect(() => {
-    api
-      .get("/api/classes")
-      .then((res) => setClasses(res.data))
-      .catch((err) => console.error("Fetch classes error:", err));
+    const fetchClasses = async () => {
+      try {
+        const res = await api.get("/api/classes");
+        setClasses(res.data.map((c: any) => c.name));
+      } catch (err) {
+        console.error("Lỗi khi tải danh sách lớp:", err);
+      }
+    };
+    fetchClasses();
   }, []);
 
-  // Lấy danh sách học sinh theo lớp
+  // --- Khi chọn lớp thì load danh sách học sinh ---
   useEffect(() => {
-    if (!selectedClassId) {
-      setSuggestions([]);
-      return;
-    }
-    api
-      .get(`/api/students/by-class/${selectedClassId}`)
-      .then((res) => setSuggestions(res.data))
-      .catch((err) => console.error("Fetch students error:", err));
-  }, [selectedClassId]);
+    if (!selectedClass) return;
+    const fetchStudents = async () => {
+      try {
+        const res = await api.get("/api/students", {
+          params: { className: selectedClass },
+        });
+        setStudents(res.data);
+      } catch (err) {
+        console.error("Lỗi khi tải danh sách học sinh:", err);
+      }
+    };
+    fetchStudents();
+  }, [selectedClass]);
 
-  // Lọc học sinh theo tên
-  useEffect(() => {
-    if (!studentName.trim()) {
-      setFilteredSuggestions([]);
-      return;
+  // --- Lấy danh sách vi phạm ---
+  const loadRecords = async () => {
+    try {
+      const res = await api.get("/api/class-lineup-summaries");
+      setRecords(res.data);
+    } catch (err) {
+      console.error("Lỗi khi tải danh sách vi phạm:", err);
     }
-    const lower = removeVietnameseTones(studentName.toLowerCase());
-    const filtered = suggestions.filter((s) =>
-      removeVietnameseTones(s.name.toLowerCase()).includes(lower)
-    );
-    setFilteredSuggestions(filtered);
-  }, [studentName, suggestions]);
-
-  // Lấy danh sách vi phạm trong ngày
-  const fetchViolations = () => {
-    api
-      .get(`/api/class-lineup-summaries?date=${date}`)
-      .then((res) => setViolations(res.data))
-      .catch((err) => console.error("Fetch violations error:", err));
   };
 
   useEffect(() => {
-    fetchViolations();
-  }, [date]);
-
-  // Lấy tổng điểm tuần
-  useEffect(() => {
-    api
-      .get("/api/class-lineup-summaries/weekly-summary")
-      .then((res) => setWeeklyScores(res.data))
-      .catch((err) => console.error("Fetch weekly scores error:", err));
+    loadRecords();
   }, []);
 
-  const handleSave = async () => {
-    if (!selectedClassId || !selectedViolation || !studentName || !recorder)
-      return alert("Vui lòng nhập đầy đủ thông tin");
-
-    try {
-      await api.post("/api/class-lineup-summaries", {
-        className:
-          classes.find((c) => c._id === selectedClassId)?.className || "",
-        violation: selectedViolation,
-        studentName,
-        recorder,
-        date,
-      });
+  // --- Thêm học sinh vào danh sách tạm ---
+  const handleAddStudent = () => {
+    if (studentName && !selectedStudents.includes(studentName)) {
+      setSelectedStudents([...selectedStudents, studentName]);
       setStudentName("");
-      fetchViolations();
-    } catch (err) {
-      console.error("Save error:", err);
-      alert("Lỗi khi ghi nhận");
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Xóa ghi nhận này?")) return;
+  // --- Ghi nhận vi phạm ---
+  const handleSave = async () => {
+    if (!selectedClass || !violation || !recorder || selectedStudents.length === 0) {
+      alert("Vui lòng nhập đầy đủ thông tin.");
+      return;
+    }
+
     try {
-      await api.delete(`/api/class-lineup-summaries/${id}`);
-      fetchViolations();
+      for (const name of selectedStudents) {
+        await api.post("/api/class-lineup-summaries", {
+          className: selectedClass,
+          date: new Date(date),
+          violation,
+          studentName: name,
+          recorder,
+        });
+      }
+      alert("Ghi nhận thành công!");
+      setSelectedStudents([]);
+      loadRecords();
     } catch (err) {
-      console.error("Delete error:", err);
+      console.error("Lỗi khi lưu vi phạm:", err);
+      alert("Không thể ghi nhận vi phạm.");
     }
   };
 
@@ -160,168 +130,122 @@ export default function ClassLineupSummaryPage() {
         Ghi nhận vi phạm xếp hàng
       </Typography>
 
-      {/* Form ghi nhận */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Stack direction="row" spacing={2}>
-          <Select
-            value={selectedClassId}
-            onChange={(e) => setSelectedClassId(e.target.value)}
-            displayEmpty
-            fullWidth
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Stack spacing={2}>
+          <TextField
+            select
+            label="Chọn lớp"
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)}
           >
-            <MenuItem value="">Chọn lớp</MenuItem>
-            {classes.map((cls) => (
-              <MenuItem key={cls._id} value={cls._id}>
-                {cls.className}
+            {classes.map((c) => (
+              <MenuItem key={c} value={c}>
+                {c}
               </MenuItem>
             ))}
-          </Select>
-
-          <Select
-            value={selectedViolation}
-            onChange={(e) => setSelectedViolation(e.target.value)}
-            displayEmpty
-            fullWidth
-          >
-            <MenuItem value="">Chọn lỗi vi phạm</MenuItem>
-            <MenuItem value="Không xếp hàng">Không xếp hàng</MenuItem>
-            <MenuItem value="Nói chuyện">Nói chuyện</MenuItem>
-            <MenuItem value="Mất trật tự">Mất trật tự</MenuItem>
-          </Select>
+          </TextField>
 
           <TextField
-            label="Người ghi nhận"
-            value={recorder}
-            onChange={(e) => setRecorder(e.target.value)}
-            fullWidth
-          />
-
-          <TextField
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            fullWidth
-          />
-        </Stack>
-
-        <Box sx={{ mt: 2, position: "relative" }}>
-          <TextField
-            label="Tên học sinh vi phạm"
+            label="Học sinh vi phạm"
             value={studentName}
             onChange={(e) => setStudentName(e.target.value)}
-            fullWidth
-            autoComplete="off"
-          />
-          {studentName && filteredSuggestions.length > 0 && (
-            <Paper
-              sx={{
-                position: "absolute",
-                zIndex: 10,
-                width: "100%",
-                maxHeight: 200,
-                overflowY: "auto",
-              }}
-            >
-              {filteredSuggestions.map((s) => (
-                <MenuItem key={s._id} onClick={() => setStudentName(s.name)}>
+            onKeyDown={(e) => e.key === "Enter" && handleAddStudent()}
+            helperText="Nhập tên rồi nhấn Enter để thêm"
+            select
+          >
+            {students
+              .filter((s) =>
+                s.name.toLowerCase().includes(studentName.toLowerCase())
+              )
+              .map((s) => (
+                <MenuItem key={s._id} value={s.name}>
                   {s.name}
                 </MenuItem>
               ))}
+          </TextField>
+
+          {selectedStudents.length > 0 && (
+            <Paper variant="outlined" sx={{ p: 1 }}>
+              <Typography fontWeight="bold">Danh sách tạm:</Typography>
+              <List dense>
+                {selectedStudents.map((s) => (
+                  <ListItem key={s}>
+                    <ListItemText primary={s} />
+                  </ListItem>
+                ))}
+              </List>
             </Paper>
           )}
-        </Box>
 
-        <Box textAlign="right" mt={2}>
-          <Button variant="contained" onClick={handleSave}>
-            Ghi nhận
+          <TextField
+            select
+            label="Lỗi vi phạm"
+            value={violation}
+            onChange={(e) => setViolation(e.target.value)}
+          >
+            <MenuItem value="Tập trung xếp hàng quá thời gian quy định.">
+              Tập trung xếp hàng quá thời gian quy định.
+            </MenuItem>
+            <MenuItem value="Mất trật tự, đùa giỡn khi xếp hàng.">
+              Mất trật tự, đùa giỡn khi xếp hàng.
+            </MenuItem>
+            <MenuItem value="Di chuyển lộn xộn không theo hàng lối.">
+              Di chuyển lộn xộn không theo hàng lối.
+            </MenuItem>
+          </TextField>
+
+          <TextField
+            select
+            label="Người ghi nhận"
+            value={recorder}
+            onChange={(e) => setRecorder(e.target.value)}
+          >
+            <MenuItem value="Th Huy">Th Huy</MenuItem>
+            <MenuItem value="Th Nghĩa">Th Nghĩa</MenuItem>
+            <MenuItem value="Th Năm">Th Năm</MenuItem>
+          </TextField>
+
+          <TextField
+            label="Thời gian"
+            type="datetime-local"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+          />
+
+          <Button variant="contained" color="primary" onClick={handleSave}>
+            Lưu
           </Button>
-        </Box>
+        </Stack>
       </Paper>
 
-      {/* Danh sách vi phạm */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography fontWeight="bold" mb={2}>
-          Danh sách vi phạm ({new Date(date).toLocaleDateString("vi-VN")})
-        </Typography>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Ngày</TableCell>
-                <TableCell>Lớp</TableCell>
-                <TableCell>Lỗi vi phạm</TableCell>
-                <TableCell>Tên học sinh</TableCell>
-                <TableCell>Người ghi nhận</TableCell>
-                <TableCell>Thao tác</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {violations.length > 0 ? (
-                violations.map((v) => (
-                  <TableRow key={v._id}>
-                    <TableCell>
-                      {new Date(v.date).toLocaleDateString("vi-VN")}
-                    </TableCell>
-                    <TableCell>{v.className}</TableCell>
-                    <TableCell>{v.violation}</TableCell>
-                    <TableCell>{v.studentName}</TableCell>
-                    <TableCell>{v.recorder}</TableCell>
-                    <TableCell>
-                      <Button
-                        color="error"
-                        onClick={() => handleDelete(v._id)}
-                        size="small"
-                      >
-                        Xóa
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} align="center">
-                    Không có dữ liệu
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
-
-      {/* Tổng điểm tuần */}
+      {/* Bảng danh sách vi phạm */}
       <Paper sx={{ p: 2 }}>
-        <Typography fontWeight="bold" mb={2}>
-          Tổng điểm xếp hàng trong tuần
+        <Typography variant="h6" mb={2}>
+          Danh sách vi phạm gần đây
         </Typography>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Lớp</TableCell>
-                <TableCell>Tổng điểm</TableCell>
-                <TableCell>Điểm xếp hàng</TableCell>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Thời gian</TableCell>
+              <TableCell>Lớp</TableCell>
+              <TableCell>Học sinh</TableCell>
+              <TableCell>Lỗi vi phạm</TableCell>
+              <TableCell>Người ghi nhận</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {records.map((r) => (
+              <TableRow key={r._id}>
+                <TableCell>{new Date(r.date).toLocaleString("vi-VN")}</TableCell>
+                <TableCell>{r.className}</TableCell>
+                <TableCell>{r.studentName}</TableCell>
+                <TableCell>{r.violation}</TableCell>
+                <TableCell>{r.recorder}</TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {weeklyScores.length > 0 ? (
-                weeklyScores.map((w) => (
-                  <TableRow key={w._id}>
-                    <TableCell>{w.className}</TableCell>
-                    <TableCell>{w.totalScore}</TableCell>
-                    <TableCell>{w.lineUpScore}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={3} align="center">
-                    Chưa có dữ liệu tuần này
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+            ))}
+          </TableBody>
+        </Table>
       </Paper>
     </Box>
   );
