@@ -1,25 +1,27 @@
-
 import { useState, useEffect } from "react";
 import {
   Box,
-  Typography,
-  Paper,
-  Stack,
-  TextField,
-  MenuItem,
   Button,
-  List,
-  ListItem,
-  ListItemText,
+  Typography,
+  TextField,
+  Paper,
+  MenuItem,
+  Select,
   Table,
-  TableBody,
-  TableCell,
   TableHead,
+  TableBody,
   TableRow,
+  TableCell,
+  TableContainer,
 } from "@mui/material";
 import api from "../../api/api";
 
-interface Student {
+interface ClassOption {
+  _id: string;
+  className: string;
+}
+
+interface StudentOption {
   _id: string;
   name: string;
   className: string;
@@ -30,28 +32,26 @@ interface ViolationRecord {
   className: string;
   studentName: string;
   violation: string;
-  recorder: string;
-  date: string;
-  session: string;
+  recordedBy: string;
+  createdAt: string;
 }
 
 export default function ClassLineUpSummaryPage() {
-  const [classes, setClasses] = useState<string[]>([]);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [students, setStudents] = useState<StudentOption[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
-  const [students, setStudents] = useState<Student[]>([]);
-  const [studentName, setStudentName] = useState("");
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState("");
   const [violation, setViolation] = useState("");
-  const [recorder, setRecorder] = useState("");
-  const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 16));
+  const [recordedBy, setRecordedBy] = useState("Th Huy");
   const [records, setRecords] = useState<ViolationRecord[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // --- Load danh sách lớp ---
+  // 🔹 Load danh sách lớp
   useEffect(() => {
     const fetchClasses = async () => {
       try {
         const res = await api.get("/api/classes");
-        setClasses(res.data.map((c: any) => c.name));
+        setClasses(res.data);
       } catch (err) {
         console.error("Lỗi khi tải danh sách lớp:", err);
       }
@@ -59,7 +59,7 @@ export default function ClassLineUpSummaryPage() {
     fetchClasses();
   }, []);
 
-  // --- Khi chọn lớp thì load danh sách học sinh ---
+  // 🔹 Khi chọn lớp thì load danh sách học sinh
   useEffect(() => {
     if (!selectedClass) return;
     const fetchStudents = async () => {
@@ -69,13 +69,13 @@ export default function ClassLineUpSummaryPage() {
         });
         setStudents(res.data);
       } catch (err) {
-        console.error("Lỗi khi tải danh sách học sinh:", err);
+        console.error("Lỗi khi tải học sinh:", err);
       }
     };
     fetchStudents();
   }, [selectedClass]);
 
-  // --- Lấy danh sách vi phạm ---
+  // 🔹 Load danh sách vi phạm gần đây
   const loadRecords = async () => {
     try {
       const res = await api.get("/api/class-lineup-summaries");
@@ -89,37 +89,36 @@ export default function ClassLineUpSummaryPage() {
     loadRecords();
   }, []);
 
-  // --- Thêm học sinh vào danh sách tạm ---
-  const handleAddStudent = () => {
-    if (studentName && !selectedStudents.includes(studentName)) {
-      setSelectedStudents([...selectedStudents, studentName]);
-      setStudentName("");
+  // 🔹 Lưu vi phạm
+  const handleSave = async () => {
+    if (!selectedStudent || !violation) return alert("Vui lòng nhập đầy đủ thông tin!");
+    setLoading(true);
+    try {
+      await api.post("/api/class-lineup-summaries", {
+        className: selectedClass,
+        studentName: selectedStudent,
+        violation,
+        recordedBy,
+        createdAt: new Date().toISOString(), // tự lấy giờ hệ thống
+      });
+      setViolation("");
+      setSelectedStudent("");
+      await loadRecords();
+    } catch (err) {
+      console.error("Lỗi khi lưu vi phạm:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // --- Ghi nhận vi phạm ---
-  const handleSave = async () => {
-    if (!selectedClass || !violation || !recorder || selectedStudents.length === 0) {
-      alert("Vui lòng nhập đầy đủ thông tin.");
-      return;
-    }
-
+  // 🔹 Xóa vi phạm
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Bạn có chắc muốn xóa vi phạm này?")) return;
     try {
-      for (const name of selectedStudents) {
-        await api.post("/api/class-lineup-summaries", {
-          className: selectedClass,
-          date: new Date(date),
-          violation,
-          studentName: name,
-          recorder,
-        });
-      }
-      alert("Ghi nhận thành công!");
-      setSelectedStudents([]);
-      loadRecords();
+      await api.delete(`/api/class-lineup-summaries/${id}`);
+      setRecords((prev) => prev.filter((r) => r._id !== id));
     } catch (err) {
-      console.error("Lỗi khi lưu vi phạm:", err);
-      alert("Không thể ghi nhận vi phạm.");
+      console.error("Lỗi khi xóa:", err);
     }
   };
 
@@ -129,100 +128,74 @@ export default function ClassLineUpSummaryPage() {
         Ghi nhận vi phạm xếp hàng
       </Typography>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Stack spacing={2}>
-          <TextField
-            select
-            label="Chọn lớp"
+      <Paper sx={{ p: 3, mb: 4 }}>
+        <Box display="flex" flexDirection="column" gap={2}>
+          <Select
             value={selectedClass}
             onChange={(e) => setSelectedClass(e.target.value)}
+            displayEmpty
           >
+            <MenuItem value="">
+              <em>Chọn lớp</em>
+            </MenuItem>
             {classes.map((c) => (
-              <MenuItem key={c} value={c}>
-                {c}
+              <MenuItem key={c._id} value={c.className}>
+                {c.className}
               </MenuItem>
             ))}
-          </TextField>
+          </Select>
 
-          <TextField
-            label="Học sinh vi phạm"
-            value={studentName}
-            onChange={(e) => setStudentName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAddStudent()}
-            helperText="Nhập tên rồi nhấn Enter để thêm"
-            select
+          <Select
+            value={selectedStudent}
+            onChange={(e) => setSelectedStudent(e.target.value)}
+            displayEmpty
           >
-            {students
-              .filter((s) =>
-                s.name.toLowerCase().includes(studentName.toLowerCase())
-              )
-              .map((s) => (
-                <MenuItem key={s._id} value={s.name}>
-                  {s.name}
-                </MenuItem>
-              ))}
-          </TextField>
-
-          {selectedStudents.length > 0 && (
-            <Paper variant="outlined" sx={{ p: 1 }}>
-              <Typography fontWeight="bold">Danh sách tạm:</Typography>
-              <List dense>
-                {selectedStudents.map((s) => (
-                  <ListItem key={s}>
-                    <ListItemText primary={s} />
-                  </ListItem>
-                ))}
-              </List>
-            </Paper>
-          )}
+            <MenuItem value="">
+              <em>Học sinh vi phạm</em>
+            </MenuItem>
+            {students.map((s) => (
+              <MenuItem key={s._id} value={s.name}>
+                {s.name}
+              </MenuItem>
+            ))}
+          </Select>
 
           <TextField
-            select
             label="Lỗi vi phạm"
             value={violation}
             onChange={(e) => setViolation(e.target.value)}
-          >
-            <MenuItem value="Tập trung xếp hàng quá thời gian quy định.">
-              Tập trung xếp hàng quá thời gian quy định.
-            </MenuItem>
-            <MenuItem value="Mất trật tự, đùa giỡn khi xếp hàng.">
-              Mất trật tự, đùa giỡn khi xếp hàng.
-            </MenuItem>
-            <MenuItem value="Di chuyển lộn xộn không theo hàng lối.">
-              Di chuyển lộn xộn không theo hàng lối.
-            </MenuItem>
-          </TextField>
-
-          <TextField
-            select
-            label="Người ghi nhận"
-            value={recorder}
-            onChange={(e) => setRecorder(e.target.value)}
-          >
-            <MenuItem value="Th Huy">Th Huy</MenuItem>
-            <MenuItem value="Th Nghĩa">Th Nghĩa</MenuItem>
-            <MenuItem value="Th Năm">Th Năm</MenuItem>
-          </TextField>
-
-          <TextField
-            label="Thời gian"
-            type="datetime-local"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
+            fullWidth
           />
 
-          <Button variant="contained" color="primary" onClick={handleSave}>
-            Lưu
+          <TextField
+            label="Người ghi nhận"
+            value={recordedBy}
+            onChange={(e) => setRecordedBy(e.target.value)}
+            fullWidth
+          />
+
+          <TextField
+            label="Ngày ghi nhận"
+            value={new Date().toLocaleDateString("vi-VN")}
+            disabled
+            fullWidth
+          />
+
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={loading}
+            sx={{ mt: 1 }}
+          >
+            {loading ? "Đang lưu..." : "LƯU"}
           </Button>
-        </Stack>
+        </Box>
       </Paper>
 
-      {/* Bảng danh sách vi phạm */}
-      <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" mb={2}>
-          Danh sách vi phạm gần đây
-        </Typography>
+      <Typography variant="h6" fontWeight="bold" mb={1}>
+        Danh sách vi phạm gần đây
+      </Typography>
+      <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
@@ -231,22 +204,34 @@ export default function ClassLineUpSummaryPage() {
               <TableCell>Học sinh</TableCell>
               <TableCell>Lỗi vi phạm</TableCell>
               <TableCell>Người ghi nhận</TableCell>
+              <TableCell></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {records.map((r) => (
               <TableRow key={r._id}>
-                <TableCell>{new Date(r.date).toLocaleString("vi-VN")}</TableCell>
+                <TableCell>
+                  {new Date(r.createdAt).toLocaleString("vi-VN")}
+                </TableCell>
                 <TableCell>{r.className}</TableCell>
                 <TableCell>{r.studentName}</TableCell>
                 <TableCell>{r.violation}</TableCell>
-                <TableCell>{r.recorder}</TableCell>
+                <TableCell>{r.recordedBy}</TableCell>
+                <TableCell>
+                  <Button
+                    color="error"
+                    variant="outlined"
+                    size="small"
+                    onClick={() => handleDelete(r._id)}
+                  >
+                    Xóa
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </Paper>
+      </TableContainer>
     </Box>
   );
 }
-
