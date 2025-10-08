@@ -96,7 +96,7 @@ function AppContent() {
                       <Route path="unhandled" element={<UnhandledViolationsPage />} />
                       <Route path="all-violations" element={<AllStudentPage />} />
                       <Route path="student-list" element={<StudentListPage />} />
-                      <Route path="class-lineup-list" element={RecordClassLineUpSummaryPage/>} />
+                      <Route path="class-lineup-list" element={<RecordClassLineUpSummaryPage />} />
                     </Route>
         {/* General app routes (with global header/sidebar) */}
         <Route element={<MainLayout />}>
