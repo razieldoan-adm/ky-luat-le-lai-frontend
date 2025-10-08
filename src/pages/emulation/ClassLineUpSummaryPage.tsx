@@ -44,7 +44,7 @@ export default function ClassLineUpSummaryPage() {
   const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentSuggestion | null>(null);
   const [violationType, setViolationType] = useState("");
-  const [recorder, setRecorder] = useState("");
+  const [recorder, setRecorder] = useState("Th Huy"); // ✅ mặc định
   const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
   const [violations, setViolations] = useState<ViolationRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,10 +57,21 @@ export default function ClassLineUpSummaryPage() {
 
   // 🔹 Load danh sách lớp
   useEffect(() => {
-    api
-      .get("/api/classes")
-      .then((res) => setClasses(res.data))
-      .catch((err) => console.error("Lỗi load classes:", err));
+    const loadClasses = async () => {
+      try {
+        const res = await api.get("/api/classes");
+        if (Array.isArray(res.data)) {
+          setClasses(res.data.filter((c) => c.name));
+        } else {
+          console.error("API /api/classes trả dữ liệu không hợp lệ:", res.data);
+          setClasses([]);
+        }
+      } catch (err) {
+        console.error("Lỗi load classes:", err);
+        setClasses([]);
+      }
+    };
+    loadClasses();
   }, []);
 
   // 🔹 Lấy danh sách lỗi theo lớp
@@ -70,9 +81,10 @@ export default function ClassLineUpSummaryPage() {
       const res = await api.get("/api/class-lineup-summaries", {
         params: { className: selectedClass },
       });
-      setViolations(res.data);
+      setViolations(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Lỗi load violations:", err);
+      setViolations([]);
     }
   };
 
@@ -91,7 +103,7 @@ export default function ClassLineUpSummaryPage() {
         .get("/api/students/search", {
           params: { name: studentName.trim(), className: selectedClass },
         })
-        .then((res) => setSuggestions(res.data))
+        .then((res) => setSuggestions(Array.isArray(res.data) ? res.data : []))
         .catch(() => setSuggestions([]));
     }, 300);
     return () => clearTimeout(timeout);
@@ -150,11 +162,15 @@ export default function ClassLineUpSummaryPage() {
             onChange={(e) => setSelectedClass(e.target.value)}
             fullWidth
           >
-            {classes.map((cls) => (
-              <MenuItem key={cls._id} value={cls.name}>
-                {cls.name}
-              </MenuItem>
-            ))}
+            {classes.length > 0 ? (
+              classes.map((cls) => (
+                <MenuItem key={cls._id} value={cls.name}>
+                  {cls.name}
+                </MenuItem>
+              ))
+            ) : (
+              <MenuItem disabled>Không có lớp</MenuItem>
+            )}
           </TextField>
 
           {/* Tên học sinh */}
