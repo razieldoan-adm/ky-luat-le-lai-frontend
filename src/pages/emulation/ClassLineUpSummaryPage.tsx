@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import {
   Box,
@@ -41,8 +40,8 @@ export default function ClassLineUpSummaryPage() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [violation, setViolation] = useState("");
   const [recorder, setRecorder] = useState("th Huy");
+  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [records, setRecords] = useState<ViolationRecord[]>([]);
-  const [hasRecord, setHasRecord] = useState(false);
 
   // 🔹 Load danh sách lớp
   useEffect(() => {
@@ -80,8 +79,8 @@ export default function ClassLineUpSummaryPage() {
   const loadViolations = async () => {
     try {
       const res = await api.get("/api/class-lineup-summaries");
-      setRecords(res.data);
-      setHasRecord(res.data.length > 0);
+      const filtered = res.data.filter((r: any) => r.className && r.violation);
+      setRecords(filtered);
     } catch (err) {
       console.error("Lỗi khi lấy danh sách vi phạm:", err);
     }
@@ -93,18 +92,18 @@ export default function ClassLineUpSummaryPage() {
   // 🔹 Ghi nhận vi phạm
   const handleSave = async () => {
     if (!className || !violation || !recorder)
-      return alert("Vui lòng nhập đủ thông tin");
+      return alert("Vui lòng nhập đầy đủ thông tin!");
 
     try {
+      const now = new Date();
       const payload = {
         className,
+        date: new Date(`${date}T${now.toTimeString().split(" ")[0]}`),
         violation,
         recorder,
         studentName: selectedStudents.join(", "),
-        date: new Date().toISOString(), // ✅ Tự động lấy thời gian hệ thống
       };
       await api.post("/api/class-lineup-summaries", payload);
-      setHasRecord(true);
       setStudentName("");
       setSelectedStudents([]);
       setViolation("");
@@ -174,7 +173,7 @@ export default function ClassLineUpSummaryPage() {
           <Box>
             <TextField
               fullWidth
-              label="Học sinh vi phạm"
+              label="Học sinh vi phạm (nếu có)"
               value={studentName}
               onChange={(e) => setStudentName(e.target.value)}
               placeholder="Nhập tên để gợi ý..."
@@ -236,6 +235,15 @@ export default function ClassLineUpSummaryPage() {
             <MenuItem value="th Năm">th Năm</MenuItem>
           </TextField>
 
+          {/* --- Thời gian --- */}
+          <TextField
+            type="date"
+            label="Ngày ghi nhận"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+          />
+
           <Button variant="contained" onClick={handleSave}>
             Lưu ghi nhận
           </Button>
@@ -243,10 +251,10 @@ export default function ClassLineUpSummaryPage() {
       </Paper>
 
       {/* --- Danh sách vi phạm --- */}
-      {hasRecord && (
+      {records.length > 0 && (
         <Paper sx={{ p: 2 }}>
           <Typography variant="h6" mb={1}>
-            Danh sách vi phạm
+            Danh sách lớp đã ghi nhận vi phạm
           </Typography>
           <Table>
             <TableHead>
@@ -266,7 +274,7 @@ export default function ClassLineUpSummaryPage() {
                   <TableCell>{r.violation}</TableCell>
                   <TableCell>{r.studentName || "-"}</TableCell>
                   <TableCell>
-                    {new Date(r.date).toLocaleString("vi-VN")}
+                    {new Date(r.date).toLocaleDateString("vi-VN")}
                   </TableCell>
                   <TableCell>{r.recorder}</TableCell>
                   <TableCell>
@@ -283,4 +291,3 @@ export default function ClassLineUpSummaryPage() {
     </Box>
   );
 }
-
