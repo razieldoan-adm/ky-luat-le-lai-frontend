@@ -1,16 +1,19 @@
+// src/pages/ClassLineUpSummaryPage.tsx
 
 import { useState, useEffect } from "react";
 import {
   Box,
-  Button,
-  CircularProgress,
-  MenuItem,
-  Select,
-  TextField,
   Typography,
+  TextField,
+  Button,
+  MenuItem,
+  CircularProgress,
   Paper,
-  Stack,
-  Autocomplete,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
   Snackbar,
   Alert,
 } from "@mui/material";
@@ -18,250 +21,183 @@ import api from "../../api/api";
 
 interface ClassOption {
   _id: string;
-  name: string;
+  name?: string;
+  className?: string;
+  tenLop?: string;
 }
 
-interface StudentOption {
+interface Student {
   _id: string;
   name: string;
   className: string;
 }
 
-const VIOLATION_OPTIONS = [
-  "Xếp hàng ồn ào",
-  "Không đúng hàng quy định",
-  "Tập trung trễ giờ",
-];
-
-const RECORDER_OPTIONS = ["Thầy Huy", "Thầy Năm", "Thầy Nghĩa"];
-
-export default function ClassLineUpSummaryPage() {
+const ClassLineUpSummaryPage = () => {
   const [classes, setClasses] = useState<ClassOption[]>([]);
-  const [selectedClass, setSelectedClass] = useState<string>("");
-  const [studentInput, setStudentInput] = useState<string>("");
-  const [studentSuggestions, setStudentSuggestions] = useState<StudentOption[]>(
-    []
+  const [students, setStudents] = useState<Student[]>([]);
+  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0] // ✅ Mặc định ngày hôm nay, không hiển thị giờ
   );
-  const [selectedStudent, setSelectedStudent] = useState<StudentOption | null>(
-    null
-  );
-  const [selectedViolation, setSelectedViolation] = useState<string>("");
-  const [recorder, setRecorder] = useState<string>(RECORDER_OPTIONS[0]);
-  const [recordedAt, setRecordedAt] = useState<string>("");
-  const [loadingClasses, setLoadingClasses] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: "success" | "error";
-  }>({ open: false, message: "", severity: "success" });
+  const [alert, setAlert] = useState<{ open: boolean; type: "success" | "error"; message: string }>({
+    open: false,
+    type: "success",
+    message: "",
+  });
 
-  // Load danh sách lớp
+  // 🔹 Load danh sách lớp
   useEffect(() => {
     const fetchClasses = async () => {
-      setLoadingClasses(true);
       try {
         const res = await api.get("/api/classes");
-        setClasses(res.data);
+        setClasses(res.data || []);
       } catch (err) {
         console.error("Lỗi khi tải danh sách lớp:", err);
-      } finally {
-        setLoadingClasses(false);
       }
     };
     fetchClasses();
   }, []);
 
-  // Gợi ý học sinh theo lớp
+  // 🔹 Khi chọn lớp → load học sinh
   useEffect(() => {
     const fetchStudents = async () => {
-      if (!studentInput || !selectedClass) return;
+      if (!selectedClass) return;
+      setLoading(true);
       try {
         const res = await api.get("/api/students", {
-          params: { className: selectedClass, name: studentInput },
+          params: { className: selectedClass },
         });
-        setStudentSuggestions(res.data || []);
+        setStudents(res.data || []);
       } catch (err) {
-        console.error("Lỗi khi tìm học sinh:", err);
+        console.error("Lỗi khi tải học sinh:", err);
+      } finally {
+        setLoading(false);
       }
     };
     fetchStudents();
-  }, [studentInput, selectedClass]);
+  }, [selectedClass]);
 
-  // Ghi nhận vi phạm
+  // 🔹 Ghi nhận điểm danh (hoặc vi phạm)
   const handleSubmit = async () => {
-    if (!selectedClass || !selectedStudent || !selectedViolation) {
-      setSnackbar({
-        open: true,
-        message: "Vui lòng nhập đầy đủ thông tin!",
-        severity: "error",
-      });
+    if (!selectedClass) {
+      setAlert({ open: true, type: "error", message: "Vui lòng chọn lớp trước khi ghi nhận." });
       return;
     }
 
-    setSaving(true);
     try {
-      const payload = {
+      setSaving(true);
+      const recordTime = new Date(); // ✅ Ghi nhận giờ hệ thống
+
+      await api.post("/api/lineup-records", {
         className: selectedClass,
-        studentId: selectedStudent._id,
-        violationName: selectedViolation,
-        recorder,
-        recordedAt: recordedAt || new Date().toISOString(),
-      };
-
-      await api.post("/api/class-lineup-summaries", payload);
-
-      setSnackbar({
-        open: true,
-        message: "Ghi nhận vi phạm thành công!",
-        severity: "success",
+        date: selectedDate,
+        timestamp: recordTime, // ✅ Thêm giờ hệ thống vào dữ liệu gửi
       });
 
-      // Reset sau khi lưu
-      setSelectedStudent(null);
-      setStudentInput("");
-      setSelectedViolation("");
-      setRecordedAt("");
+      setAlert({ open: true, type: "success", message: "Ghi nhận thành công!" });
     } catch (err) {
       console.error("Lỗi khi ghi nhận:", err);
-      setSnackbar({
-        open: true,
-        message: "Không thể ghi nhận vi phạm!",
-        severity: "error",
-      });
+      setAlert({ open: true, type: "error", message: "Lỗi khi ghi nhận dữ liệu." });
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Paper sx={{ p: 4, maxWidth: 700, mx: "auto", mt: 5 }}>
-      <Typography variant="h5" fontWeight="bold" mb={3}>
-        Ghi nhận vi phạm xếp hàng đầu giờ
+    <Box p={3}>
+      <Typography variant="h5" fontWeight="bold" mb={2}>
+        Ghi nhận xếp hàng đầu giờ
       </Typography>
 
-      <Stack spacing={3}>
-        {/* Chọn lớp */}
-        <Box>
-          <Typography fontWeight={600} mb={1}>
-            Chọn lớp
-          </Typography>
-          {loadingClasses ? (
-            <CircularProgress size={24} />
-          ) : (
-            <Select
-              fullWidth
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              displayEmpty
-            >
-              <MenuItem value="">
-                <em>-- Chọn lớp --</em>
-              </MenuItem>
-              {classes.map((cls) => (
-                <MenuItem key={cls._id} value={cls.name}>
-                  {cls.name}
-                </MenuItem>
-              ))}
-            </Select>
-          )}
-        </Box>
-
-        {/* Học sinh */}
-        <Box>
-          <Typography fontWeight={600} mb={1}>
-            Học sinh vi phạm
-          </Typography>
-          <Autocomplete
-            options={studentSuggestions}
-            getOptionLabel={(option) => option.name}
-            value={selectedStudent}
-            inputValue={studentInput}
-            onInputChange={(_, newValue) => setStudentInput(newValue)}
-            onChange={(_, newValue) => setSelectedStudent(newValue)}
-            renderInput={(params) => (
-              <TextField {...params} placeholder="Nhập tên học sinh..." />
-            )}
-            noOptionsText="Không có học sinh phù hợp"
-          />
-        </Box>
-
-        {/* Lỗi vi phạm */}
-        <Box>
-          <Typography fontWeight={600} mb={1}>
-            Lỗi vi phạm
-          </Typography>
-          <Select
-            fullWidth
-            value={selectedViolation}
-            onChange={(e) => setSelectedViolation(e.target.value)}
-            displayEmpty
-          >
-            <MenuItem value="">
-              <em>-- Chọn lỗi --</em>
-            </MenuItem>
-            {VIOLATION_OPTIONS.map((v) => (
-              <MenuItem key={v} value={v}>
-                {v}
-              </MenuItem>
-            ))}
-          </Select>
-        </Box>
-
-        {/* Người ghi nhận */}
-        <Box>
-          <Typography fontWeight={600} mb={1}>
-            Người ghi nhận
-          </Typography>
-          <Select
-            fullWidth
-            value={recorder}
-            onChange={(e) => setRecorder(e.target.value)}
-          >
-            {RECORDER_OPTIONS.map((r) => (
-              <MenuItem key={r} value={r}>
-                {r}
-              </MenuItem>
-            ))}
-          </Select>
-        </Box>
-
-        {/* Thời gian ghi nhận */}
-        <Box>
-          <Typography fontWeight={600} mb={1}>
-            Thời gian ghi nhận
-          </Typography>
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Box display="flex" gap={2} flexWrap="wrap">
+          {/* Chọn lớp */}
           <TextField
-            fullWidth
-            type="datetime-local"
-            value={recordedAt}
-            onChange={(e) => setRecordedAt(e.target.value)}
+            select
+            label="Chọn lớp"
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)}
+            sx={{ minWidth: 200 }}
+          >
+            {classes.map((cls) => {
+              const label = cls.name || cls.className || cls.tenLop || "Không xác định";
+              return (
+                <MenuItem key={cls._id} value={label}>
+                  {label}
+                </MenuItem>
+              );
+            })}
+          </TextField>
+
+          {/* Ngày (mặc định hôm nay, không hiển thị giờ) */}
+          <TextField
+            label="Ngày"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            sx={{ minWidth: 200 }}
+            InputLabelProps={{ shrink: true }}
           />
+
+          {/* Nút ghi nhận */}
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSubmit}
+            disabled={saving}
+            sx={{ height: "56px" }}
+          >
+            {saving ? "Đang lưu..." : "Ghi nhận"}
+          </Button>
         </Box>
+      </Paper>
 
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleSubmit}
-          disabled={saving}
-        >
-          {saving ? "Đang lưu..." : "Ghi nhận vi phạm"}
-        </Button>
-      </Stack>
+      {/* Danh sách học sinh */}
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="h6" mb={2}>
+          Danh sách học sinh
+        </Typography>
 
+        {loading ? (
+          <CircularProgress />
+        ) : students.length === 0 ? (
+          <Typography color="text.secondary">Chưa có dữ liệu học sinh.</Typography>
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>STT</TableCell>
+                <TableCell>Họ và tên</TableCell>
+                <TableCell>Lớp</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {students.map((s, index) => (
+                <TableRow key={s._id}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{s.name}</TableCell>
+                  <TableCell>{s.className}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Paper>
+
+      {/* Thông báo */}
       <Snackbar
-        open={snackbar.open}
+        open={alert.open}
         autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        onClose={() => setAlert({ ...alert, open: false })}
       >
-        <Alert
-          severity={snackbar.severity}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-        >
-          {snackbar.message}
+        <Alert severity={alert.type} onClose={() => setAlert({ ...alert, open: false })}>
+          {alert.message}
         </Alert>
       </Snackbar>
-    </Paper>
+    </Box>
   );
-}
+};
 
+export default ClassLineUpSummaryPage;
