@@ -2,305 +2,254 @@ import { useEffect, useState } from "react";
 import {
   Box,
   Button,
-  TextField,
   MenuItem,
+  Select,
+  TextField,
   Typography,
   Paper,
-  Stack,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
+  List,
+  ListItem,
+  ListItemText,
   IconButton,
+  Stack,
 } from "@mui/material";
-import { Delete } from "@mui/icons-material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import api from "../../api/api";
 
-interface ClassItem {
-  _id: string;
-  name: string;
-}
-
-interface StudentSuggestion {
+interface Student {
   _id: string;
   name: string;
   className: string;
 }
 
-interface ViolationRecord {
+interface Violation {
   _id: string;
-  studentName: string;
   className: string;
+  student?: string;
   violationType: string;
-  recorder: string;
+  reporter: string;
   date: string;
 }
 
-export default function ClassLineUpSummaryPage() {
-  const [classes, setClasses] = useState<ClassItem[]>([]);
+export default function ClassViolationPage() {
+  const [classes, setClasses] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
-  const [studentName, setStudentName] = useState("");
-  const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<StudentSuggestion | null>(null);
   const [violationType, setViolationType] = useState("");
-  const [recorder, setRecorder] = useState("Th Huy"); // ✅ mặc định
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
-  const [violations, setViolations] = useState<ViolationRecord[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [name, setName] = useState("");
+  const [suggestions, setSuggestions] = useState<Student[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [reporter, setReporter] = useState("Thầy Huy");
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 16));
+  const [violations, setViolations] = useState<Violation[]>([]);
 
-  const violationOptions = [
-    "Tập trung xếp hàng quá thời gian quy định",
-    "Mất trật tự, đùa giỡn khi xếp hàng",
-    "Di chuyển lộn xộn không theo hàng lối",
-  ];
-
-  // 🔹 Load danh sách lớp
+  // Load danh sách lớp
   useEffect(() => {
-    const loadClasses = async () => {
-      try {
-        const res = await api.get("/api/classes");
+    api
+      .get("/api/classes")
+      .then((res) => {
         if (Array.isArray(res.data)) {
-          setClasses(res.data.filter((c) => c.name));
-        } else {
-          console.error("API /api/classes trả dữ liệu không hợp lệ:", res.data);
-          setClasses([]);
+          const list = res.data.map((c: any) => c.className || c.name);
+          setClasses(list);
         }
-      } catch (err) {
-        console.error("Lỗi load classes:", err);
-        setClasses([]);
-      }
-    };
-    loadClasses();
+      })
+      .catch((err) => console.error("Lỗi tải lớp:", err));
   }, []);
 
-  // 🔹 Lấy danh sách lỗi theo lớp
-  const fetchViolations = async () => {
-    if (!selectedClass) return;
-    try {
-      const res = await api.get("/api/class-lineup-summaries", {
-        params: { className: selectedClass },
-      });
-      setViolations(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error("Lỗi load violations:", err);
-      setViolations([]);
-    }
-  };
-
+  // Khi chọn lớp → load danh sách học sinh
   useEffect(() => {
-    fetchViolations();
+    if (!selectedClass) return;
+    api
+      .get("/api/students", { params: { className: selectedClass } })
+      .then((res) => setStudents(res.data))
+      .catch((err) => console.error("Lỗi tải học sinh:", err));
   }, [selectedClass]);
 
-  // 🔹 Gợi ý học sinh theo tên & lớp
+  // Gợi ý học sinh theo tên trong lớp
   useEffect(() => {
-    if (!studentName.trim() || !selectedClass) {
+    if (!name.trim()) {
       setSuggestions([]);
       return;
     }
     const timeout = setTimeout(() => {
-      api
-        .get("/api/students/search", {
-          params: { name: studentName.trim(), className: selectedClass },
-        })
-        .then((res) => setSuggestions(Array.isArray(res.data) ? res.data : []))
-        .catch(() => setSuggestions([]));
+      const filtered = students.filter((s) =>
+        s.name.toLowerCase().includes(name.toLowerCase())
+      );
+      setSuggestions(filtered);
     }, 300);
     return () => clearTimeout(timeout);
-  }, [studentName, selectedClass]);
+  }, [name, students]);
 
-  // 🔹 Ghi nhận lỗi
-  const handleSave = async () => {
-    if (!selectedClass || !selectedStudent || !violationType || !recorder) {
-      alert("Vui lòng nhập đầy đủ thông tin");
+  // Ghi nhận lỗi
+  const handleRecord = async () => {
+    if (!selectedClass || !violationType || !reporter) {
+      alert("Vui lòng nhập đủ thông tin cần thiết!");
       return;
     }
-    setLoading(true);
+
+    const payload = {
+      className: selectedClass,
+      student: selectedStudent ? selectedStudent.name : "",
+      violationType,
+      reporter,
+      date,
+    };
+
     try {
-      await api.post("/api/class-lineup-summaries", {
-        studentName: selectedStudent.name,
-        className: selectedClass,
-        violationType,
-        recorder,
-        date,
-      });
-      setSelectedStudent(null);
-      setStudentName("");
+      const res = await api.post("/api/class-lineup-summary", payload);
+      setViolations((prev) => [...prev, res.data]);
       setViolationType("");
-      fetchViolations();
+      setSelectedStudent(null);
+      setName("");
     } catch (err) {
       console.error("Lỗi ghi nhận:", err);
-    } finally {
-      setLoading(false);
+      alert("Không thể ghi nhận vi phạm!");
     }
   };
 
-  // 🔹 Xóa lỗi
+  // Xóa lỗi
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Xóa lỗi này?")) return;
     try {
-      await api.delete(`/api/class-lineup-summaries/${id}`);
+      await api.delete(`/api/class-lineup-summary/${id}`);
       setViolations((prev) => prev.filter((v) => v._id !== id));
     } catch (err) {
-      console.error("Lỗi xóa:", err);
+      console.error("Lỗi xoá:", err);
+      alert("Không thể xoá vi phạm!");
     }
   };
 
   return (
     <Box p={3}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Ghi nhận lỗi xếp hàng
+      <Typography variant="h5" fontWeight="bold" mb={2}>
+        Ghi nhận lỗi vi phạm lớp
       </Typography>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3 }}>
         <Stack spacing={2}>
-          {/* Chọn lớp */}
-          <TextField
-            select
-            label="Chọn lớp"
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            fullWidth
-          >
-            {classes.length > 0 ? (
-              classes.map((cls) => (
-                <MenuItem key={cls._id} value={cls.name}>
-                  {cls.name}
-                </MenuItem>
-              ))
-            ) : (
-              <MenuItem disabled>Không có lớp</MenuItem>
-            )}
-          </TextField>
-
-          {/* Tên học sinh */}
-          <Box position="relative">
-            <TextField
-              label="Tên học sinh"
-              value={studentName}
-              onChange={(e) => setStudentName(e.target.value)}
+          {/* Lớp */}
+          <Box>
+            <Typography fontWeight={500}>Chọn lớp</Typography>
+            <Select
               fullWidth
-              autoComplete="off"
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+            >
+              {classes.map((cls) => (
+                <MenuItem key={cls} value={cls}>
+                  {cls}
+                </MenuItem>
+              ))}
+            </Select>
+          </Box>
+
+          {/* Học sinh vi phạm */}
+          <Box>
+            <Typography fontWeight={500}>Học sinh vi phạm (nếu có)</Typography>
+            <TextField
+              fullWidth
+              placeholder="Nhập tên học sinh..."
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
             {suggestions.length > 0 && (
-              <Paper
-                sx={{
-                  position: "absolute",
-                  zIndex: 10,
-                  width: "100%",
-                  mt: 1,
-                  maxHeight: 200,
-                  overflowY: "auto",
-                }}
-              >
+              <Paper sx={{ mt: 1, p: 1, maxHeight: 150, overflowY: "auto" }}>
                 {suggestions.map((s) => (
                   <Box
                     key={s._id}
                     sx={{
                       p: 1,
-                      "&:hover": { bgcolor: "#eee", cursor: "pointer" },
+                      cursor: "pointer",
+                      "&:hover": { backgroundColor: "#f0f0f0" },
                     }}
                     onClick={() => {
                       setSelectedStudent(s);
-                      setStudentName(s.name);
                       setSuggestions([]);
+                      setName(s.name);
                     }}
                   >
-                    {s.name} ({s.className})
+                    {s.name}
                   </Box>
                 ))}
               </Paper>
             )}
+            {selectedStudent && (
+              <Typography mt={1} color="green">
+                ✅ {selectedStudent.name}
+              </Typography>
+            )}
           </Box>
 
-          {/* Lỗi vi phạm */}
-          <TextField
-            select
-            label="Lỗi vi phạm"
-            value={violationType}
-            onChange={(e) => setViolationType(e.target.value)}
-            fullWidth
-          >
-            {violationOptions.map((opt, i) => (
-              <MenuItem key={i} value={opt}>
-                {opt}
-              </MenuItem>
-            ))}
-          </TextField>
+          {/* Lỗi */}
+          <Box>
+            <Typography fontWeight={500}>Nội dung lỗi</Typography>
+            <TextField
+              fullWidth
+              placeholder="Nhập lỗi vi phạm..."
+              value={violationType}
+              onChange={(e) => setViolationType(e.target.value)}
+            />
+          </Box>
 
           {/* Người ghi nhận */}
-          <TextField
-            label="Người ghi nhận"
-            value={recorder}
-            onChange={(e) => setRecorder(e.target.value)}
-            fullWidth
-          />
+          <Box>
+            <Typography fontWeight={500}>Người ghi nhận</Typography>
+            <Select
+              fullWidth
+              value={reporter}
+              onChange={(e) => setReporter(e.target.value)}
+            >
+              <MenuItem value="Thầy Huy">Thầy Huy</MenuItem>
+              <MenuItem value="Thầy Năm">Thầy Năm</MenuItem>
+              <MenuItem value="Thầy Nghĩa">Thầy Nghĩa</MenuItem>
+            </Select>
+          </Box>
 
-          {/* Ngày giờ */}
-          <TextField
-            label="Thời gian"
-            type="datetime-local"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            fullWidth
-          />
+          {/* Thời gian */}
+          <Box>
+            <Typography fontWeight={500}>Thời gian ghi nhận</Typography>
+            <TextField
+              fullWidth
+              type="datetime-local"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </Box>
 
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSave}
-            disabled={loading}
-          >
-            {loading ? "Đang lưu..." : "Ghi nhận"}
+          {/* Nút ghi nhận */}
+          <Button variant="contained" color="primary" onClick={handleRecord}>
+            Ghi nhận vi phạm
           </Button>
         </Stack>
       </Paper>
 
       {/* Danh sách lỗi */}
-      <Typography variant="h6" gutterBottom>
-        Danh sách vi phạm
-      </Typography>
-
-      <Paper>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Học sinh</TableCell>
-              <TableCell>Lỗi vi phạm</TableCell>
-              <TableCell>Người ghi nhận</TableCell>
-              <TableCell>Thời gian</TableCell>
-              <TableCell align="center">Xóa</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {violations.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} align="center">
-                  Chưa có dữ liệu
-                </TableCell>
-              </TableRow>
-            ) : (
-              violations.map((v) => (
-                <TableRow key={v._id}>
-                  <TableCell>{v.studentName}</TableCell>
-                  <TableCell>{v.violationType}</TableCell>
-                  <TableCell>{v.recorder}</TableCell>
-                  <TableCell>
-                    {new Date(v.date).toLocaleString("vi-VN")}
-                  </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      color="error"
-                      onClick={() => handleDelete(v._id)}
-                    >
-                      <Delete />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="h6" fontWeight="bold" mb={1}>
+          Danh sách vi phạm đã ghi nhận
+        </Typography>
+        {violations.length === 0 ? (
+          <Typography>Chưa có lỗi nào được ghi nhận.</Typography>
+        ) : (
+          <List>
+            {violations.map((v) => (
+              <ListItem
+                key={v._id}
+                secondaryAction={
+                  <IconButton onClick={() => handleDelete(v._id)}>
+                    <DeleteIcon />
+                  </IconButton>
+                }
+              >
+                <ListItemText
+                  primary={`${v.className} - ${v.student || "Không ghi học sinh"}`}
+                  secondary={`Lỗi: ${v.violationType} | Người ghi: ${v.reporter} | Thời gian: ${new Date(
+                    v.date
+                  ).toLocaleString("vi-VN")}`}
+                />
+              </ListItem>
+            ))}
+          </List>
+        )}
       </Paper>
     </Box>
   );
