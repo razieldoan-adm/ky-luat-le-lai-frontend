@@ -26,11 +26,11 @@ interface Record {
   scoreChange: number;
 }
 
-export default function ClassLineUpSummaryPage() {
+export default function RecordClassLineUpSummaryPage() {
   const [className, setClassName] = useState("");
   const [violation, setViolation] = useState("");
   const [studentName, setStudentName] = useState("");
-  const [recorder, setRecorder] = useState("Th.Huy");
+  const [recorder] = useState("Th.Huy"); // ✅ mặc định người ghi nhận
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
 
   const [records, setRecords] = useState<Record[]>([]);
@@ -54,6 +54,11 @@ export default function ClassLineUpSummaryPage() {
 
   // ✅ Lưu ghi nhận
   const handleSave = async () => {
+    if (!className || !violation) {
+      alert("Vui lòng nhập đầy đủ thông tin lớp và lỗi vi phạm!");
+      return;
+    }
+
     try {
       const payload = { className, violation, studentName, recorder, date };
       await api.post("/api/class-lineup-summaries", payload);
@@ -62,6 +67,7 @@ export default function ClassLineUpSummaryPage() {
       setStudentName("");
     } catch (err) {
       console.error("Lỗi khi lưu:", err);
+      alert("Không thể lưu ghi nhận!");
     }
   };
 
@@ -73,15 +79,18 @@ export default function ClassLineUpSummaryPage() {
       await loadRecords();
     } catch (err) {
       console.error("Lỗi khi xóa:", err);
+      alert("Không thể xóa vi phạm!");
     }
   };
 
   return (
     <Box p={3}>
+      {/* 🔹 Tiêu đề */}
       <Typography variant="h5" mb={2} fontWeight="bold">
         Ghi nhận lỗi xếp hàng
       </Typography>
 
+      {/* 🔹 Form ghi nhận */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Stack spacing={2}>
           <TextField
@@ -113,6 +122,7 @@ export default function ClassLineUpSummaryPage() {
         </Stack>
       </Paper>
 
+      {/* 🔹 Bộ lọc + tiêu đề bảng */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
         <Typography variant="h6">Danh sách lỗi xếp hàng</Typography>
         <Select
@@ -125,6 +135,7 @@ export default function ClassLineUpSummaryPage() {
         </Select>
       </Box>
 
+      {/* 🔹 Bảng dữ liệu */}
       <Table>
         <TableHead>
           <TableRow>
