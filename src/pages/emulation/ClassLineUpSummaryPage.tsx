@@ -68,7 +68,7 @@ const ClassLineUpSummaryPage = () => {
     setLoading(true);
     try {
       const res = await api.get<LineUpRecord[]>(
-        "/api/class-lineup-summary/summary-by-class",
+        "/api/class-lineup-summaries/summary-by-class",
         {
           params: { weekNumber: selectedWeek },
         }
@@ -111,7 +111,7 @@ const ClassLineUpSummaryPage = () => {
     if (!selectedWeek) return alert("Chưa chọn tuần!");
     try {
       for (const row of data) {
-        await api.post("/api/class-lineup-summary/update-weekly-lineup", {
+        await api.post("/api/class-lineup-summaries/update-weekly-lineup", {
           className: row.className,
           weekNumber: selectedWeek,
           lineUpScore: row.total,
