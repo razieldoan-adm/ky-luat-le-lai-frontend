@@ -96,7 +96,7 @@ export default function RecordClassLineUpSummaryPage() {
   const loadRecords = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/api/class-lineup-summaries", {
+      const res = await api.get("/api/class-lineup-summaries/weekly-summary", {
         params: { filter: filter === "week" ? "week" : "all" },
       });
       setRecords(res.data || []);
