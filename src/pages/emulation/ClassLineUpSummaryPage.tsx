@@ -3,6 +3,7 @@ import {
   Box,
   Typography,
   TextField,
+  MenuItem,
   Button,
   Table,
   TableHead,
@@ -10,127 +11,182 @@ import {
   TableCell,
   TableBody,
   Paper,
-  MenuItem,
+  Stack,
+  CircularProgress,
 } from "@mui/material";
 import api from "../../api/api";
 
+// ==== Định nghĩa kiểu dữ liệu ====
+
+// Dữ liệu tuần học
 interface AcademicWeek {
   _id: string;
   weekNumber: number;
+  startDate: string;
+  endDate: string;
 }
 
-interface SummaryRow {
+// Bản ghi điểm xếp hàng gốc
+interface LineUpRecord {
+  _id: string;
+  className: string;
+  scoreChange: number;
+  weekNumber: number;
+}
+
+// Dữ liệu hiển thị tổng hợp
+interface LineUpSummary {
   id: number;
   className: string;
-  count: number;
+  scores: number[];
   total: number;
+  count: number;
 }
 
-export default function ClassLineUpSummaryPage() {
+const ClassLineUpSummaryPage = () => {
   const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<string>("");
-  const [multiplier, setMultiplier] = useState<number>(10); // hệ số điểm
-  const [summaries, setSummaries] = useState<SummaryRow[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  const [data, setData] = useState<LineUpSummary[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Load danh sách tuần
+  // 🔹 Load danh sách tuần
   useEffect(() => {
-    api.get("/api/academic-weeks").then((res) => {
-      setWeeks(res.data);
-    });
+    const fetchWeeks = async () => {
+      try {
+        const res = await api.get<AcademicWeek[]>("/api/academic-weeks");
+        setWeeks(res.data);
+      } catch (err) {
+        console.error("Lỗi khi tải tuần:", err);
+      }
+    };
+    fetchWeeks();
   }, []);
 
-  // Hàm load dữ liệu
+  // 🔹 Load dữ liệu xếp hàng
   const handleLoadData = async () => {
-    if (!selectedWeek) return;
+    if (!selectedWeek) return alert("Vui lòng chọn tuần!");
+    setLoading(true);
+    try {
+      const res = await api.get<LineUpRecord[]>(
+        "/api/class-lineup-summary/summary-by-class",
+        {
+          params: { weekNumber: selectedWeek },
+        }
+      );
 
-    const res = await api.get("/api/class-lineup-summary", {
-      params: { weekId: selectedWeek },
-    });
+      // Gom nhóm theo lớp
+      const grouped: Record<string, number[]> = {};
+      res.data.forEach((item: LineUpRecord) => {
+        if (!grouped[item.className]) grouped[item.className] = [];
+        grouped[item.className].push(item.scoreChange);
+      });
 
-    const data = res.data; // danh sách vi phạm trong tuần
-    const grouped: Record<string, number> = {};
+      const result: LineUpSummary[] = Object.keys(grouped).map(
+        (className, idx) => {
+          const scores = grouped[className];
+          const total = scores.reduce(
+            (sum: number, s: number) => sum + s,
+            0
+          );
+          return {
+            id: idx + 1,
+            className,
+            scores,
+            total,
+            count: scores.length,
+          };
+        }
+      );
 
-    data.forEach((item: any) => {
-      if (!grouped[item.className]) grouped[item.className] = 0;
-      grouped[item.className]++;
-    });
-
-    const formatted = Object.keys(grouped).map((className, index) => ({
-      id: index + 1,
-      className,
-      count: grouped[className],
-      total: grouped[className] * multiplier,
-    }));
-
-    setSummaries(formatted);
+      setData(result);
+    } catch (err) {
+      console.error("Lỗi khi tải dữ liệu:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // 🔹 Lưu vào ClassWeeklyScore
   const handleSave = async () => {
-    await api.post("/api/class-lineup-summary/save", { summaries });
-    alert("Đã lưu thành công!");
+    if (!selectedWeek) return alert("Chưa chọn tuần!");
+    try {
+      for (const row of data) {
+        await api.post("/api/class-lineup-summary/update-weekly-lineup", {
+          className: row.className,
+          weekNumber: selectedWeek,
+          lineUpScore: row.total,
+        });
+      }
+      alert("✅ Đã lưu điểm xếp hàng vào ClassWeeklyScore!");
+    } catch (err) {
+      console.error("Lỗi khi lưu:", err);
+      alert("❌ Có lỗi xảy ra khi lưu dữ liệu.");
+    }
   };
 
   return (
     <Box p={3}>
-      <Typography variant="h6" gutterBottom>
-        Tổng điểm xếp hạng các lớp theo tuần
+      <Typography variant="h5" fontWeight="bold" mb={2}>
+        Tổng điểm xếp hàng các lớp theo tuần
       </Typography>
 
-      <Box display="flex" alignItems="center" gap={2} mb={2}>
+      {/* Bộ chọn tuần */}
+      <Stack direction="row" spacing={2} mb={3}>
         <TextField
           select
           label="Tuần"
           value={selectedWeek}
-          onChange={(e) => setSelectedWeek(e.target.value)}
-          sx={{ minWidth: 150 }}
+          onChange={(e) => setSelectedWeek(Number(e.target.value))}
+          sx={{ width: 180 }}
         >
-          {weeks.map((week) => (
-            <MenuItem key={week._id} value={week._id}>
-              Tuần {week.weekNumber}
+          {weeks.map((w) => (
+            <MenuItem key={w._id} value={w.weekNumber}>
+              Tuần {w.weekNumber}
             </MenuItem>
           ))}
         </TextField>
 
-        <TextField
-          label="Hệ số điểm"
-          type="number"
-          value={multiplier}
-          onChange={(e) => setMultiplier(Number(e.target.value))}
-          sx={{ width: 120 }}
-        />
-
         <Button variant="contained" onClick={handleLoadData}>
           LOAD DỮ LIỆU
         </Button>
+
         <Button variant="contained" color="success" onClick={handleSave}>
           LƯU
         </Button>
-      </Box>
+      </Stack>
 
-      <Paper>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>STT</TableCell>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Số lần vi phạm</TableCell>
-              <TableCell>Hệ số</TableCell>
-              <TableCell>Tổng điểm</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {summaries.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell>{row.id}</TableCell>
-                <TableCell>{row.className}</TableCell>
-                <TableCell>{row.count}</TableCell>
-                <TableCell>{multiplier}</TableCell>
-                <TableCell>{row.total}</TableCell>
+      <Paper sx={{ mt: 2 }}>
+        {loading ? (
+          <Box p={3} textAlign="center">
+            <CircularProgress />
+          </Box>
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: "#1976d2" }}>
+                <TableCell sx={{ color: "white" }}>STT</TableCell>
+                <TableCell sx={{ color: "white" }}>Lớp</TableCell>
+                <TableCell sx={{ color: "white" }}>Điểm xếp hàng</TableCell>
+                <TableCell sx={{ color: "white" }}>Tổng điểm</TableCell>
+                <TableCell sx={{ color: "white" }}>Số lượt</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {data.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>{row.id}</TableCell>
+                  <TableCell>{row.className}</TableCell>
+                  <TableCell>{row.scores.join(", ")}</TableCell>
+                  <TableCell>{row.total}</TableCell>
+                  <TableCell>{row.count}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </Paper>
     </Box>
   );
-}
+};
+
+export default ClassLineUpSummaryPage;
