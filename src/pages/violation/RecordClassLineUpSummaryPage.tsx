@@ -30,6 +30,8 @@ interface ViolationRecord {
   violation: string;
   date: string;
   recorder: string;
+  scoreChange?: number; // ✅ thêm trường điểm trừ
+  note?: string; // ✅ thêm trường ghi chú
 }
 
 export default function ClassLineUpSummaryPage() {
@@ -131,6 +133,7 @@ export default function ClassLineUpSummaryPage() {
         Ghi nhận lỗi xếp hàng
       </Typography>
 
+      {/* --- Form ghi nhận --- */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Stack spacing={2}>
           {/* --- Lớp --- */}
@@ -230,9 +233,9 @@ export default function ClassLineUpSummaryPage() {
             value={recorder}
             onChange={(e) => setRecorder(e.target.value)}
           >
-            <MenuItem value="th Huy">th Huy</MenuItem>
-            <MenuItem value="th Nghĩa">th Nghĩa</MenuItem>
-            <MenuItem value="th Năm">th Năm</MenuItem>
+            <MenuItem value="th Huy">Th.Huy</MenuItem>
+            <MenuItem value="th Nghĩa">Th.Nghĩa</MenuItem>
+            <MenuItem value="th Năm">Th.Năm</MenuItem>
           </TextField>
 
           {/* --- Thời gian --- */}
@@ -261,10 +264,12 @@ export default function ClassLineUpSummaryPage() {
               <TableRow>
                 <TableCell>Lớp</TableCell>
                 <TableCell>Lỗi vi phạm</TableCell>
-                <TableCell>Học sinh</TableCell>
-                <TableCell>Ngày</TableCell>
+                <TableCell>Học sinh vi phạm</TableCell>
+                <TableCell>Thời gian ghi nhận</TableCell>
                 <TableCell>Người ghi nhận</TableCell>
-                <TableCell></TableCell>
+                <TableCell>Điểm trừ</TableCell>
+                <TableCell>Ghi chú</TableCell>
+                <TableCell>Thao tác</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -277,6 +282,8 @@ export default function ClassLineUpSummaryPage() {
                     {new Date(r.date).toLocaleDateString("vi-VN")}
                   </TableCell>
                   <TableCell>{r.recorder}</TableCell>
+                  <TableCell>-{r.scoreChange || 10}</TableCell>
+                  <TableCell>{r.note || "-"}</TableCell>
                   <TableCell>
                     <IconButton color="error" onClick={() => handleDelete(r._id)}>
                       <DeleteIcon />
