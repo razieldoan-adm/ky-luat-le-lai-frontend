@@ -16,17 +16,44 @@ import {
 } from "@mui/material";
 import api from "../../api/api";
 
+// ==== Định nghĩa kiểu dữ liệu ====
+
+// Dữ liệu tuần học
+interface AcademicWeek {
+  _id: string;
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+}
+
+// Bản ghi điểm xếp hàng gốc
+interface LineUpRecord {
+  _id: string;
+  className: string;
+  scoreChange: number;
+  weekNumber: number;
+}
+
+// Dữ liệu hiển thị tổng hợp
+interface LineUpSummary {
+  id: number;
+  className: string;
+  scores: number[];
+  total: number;
+  count: number;
+}
+
 const ClassLineUpSummaryPage = () => {
-  const [weeks, setWeeks] = useState([]);
-  const [selectedWeek, setSelectedWeek] = useState("");
-  const [data, setData] = useState([]);
+  const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  const [data, setData] = useState<LineUpSummary[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load danh sách tuần
+  // 🔹 Load danh sách tuần
   useEffect(() => {
     const fetchWeeks = async () => {
       try {
-        const res = await api.get("/api/academic-weeks");
+        const res = await api.get<AcademicWeek[]>("/api/academic-weeks");
         setWeeks(res.data);
       } catch (err) {
         console.error("Lỗi khi tải tuần:", err);
@@ -35,33 +62,41 @@ const ClassLineUpSummaryPage = () => {
     fetchWeeks();
   }, []);
 
-  // Load dữ liệu xếp hàng
+  // 🔹 Load dữ liệu xếp hàng
   const handleLoadData = async () => {
     if (!selectedWeek) return alert("Vui lòng chọn tuần!");
     setLoading(true);
     try {
-      const res = await api.get("/api/class-lineup-summary", {
-        params: { weekNumber: selectedWeek },
-      });
+      const res = await api.get<LineUpRecord[]>(
+        "/api/class-lineup-summary/summary-by-class",
+        {
+          params: { weekNumber: selectedWeek },
+        }
+      );
 
       // Gom nhóm theo lớp
-      const grouped = {};
-      res.data.forEach((item) => {
+      const grouped: Record<string, number[]> = {};
+      res.data.forEach((item: LineUpRecord) => {
         if (!grouped[item.className]) grouped[item.className] = [];
-        grouped[item.className].push(item.scoreChange || 0);
+        grouped[item.className].push(item.scoreChange);
       });
 
-      const result = Object.keys(grouped).map((className, idx) => {
-        const scores = grouped[className];
-        const total = scores.reduce((sum, s) => sum + s, 0);
-        return {
-          id: idx + 1,
-          className,
-          scores,
-          total,
-          count: scores.length,
-        };
-      });
+      const result: LineUpSummary[] = Object.keys(grouped).map(
+        (className, idx) => {
+          const scores = grouped[className];
+          const total = scores.reduce(
+            (sum: number, s: number) => sum + s,
+            0
+          );
+          return {
+            id: idx + 1,
+            className,
+            scores,
+            total,
+            count: scores.length,
+          };
+        }
+      );
 
       setData(result);
     } catch (err) {
@@ -71,21 +106,21 @@ const ClassLineUpSummaryPage = () => {
     }
   };
 
-  // Lưu vào ClassWeeklyScore
+  // 🔹 Lưu vào ClassWeeklyScore
   const handleSave = async () => {
     if (!selectedWeek) return alert("Chưa chọn tuần!");
     try {
       for (const row of data) {
-        await api.post("/api/class-weekly-score/update-lineup", {
+        await api.post("/api/class-lineup-summary/update-weekly-lineup", {
           className: row.className,
           weekNumber: selectedWeek,
           lineUpScore: row.total,
         });
       }
-      alert("Đã lưu điểm xếp hàng vào ClassWeeklyScore!");
+      alert("✅ Đã lưu điểm xếp hàng vào ClassWeeklyScore!");
     } catch (err) {
       console.error("Lỗi khi lưu:", err);
-      alert("Có lỗi xảy ra khi lưu dữ liệu.");
+      alert("❌ Có lỗi xảy ra khi lưu dữ liệu.");
     }
   };
 
@@ -101,7 +136,7 @@ const ClassLineUpSummaryPage = () => {
           select
           label="Tuần"
           value={selectedWeek}
-          onChange={(e) => setSelectedWeek(e.target.value)}
+          onChange={(e) => setSelectedWeek(Number(e.target.value))}
           sx={{ width: 180 }}
         >
           {weeks.map((w) => (
@@ -137,9 +172,9 @@ const ClassLineUpSummaryPage = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {data.map((row, index) => (
-                <TableRow key={index}>
-                  <TableCell>{index + 1}</TableCell>
+              {data.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>{row.id}</TableCell>
                   <TableCell>{row.className}</TableCell>
                   <TableCell>{row.scores.join(", ")}</TableCell>
                   <TableCell>{row.total}</TableCell>
