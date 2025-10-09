@@ -74,7 +74,9 @@ export default function RecordClassLineUpSummaryPage() {
     const loadClasses = async () => {
       try {
         const res = await api.get("/api/classes");
-        const arr = (res.data || []).map((c: any) => c.className ?? c.name ?? String(c));
+        const arr = (res.data || []).map(
+          (c: any) => c.className ?? c.name ?? String(c)
+        );
         setClasses(arr);
       } catch (err) {
         console.error("Lỗi khi tải danh sách lớp:", err);
@@ -90,6 +92,8 @@ export default function RecordClassLineUpSummaryPage() {
       setWeeks(res.data || []);
       const cur = await api.get("/api/academic-weeks/current");
       setCurrentWeek(cur.data?.weekNumber || null);
+      setSelectedWeek(cur.data?.weekNumber || ""); // ✅ tự động chọn tuần hiện tại
+      await loadRecords(cur.data?.weekNumber || undefined); // ✅ tự động load tuần hiện tại
     } catch (err) {
       console.error("Lỗi khi tải tuần học:", err);
     }
@@ -101,7 +105,9 @@ export default function RecordClassLineUpSummaryPage() {
     try {
       const params: any = {};
       if (weekNumber) params.weekNumber = weekNumber;
-      const res = await api.get("/api/class-lineup-summaries/weekly-summary", { params });
+      const res = await api.get("/api/class-lineup-summaries/weekly-summary", {
+        params,
+      });
       setRecords(res.data || []);
     } catch (err) {
       console.error("Lỗi khi tải danh sách vi phạm:", err);
@@ -113,7 +119,6 @@ export default function RecordClassLineUpSummaryPage() {
 
   useEffect(() => {
     loadWeeks();
-    loadRecords(); // mặc định tuần hiện tại
   }, []);
 
   const handleWeekChange = (e: any) => {
@@ -144,7 +149,8 @@ export default function RecordClassLineUpSummaryPage() {
 
   // --- Chọn học sinh
   const handleSelectSuggestion = (s: StudentSuggestion) => {
-    if (!selectedStudents.includes(s.name)) setSelectedStudents((p) => [...p, s.name]);
+    if (!selectedStudents.includes(s.name))
+      setSelectedStudents((p) => [...p, s.name]);
     setStudentInput("");
     setSuggestions([]);
   };
@@ -242,7 +248,11 @@ export default function RecordClassLineUpSummaryPage() {
               label="Học sinh vi phạm (nhập để gợi ý)"
               value={studentInput}
               onChange={(e) => setStudentInput(e.target.value)}
-              placeholder={className ? "Nhập tên học sinh..." : "Chọn lớp trước để gợi ý học sinh"}
+              placeholder={
+                className
+                  ? "Nhập tên học sinh..."
+                  : "Chọn lớp trước để gợi ý học sinh"
+              }
               disabled={!className}
             />
             {suggestions.length > 0 && (
@@ -270,7 +280,12 @@ export default function RecordClassLineUpSummaryPage() {
           {selectedStudents.length > 0 && (
             <Stack direction="row" spacing={1} flexWrap="wrap">
               {selectedStudents.map((s) => (
-                <Chip key={s} label={s} onDelete={() => removeSelectedStudent(s)} sx={{ mt: 0.5 }} />
+                <Chip
+                  key={s}
+                  label={s}
+                  onDelete={() => removeSelectedStudent(s)}
+                  sx={{ mt: 0.5 }}
+                />
               ))}
             </Stack>
           )}
@@ -306,14 +321,19 @@ export default function RecordClassLineUpSummaryPage() {
       </Paper>
 
       {/* Bộ lọc tuần */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={1}
+      >
         <Typography variant="h6">Danh sách lớp đã ghi nhận vi phạm</Typography>
         <Select
           size="small"
           value={selectedWeek}
           onChange={handleWeekChange}
           displayEmpty
-          sx={{ minWidth: 240, bgcolor: "white" }}
+          sx={{ minWidth: 260, bgcolor: "white" }}
         >
           <MenuItem value="">
             {currentWeek ? `Tuần ${currentWeek} (hiện tại)` : "Tuần hiện tại"}
@@ -322,7 +342,8 @@ export default function RecordClassLineUpSummaryPage() {
             <MenuItem key={w._id} value={w.weekNumber}>
               Tuần {w.weekNumber}
               {currentWeek === w.weekNumber ? " (hiện tại)" : ""} —{" "}
-              {dayjs(w.startDate).format("DD/MM")} → {dayjs(w.endDate).format("DD/MM")}
+              {dayjs(w.startDate).format("DD/MM")} →{" "}
+              {dayjs(w.endDate).format("DD/MM")}
             </MenuItem>
           ))}
         </Select>
@@ -344,7 +365,6 @@ export default function RecordClassLineUpSummaryPage() {
               <TableCell>Thao tác</TableCell>
             </TableRow>
           </TableHead>
-
           <TableBody>
             {loading ? (
               <TableRow>
@@ -365,7 +385,9 @@ export default function RecordClassLineUpSummaryPage() {
                   <TableCell>{r.className}</TableCell>
                   <TableCell>{r.violation}</TableCell>
                   <TableCell>{r.studentName || "-"}</TableCell>
-                  <TableCell>{new Date(r.date).toLocaleString("vi-VN")}</TableCell>
+                  <TableCell>
+                    {new Date(r.date).toLocaleString("vi-VN")}
+                  </TableCell>
                   <TableCell>{r.recorder || "-"}</TableCell>
                   <TableCell align="center" sx={{ color: "red" }}>
                     -{Math.abs(r.scoreChange ?? 10)}
