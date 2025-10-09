@@ -12,6 +12,7 @@ import {
   TableRow,
   TableCell,
   TableBody,
+  TableContainer,
   Stack,
   Select,
   Chip,
@@ -366,58 +367,91 @@ export default function RecordClassLineUpSummaryPage() {
       </Box>
 
       {/* Bảng dữ liệu */}
-      <Paper>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>STT</TableCell>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Lỗi vi phạm</TableCell>
-              <TableCell>Học sinh vi phạm</TableCell>
-              <TableCell>Thời gian ghi nhận</TableCell>
-              <TableCell>Người ghi nhận</TableCell>
-              <TableCell align="center">Điểm trừ</TableCell>
-              <TableCell>Ghi chú</TableCell>
-              <TableCell>Thao tác</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={9} align="center">
-                  Đang tải...
-                </TableCell>
-              </TableRow>
-            ) : records.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} align="center">
-                  Không có dữ liệu
-                </TableCell>
-              </TableRow>
-            ) : (
-              records.map((r, idx) => (
-                <TableRow key={r._id}>
-                  <TableCell>{idx + 1}</TableCell>
-                  <TableCell>{r.className}</TableCell>
-                  <TableCell>{r.violation}</TableCell>
-                  <TableCell>{r.studentName || "-"}</TableCell>
-                  <TableCell>{new Date(r.date).toLocaleString("vi-VN")}</TableCell>
-                  <TableCell>{r.recorder || "-"}</TableCell>
-                  <TableCell align="center" sx={{ color: "red" }}>
-                    -{Math.abs(r.scoreChange ?? 10)}
-                  </TableCell>
-                  <TableCell>{r.note || "-"}</TableCell>
-                  <TableCell>
-                    <IconButton color="error" onClick={() => handleDelete(r._id)}>
-                      <CloseIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Paper>
+<TableContainer
+  component={Paper}
+  sx={{
+    width: "100%",
+    overflowX: "auto",
+    boxShadow: 2,
+    borderRadius: 2,
+  }}
+>
+  <Table
+    size="small"
+    sx={{
+      minWidth: 700,
+      "& th": { bgcolor: "primary.main", color: "white", whiteSpace: "nowrap" },
+      "& td": { whiteSpace: "nowrap", fontSize: { xs: "0.85rem", sm: "0.95rem" } },
+    }}
+  >
+    <TableHead>
+      <TableRow>
+        <TableCell>STT</TableCell>
+        <TableCell>Lớp</TableCell>
+        <TableCell>Lỗi vi phạm</TableCell>
+        <TableCell>Học sinh vi phạm</TableCell>
+        <TableCell>Thời gian ghi nhận</TableCell>
+        <TableCell>Người ghi nhận</TableCell>
+        <TableCell align="center">Điểm trừ</TableCell>
+        <TableCell>Ghi chú</TableCell>
+        <TableCell align="center">Thao tác</TableCell>
+      </TableRow>
+    </TableHead>
+
+    <TableBody>
+      {loading ? (
+        <TableRow>
+          <TableCell colSpan={9} align="center">
+            Đang tải...
+          </TableCell>
+        </TableRow>
+      ) : records.length === 0 ? (
+        <TableRow>
+          <TableCell colSpan={9} align="center">
+            Không có dữ liệu
+          </TableCell>
+        </TableRow>
+      ) : (
+        records.map((r, idx) => (
+          <TableRow
+            key={r._id}
+            hover
+            sx={{
+              "&:nth-of-type(odd)": { backgroundColor: "action.hover" },
+            }}
+          >
+            <TableCell>{idx + 1}</TableCell>
+            <TableCell>{r.className}</TableCell>
+            <TableCell>{r.violation}</TableCell>
+            <TableCell>{r.studentName || "-"}</TableCell>
+            <TableCell>
+              {new Date(r.date).toLocaleString("vi-VN", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </TableCell>
+            <TableCell>{r.recorder || "-"}</TableCell>
+            <TableCell align="center" sx={{ color: "red", fontWeight: 600 }}>
+              -{Math.abs(r.scoreChange ?? 10)}
+            </TableCell>
+            <TableCell sx={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>
+              {r.note || "-"}
+            </TableCell>
+            <TableCell align="center">
+              <IconButton color="error" onClick={() => handleDelete(r._id)}>
+                <CloseIcon />
+              </IconButton>
+            </TableCell>
+          </TableRow>
+        ))
+      )}
+    </TableBody>
+  </Table>
+</TableContainer>
+
     </Box>
   );
 }
