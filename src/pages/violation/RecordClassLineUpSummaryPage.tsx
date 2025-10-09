@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import api from "../../api/api";
+import dayjs from "dayjs";
 
 interface StudentSuggestion {
   _id: string;
@@ -36,6 +37,13 @@ interface Record {
   note?: string;
 }
 
+interface AcademicWeek {
+  _id: string;
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+}
+
 export default function RecordClassLineUpSummaryPage() {
   const [className, setClassName] = useState("");
   const [classes, setClasses] = useState<string[]>([]);
@@ -47,8 +55,12 @@ export default function RecordClassLineUpSummaryPage() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
 
   const [records, setRecords] = useState<Record[]>([]);
-  const [filter, setFilter] = useState<"week" | "all">("week");
   const [loading, setLoading] = useState(false);
+
+  // 🔹 thêm phần tuần
+  const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  const [currentWeek, setCurrentWeek] = useState<number | null>(null);
 
   // 3 lỗi cố định
   const violationOptions = [
@@ -57,12 +69,11 @@ export default function RecordClassLineUpSummaryPage() {
     "Di chuyển lộn xộn không theo hàng lối",
   ];
 
-  // --- Load classes (drop-down)
+  // --- Load classes
   useEffect(() => {
     const loadClasses = async () => {
       try {
         const res = await api.get("/api/classes");
-        // map robustly: prefer c.className, else c.name, else string
         const arr = (res.data || []).map((c: any) => c.className ?? c.name ?? String(c));
         setClasses(arr);
       } catch (err) {
@@ -72,7 +83,46 @@ export default function RecordClassLineUpSummaryPage() {
     loadClasses();
   }, []);
 
-  // --- Suggestions for student input (debounced)
+  // --- Load tuần học
+  const loadWeeks = async () => {
+    try {
+      const res = await api.get("/api/academic-weeks/study-weeks");
+      setWeeks(res.data || []);
+      const cur = await api.get("/api/academic-weeks/current");
+      setCurrentWeek(cur.data?.weekNumber || null);
+    } catch (err) {
+      console.error("Lỗi khi tải tuần học:", err);
+    }
+  };
+
+  // --- Load records theo tuần
+  const loadRecords = async (weekNumber?: number) => {
+    setLoading(true);
+    try {
+      const params: any = {};
+      if (weekNumber) params.weekNumber = weekNumber;
+      const res = await api.get("/api/class-lineup-summaries/weekly-summary", { params });
+      setRecords(res.data || []);
+    } catch (err) {
+      console.error("Lỗi khi tải danh sách vi phạm:", err);
+      setRecords([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWeeks();
+    loadRecords(); // mặc định tuần hiện tại
+  }, []);
+
+  const handleWeekChange = (e: any) => {
+    const value = e.target.value;
+    setSelectedWeek(value);
+    loadRecords(value || undefined);
+  };
+
+  // --- Gợi ý học sinh
   useEffect(() => {
     if (!studentInput.trim() || !className) {
       setSuggestions([]);
@@ -92,53 +142,25 @@ export default function RecordClassLineUpSummaryPage() {
     return () => clearTimeout(t);
   }, [studentInput, className]);
 
-  // --- Load records (week or all)
-  const loadRecords = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get("/api/class-lineup-summaries/weekly-summary", {
-        params: { filter: filter === "week" ? "week" : "all" },
-      });
-      setRecords(res.data || []);
-    } catch (err) {
-      console.error("Lỗi khi tải danh sách vi phạm:", err);
-      setRecords([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadRecords();
-  }, [filter]);
-
-  // --- Add selected student from suggestions
+  // --- Chọn học sinh
   const handleSelectSuggestion = (s: StudentSuggestion) => {
     if (!selectedStudents.includes(s.name)) setSelectedStudents((p) => [...p, s.name]);
     setStudentInput("");
     setSuggestions([]);
   };
 
-  // --- Remove student from selected list
   const removeSelectedStudent = (name: string) => {
     setSelectedStudents((p) => p.filter((x) => x !== name));
   };
 
-  // --- Save record
+  // --- Lưu ghi nhận
   const handleSave = async () => {
-    if (!className) {
-      alert("Vui lòng chọn lớp.");
-      return;
-    }
-    if (!violation) {
-      alert("Vui lòng chọn loại vi phạm.");
-      return;
-    }
+    if (!className) return alert("Vui lòng chọn lớp.");
+    if (!violation) return alert("Vui lòng chọn loại vi phạm.");
 
     try {
-      // Build date-time: use selected date + current time on client (so backend gets full timestamp)
       const now = new Date();
-      const timePart = now.toTimeString().split(" ")[0]; // "HH:MM:SS"
+      const timePart = now.toTimeString().split(" ")[0];
       const isoDatetime = new Date(`${date}T${timePart}`).toISOString();
 
       const payload = {
@@ -150,27 +172,22 @@ export default function RecordClassLineUpSummaryPage() {
       };
 
       await api.post("/api/class-lineup-summaries", payload);
-
-      // reset small inputs
       setViolation("");
       setStudentInput("");
       setSelectedStudents([]);
-
-      // reload
-      await loadRecords();
+      await loadRecords(selectedWeek || undefined);
     } catch (err) {
       console.error("Lỗi khi lưu ghi nhận:", err);
       alert("Lưu thất bại. Xem console để biết chi tiết.");
     }
   };
 
-  // --- Delete record
+  // --- Xóa bản ghi
   const handleDelete = async (id: string) => {
     if (!window.confirm("Bạn có chắc muốn xóa bản ghi này?")) return;
     try {
       await api.delete(`/api/class-lineup-summaries/${id}`);
-      // reload
-      await loadRecords();
+      await loadRecords(selectedWeek || undefined);
     } catch (err) {
       console.error("Lỗi khi xóa:", err);
       alert("Không thể xóa bản ghi.");
@@ -183,7 +200,7 @@ export default function RecordClassLineUpSummaryPage() {
         Ghi nhận lỗi xếp hàng
       </Typography>
 
-      {/* Form */}
+      {/* Form ghi nhận */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Stack spacing={2}>
           <TextField
@@ -228,7 +245,6 @@ export default function RecordClassLineUpSummaryPage() {
               placeholder={className ? "Nhập tên học sinh..." : "Chọn lớp trước để gợi ý học sinh"}
               disabled={!className}
             />
-
             {suggestions.length > 0 && (
               <Paper
                 sx={{
@@ -250,21 +266,14 @@ export default function RecordClassLineUpSummaryPage() {
             )}
           </Box>
 
-          {/* Selected students list */}
-          <Box>
-            {selectedStudents.length > 0 && (
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                {selectedStudents.map((s) => (
-                  <Chip
-                    key={s}
-                    label={s}
-                    onDelete={() => removeSelectedStudent(s)}
-                    sx={{ mt: 0.5 }}
-                  />
-                ))}
-              </Stack>
-            )}
-          </Box>
+          {/* Danh sách học sinh đã chọn */}
+          {selectedStudents.length > 0 && (
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {selectedStudents.map((s) => (
+                <Chip key={s} label={s} onDelete={() => removeSelectedStudent(s)} sx={{ mt: 0.5 }} />
+              ))}
+            </Stack>
+          )}
 
           <TextField label="Người ghi nhận" value={recorder} disabled fullWidth />
 
@@ -296,20 +305,30 @@ export default function RecordClassLineUpSummaryPage() {
         </Stack>
       </Paper>
 
-      {/* Filter + title */}
+      {/* Bộ lọc tuần */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
         <Typography variant="h6">Danh sách lớp đã ghi nhận vi phạm</Typography>
         <Select
           size="small"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value as "week" | "all")}
+          value={selectedWeek}
+          onChange={handleWeekChange}
+          displayEmpty
+          sx={{ minWidth: 240, bgcolor: "white" }}
         >
-          <MenuItem value="week">Tuần này</MenuItem>
-          <MenuItem value="all">Toàn bộ</MenuItem>
+          <MenuItem value="">
+            {currentWeek ? `Tuần ${currentWeek} (hiện tại)` : "Tuần hiện tại"}
+          </MenuItem>
+          {weeks.map((w) => (
+            <MenuItem key={w._id} value={w.weekNumber}>
+              Tuần {w.weekNumber}
+              {currentWeek === w.weekNumber ? " (hiện tại)" : ""} —{" "}
+              {dayjs(w.startDate).format("DD/MM")} → {dayjs(w.endDate).format("DD/MM")}
+            </MenuItem>
+          ))}
         </Select>
       </Box>
 
-      {/* Table */}
+      {/* Bảng dữ liệu */}
       <Paper>
         <Table>
           <TableHead>
