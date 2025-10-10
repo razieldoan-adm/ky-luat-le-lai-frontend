@@ -69,12 +69,16 @@ export default function AllViolationStudentPage() {
   const [violationBeingEdited, setViolationBeingEdited] = useState<Violation | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  useEffect(() => {
-    fetchViolations();
-    fetchClasses();
-    fetchRules();
-    fetchWeeks();
-  }, []);
+useEffect(() => {
+  const init = async () => {
+    await fetchWeeks(); // đợi tuần được lấy về và setSelectedWeek()
+    await fetchClasses();
+    await fetchRules();
+    await fetchViolations();
+  };
+  init();
+}, []);
+
 
   // 🧭 Lấy danh sách tuần học + tuần hiện tại
   const fetchWeeks = async () => {
@@ -129,6 +133,10 @@ export default function AllViolationStudentPage() {
     if (handledStatus) data = data.filter((v) => String(v.handled) === handledStatus);
     setFiltered(data);
   };
+  
+  useEffect(() => {
+  applyFilters();
+  }, [selectedWeek, selectedClass, handledStatus, violations]);
 
   const clearFilters = () => {
     setSelectedClass('');
@@ -136,7 +144,7 @@ export default function AllViolationStudentPage() {
     setHandledStatus('');
     setFiltered(violations);
   };
-
+  
   // 🗑️ Xoá vi phạm
   const handleDeleteViolation = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn xoá vi phạm này không?')) return;
