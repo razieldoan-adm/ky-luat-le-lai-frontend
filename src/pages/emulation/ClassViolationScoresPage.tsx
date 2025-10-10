@@ -31,6 +31,8 @@ interface Violation {
   penalty: number;
   weekNumber: number;
   time: string;
+  handled: boolean;          // ✅ thêm
+  handlerRole?: "GVCN" | "PGT" | null;  // ✅ thêm
 }
 
 export default function ClassDisciplineTotalPage() {
