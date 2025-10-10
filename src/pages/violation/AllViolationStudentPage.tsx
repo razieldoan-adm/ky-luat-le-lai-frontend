@@ -134,9 +134,6 @@ useEffect(() => {
     setFiltered(data);
   };
   
-  useEffect(() => {
-  applyFilters();
-  }, [selectedWeek, selectedClass, handledStatus, violations]);
 
   const clearFilters = () => {
     setSelectedClass('');
@@ -144,7 +141,11 @@ useEffect(() => {
     setHandledStatus('');
     setFiltered(violations);
   };
-  
+
+  useEffect(() => {
+  applyFilters();
+}, [selectedWeek, selectedClasses, searchName, onlyFrequent, violations, weekList]);
+
   // 🗑️ Xoá vi phạm
   const handleDeleteViolation = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn xoá vi phạm này không?')) return;
