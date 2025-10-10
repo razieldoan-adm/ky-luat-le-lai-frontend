@@ -1,20 +1,8 @@
+// src/pages/violation/UnhandledViolationsPage.tsx
 import { useState, useEffect } from 'react';
 import {
-  Box,
-  Typography,
-  TextField,
-  MenuItem,
-  Checkbox,
-  FormControlLabel,
-  Button,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  Paper,
-  Stack,
-  ListItemText,
+  Box, Typography, TextField, MenuItem, Checkbox, FormControlLabel, Button,
+  Table, TableHead, TableBody, TableRow, TableCell, Paper, Stack, ListItemText
 } from '@mui/material';
 import api from '../../api/api';
 import dayjs from 'dayjs';
@@ -26,8 +14,7 @@ interface Violation {
   description: string;
   time: Date | string;
   handlingMethod: string;
-  handled?: boolean;
-  handledBy?: string;
+  handledBy?: string; // ✅ thêm
 }
 interface Rule {
   _id: string;
@@ -101,30 +88,13 @@ export default function UnhandledViolationsPage() {
     }
   };
 
-  // ==========================
-  // 🔹 Hàm xử lý vi phạm
-  // ==========================
-  const handleViolation = async (v: Violation, role: 'GVCN' | 'PGT') => {
-    try {
-      await api.put(`/api/violations/${v._id}/handle`, {
-        handled: true,
-        handlingMethod: v.handlingMethod || 'Đã xử lý',
-        handledBy: role,
-        handlingNote: `Xử lý bởi ${role}`,
-      });
-      fetchViolations(); // load lại danh sách sau khi xử lý
-    } catch (err) {
-      console.error('Lỗi khi xử lý vi phạm:', err);
-    }
-  };
-
   const applyFilters = () => {
     let data = [...violations];
-
     if (selectedClasses.length > 0) {
       data = data.filter((v) => selectedClasses.includes(v.className));
     }
 
+    // ✅ Lọc theo tuần
     if (selectedWeek !== 'all' && selectedWeek !== '') {
       const week = weekList.find(
         (w) =>
@@ -179,13 +149,25 @@ export default function UnhandledViolationsPage() {
     setFiltered(violations);
   };
 
+  // ✅ Hàm xử lý: GVCN / PGT
+  const handleMarkAsHandled = async (id: string, role: 'GVCN' | 'PGT') => {
+    try {
+      await api.put(`/api/violations/${id}`, {
+        handled: true,
+        handledBy: role,
+      });
+      fetchViolations(); // refresh sau khi cập nhật
+    } catch (err) {
+      console.error('Lỗi khi cập nhật:', err);
+    }
+  };
+
   return (
     <Box sx={{ maxWidth: '100%', mx: 'auto', py: 4 }}>
       <Typography variant="h4" fontWeight="bold" align="center" gutterBottom>
-        Học sinh vi phạm (chưa xử lý)
+        Học sinh vi phạm (báo cáo)
       </Typography>
 
-      {/* Bộ lọc */}
       <Paper sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mt: 2, p: 2, mb: 4 }} elevation={3}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
           <TextField
@@ -200,7 +182,9 @@ export default function UnhandledViolationsPage() {
             }}
             value={selectedClasses}
             onChange={(e) =>
-              setSelectedClasses(typeof e.target.value === 'string' ? e.target.value.split(',') : (e.target.value as string[]))
+              setSelectedClasses(typeof e.target.value === 'string'
+                ? e.target.value.split(',')
+                : (e.target.value as string[]))
             }
             sx={{ minWidth: 200 }}
           >
@@ -212,30 +196,29 @@ export default function UnhandledViolationsPage() {
             ))}
           </TextField>
 
+          {/* ✅ Chọn tuần */}
           <TextField
             label="Chọn tuần"
             select
             value={selectedWeek}
-            onChange={(e) =>
-              setSelectedWeek((() => {
-                const v = e.target.value as string;
-                if (v === 'all') return 'all';
-                if (v === '') return '';
-                return isNaN(Number(v)) ? v : Number(v);
-              })())
-            }
+            onChange={(e) => {
+              const v = e.target.value as string;
+              if (v === 'all') return setSelectedWeek('all');
+              if (v === '') return setSelectedWeek('');
+              setSelectedWeek(isNaN(Number(v)) ? v : Number(v));
+            }}
             sx={{ minWidth: 200 }}
           >
             <MenuItem value="all">Tất cả tuần</MenuItem>
             {weekList.map((w) => {
               const start = (w.start ?? (w as any).startDate) || '';
               const end = (w.end ?? (w as any).endDate) || '';
-              const weekLabel = w.weekNumber !== undefined ? `Tuần ${w.weekNumber}` : w.label ?? 'Tuần';
-              const rangeText = start && end ? ` (${dayjs(start).format('DD/MM')} - ${dayjs(end).format('DD/MM')})` : '';
+              const label = w.weekNumber !== undefined ? `Tuần ${w.weekNumber}` : w.label ?? 'Tuần';
+              const range = start && end ? ` (${dayjs(start).format('DD/MM')} - ${dayjs(end).format('DD/MM')})` : '';
               const value = w.weekNumber !== undefined ? w.weekNumber : (w.label ?? '');
               return (
-                <MenuItem key={String(value) + (w._id ?? '')} value={value}>
-                  {weekLabel + rangeText}
+                <MenuItem key={String(value)} value={value}>
+                  {label + range}
                 </MenuItem>
               );
             })}
@@ -253,17 +236,12 @@ export default function UnhandledViolationsPage() {
             label="Chỉ học sinh >= 3 vi phạm"
           />
 
-          <Button variant="contained" onClick={applyFilters}>
-            Áp dụng
-          </Button>
-          <Button variant="outlined" onClick={clearFilters}>
-            Xóa lọc
-          </Button>
+          <Button variant="contained" onClick={applyFilters}>Áp dụng</Button>
+          <Button variant="outlined" onClick={clearFilters}>Xóa lọc</Button>
         </Stack>
       </Paper>
 
-      {/* Bảng */}
-      <Paper elevation={3} sx={{ width: '100%', overflowX: 'auto', borderRadius: 3 }}>
+      <Paper elevation={3} sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mt: 2 }}>
         <Table size="small">
           <TableHead>
             <TableRow sx={{ backgroundColor: '#87cafe' }}>
@@ -279,39 +257,30 @@ export default function UnhandledViolationsPage() {
           </TableHead>
           <TableBody>
             {filtered.length > 0 ? (
-              filtered
-                .filter((v) => !v.handled) // chỉ hiện vi phạm chưa xử lý
-                .map((v, i) => (
-                  <TableRow key={v._id}>
-                    <TableCell>{i + 1}</TableCell>
-                    <TableCell>{v.name}</TableCell>
-                    <TableCell>{v.className}</TableCell>
-                    <TableCell>{v.description}</TableCell>
-                    <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
-                    <TableCell>{v.handlingMethod || '-'}</TableCell>
-                    <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
-                    <TableCell align="center">
-                      <Stack direction="row" spacing={1} justifyContent="center">
-                        <Button
-                          variant="outlined"
-                          color="primary"
-                          size="small"
-                          onClick={() => handleViolation(v, 'GVCN')}
-                        >
-                          GVCN
-                        </Button>
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          size="small"
-                          onClick={() => handleViolation(v, 'PGT')}
-                        >
-                          PGT
-                        </Button>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))
+              filtered.map((v, i) => (
+                <TableRow key={v._id}>
+                  <TableCell>{i + 1}</TableCell>
+                  <TableCell>{v.name}</TableCell>
+                  <TableCell>{v.className}</TableCell>
+                  <TableCell>{v.description}</TableCell>
+                  <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
+                  <TableCell>{v.handlingMethod || '-'}</TableCell>
+                  <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
+                  <TableCell align="center">
+                    {/* ✅ Hai nút mới */}
+                    <Stack direction="row" spacing={1} justifyContent="center">
+                      <Button size="small" variant="contained" color="primary"
+                        onClick={() => handleMarkAsHandled(v._id, 'GVCN')}>
+                        GVCN
+                      </Button>
+                      <Button size="small" variant="contained" color="secondary"
+                        onClick={() => handleMarkAsHandled(v._id, 'PGT')}>
+                        PGT
+                      </Button>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))
             ) : (
               <TableRow>
                 <TableCell colSpan={8} align="center">
