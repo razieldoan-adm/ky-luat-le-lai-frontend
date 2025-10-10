@@ -29,7 +29,7 @@ import timezone from "dayjs/plugin/timezone";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.tz.setDefault("Asia/Ho_Chi_Minh");
-
+console.log("Giờ hiện tại (VN):", dayjs().tz().format());
 interface Violation {
   _id: string;
   name: string;
