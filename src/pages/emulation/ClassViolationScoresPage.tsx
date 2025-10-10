@@ -102,7 +102,13 @@ const handleLoadData = async () => {
 
     const filtered = data.filter(v => {
       const t = dayjs(v.time);
-      return t.isAfter(start) && t.isBefore(end);
+      return   return (
+            t.isAfter(start) &&
+            t.isBefore(end) &&
+            v.handled === true &&
+            v.handlerRole === "PGT"
+          );
+        });
     });
 
     // Gán dữ liệu penalties cho từng lớp
