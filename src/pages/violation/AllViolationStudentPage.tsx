@@ -41,6 +41,13 @@ interface Rule {
   content: string;
 }
 
+interface Week {
+  _id: string;
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+}
+
 export default function AllViolationStudentPage() {
   const [violations, setViolations] = useState<Violation[]>([]);
   const [filtered, setFiltered] = useState<Violation[]>([]);
@@ -49,6 +56,7 @@ export default function AllViolationStudentPage() {
   const [handledStatus, setHandledStatus] = useState('');
   const [classList, setClassList] = useState<string[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
+  const [weeks, setWeeks] = useState<Week[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [violationBeingEdited, setViolationBeingEdited] = useState<Violation | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
@@ -57,7 +65,24 @@ export default function AllViolationStudentPage() {
     fetchViolations();
     fetchClasses();
     fetchRules();
+    fetchWeeks();
   }, []);
+
+  // 🧭 Lấy danh sách tuần học + tuần hiện tại
+  const fetchWeeks = async () => {
+    try {
+      const [weeksRes, currentRes] = await Promise.all([
+        api.get('/api/academic-weeks/study-weeks'),
+        api.get('/api/academic-weeks/current')
+      ]);
+      setWeeks(weeksRes.data);
+      if (currentRes.data?.weekNumber) {
+        setSelectedWeek(String(currentRes.data.weekNumber));
+      }
+    } catch (err) {
+      console.error('Lỗi khi lấy danh sách tuần học:', err);
+    }
+  };
 
   const fetchViolations = async () => {
     try {
@@ -165,14 +190,21 @@ export default function AllViolationStudentPage() {
             ))}
           </TextField>
 
+          {/* ✅ Tuần học lấy từ API */}
           <TextField
+            select
             label="Tuần học"
-            type="number"
             value={selectedWeek}
             onChange={(e) => setSelectedWeek(e.target.value)}
-            InputProps={{ inputProps: { min: 1 } }}
-            sx={{ minWidth: 120 }}
-          />
+            sx={{ minWidth: 200 }}
+          >
+            <MenuItem value="">-- Tất cả tuần --</MenuItem>
+            {weeks.map((w) => (
+              <MenuItem key={w._id} value={String(w.weekNumber)}>
+                Tuần {w.weekNumber} ({dayjs(w.startDate).format('DD/MM')} - {dayjs(w.endDate).format('DD/MM')})
+              </MenuItem>
+            ))}
+          </TextField>
 
           <TextField
             label="Tình trạng xử lý"
