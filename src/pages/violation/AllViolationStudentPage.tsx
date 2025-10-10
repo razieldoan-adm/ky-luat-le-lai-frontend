@@ -56,7 +56,7 @@ export default function AllViolationStudentPage() {
   const [handledStatus, setHandledStatus] = useState('');
   const [classList, setClassList] = useState<string[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
-  const [weeks, setWeeks] = useState<Week[]>([]);
+  const [weeks, setWeeks] = useState<{ _id: string; weekNumber: number; startDate: string; endDate: string }[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [violationBeingEdited, setViolationBeingEdited] = useState<Violation | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
@@ -192,19 +192,20 @@ export default function AllViolationStudentPage() {
 
           {/* ✅ Tuần học lấy từ API */}
           <TextField
-            select
             label="Tuần học"
+            select
             value={selectedWeek}
             onChange={(e) => setSelectedWeek(e.target.value)}
             sx={{ minWidth: 200 }}
           >
             <MenuItem value="">-- Tất cả tuần --</MenuItem>
             {weeks.map((w) => (
-              <MenuItem key={w._id} value={String(w.weekNumber)}>
+              <MenuItem key={w._id} value={w.weekNumber}>
                 Tuần {w.weekNumber} ({dayjs(w.startDate).format('DD/MM')} - {dayjs(w.endDate).format('DD/MM')})
               </MenuItem>
             ))}
           </TextField>
+
 
           <TextField
             label="Tình trạng xử lý"
