@@ -108,7 +108,6 @@ const handleLoadData = async () => {
             v.handled === true &&
             v.handlerRole === "PGT"
           );
-        });
     });
 
     // Gán dữ liệu penalties cho từng lớp
