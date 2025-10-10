@@ -21,8 +21,15 @@ import {
 } from '@mui/material';
 import api from '../../api/api';
 import dayjs from 'dayjs';
+import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+
+// ✅ Kích hoạt plugin timezone + đặt múi giờ mặc định
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.tz.setDefault("Asia/Ho_Chi_Minh");
+
 interface Violation {
   _id: string;
   name: string;
