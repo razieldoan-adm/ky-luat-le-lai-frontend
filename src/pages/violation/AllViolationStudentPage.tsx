@@ -31,26 +31,26 @@ interface Violation {
   handled: boolean;
   penalty: number;
   handlingMethod: string;
+  weekNumber?: number;
 }
+
 interface Rule {
   _id: string;
   title: string;
   point: number;
   content: string;
 }
+
 export default function AllViolationStudentPage() {
   const [violations, setViolations] = useState<Violation[]>([]);
   const [filtered, setFiltered] = useState<Violation[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [selectedWeek, setSelectedWeek] = useState('');
   const [handledStatus, setHandledStatus] = useState('');
   const [classList, setClassList] = useState<string[]>([]);
-
+  const [rules, setRules] = useState<Rule[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [violationBeingEdited, setViolationBeingEdited] = useState<Violation | null>(null);
-  const [rules, setRules] = useState<Rule[]>([]);
-
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
@@ -78,23 +78,33 @@ export default function AllViolationStudentPage() {
       console.error('Lỗi khi lấy danh sách lớp:', err);
     }
   };
+
   const fetchRules = async () => {
-  try {
-    const res = await api.get('/api/rules');
-    setRules(res.data);
-  } catch (err) {
-    console.error('Lỗi khi lấy rules:', err);
-  }
-};
+    try {
+      const res = await api.get('/api/rules');
+      setRules(res.data);
+    } catch (err) {
+      console.error('Lỗi khi lấy rules:', err);
+    }
+  };
+
+  // 🔍 Lọc theo tuần và lớp
   const applyFilters = () => {
     let data = [...violations];
     if (selectedClass) data = data.filter((v) => v.className === selectedClass);
-    if (fromDate) data = data.filter((v) => dayjs(v.time).isAfter(dayjs(fromDate).subtract(1, 'day')));
-    if (toDate) data = data.filter((v) => dayjs(v.time).isBefore(dayjs(toDate).add(1, 'day')));
+    if (selectedWeek) data = data.filter((v) => String(v.weekNumber) === selectedWeek);
     if (handledStatus) data = data.filter((v) => String(v.handled) === handledStatus);
     setFiltered(data);
   };
 
+  const clearFilters = () => {
+    setSelectedClass('');
+    setSelectedWeek('');
+    setHandledStatus('');
+    setFiltered(violations);
+  };
+
+  // 🗑️ Xoá vi phạm
   const handleDeleteViolation = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn xoá vi phạm này không?')) return;
     try {
@@ -105,12 +115,18 @@ export default function AllViolationStudentPage() {
     }
   };
 
-  const handleMarkHandled = async (id: string) => {
+  // 🧾 Ghi nhận xử lý (GVCN hoặc PGT)
+  const handleProcessViolation = async (id: string, method: string) => {
     try {
-      await api.patch(`/api/violations/${id}/handle`);
+      await api.patch(`/api/violations/${id}/handle`, {
+        handled: true,
+        handlingMethod: method
+      });
+      setSnackbar({ open: true, message: `Đã ghi nhận xử lý: ${method}`, severity: 'success' });
       fetchViolations();
     } catch (error) {
       console.error('Lỗi khi xử lý vi phạm:', error);
+      setSnackbar({ open: true, message: 'Lỗi khi xử lý vi phạm', severity: 'error' });
     }
   };
 
@@ -127,47 +143,63 @@ export default function AllViolationStudentPage() {
     }
   };
 
-  const clearFilters = () => {
-    setSelectedClass('');
-    setFromDate('');
-    setToDate('');
-    setHandledStatus('');
-    setFiltered(violations);
-  };
-
   return (
     <Box sx={{ maxWidth: '100%', mx: 'auto', py: 4 }}>
       <Typography variant="h4" fontWeight="bold" align="center" gutterBottom>
         Danh sách tất cả học sinh vi phạm
       </Typography>
 
-      <Paper sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mt: 2, p: 2, mb: 4 }} elevation={3}>
+      {/* Bộ lọc */}
+      <Paper sx={{ p: 2, borderRadius: 3, mb: 4 }} elevation={3}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
-          <TextField label="Lọc theo lớp" select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} sx={{ minWidth: 150 }}>
+          <TextField
+            label="Lọc theo lớp"
+            select
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)}
+            sx={{ minWidth: 150 }}
+          >
             <MenuItem value="">-- Tất cả lớp --</MenuItem>
             {classList.map((cls) => (
               <MenuItem key={cls} value={cls}>{cls}</MenuItem>
             ))}
           </TextField>
-          <TextField label="Từ ngày" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField label="Đến ngày" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField label="Tình trạng xử lý" select value={handledStatus} onChange={(e) => setHandledStatus(e.target.value)} sx={{ minWidth: 180 }}>
+
+          <TextField
+            label="Tuần học"
+            type="number"
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(e.target.value)}
+            InputProps={{ inputProps: { min: 1 } }}
+            sx={{ minWidth: 120 }}
+          />
+
+          <TextField
+            label="Tình trạng xử lý"
+            select
+            value={handledStatus}
+            onChange={(e) => setHandledStatus(e.target.value)}
+            sx={{ minWidth: 180 }}
+          >
             <MenuItem value="">-- Tất cả --</MenuItem>
             <MenuItem value="false">Chưa xử lý</MenuItem>
             <MenuItem value="true">Đã xử lý</MenuItem>
           </TextField>
+
           <Button variant="contained" onClick={applyFilters}>Áp dụng</Button>
           <Button variant="outlined" onClick={clearFilters}>Xóa lọc</Button>
         </Stack>
       </Paper>
 
-      <Paper elevation={3} sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mt: 2 }}>
+      {/* Bảng dữ liệu */}
+      <Paper elevation={3} sx={{ borderRadius: 3, overflowX: 'auto' }}>
         <Table size="small">
           <TableHead>
             <TableRow sx={{ backgroundColor: '#87cafe' }}>
               <TableCell>STT</TableCell>
               <TableCell>Họ tên</TableCell>
               <TableCell>Lớp</TableCell>
+              <TableCell>Tuần</TableCell>
               <TableCell>Lỗi vi phạm</TableCell>
               <TableCell>Thời gian</TableCell>
               <TableCell>Hình thức xử lý</TableCell>
@@ -183,17 +215,28 @@ export default function AllViolationStudentPage() {
                   <TableCell>{i + 1}</TableCell>
                   <TableCell>{v.name}</TableCell>
                   <TableCell>{v.className}</TableCell>
+                  <TableCell>{v.weekNumber || '-'}</TableCell>
                   <TableCell>{v.description}</TableCell>
                   <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
-                  <TableCell>{v.handlingMethod}</TableCell>
+                  <TableCell>{v.handlingMethod || '—'}</TableCell>
                   <TableCell>{v.handled ? 'Đã xử lý' : 'Chưa xử lý'}</TableCell>
-                  <TableCell> {rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
+                  <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <Button variant="outlined" color="error" size="small" onClick={() => handleDeleteViolation(v._id)}>Xoá</Button>
                       <Button variant="outlined" color="secondary" size="small" onClick={() => { setViolationBeingEdited(v); setEditDialogOpen(true); }}>Sửa</Button>
+
                       {!v.handled && (
-                        <Button variant="contained" size="small" color="primary" onClick={() => handleMarkHandled(v._id)}>Xử lý</Button>
+                        <>
+                          <Button variant="contained" color="primary" size="small"
+                            onClick={() => handleProcessViolation(v._id, 'GVCN xử lý')}>
+                            GVCN
+                          </Button>
+                          <Button variant="contained" color="success" size="small"
+                            onClick={() => handleProcessViolation(v._id, 'PGT xử lý')}>
+                            PGT
+                          </Button>
+                        </>
                       )}
                     </Box>
                   </TableCell>
@@ -201,7 +244,7 @@ export default function AllViolationStudentPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={9} align="center">Không có dữ liệu phù hợp.</TableCell>
+                <TableCell colSpan={10} align="center">Không có dữ liệu phù hợp.</TableCell>
               </TableRow>
             )}
           </TableBody>
