@@ -32,7 +32,7 @@ interface Violation {
   weekNumber: number;
   time: string;
   handled: boolean;          // ✅ thêm
-  handlerRole?: "GVCN" | "PGT xử lý" | null;  // ✅ thêm
+  handlingMethod?: "GVCN" | "PGT xử lý" | null;  // ✅ thêm
 }
 
 export default function ClassDisciplineTotalPage() {
@@ -108,7 +108,7 @@ const handleLoadData = async () => {
           t.isAfter(start) &&
           t.isBefore(end) &&
           v.handled === true &&
-          v.handlerRole === "PGT xử lý"
+          v.handlingMethod === "PGT xử lý"
         );
       });
 
