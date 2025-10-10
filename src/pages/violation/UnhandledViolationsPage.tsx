@@ -1,4 +1,3 @@
-// src/pages/violation/UnhandledViolationsPage.tsx
 import { useState, useEffect } from 'react';
 import {
   Box,
@@ -27,6 +26,8 @@ interface Violation {
   description: string;
   time: Date | string;
   handlingMethod: string;
+  handled?: boolean;
+  handledBy?: string;
 }
 interface Rule {
   _id: string;
@@ -37,8 +38,8 @@ interface Rule {
 interface Week {
   _id?: string;
   weekNumber?: number;
-  start?: string;   // hoặc startDate tùy API
-  end?: string;     // hoặc endDate tùy API
+  start?: string;
+  end?: string;
   label?: string;
 }
 
@@ -51,15 +52,13 @@ export default function UnhandledViolationsPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<string | number | ''>('all');
   const [onlyFrequent, setOnlyFrequent] = useState(false);
-
-  // 🔹 danh sách tuần từ API
   const [weekList, setWeekList] = useState<Week[]>([]);
 
   useEffect(() => {
     fetchViolations();
     fetchClasses();
     fetchRules();
-    fetchWeeks(); // gọi API lấy tuần
+    fetchWeeks();
   }, []);
 
   const fetchViolations = async () => {
@@ -93,7 +92,6 @@ export default function UnhandledViolationsPage() {
     }
   };
 
-  // --- YOUR provided fetchWeeks (kept as-is) ---
   const fetchWeeks = async () => {
     try {
       const res = await api.get('/api/academic-weeks/study-weeks');
@@ -103,17 +101,31 @@ export default function UnhandledViolationsPage() {
     }
   };
 
+  // ==========================
+  // 🔹 Hàm xử lý vi phạm
+  // ==========================
+  const handleViolation = async (v: Violation, role: 'GVCN' | 'PGT') => {
+    try {
+      await api.put(`/api/violations/${v._id}/handle`, {
+        handled: true,
+        handlingMethod: v.handlingMethod || 'Đã xử lý',
+        handledBy: role,
+        handlingNote: `Xử lý bởi ${role}`,
+      });
+      fetchViolations(); // load lại danh sách sau khi xử lý
+    } catch (err) {
+      console.error('Lỗi khi xử lý vi phạm:', err);
+    }
+  };
+
   const applyFilters = () => {
     let data = [...violations];
 
-    // Lọc theo lớp (nếu có chọn) — nếu selectedClasses rỗng => nghĩa là "tất cả"
     if (selectedClasses.length > 0) {
       data = data.filter((v) => selectedClasses.includes(v.className));
     }
 
-    // Lọc theo tuần (dùng start/end trong weekList)
     if (selectedWeek !== 'all' && selectedWeek !== '') {
-      // selectedWeek có thể là number hoặc string (tùy API), so sánh bằng string để an toàn
       const week = weekList.find(
         (w) =>
           (w.weekNumber !== undefined && String(w.weekNumber) === String(selectedWeek)) ||
@@ -132,7 +144,6 @@ export default function UnhandledViolationsPage() {
       }
     }
 
-    // Lọc theo tên (không phân biệt dấu/hoa)
     if (searchName) {
       const keyword = searchName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       data = data.filter((v) => {
@@ -141,7 +152,6 @@ export default function UnhandledViolationsPage() {
       });
     }
 
-    // Chỉ học sinh >= 3 vi phạm
     if (onlyFrequent) {
       const countMap: { [key: string]: number } = {};
       data.forEach((v) => {
@@ -151,12 +161,10 @@ export default function UnhandledViolationsPage() {
       data = data.filter((v) => countMap[v.name.trim().toLowerCase()] >= 3);
     }
 
-    // Sắp xếp theo lớp rồi theo tên (giữ giống code cũ)
     data.sort((a, b) => {
       if (a.className === b.className) {
         return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' });
       }
-      // numeric compare để lớp 6A10 sau 6A2 (nếu dạng số)
       return a.className.localeCompare(b.className, 'vi', { numeric: true });
     });
 
@@ -174,15 +182,12 @@ export default function UnhandledViolationsPage() {
   return (
     <Box sx={{ maxWidth: '100%', mx: 'auto', py: 4 }}>
       <Typography variant="h4" fontWeight="bold" align="center" gutterBottom>
-        Học sinh vi phạm (báo cáo)
+        Học sinh vi phạm (chưa xử lý)
       </Typography>
 
+      {/* Bộ lọc */}
       <Paper sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mt: 2, p: 2, mb: 4 }} elevation={3}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
-          {/* === CHỖ CHỌN LỚP ĐÃ ĐƯỢC THAY THẾ ===
-              - Select multiple với checkbox
-              - Mặc định không chọn (interpreted as "tất cả lớp")
-          */}
           <TextField
             label="Chọn lớp"
             select
@@ -207,18 +212,15 @@ export default function UnhandledViolationsPage() {
             ))}
           </TextField>
 
-          {/* Dropdown tuần (từ API) */}
           <TextField
             label="Chọn tuần"
             select
             value={selectedWeek}
             onChange={(e) =>
-              // giữ khả năng giá trị là "all" | "" | number
               setSelectedWeek((() => {
                 const v = e.target.value as string;
                 if (v === 'all') return 'all';
                 if (v === '') return '';
-                // nếu weekList cung cấp weekNumber, v sẽ là số dạng string -> chuyển về number
                 return isNaN(Number(v)) ? v : Number(v);
               })())
             }
@@ -226,7 +228,6 @@ export default function UnhandledViolationsPage() {
           >
             <MenuItem value="all">Tất cả tuần</MenuItem>
             {weekList.map((w) => {
-              // hiển thị: Tuần X (dd/mm - dd/mm) nếu có start/end, fallback show label hoặc weekNumber
               const start = (w.start ?? (w as any).startDate) || '';
               const end = (w.end ?? (w as any).endDate) || '';
               const weekLabel = w.weekNumber !== undefined ? `Tuần ${w.weekNumber}` : w.label ?? 'Tuần';
@@ -240,7 +241,6 @@ export default function UnhandledViolationsPage() {
             })}
           </TextField>
 
-          {/* Tìm theo tên */}
           <TextField
             label="Tìm theo tên học sinh"
             value={searchName}
@@ -248,7 +248,6 @@ export default function UnhandledViolationsPage() {
             sx={{ minWidth: 200 }}
           />
 
-          {/* Chỉ HS >= 3 vi phạm */}
           <FormControlLabel
             control={<Checkbox checked={onlyFrequent} onChange={(e) => setOnlyFrequent(e.target.checked)} />}
             label="Chỉ học sinh >= 3 vi phạm"
@@ -263,7 +262,8 @@ export default function UnhandledViolationsPage() {
         </Stack>
       </Paper>
 
-      <Paper elevation={3} sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mt: 2 }}>
+      {/* Bảng */}
+      <Paper elevation={3} sx={{ width: '100%', overflowX: 'auto', borderRadius: 3 }}>
         <Table size="small">
           <TableHead>
             <TableRow sx={{ backgroundColor: '#87cafe' }}>
@@ -274,24 +274,47 @@ export default function UnhandledViolationsPage() {
               <TableCell>Thời gian</TableCell>
               <TableCell>Hình thức xử lý</TableCell>
               <TableCell>Điểm</TableCell>
+              <TableCell align="center">Thao tác</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {filtered.length > 0 ? (
-              filtered.map((v, i) => (
-                <TableRow key={v._id}>
-                  <TableCell>{i + 1}</TableCell>
-                  <TableCell>{v.name}</TableCell>
-                  <TableCell>{v.className}</TableCell>
-                  <TableCell>{v.description}</TableCell>
-                  <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
-                  <TableCell>{v.handlingMethod}</TableCell>
-                  <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
-                </TableRow>
-              ))
+              filtered
+                .filter((v) => !v.handled) // chỉ hiện vi phạm chưa xử lý
+                .map((v, i) => (
+                  <TableRow key={v._id}>
+                    <TableCell>{i + 1}</TableCell>
+                    <TableCell>{v.name}</TableCell>
+                    <TableCell>{v.className}</TableCell>
+                    <TableCell>{v.description}</TableCell>
+                    <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
+                    <TableCell>{v.handlingMethod || '-'}</TableCell>
+                    <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
+                    <TableCell align="center">
+                      <Stack direction="row" spacing={1} justifyContent="center">
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          size="small"
+                          onClick={() => handleViolation(v, 'GVCN')}
+                        >
+                          GVCN
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="secondary"
+                          size="small"
+                          onClick={() => handleViolation(v, 'PGT')}
+                        >
+                          PGT
+                        </Button>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={8} align="center">
                   Không có dữ liệu phù hợp.
                 </TableCell>
               </TableRow>
