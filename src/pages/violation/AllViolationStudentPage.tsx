@@ -56,7 +56,7 @@ export default function AllViolationStudentPage() {
   const [handledStatus, setHandledStatus] = useState('');
   const [classList, setClassList] = useState<string[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
-  const [weeks, setWeeks] = useState<{ _id: string; weekNumber: number; startDate: string; endDate: string }[]>([]);
+  const [weeks, setWeeks] = useState<Week[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [violationBeingEdited, setViolationBeingEdited] = useState<Violation | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
@@ -206,7 +206,6 @@ export default function AllViolationStudentPage() {
             ))}
           </TextField>
 
-
           <TextField
             label="Tình trạng xử lý"
             select
@@ -293,13 +292,17 @@ export default function AllViolationStudentPage() {
               label="Lỗi vi phạm"
               fullWidth
               value={violationBeingEdited?.description || ''}
-              onChange={(e) => setViolationBeingEdited(prev => prev ? { ...prev, description: e.target.value } : prev)}
+              onChange={(e) =>
+                setViolationBeingEdited(prev => prev ? { ...prev, description: e.target.value } : prev)
+              }
             />
             <TextField
               label="Hình thức xử lý"
               fullWidth
               value={violationBeingEdited?.handlingMethod || ''}
-              onChange={(e) => setViolationBeingEdited(prev => prev ? { ...prev, handlingMethod: e.target.value } : prev)}
+              onChange={(e) =>
+                setViolationBeingEdited(prev => prev ? { ...prev, handlingMethod: e.target.value } : prev)
+              }
             />
           </Stack>
         </DialogContent>
