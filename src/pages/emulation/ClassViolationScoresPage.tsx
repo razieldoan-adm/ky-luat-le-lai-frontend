@@ -100,15 +100,15 @@ const handleLoadData = async () => {
     const start = dayjs(selectedWeek.startDate).startOf("day");
     const end = dayjs(selectedWeek.endDate).endOf("day");
 
-    const filtered = data.filter(v => {
-      const t = dayjs(v.time);
-      return   return (
-            t.isAfter(start) &&
-            t.isBefore(end) &&
-            v.handled === true &&
-            v.handlerRole === "PGT"
-          );
-    });
+          const filtered = data.filter(v => {
+        const t = dayjs(v.time);
+        return (
+          t.isAfter(start) &&
+          t.isBefore(end) &&
+          v.handled === true &&
+          v.handlerRole === "PGT"
+        );
+      });
 
     // Gán dữ liệu penalties cho từng lớp
     const newTableData = classList.map(cls => {
