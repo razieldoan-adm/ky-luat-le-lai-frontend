@@ -144,7 +144,7 @@ useEffect(() => {
 
   useEffect(() => {
   applyFilters();
-}, [selectedWeek, selectedClasses, searchName, onlyFrequent, violations, weekList]);
+}, [selectedWeek,   violations]);
 
   // 🗑️ Xoá vi phạm
   const handleDeleteViolation = async (id: string) => {
