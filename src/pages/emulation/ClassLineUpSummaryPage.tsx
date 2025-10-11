@@ -17,6 +17,8 @@ import api from "../../api/api";
 interface AcademicWeek {
   _id: string;
   weekNumber: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface SummaryRow {
@@ -29,76 +31,75 @@ interface SummaryRow {
 export default function ClassLineUpSummaryPage() {
   const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<string>("");
-  const [multiplier, setMultiplier] = useState<number>(10); // hệ số điểm
+  const [multiplier, setMultiplier] = useState<number>(10);
   const [summaries, setSummaries] = useState<SummaryRow[]>([]);
 
-  // Load danh sách tuần
+  // 🔹 Load danh sách tuần
   useEffect(() => {
-    api.get("/api/academic-weeks").then((res) => {
-      setWeeks(res.data);
-    });
+    api.get("/api/academic-weeks").then((res) => setWeeks(res.data));
   }, []);
 
-  // Hàm load dữ liệu
+  // 🔹 Hàm load dữ liệu lineup theo tuần được chọn
   const handleLoadData = async () => {
-    if (!selectedWeek) return;
+    try {
+      if (!selectedWeek) return alert("Vui lòng chọn tuần!");
 
-    const res = await api.get("/api/class-lineup-summaries", {
-      params: { weekId: selectedWeek },
-    });
+      const week = weeks.find((w) => w._id === selectedWeek);
+      if (!week) return alert("Không tìm thấy tuần!");
 
-    const data = res.data; // danh sách vi phạm trong tuần
-    const grouped: Record<string, number> = {};
+      // ✅ Gọi đúng route backend
+      const res = await api.get("/api/class-lineup-summaries/weekly", {
+        params: { weekNumber: week.weekNumber },
+      });
 
-    data.forEach((item: any) => {
-      if (!grouped[item.className]) grouped[item.className] = 0;
-      grouped[item.className]++;
-    });
+      const data = res.data.records || [];
+      const grouped: Record<string, number> = {};
 
-    const formatted = Object.keys(grouped).map((className, index) => ({
-      id: index + 1,
-      className,
-      count: grouped[className],
-      total: grouped[className] * multiplier,
-    }));
+      data.forEach((item: any) => {
+        if (!grouped[item.className]) grouped[item.className] = 0;
+        grouped[item.className]++;
+      });
 
-    setSummaries(formatted);
+      const formatted = Object.keys(grouped).map((className, index) => ({
+        id: index + 1,
+        className,
+        count: grouped[className],
+        total: grouped[className] * multiplier,
+      }));
+
+      setSummaries(formatted);
+    } catch (err) {
+      console.error("Lỗi load lineup:", err);
+      alert("Không thể tải dữ liệu lineup của tuần!");
+    }
   };
 
- const handleSave = async () => {
-  try {
-    if (!selectedWeek) {
-      alert("Vui lòng chọn tuần trước khi lưu!");
-      return;
-    }
+  // 🔹 Lưu điểm tổng vào ClassWeeklyScore
+  const handleSave = async () => {
+    try {
+      if (!selectedWeek) return alert("Vui lòng chọn tuần trước khi lưu!");
+      const week = weeks.find((w) => w._id === selectedWeek);
+      if (!week) return alert("Không tìm thấy tuần!");
 
-    // Lấy thông tin tuần từ weeks[] để có weekNumber
-    const week = weeks.find((w) => w._id === selectedWeek);
-    if (!week) {
-      alert("Không tìm thấy thông tin tuần!");
-      return;
-    }
+      for (const s of summaries) {
+        await api.post("/api/class-lineup-summaries/update-weekly-score", {
+          className: s.className,
+          weekNumber: week.weekNumber,
+          lineUpScore: s.total,
+        });
+      }
 
-    // Gửi từng lớp
-    for (const s of summaries) {
-      await api.post("/api/class-lineup-summaries/update-weekly-score", {
-        className: s.className,
-        weekNumber: week.weekNumber,
-        lineUpScore: s.total,
-      });
+      alert("✅ Đã lưu điểm lineup của tất cả lớp!");
+    } catch (err) {
+      console.error("Lỗi khi lưu điểm lineup:", err);
+      alert("❌ Lưu thất bại!");
     }
-
-    alert("✅ Đã lưu điểm lineup của tất cả lớp!");
-  } catch (err) {
-    console.error("Lỗi khi lưu điểm lineup:", err);
-    alert("❌ Lưu thất bại! Kiểm tra console để biết chi tiết.");
-  }
-};
+  };
 
   return (
     <Box p={3}>
       <Typography variant="h6" gutterBottom>
-        Tổng điểm xếp hạng các lớp theo tuần
+        Tổng điểm xếp hàng các lớp theo tuần
       </Typography>
 
       <Box display="flex" alignItems="center" gap={2} mb={2}>
