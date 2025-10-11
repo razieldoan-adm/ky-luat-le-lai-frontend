@@ -151,26 +151,29 @@ const handleLoadData = async () => {
   };
 
     const handleSaveData = async () => {
-    if (!selectedWeek) {
-      setSnackbar({ open: true, message: 'Vui lòng chọn tuần.', severity: 'error' });
-      return;
+  if (!selectedWeek) {
+    setSnackbar({ open: true, message: "Vui lòng chọn tuần.", severity: "error" });
+    return;
+  }
+
+  try {
+    for (const row of tableData) {
+      // Ghi dữ liệu điểm vi phạm vào ClassWeeklyScore
+      await api.post("/api/class-weekly-scores/update", {
+        className: row.className,
+        weekNumber: selectedWeek.weekNumber,
+        field: "violationScore",   // 👈 cột cần cập nhật
+        value: row.total,          // 👈 tổng điểm vi phạm của lớp
+      });
     }
 
-    try {
-      for (const row of tableData) {
-        await api.post('/api/class-violation-scores', {
-          className: row.className,
-          weekNumber: selectedWeek.weekNumber,
-          totalScore: row.total,
-          violationCount: row.count, // 👈 thêm dòng này
-        });
-      }
-      setSnackbar({ open: true, message: 'Đã lưu dữ liệu thành công.', severity: 'success' });
-    } catch (err) {
-      console.error('Lỗi khi lưu:', err);
-      setSnackbar({ open: true, message: 'Lỗi khi lưu dữ liệu.', severity: 'error' });
-    }
-  };
+    setSnackbar({ open: true, message: "✅ Đã lưu dữ liệu vi phạm vào bảng điểm tuần.", severity: "success" });
+  } catch (err) {
+    console.error("Lỗi khi lưu:", err);
+    setSnackbar({ open: true, message: "❌ Lỗi khi lưu dữ liệu.", severity: "error" });
+  }
+};
+
 
   return (
     <Box sx={{ maxWidth: '100%', mx: 'auto', py: 4 }}>
