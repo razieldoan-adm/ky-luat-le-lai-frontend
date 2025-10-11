@@ -119,7 +119,7 @@ export default function RecordClassLineUpSummaryPage() {
       const params: any = {};
       if (weekNumber) params.weekNumber = weekNumber;
       // nếu backend trả 404 cho endpoint mặc định, log rõ
-      const res = await api.get("/api/class-lineup-summaries/weekly-summary", { params });
+      const res = await api.get("/api/class-lineup-summaries/weekly", { params });
       // backend có thể trả { weekNumber, startDate, endDate, records } hoặc trả mảng
       let data = res.data;
       if (data && Array.isArray(data)) {
@@ -306,9 +306,6 @@ export default function RecordClassLineUpSummaryPage() {
               ))}
             </Stack>
           )}
-
-          <TextField label="Người ghi nhận" value={recorder} disabled fullWidth />
-
           <TextField
             label="Ngày ghi nhận"
             type="date"
