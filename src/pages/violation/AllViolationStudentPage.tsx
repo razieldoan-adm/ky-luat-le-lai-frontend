@@ -25,11 +25,11 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
-// ✅ Kích hoạt plugin timezone + đặt múi giờ mặc định
+// ✅ Kích hoạt timezone và set múi giờ VN
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.tz.setDefault("Asia/Ho_Chi_Minh");
-console.log("Giờ hiện tại (VN):", dayjs().tz().format());
+
 interface Violation {
   _id: string;
   name: string;
@@ -69,18 +69,17 @@ export default function AllViolationStudentPage() {
   const [violationBeingEdited, setViolationBeingEdited] = useState<Violation | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-useEffect(() => {
-  const init = async () => {
-    await fetchWeeks(); // đợi tuần được lấy về và setSelectedWeek()
-    await fetchClasses();
-    await fetchRules();
-    await fetchViolations();
-  };
-  init();
-}, []);
+  // 🚀 Khởi tạo dữ liệu ban đầu
+  useEffect(() => {
+    const init = async () => {
+      await fetchWeeks();
+      await fetchClasses();
+      await fetchRules();
+      await fetchViolations();
+    };
+    init();
+  }, []);
 
-
-  // 🧭 Lấy danh sách tuần học + tuần hiện tại
   const fetchWeeks = async () => {
     try {
       const [weeksRes, currentRes] = await Promise.all([
@@ -89,10 +88,10 @@ useEffect(() => {
       ]);
       setWeeks(weeksRes.data);
       if (currentRes.data?.weekNumber) {
-        setSelectedWeek(String(currentRes.data.weekNumber));
+        setSelectedWeek(String(currentRes.data.weekNumber)); // tuần hiện tại
       }
     } catch (err) {
-      console.error('Lỗi khi lấy danh sách tuần học:', err);
+      console.error('Lỗi khi lấy danh sách tuần:', err);
     }
   };
 
@@ -100,19 +99,19 @@ useEffect(() => {
     try {
       const res = await api.get('/api/violations/all/all-student');
       setViolations(res.data);
-      setFiltered(res.data);
+      setFiltered(res.data); // hiển thị ban đầu
     } catch (err) {
-      console.error('Lỗi khi lấy dữ liệu vi phạm:', err);
+      console.error('Lỗi khi lấy vi phạm:', err);
     }
   };
 
   const fetchClasses = async () => {
     try {
       const res = await api.get('/api/classes');
-      const validClasses = res.data.filter((cls: any) => cls.teacher).map((cls: any) => cls.className);
-      setClassList(validClasses);
+      const valid = res.data.filter((cls: any) => cls.teacher).map((cls: any) => cls.className);
+      setClassList(valid);
     } catch (err) {
-      console.error('Lỗi khi lấy danh sách lớp:', err);
+      console.error('Lỗi khi lấy lớp:', err);
     }
   };
 
@@ -125,15 +124,19 @@ useEffect(() => {
     }
   };
 
-  // 🔍 Lọc theo tuần và lớp
+  // 🧩 Lọc dữ liệu theo tuần / lớp / trạng thái xử lý
   const applyFilters = () => {
     let data = [...violations];
-    if (selectedClass) data = data.filter((v) => v.className === selectedClass);
-    if (selectedWeek) data = data.filter((v) => String(v.weekNumber) === selectedWeek);
-    if (handledStatus) data = data.filter((v) => String(v.handled) === handledStatus);
+    if (selectedClass) data = data.filter(v => v.className === selectedClass);
+    if (selectedWeek) data = data.filter(v => String(v.weekNumber) === selectedWeek);
+    if (handledStatus) data = data.filter(v => String(v.handled) === handledStatus);
     setFiltered(data);
   };
-  
+
+  // ✅ Tự động lọc khi thay đổi tuần / lớp / trạng thái / violations
+  useEffect(() => {
+    applyFilters();
+  }, [selectedWeek, selectedClass, handledStatus, violations]);
 
   const clearFilters = () => {
     setSelectedClass('');
@@ -142,33 +145,23 @@ useEffect(() => {
     setFiltered(violations);
   };
 
-  useEffect(() => {
-  applyFilters();
-}, [selectedWeek,   violations]);
-
-  // 🗑️ Xoá vi phạm
   const handleDeleteViolation = async (id: string) => {
-    if (!window.confirm('Bạn có chắc muốn xoá vi phạm này không?')) return;
+    if (!window.confirm('Xóa vi phạm này?')) return;
     try {
       await api.delete(`/api/violations/${id}`);
       fetchViolations();
-    } catch (error) {
-      console.error('Lỗi khi xoá vi phạm:', error);
+    } catch (err) {
+      console.error('Lỗi khi xóa:', err);
     }
   };
 
-  // 🧾 Ghi nhận xử lý (GVCN hoặc PGT)
   const handleProcessViolation = async (id: string, method: string) => {
     try {
-      await api.patch(`/api/violations/${id}/handle`, {
-        handled: true,
-        handlingMethod: method
-      });
-      setSnackbar({ open: true, message: `Đã ghi nhận xử lý: ${method}`, severity: 'success' });
+      await api.patch(`/api/violations/${id}/handle`, { handled: true, handlingMethod: method });
+      setSnackbar({ open: true, message: `Đã xử lý: ${method}`, severity: 'success' });
       fetchViolations();
-    } catch (error) {
-      console.error('Lỗi khi xử lý vi phạm:', error);
-      setSnackbar({ open: true, message: 'Lỗi khi xử lý vi phạm', severity: 'error' });
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Lỗi khi xử lý', severity: 'error' });
     }
   };
 
@@ -179,8 +172,7 @@ useEffect(() => {
       setSnackbar({ open: true, message: 'Cập nhật thành công', severity: 'success' });
       setEditDialogOpen(false);
       fetchViolations();
-    } catch (error) {
-      console.error('Lỗi khi cập nhật vi phạm:', error);
+    } catch (err) {
       setSnackbar({ open: true, message: 'Lỗi cập nhật vi phạm', severity: 'error' });
     }
   };
@@ -202,12 +194,9 @@ useEffect(() => {
             sx={{ minWidth: 150 }}
           >
             <MenuItem value="">-- Tất cả lớp --</MenuItem>
-            {classList.map((cls) => (
-              <MenuItem key={cls} value={cls}>{cls}</MenuItem>
-            ))}
+            {classList.map(cls => <MenuItem key={cls} value={cls}>{cls}</MenuItem>)}
           </TextField>
 
-          {/* ✅ Tuần học lấy từ API */}
           <TextField
             label="Tuần học"
             select
@@ -216,7 +205,7 @@ useEffect(() => {
             sx={{ minWidth: 200 }}
           >
             <MenuItem value="">-- Tất cả tuần --</MenuItem>
-            {weeks.map((w) => (
+            {weeks.map(w => (
               <MenuItem key={w._id} value={w.weekNumber}>
                 Tuần {w.weekNumber} ({dayjs(w.startDate).format('DD/MM')} - {dayjs(w.endDate).format('DD/MM')})
               </MenuItem>
@@ -235,7 +224,6 @@ useEffect(() => {
             <MenuItem value="true">Đã xử lý</MenuItem>
           </TextField>
 
-          <Button variant="contained" onClick={applyFilters}>Áp dụng</Button>
           <Button variant="outlined" onClick={clearFilters}>Xóa lọc</Button>
         </Stack>
       </Paper>
@@ -258,40 +246,37 @@ useEffect(() => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filtered.length > 0 ? (
-              filtered.map((v, i) => (
-                <TableRow key={v._id}>
-                  <TableCell>{i + 1}</TableCell>
-                  <TableCell>{v.name}</TableCell>
-                  <TableCell>{v.className}</TableCell>
-                  <TableCell>{v.weekNumber || '-'}</TableCell>
-                  <TableCell>{v.description}</TableCell>
-                  <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
-                  <TableCell>{v.handlingMethod || '—'}</TableCell>
-                  <TableCell>{v.handled ? 'Đã xử lý' : 'Chưa xử lý'}</TableCell>
-                  <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button variant="outlined" color="error" size="small" onClick={() => handleDeleteViolation(v._id)}>Xoá</Button>
-                      <Button variant="outlined" color="secondary" size="small" onClick={() => { setViolationBeingEdited(v); setEditDialogOpen(true); }}>Sửa</Button>
-
-                      {!v.handled && (
-                        <>
-                          <Button variant="contained" color="primary" size="small"
-                            onClick={() => handleProcessViolation(v._id, 'GVCN xử lý')}>
-                            GVCN
-                          </Button>
-                          <Button variant="contained" color="success" size="small"
-                            onClick={() => handleProcessViolation(v._id, 'PGT xử lý')}>
-                            PGT
-                          </Button>
-                        </>
-                      )}
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
+            {filtered.length > 0 ? filtered.map((v, i) => (
+              <TableRow key={v._id}>
+                <TableCell>{i + 1}</TableCell>
+                <TableCell>{v.name}</TableCell>
+                <TableCell>{v.className}</TableCell>
+                <TableCell>{v.weekNumber || '-'}</TableCell>
+                <TableCell>{v.description}</TableCell>
+                <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
+                <TableCell>{v.handlingMethod || '—'}</TableCell>
+                <TableCell>{v.handled ? 'Đã xử lý' : 'Chưa xử lý'}</TableCell>
+                <TableCell>{rules.find(r => r.title === v.description)?.point || 0}</TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button variant="outlined" color="error" size="small" onClick={() => handleDeleteViolation(v._id)}>Xoá</Button>
+                    <Button variant="outlined" color="secondary" size="small" onClick={() => { setViolationBeingEdited(v); setEditDialogOpen(true); }}>Sửa</Button>
+                    {!v.handled && (
+                      <>
+                        <Button variant="contained" color="primary" size="small"
+                          onClick={() => handleProcessViolation(v._id, 'GVCN xử lý')}>
+                          GVCN
+                        </Button>
+                        <Button variant="contained" color="success" size="small"
+                          onClick={() => handleProcessViolation(v._id, 'PGT xử lý')}>
+                          PGT
+                        </Button>
+                      </>
+                    )}
+                  </Box>
+                </TableCell>
+              </TableRow>
+            )) : (
               <TableRow>
                 <TableCell colSpan={10} align="center">Không có dữ liệu phù hợp.</TableCell>
               </TableRow>
