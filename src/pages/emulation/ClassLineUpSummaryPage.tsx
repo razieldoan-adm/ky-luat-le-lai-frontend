@@ -66,9 +66,24 @@ export default function ClassLineUpSummaryPage() {
   };
 
   const handleSave = async () => {
-    await api.post("/api/class-lineup-summaries/save", { summaries });
-    alert("Đã lưu thành công!");
+    try {
+      if (!selectedWeek) {
+        alert("Vui lòng chọn tuần trước khi lưu!");
+        return;
+      }
+  
+      await api.post("/api/class-lineup-summaries/update-weekly-score", {
+        weekId: selectedWeek, // 👈 truyền tuần để backend biết
+        summaries,            // 👈 danh sách tổng hợp điểm từng lớp
+      });
+  
+      alert("✅ Đã lưu điểm xếp hàng vào ClassWeeklyScore thành công!");
+    } catch (err) {
+      console.error("Lỗi khi lưu điểm lineup:", err);
+      alert("❌ Lỗi khi lưu dữ liệu, xem console để biết chi tiết!");
+    }
   };
+
 
   return (
     <Box p={3}>
