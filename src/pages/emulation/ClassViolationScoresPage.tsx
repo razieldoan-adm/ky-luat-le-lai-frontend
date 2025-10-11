@@ -162,7 +162,7 @@ const handleLoadData = async () => {
       await api.post("/api/class-weekly-scores/update", {
         className: row.className,
         weekNumber: selectedWeek.weekNumber,
-        totalScore: row.total,   // 👈 chỉ gửi tổng điểm
+        violationScore: row.total,   // 👈 chỉ gửi tổng điểm
       });
     }
     setSnackbar({ open: true, message: "✅ Đã lưu dữ liệu vi phạm vào bảng điểm tuần.", severity: "success" });
