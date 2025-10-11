@@ -65,25 +65,35 @@ export default function ClassLineUpSummaryPage() {
     setSummaries(formatted);
   };
 
-  const handleSave = async () => {
-    try {
-      if (!selectedWeek) {
-        alert("Vui lòng chọn tuần trước khi lưu!");
-        return;
-      }
-  
-      await api.post("/api/class-lineup-summaries/update-weekly-score", {
-        weekId: selectedWeek, // 👈 truyền tuần để backend biết
-        summaries,            // 👈 danh sách tổng hợp điểm từng lớp
-      });
-  
-      alert("✅ Đã lưu điểm xếp hàng vào ClassWeeklyScore thành công!");
-    } catch (err) {
-      console.error("Lỗi khi lưu điểm lineup:", err);
-      alert("❌ Lỗi khi lưu dữ liệu, xem console để biết chi tiết!");
+ const handleSave = async () => {
+  try {
+    if (!selectedWeek) {
+      alert("Vui lòng chọn tuần trước khi lưu!");
+      return;
     }
-  };
 
+    // Lấy thông tin tuần từ weeks[] để có weekNumber
+    const week = weeks.find((w) => w._id === selectedWeek);
+    if (!week) {
+      alert("Không tìm thấy thông tin tuần!");
+      return;
+    }
+
+    // Gửi từng lớp
+    for (const s of summaries) {
+      await api.post("/api/class-lineup-summaries/update-weekly-score", {
+        className: s.className,
+        weekNumber: week.weekNumber,
+        lineUpScore: s.total,
+      });
+    }
+
+    alert("✅ Đã lưu điểm lineup của tất cả lớp!");
+  } catch (err) {
+    console.error("Lỗi khi lưu điểm lineup:", err);
+    alert("❌ Lưu thất bại! Kiểm tra console để biết chi tiết.");
+  }
+};
 
   return (
     <Box p={3}>
