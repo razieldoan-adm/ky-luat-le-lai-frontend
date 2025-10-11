@@ -388,7 +388,6 @@ export default function RecordClassLineUpSummaryPage() {
         <TableCell>Lỗi vi phạm</TableCell>
         <TableCell>Học sinh vi phạm</TableCell>
         <TableCell>Thời gian ghi nhận</TableCell>
-        <TableCell>Người ghi nhận</TableCell>
         <TableCell align="center">Điểm trừ</TableCell>
         <TableCell>Ghi chú</TableCell>
         <TableCell align="center">Thao tác</TableCell>
@@ -430,7 +429,6 @@ export default function RecordClassLineUpSummaryPage() {
                 minute: "2-digit",
               })}
             </TableCell>
-            <TableCell>{r.recorder || "-"}</TableCell>
             <TableCell align="center" sx={{ color: "red", fontWeight: 600 }}>
               -{Math.abs(r.scoreChange ?? 10)}
             </TableCell>
