@@ -43,7 +43,7 @@ export default function ClassLineUpSummaryPage() {
   const handleLoadData = async () => {
     if (!selectedWeek) return;
 
-    const res = await api.get("/api/class-lineup-summary", {
+    const res = await api.get("/api/class-lineup-summaries", {
       params: { weekId: selectedWeek },
     });
 
@@ -66,7 +66,7 @@ export default function ClassLineUpSummaryPage() {
   };
 
   const handleSave = async () => {
-    await api.post("/api/class-lineup-summary/save", { summaries });
+    await api.post("/api/class-lineup-summaries/save", { summaries });
     alert("Đã lưu thành công!");
   };
 
