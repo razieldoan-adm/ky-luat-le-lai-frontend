@@ -17,7 +17,7 @@ import {
   Stack,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import api from "../api/api";
+import api from "../../api/api";
 import dayjs from "dayjs";
 
 interface Record {
@@ -41,9 +41,13 @@ interface AcademicWeek {
 export default function ViewHygieneDisciplinePage() {
   const [records, setRecords] = useState<Record[]>([]);
   const [loading, setLoading] = useState(false);
+
   const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
   const [currentWeek, setCurrentWeek] = useState<number | null>(null);
+
+  const [classes, setClasses] = useState<string[]>([]);
+  const [selectedClass, setSelectedClass] = useState<string>("");
 
   // --- Load tuần học + tuần hiện tại
   const loadWeeks = async () => {
@@ -60,22 +64,36 @@ export default function ViewHygieneDisciplinePage() {
       const wk = cur.data?.weekNumber ?? null;
       setCurrentWeek(wk);
       setSelectedWeek(wk ?? "");
-      await loadRecords(wk ?? undefined);
+      await loadRecords(wk ?? undefined, selectedClass || undefined);
     } catch (err) {
       console.error("Lỗi khi tải tuần hiện tại:", err);
       setCurrentWeek(null);
       setSelectedWeek("");
-      await loadRecords(undefined);
+      await loadRecords(undefined, selectedClass || undefined);
     }
   };
 
-  // --- Load records theo tuần
-  const loadRecords = async (weekNumber?: number) => {
+  // --- Load danh sách lớp
+  const loadClasses = async () => {
+    try {
+      const res = await api.get("/api/classes");
+      const arr = (res.data || []).map((c: any) => c.className ?? c.name ?? String(c));
+      setClasses(arr);
+    } catch (err) {
+      console.error("Lỗi khi tải danh sách lớp:", err);
+      setClasses([]);
+    }
+  };
+
+  // --- Load records theo tuần + lớp
+  const loadRecords = async (weekNumber?: number, className?: string) => {
     setLoading(true);
     try {
       const params: any = {};
       if (weekNumber) params.weekNumber = weekNumber;
+      if (className) params.className = className;
       const res = await api.get("/api/class-lineup-summaries/weekly", { params });
+
       let data = res.data;
       if (data && Array.isArray(data)) {
         setRecords(data);
@@ -94,19 +112,26 @@ export default function ViewHygieneDisciplinePage() {
 
   useEffect(() => {
     loadWeeks();
+    loadClasses();
   }, []);
 
   const handleWeekChange = (e: any) => {
     const value = e.target.value;
     setSelectedWeek(value);
-    loadRecords(value || undefined);
+    loadRecords(value || undefined, selectedClass || undefined);
+  };
+
+  const handleClassChange = (e: any) => {
+    const value = e.target.value;
+    setSelectedClass(value);
+    loadRecords(selectedWeek || undefined, value || undefined);
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Bạn có chắc muốn xóa bản ghi này?")) return;
     try {
       await api.delete(`/api/class-lineup-summaries/${id}`);
-      await loadRecords(selectedWeek || undefined);
+      await loadRecords(selectedWeek || undefined, selectedClass || undefined);
     } catch (err) {
       console.error("Lỗi khi xóa:", err);
       alert("Không thể xóa bản ghi.");
@@ -119,10 +144,15 @@ export default function ViewHygieneDisciplinePage() {
         Danh sách vi phạm vệ sinh – nề nếp
       </Typography>
 
-      {/* Bộ lọc tuần */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h6">Lọc theo tuần</Typography>
-        <FormControl size="small" sx={{ minWidth: 260 }}>
+      {/* Bộ lọc tuần + lớp */}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        justifyContent="space-between"
+        alignItems={{ xs: "stretch", sm: "center" }}
+        spacing={2}
+        mb={2}
+      >
+        <FormControl size="small" sx={{ minWidth: 200 }}>
           <InputLabel id="week-select-label">Chọn tuần</InputLabel>
           <Select
             labelId="week-select-label"
@@ -142,6 +172,23 @@ export default function ViewHygieneDisciplinePage() {
             ))}
           </Select>
         </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel id="class-select-label">Chọn lớp</InputLabel>
+          <Select
+            labelId="class-select-label"
+            label="Chọn lớp"
+            value={selectedClass}
+            onChange={handleClassChange}
+          >
+            <MenuItem value="">Tất cả lớp</MenuItem>
+            {classes.map((cls) => (
+              <MenuItem key={cls} value={cls}>
+                {cls}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Stack>
 
       {/* Bảng dữ liệu */}
@@ -156,7 +203,6 @@ export default function ViewHygieneDisciplinePage() {
               <TableCell>Thời gian ghi nhận</TableCell>
               <TableCell align="center">Điểm trừ</TableCell>
               <TableCell>Ghi chú</TableCell>
-              <TableCell align="center">Thao tác</TableCell>
             </TableRow>
           </TableHead>
 
@@ -193,11 +239,6 @@ export default function ViewHygieneDisciplinePage() {
                     -{Math.abs(r.scoreChange ?? 10)}
                   </TableCell>
                   <TableCell>{r.note || "-"}</TableCell>
-                  <TableCell align="center">
-                    <IconButton color="error" onClick={() => handleDelete(r._id)}>
-                      <CloseIcon />
-                    </IconButton>
-                  </TableCell>
                 </TableRow>
               ))
             )}
