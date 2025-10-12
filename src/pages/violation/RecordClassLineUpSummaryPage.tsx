@@ -70,7 +70,9 @@ export default function RecordClassLineUpSummaryPage() {
   const violationOptions = [
     "Tập trung xếp hàng quá thời gian quy định",
     "Mất trật tự, đùa giỡn khi xếp hàng",
-    "Di chuyển lộn xộn không theo hàng lối",
+    "Mất trật tự khi di chuyển, di chuyện lộn xộn không theo hàng lối",
+    'Nhiều học sinh ngồi trong lớp giờ chơi, không ra xếp hàng',
+    'Mất trật tự trong khi xếp hàng giờ SHDC',
   ];
 
   // --- Load classes
