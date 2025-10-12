@@ -1,165 +1,209 @@
-import { useState, useEffect } from "react";
-import api from "../api/api";
+import { useEffect, useState } from "react";
 import {
-  Box, Typography, MenuItem, Select, FormControl, InputLabel,
-  Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Stack, Paper
-} from '@mui/material';
+  Box,
+  Typography,
+  Paper,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  TableContainer,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  IconButton,
+  Stack,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import api from "../../api/api";
+import dayjs from "dayjs";
 
-export default function ViewClassLineUpDetails() {
-  const [weeks, setWeeks] = useState<any[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<any>(null);
-  const [classes, setClasses] = useState<string[]>([]);
-  const [selectedClass, setSelectedClass] = useState('');
+interface Record {
+  _id: string;
+  className: string;
+  violation: string;
+  studentName?: string;
+  date: string;
+  recorder?: string;
+  scoreChange?: number;
+  note?: string;
+}
+
+interface AcademicWeek {
+  _id: string;
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+}
+
+export default function ViewHygieneDisciplinePage() {
+  const [records, setRecords] = useState<Record[]>([]);
   const [loading, setLoading] = useState(false);
-  const [lineupDetails, setLineupDetails] = useState<any[]>([]); // danh sách lỗi chi tiết
-  const [total, setTotal] = useState<number>(0);
+  const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  const [currentWeek, setCurrentWeek] = useState<number | null>(null);
 
-  const lineupRuleList = [
-    "Tập trung xếp hàng quá thời gian quy định",
-    "Mất trật tự, đùa giỡn khi xếp hàng",
-    "Mất trật tự khi di chuyển, di chuyện lộn xộn không theo hàng lối",
-    'Nhiều học sinh ngồi trong lớp giờ chơi, không ra xếp hàng',
-    'Mất trật tự trong khi xếp hàng giờ SHDC',
-  ];
-
-  useEffect(() => {
-    fetchWeeks();
-    fetchClasses();
-  }, []);
-
-  const fetchWeeks = async () => {
+  // --- Load tuần học + tuần hiện tại
+  const loadWeeks = async () => {
     try {
       const res = await api.get("/api/academic-weeks/study-weeks");
-      setWeeks(res.data);
-      setSelectedWeek(res.data[0]);
+      setWeeks(res.data || []);
     } catch (err) {
-      console.error("Lỗi khi tải tuần:", err);
+      console.error("Lỗi khi tải danh sách tuần:", err);
+      setWeeks([]);
     }
-  };
 
-  const fetchClasses = async () => {
     try {
-      const res = await api.get("/api/classes");
-      const validClasses = res.data.map((cls: any) => cls.className);
-      setClasses(validClasses);
-      if (validClasses.length > 0) setSelectedClass(validClasses[0]);
+      const cur = await api.get("/api/academic-weeks/current");
+      const wk = cur.data?.weekNumber ?? null;
+      setCurrentWeek(wk);
+      setSelectedWeek(wk ?? "");
+      await loadRecords(wk ?? undefined);
     } catch (err) {
-      console.error("Lỗi khi tải lớp:", err);
+      console.error("Lỗi khi tải tuần hiện tại:", err);
+      setCurrentWeek(null);
+      setSelectedWeek("");
+      await loadRecords(undefined);
     }
   };
 
-  const fetchLineUpDetails = async () => {
-    if (!selectedWeek || !selectedClass) return;
+  // --- Load records theo tuần
+  const loadRecords = async (weekNumber?: number) => {
     setLoading(true);
-
     try {
-      const res = await api.get("/api/class-lineup-summaries/weekly", {
-        params: { weekNumber: selectedWeek.weekNumber, className: selectedClass },
-      });
-
-      const data = res.data[0];
-      if (!data) {
-        setLineupDetails([]);
-        setTotal(0);
-        setLoading(false);
-        return;
-      }
-
-      // data có thể chứa dạng: { dailyData: [{ day: 'T2', violations: [1,3] }, ...] }
-      if (Array.isArray(data.dailyData)) {
-        const formatted = data.dailyData.map((d: any) => ({
-          day: d.day,
-          violations: d.violations.map((v: number) => lineupRuleList[v - 1] || "Không rõ lỗi"),
-        }));
-        setLineupDetails(formatted);
+      const params: any = {};
+      if (weekNumber) params.weekNumber = weekNumber;
+      const res = await api.get("/api/class-lineup-summaries/weekly", { params });
+      let data = res.data;
+      if (data && Array.isArray(data)) {
+        setRecords(data);
+      } else if (data && Array.isArray(data.records)) {
+        setRecords(data.records);
       } else {
-        setLineupDetails([]);
+        setRecords([]);
       }
-
-      setTotal(data.total || 0);
     } catch (err) {
-      console.error("Lỗi tải chi tiết lineup:", err);
+      console.error("Lỗi khi tải danh sách vi phạm:", err);
+      setRecords([]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   useEffect(() => {
-    if (selectedWeek && selectedClass) fetchLineUpDetails();
-  }, [selectedWeek, selectedClass]);
+    loadWeeks();
+  }, []);
+
+  const handleWeekChange = (e: any) => {
+    const value = e.target.value;
+    setSelectedWeek(value);
+    loadRecords(value || undefined);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Bạn có chắc muốn xóa bản ghi này?")) return;
+    try {
+      await api.delete(`/api/class-lineup-summaries/${id}`);
+      await loadRecords(selectedWeek || undefined);
+    } catch (err) {
+      console.error("Lỗi khi xóa:", err);
+      alert("Không thể xóa bản ghi.");
+    }
+  };
 
   return (
     <Box p={3}>
-      <Typography variant="h5" gutterBottom>📋 Chi tiết lỗi xếp hàng theo lớp</Typography>
+      <Typography variant="h5" mb={3} fontWeight="bold">
+        Danh sách vi phạm vệ sinh – nề nếp
+      </Typography>
 
-      <Stack direction="row" spacing={2} mb={2}>
-        <FormControl sx={{ minWidth: 150 }}>
-          <InputLabel>Tuần</InputLabel>
+      {/* Bộ lọc tuần */}
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h6">Lọc theo tuần</Typography>
+        <FormControl size="small" sx={{ minWidth: 260 }}>
+          <InputLabel id="week-select-label">Chọn tuần</InputLabel>
           <Select
-            value={selectedWeek?._id || ""}
-            label="Tuần"
-            onChange={(e) => setSelectedWeek(weeks.find(w => w._id === e.target.value))}
+            labelId="week-select-label"
+            label="Chọn tuần"
+            value={selectedWeek}
+            onChange={handleWeekChange}
           >
+            <MenuItem value="">
+              {currentWeek ? `Tuần ${currentWeek} (hiện tại)` : "Tuần hiện tại"}
+            </MenuItem>
             {weeks.map((w) => (
-              <MenuItem key={w._id} value={w._id}>Tuần {w.weekNumber}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <FormControl sx={{ minWidth: 150 }}>
-          <InputLabel>Lớp</InputLabel>
-          <Select
-            value={selectedClass}
-            label="Lớp"
-            onChange={(e) => setSelectedClass(e.target.value)}
-          >
-            {classes.map((c) => (
-              <MenuItem key={c} value={c}>{c}</MenuItem>
+              <MenuItem key={w._id} value={w.weekNumber}>
+                Tuần {w.weekNumber}
+                {currentWeek === w.weekNumber ? " (hiện tại)" : ""} —{" "}
+                {dayjs(w.startDate).format("DD/MM")} → {dayjs(w.endDate).format("DD/MM")}
+              </MenuItem>
             ))}
           </Select>
         </FormControl>
       </Stack>
 
-      {loading ? (
-        <CircularProgress />
-      ) : (
-        <Paper elevation={3} sx={{ p: 2 }}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: "#b3e5fc" }}>
-                <TableCell align="center" width={100}>Thứ</TableCell>
-                <TableCell align="center">Danh sách lỗi</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {lineupDetails.length > 0 ? (
-                lineupDetails.map((d, i) => (
-                  <TableRow key={i}>
-                    <TableCell align="center">{d.day}</TableCell>
-                    <TableCell>
-                      {d.violations.length > 0 ? (
-                        d.violations.map((v: string, idx: number) => (
-                          <Typography key={idx} sx={{ ml: 1 }}>• {v}</Typography>
-                        ))
-                      ) : (
-                        <Typography color="green">✅ Không lỗi</Typography>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={2} align="center">Chưa có dữ liệu tuần này</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+      {/* Bảng dữ liệu */}
+      <TableContainer component={Paper} sx={{ width: "100%", overflowX: "auto", borderRadius: 2 }}>
+        <Table size="small" sx={{ minWidth: 700 }}>
+          <TableHead>
+            <TableRow>
+              <TableCell>STT</TableCell>
+              <TableCell>Lớp</TableCell>
+              <TableCell>Lỗi vi phạm</TableCell>
+              <TableCell>Học sinh vi phạm</TableCell>
+              <TableCell>Thời gian ghi nhận</TableCell>
+              <TableCell align="center">Điểm trừ</TableCell>
+              <TableCell>Ghi chú</TableCell>
+              <TableCell align="center">Thao tác</TableCell>
+            </TableRow>
+          </TableHead>
 
-          <Typography variant="h6" sx={{ mt: 2 }}>
-            Tổng số lỗi tuần: <b>{total}</b>
-          </Typography>
-        </Paper>
-      )}
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={8} align="center">
+                  Đang tải...
+                </TableCell>
+              </TableRow>
+            ) : records.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} align="center">
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            ) : (
+              records.map((r, idx) => (
+                <TableRow key={r._id} hover>
+                  <TableCell>{idx + 1}</TableCell>
+                  <TableCell>{r.className}</TableCell>
+                  <TableCell>{r.violation}</TableCell>
+                  <TableCell>{r.studentName || "-"}</TableCell>
+                  <TableCell>
+                    {new Date(r.date).toLocaleString("vi-VN", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </TableCell>
+                  <TableCell align="center" sx={{ color: "red", fontWeight: 600 }}>
+                    -{Math.abs(r.scoreChange ?? 10)}
+                  </TableCell>
+                  <TableCell>{r.note || "-"}</TableCell>
+                  <TableCell align="center">
+                    <IconButton color="error" onClick={() => handleDelete(r._id)}>
+                      <CloseIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Box>
   );
 }
