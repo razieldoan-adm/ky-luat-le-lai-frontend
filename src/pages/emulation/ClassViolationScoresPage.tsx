@@ -131,26 +131,38 @@ export default function ClassDisciplineTotalPage() {
   };
 
   const handleSaveData = async () => {
-    if (!selectedWeek) {
-      setSnackbar({ open: true, message: "Vui lòng chọn tuần.", severity: "error" });
-      return;
+  if (!selectedWeek) {
+    setSnackbar({ open: true, message: "Vui lòng chọn tuần.", severity: "error" });
+    return;
+  }
+
+  try {
+    for (const row of tableData) {
+      // 👉 Tách khối lớp (ví dụ “6A1” → “6”)
+      const grade = row.className.match(/^\d+/)?.[0] || "Unknown";
+
+      await api.post("/api/class-weekly-scores/update", {
+        className: row.className,
+        grade, // ✅ thêm dòng này
+        weekNumber: selectedWeek.weekNumber,
+        violationScore: row.total, // ✅ chỉ lưu tổng điểm
+      });
     }
 
-    try {
-      for (const row of tableData) {
-        await api.post("/api/class-weekly-scores/update", {
-          className: row.className,
-          weekNumber: selectedWeek.weekNumber,
-          violationScore: row.total, // ✅ chỉ lưu tổng
-        });
-      }
-
-      setSnackbar({ open: true, message: "✅ Đã lưu điểm vi phạm vào bảng tổng tuần.", severity: "success" });
-    } catch (err) {
-      console.error("Lỗi khi lưu:", err);
-      setSnackbar({ open: true, message: "❌ Lỗi khi lưu dữ liệu.", severity: "error" });
-    }
-  };
+    setSnackbar({
+      open: true,
+      message: "✅ Đã lưu điểm vi phạm vào bảng tổng tuần.",
+      severity: "success",
+    });
+  } catch (err) {
+    console.error("Lỗi khi lưu:", err);
+    setSnackbar({
+      open: true,
+      message: "❌ Lỗi khi lưu dữ liệu.",
+      severity: "error",
+    });
+  }
+};
 
   return (
     <Box sx={{ maxWidth: '100%', mx: 'auto', py: 4 }}>
