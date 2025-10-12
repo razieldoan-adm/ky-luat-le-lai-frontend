@@ -138,14 +138,15 @@ export default function ClassDisciplineTotalPage() {
 
   try {
     for (const row of tableData) {
-      // 👉 Tách khối lớp (ví dụ “6A1” → “6”)
-      const grade = row.className.match(/^\d+/)?.[0] || "Unknown";
+      // 👉 Tách số khối từ className, ví dụ “9A1” → “9”
+      const gradeMatch = row.className.match(/^(\d+)/);
+      const grade = gradeMatch ? gradeMatch[1] : "Khác"; // fallback nếu format lạ
 
       await api.post("/api/class-weekly-scores/update", {
         className: row.className,
         grade, // ✅ thêm dòng này
         weekNumber: selectedWeek.weekNumber,
-        violationScore: row.total, // ✅ chỉ lưu tổng điểm
+        violationScore: row.total,
       });
     }
 
@@ -156,13 +157,10 @@ export default function ClassDisciplineTotalPage() {
     });
   } catch (err) {
     console.error("Lỗi khi lưu:", err);
-    setSnackbar({
-      open: true,
-      message: "❌ Lỗi khi lưu dữ liệu.",
-      severity: "error",
-    });
+    setSnackbar({ open: true, message: "❌ Lỗi khi lưu dữ liệu.", severity: "error" });
   }
 };
+
 
   return (
     <Box sx={{ maxWidth: '100%', mx: 'auto', py: 4 }}>
