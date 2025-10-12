@@ -53,7 +53,7 @@ export default function ViewClassLineUpDetails() {
     setLoading(true);
 
     try {
-      const res = await api.get("/api/class-lineup-summaries/by-week-and-class", {
+      const res = await api.get("/api/class-lineup-summaries/weekly", {
         params: { weekNumber: selectedWeek.weekNumber, className: selectedClass },
       });
 
