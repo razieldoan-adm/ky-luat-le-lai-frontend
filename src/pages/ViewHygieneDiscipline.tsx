@@ -13,11 +13,9 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  IconButton,
   Stack,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
-import api from "../../api/api";
+import api from "../api/api";
 import dayjs from "dayjs";
 
 interface Record {
@@ -125,17 +123,6 @@ export default function ViewHygieneDisciplinePage() {
     const value = e.target.value;
     setSelectedClass(value);
     loadRecords(selectedWeek || undefined, value || undefined);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Bạn có chắc muốn xóa bản ghi này?")) return;
-    try {
-      await api.delete(`/api/class-lineup-summaries/${id}`);
-      await loadRecords(selectedWeek || undefined, selectedClass || undefined);
-    } catch (err) {
-      console.error("Lỗi khi xóa:", err);
-      alert("Không thể xóa bản ghi.");
-    }
   };
 
   return (
