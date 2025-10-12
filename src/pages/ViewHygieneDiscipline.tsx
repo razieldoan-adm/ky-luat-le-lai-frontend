@@ -17,7 +17,7 @@ import {
   Stack,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import api from "../../api/api";
+import api from "../api/api";
 import dayjs from "dayjs";
 
 interface Record {
