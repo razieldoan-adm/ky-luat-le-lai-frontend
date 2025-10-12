@@ -15,10 +15,11 @@ export default function ViewClassLineUpDetails() {
   const [total, setTotal] = useState<number>(0);
 
   const lineupRuleList = [
-    'Xếp hàng chậm',
+    "Tập trung xếp hàng quá thời gian quy định",
+    "Mất trật tự, đùa giỡn khi xếp hàng",
+    "Mất trật tự khi di chuyển, di chuyện lộn xộn không theo hàng lối",
     'Nhiều học sinh ngồi trong lớp giờ chơi, không ra xếp hàng',
     'Mất trật tự trong khi xếp hàng giờ SHDC',
-    'Ồn ào, đùa giỡn khi di chuyển lên lớp'
   ];
 
   useEffect(() => {
