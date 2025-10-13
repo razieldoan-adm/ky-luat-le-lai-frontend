@@ -41,7 +41,6 @@ useEffect(() => {
     setWeeks(weeks);
     if (currentWeek) {
       setSelectedWeek(currentWeek);
-      handleLoadData(currentWeek);
     }
   };
   initWeeks();
