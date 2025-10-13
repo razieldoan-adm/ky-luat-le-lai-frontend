@@ -100,6 +100,27 @@ const WeeklyScoresPage: React.FC = () => {
     setSelectedWeek(w);
     loadScores(w);
   };
+// --- Lưu toàn bộ điểm
+const handleSave = async () => {
+  try {
+    for (const s of scores) {
+      const payload = {
+        _id: s._id, // nếu backend cần id
+        className: s.className,
+        grade: s.grade,
+        weekNumber: s.weekNumber,
+        academicScore: s.academicScore ?? 0,
+        rewardScore: s.rewardScore ?? 0,
+      };
+      await api.post("/api/class-weekly-scores/update", payload);
+    }
+    alert("✅ Đã lưu toàn bộ điểm tuần!");
+    loadScores(Number(selectedWeek));
+  } catch (err) {
+    console.error("Lỗi khi lưu:", err);
+    alert("❌ Lỗi khi lưu dữ liệu");
+  }
+};
 
   // --- Khi sửa điểm học tập hoặc thưởng
 const handleChangeScore = (className: string, field: keyof ClassWeeklyScore, value: number) => {
