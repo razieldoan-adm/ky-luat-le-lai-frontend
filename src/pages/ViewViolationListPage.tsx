@@ -312,7 +312,7 @@ export default function ViewViolationListPage() {
 
       <Box mt={4}>
         <Typography variant="h6" fontWeight="bold" gutterBottom>
-          Tổng điểm trừ (chỉ tính khi PGT xử lý)
+          Tổng điểm trừ:
         </Typography>
         <Table size="small" sx={{ maxWidth: 500 }}>
           <TableHead>
