@@ -40,6 +40,7 @@ interface Violation {
   handled: boolean;
   penalty: number;
   handlingMethod: string;
+  handledBy?: string; // ✅ Người xử lý (GVCN / PGT / rỗng)
   weekNumber?: number;
 }
 
