@@ -13,7 +13,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import api from "../../api/api";
-import { getWeeksAndCurrentWeek } from "../../utils/weekHelper"; // 🔹 nhớ kiểm tra đường dẫn
+import { getWeeksAndCurrentWeek } from "../../types/weekHelper"; // 🔹 nhớ kiểm tra đường dẫn
 
 interface AcademicWeek {
   _id: string;
