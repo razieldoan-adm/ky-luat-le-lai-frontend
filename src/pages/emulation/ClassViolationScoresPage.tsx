@@ -8,6 +8,7 @@ import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import api from '../../api/api';
+import { getAvailableWeeks, getCurrentWeekNumber } from "../../types/weekHelper"; // ✅ thêm dòng này
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -48,10 +49,23 @@ export default function ClassDisciplineTotalPage() {
     fetchClasses();
   }, []);
 
-  const fetchWeeks = async () => {
+ const fetchWeeks = async () => {
     try {
       const res = await api.get('/api/academic-weeks/study-weeks');
-      setWeekList(res.data);
+      const allWeeks: AcademicWeek[] = res.data;
+      const currentWeekNumber = getCurrentWeekNumber();
+
+      // ⚙️ Giữ lại các tuần ≤ tuần hiện tại
+      const filteredWeeks = allWeeks.filter(w => w.weekNumber <= currentWeekNumber);
+
+      setWeekList(filteredWeeks);
+
+      // ✅ Tự động chọn tuần hiện tại
+      const currentWeek = filteredWeeks.find(w => w.weekNumber === currentWeekNumber);
+      if (currentWeek) {
+        setSelectedWeek(currentWeek);
+        checkIfCalculated(currentWeek.weekNumber);
+      }
     } catch (err) {
       console.error('Lỗi khi lấy tuần:', err);
     }
