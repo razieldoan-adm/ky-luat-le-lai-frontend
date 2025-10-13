@@ -13,7 +13,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import api from "../../api/api";
-import { getWeeksAndCurrentWeek } from "../../utils/weekHelper";
+import { getWeeksAndCurrentWeek } from "../../types/weekHelper";
 interface AcademicWeek {
   _id: string;
   weekNumber: number;
@@ -41,7 +41,7 @@ useEffect(() => {
     setWeeks(weeks);
     if (currentWeek) {
       setSelectedWeek(currentWeek);
-      loadScores(currentWeek);
+      handleLoadData(currentWeek);
     }
   };
   initWeeks();
