@@ -63,7 +63,7 @@ const drawerWidth = 240;
       <Box sx={{ flexGrow: 1 }} />
 
       <List>
-        <ListItemButton onClick={() => navigate('/violation/')}>
+        <ListItemButton onClick={() => navigate('/')}>
           <ListItemIcon><ArrowBackIcon /></ListItemIcon>
           <ListItemText primary="Quay về trang chính" />
         </ListItemButton>
