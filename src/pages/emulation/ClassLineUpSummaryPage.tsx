@@ -14,7 +14,12 @@ import {
 } from "@mui/material";
 import api from "../../api/api";
 import { getWeeksAndCurrentWeek } from "../../types/weekHelper";
-
+interface AcademicWeek {
+  _id: string;
+  weekNumber: number;
+  startDate?: string;
+  endDate?: string;
+}
 interface SummaryRow {
   id: number;
   className: string;
