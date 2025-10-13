@@ -238,7 +238,6 @@ export default function ViewViolationListPage() {
               <TableCell>Điểm trừ</TableCell>
               <TableCell>Ngày</TableCell>
               <TableCell>Trạng thái</TableCell>
-              <TableCell>Người xử lý</TableCell>
               <TableCell>GVCN tiếp nhận</TableCell>
             </TableRow>
           </TableHead>
@@ -283,22 +282,27 @@ export default function ViewViolationListPage() {
                       </Box>
                     )}
                   </TableCell>
-                  <TableCell>{v.handledBy || "—"}</TableCell>
+                 
                   <TableCell>
-                    {!v.handled ? (
-                      <Button
-                        size="small"
-                        variant="contained"
-                        onClick={() => handleMarkAsHandled(v._id, "GVCN")}
-                      >
-                        GVCN tiếp nhận
-                      </Button>
-                    ) : (
-                      <Typography color="green" fontWeight="bold">
-                        ✓ GVCN đã nhận
-                      </Typography>
-                    )}
-                  </TableCell>
+                  {/* Nếu PGT đã xử lý → không cho GVCN tiếp nhận */}
+                  {v.handledBy === "PGT" ? (
+                    <Typography color="gray" fontStyle="italic">
+                      Đã do PGT xử lý
+                    </Typography>
+                  ) : !v.handled ? (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => handleMarkAsHandled(v._id, "GVCN")}
+                    >
+                      GVCN tiếp nhận
+                    </Button>
+                  ) : (
+                    <Typography color="green" fontWeight="bold">
+                      ✓ GVCN đã nhận
+                    </Typography>
+                  )}
+                </TableCell>
                 </TableRow>
               );
             })}
