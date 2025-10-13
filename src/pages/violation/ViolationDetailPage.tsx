@@ -23,12 +23,10 @@ import {
 } from "@mui/material";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/api";
-
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
-// ✅ Kích hoạt plugin timezone + đặt múi giờ mặc định
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.tz.setDefault("Asia/Ho_Chi_Minh");
@@ -36,9 +34,10 @@ dayjs.tz.setDefault("Asia/Ho_Chi_Minh");
 interface Violation {
   _id: string;
   description: string;
-  time?: string; // có thể là ISO hoặc dd/MM/yyyy
+  time?: string;
   handled: boolean;
   handlingMethod: string;
+  handledBy?: string; // ✅ thêm trường người xử lý
   weekNumber?: number;
 }
 
@@ -57,15 +56,11 @@ const ViolationDetailPage = () => {
   const [violations, setViolations] = useState<Violation[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [selectedRuleId, setSelectedRuleId] = useState("");
-
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
-
   const [maxConductScore, setMaxConductScore] = useState(100);
   const [currentWeek, setCurrentWeek] = useState<any | null>(null);
-
-  // nhập ngày/tháng (giữ như giao diện cũ)
   const [dayInput, setDayInput] = useState("");
   const [monthInput, setMonthInput] = useState("");
 
@@ -74,15 +69,12 @@ const ViolationDetailPage = () => {
     fetchRules();
     fetchSettings();
     fetchWeeks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, className]);
 
   const fetchSettings = async () => {
     try {
       const res = await api.get("/api/settings");
-      if (res.data?.maxConductScore) {
-        setMaxConductScore(res.data.maxConductScore);
-      }
+      if (res.data?.maxConductScore) setMaxConductScore(res.data.maxConductScore);
     } catch (err) {
       console.error("Lỗi khi lấy settings:", err);
     }
@@ -93,13 +85,11 @@ const ViolationDetailPage = () => {
       const res = await api.get("/api/academic-weeks/study-weeks");
       const weeks = res.data || [];
       const now = new Date();
-
       const week = weeks.find((w: any) => {
         const start = new Date(w.startDate);
         const end = new Date(w.endDate);
         return now >= start && now <= end;
       });
-
       setCurrentWeek(week || null);
     } catch (err) {
       console.error("Lỗi khi lấy tuần học:", err);
@@ -139,48 +129,24 @@ const ViolationDetailPage = () => {
     return methods[count] || "Tạm dừng việc học tập";
   };
 
-  /**
-   * Trả về Date object:
-   * - Nếu nhập dayInput + monthInput hợp lệ -> trả Date(year hiện tại, mm, dd) với giờ = 12:00
-   *   (giữ giờ ở 12:00 để tránh lỗi lệch ngày do timezone khi convert sang UTC)
-   * - Nếu không -> trả new Date() (ngày giờ hệ thống)
-   */
   const getViolationDate = (): Date => {
     const now = new Date();
     const year = now.getFullYear();
-
     if (dayInput && monthInput) {
       const dd = parseInt(dayInput, 10);
-      const mm = parseInt(monthInput, 10) - 1; // JS months 0-11
-
+      const mm = parseInt(monthInput, 10) - 1;
       if (!isNaN(dd) && !isNaN(mm) && dd > 0 && dd <= 31 && mm >= 0 && mm < 12) {
-        // đặt giờ = 12:00 local để tránh rủi ro timezone đổi ngày
         const customDate = new Date(year, mm, dd, 12, 0, 0, 0);
-        if (!isNaN(customDate.getTime())) {
-          return customDate;
-        }
+        if (!isNaN(customDate.getTime())) return customDate;
       }
     }
-
     return new Date();
   };
 
-  // hiển thị thời gian: nếu backend trả ISO -> format dd/MM/yyyy, nếu trả dd/MM/yyyy -> giữ nguyên
   const renderTime = (time?: string) => {
     if (!time) return "N/A";
-
-    const ddmmPattern = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
-    if (ddmmPattern.test(time)) return time;
-
     const parsed = new Date(time);
-    if (!isNaN(parsed.getTime())) {
-      try {
-        return parsed.toLocaleDateString("vi-VN");
-      } catch {
-        return time;
-      }
-    }
-
+    if (!isNaN(parsed.getTime())) return parsed.toLocaleDateString("vi-VN");
     return time;
   };
 
@@ -194,51 +160,40 @@ const ViolationDetailPage = () => {
     }
 
     try {
-      // lấy tuần hiện tại
       const weeksRes = await api.get("/api/academic-weeks/study-weeks");
       const weeks = weeksRes.data || [];
       const now = new Date();
-
       const currentWeekFound = weeks.find((w: any) => {
         const start = new Date(w.startDate);
         const end = new Date(w.endDate);
         return now >= start && now <= end;
       });
-
       const weekNumber = currentWeekFound ? currentWeekFound.weekNumber : null;
-
-      // lấy số vi phạm giống để xác định hình thức xử lý
       const res = await api.get(
         `/api/violations/${encodeURIComponent(name)}?className=${encodeURIComponent(className)}`
       );
       const sameViolations = (res.data || []).filter((v: Violation) => v.description === selectedRule.title);
       const repeatCount = sameViolations.length;
       const autoHandlingMethod = getHandlingMethodByRepeatCount(repeatCount);
-
-      // LẤY DATE (ưu tiên input, fallback now)
       const violationDate = getViolationDate();
 
-      // gửi ISO cho backend để backend lưu Date chuẩn
       await api.post("/api/violations", {
         name,
         className,
         description: selectedRule.title,
         handlingMethod: autoHandlingMethod,
-        weekNumber: weekNumber,
+        weekNumber,
         time: violationDate.toISOString(),
         handled: false,
+        handledBy: "", // ✅ mặc định trống
       });
 
-      // reset inputs
       setSelectedRuleId("");
       setDayInput("");
       setMonthInput("");
-
-      setSnackbarMessage(`Đã ghi nhận lỗi: ${selectedRule.title} (Tuần: ${weekNumber ?? "Không xác định"})`);
+      setSnackbarMessage(`Đã ghi nhận lỗi: ${selectedRule.title}`);
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
-
-      // reload data
       fetchViolations();
     } catch (err) {
       console.error("Lỗi khi ghi nhận vi phạm:", err);
@@ -248,10 +203,11 @@ const ViolationDetailPage = () => {
     }
   };
 
-  const handleMarkAsHandled = async (id: string) => {
+  // ✅ Hàm cập nhật người xử lý
+  const handleMarkAsHandled = async (id: string, handledBy: "GVCN" | "PGT") => {
     try {
-      await api.patch(`/api/violations/${id}/handle`);
-      setSnackbarMessage("Đã xử lý vi phạm thành công!");
+      await api.patch(`/api/violations/${id}/handle`, { handledBy });
+      setSnackbarMessage(`Đã xử lý bởi ${handledBy}!`);
       setSnackbarSeverity("success");
       fetchViolations();
     } catch (err) {
@@ -282,7 +238,6 @@ const ViolationDetailPage = () => {
     const rule = rules.find((r) => r.title === v.description);
     return sum + (rule?.point || 0);
   }, 0);
-
   const finalScore = Math.max(maxConductScore - totalPenalty, 0);
   const isBelowThreshold = finalScore < maxConductScore * 0.5;
 
@@ -298,14 +253,6 @@ const ViolationDetailPage = () => {
         Điểm hạnh kiểm: {finalScore}/{maxConductScore}
       </Typography>
 
-      {currentWeek && (
-        <Typography sx={{ mt: 1 }}>
-          Tuần hiện tại: Tuần {currentWeek.weekNumber} (
-          {new Date(currentWeek.startDate).toLocaleDateString()} -{" "}
-          {new Date(currentWeek.endDate).toLocaleDateString()})
-        </Typography>
-      )}
-
       <Card sx={{ my: 3 }}>
         <CardContent>
           <Typography variant="h6">Ghi nhận lỗi mới</Typography>
@@ -320,23 +267,8 @@ const ViolationDetailPage = () => {
                 ))}
               </Select>
             </FormControl>
-
-            {/* ô nhập ngày & tháng — giữ giao diện cũ */}
-            <TextField
-              label="Ngày (dd)"
-              value={dayInput}
-              onChange={(e) => setDayInput(e.target.value.replace(/\D/g, ""))}
-              inputProps={{ maxLength: 2 }}
-              sx={{ width: 100 }}
-            />
-            <TextField
-              label="Tháng (MM)"
-              value={monthInput}
-              onChange={(e) => setMonthInput(e.target.value.replace(/\D/g, ""))}
-              inputProps={{ maxLength: 2 }}
-              sx={{ width: 100 }}
-            />
-
+            <TextField label="Ngày" value={dayInput} onChange={(e) => setDayInput(e.target.value)} sx={{ width: 100 }} />
+            <TextField label="Tháng" value={monthInput} onChange={(e) => setMonthInput(e.target.value)} sx={{ width: 100 }} />
             <Button variant="contained" onClick={handleAddViolation}>
               Ghi nhận
             </Button>
@@ -344,6 +276,7 @@ const ViolationDetailPage = () => {
         </CardContent>
       </Card>
 
+      {/* ✅ Bảng vi phạm */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -353,11 +286,13 @@ const ViolationDetailPage = () => {
               <TableCell>Thời gian</TableCell>
               <TableCell>Xử lý</TableCell>
               <TableCell>Trạng thái</TableCell>
+              <TableCell>Người xử lý</TableCell> {/* ✅ cột mới */}
               <TableCell>Điểm trừ</TableCell>
               <TableCell>Tuần</TableCell>
               <TableCell>Thao tác</TableCell>
             </TableRow>
           </TableHead>
+
           <TableBody>
             {violations.map((v, idx) => {
               const matchedRule = rules.find((r) => r.title === v.description);
@@ -369,22 +304,38 @@ const ViolationDetailPage = () => {
                   <TableCell>{v.handlingMethod}</TableCell>
                   <TableCell>
                     {v.handled ? (
-                      <Box sx={{ backgroundColor: "green", color: "white", px: 1, py: 0.5, borderRadius: 1, textAlign: "center" }}>
-                        Đã xử lý
-                      </Box>
+                      <Box sx={{ backgroundColor: "green", color: "white", px: 1, borderRadius: 1 }}>Đã xử lý</Box>
                     ) : (
-                      <Box sx={{ backgroundColor: "#ffcccc", color: "red", px: 1, py: 0.5, borderRadius: 1, textAlign: "center" }}>
-                        Chưa xử lý
-                      </Box>
+                      <Box sx={{ backgroundColor: "#ffcccc", color: "red", px: 1, borderRadius: 1 }}>Chưa xử lý</Box>
                     )}
                   </TableCell>
+
+                  <TableCell>{v.handledBy || ""}</TableCell> {/* ✅ hiển thị người xử lý */}
+
                   <TableCell>{matchedRule?.point || 0}</TableCell>
                   <TableCell>{v.weekNumber ?? "N/A"}</TableCell>
+
                   <TableCell>
                     {!v.handled && (
-                      <Button size="small" variant="contained" onClick={() => handleMarkAsHandled(v._id)}>
-                        XỬ LÝ
-                      </Button>
+                      <>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={() => handleMarkAsHandled(v._id, "GVCN")}
+                          sx={{ mr: 1 }}
+                        >
+                          GVCN xử lý
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="secondary"
+                          onClick={() => handleMarkAsHandled(v._id, "PGT")}
+                          sx={{ mr: 1 }}
+                        >
+                          PGT xử lý
+                        </Button>
+                      </>
                     )}
                     <Button size="small" color="error" onClick={() => handleDeleteViolation(v._id)}>
                       Xoá
@@ -397,7 +348,12 @@ const ViolationDetailPage = () => {
         </Table>
       </TableContainer>
 
-      <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={() => setSnackbarOpen(false)} anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
         <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: "100%" }}>
           {snackbarMessage}
         </Alert>
