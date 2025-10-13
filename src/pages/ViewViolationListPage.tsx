@@ -299,8 +299,8 @@ export default function ViewViolationStudentByClassPage() {
                     {v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}
                   </TableCell>
                   <TableCell>
-                    {v.handlingBy
-                      ? v.handlingBy
+                    {v.handledBy
+                      ? v.handledBy
                       : 'Chưa xử lý'}
             </TableCell>
                 </TableRow>
