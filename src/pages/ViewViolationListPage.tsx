@@ -31,6 +31,7 @@ interface Violation {
   weekNumber?: number;
   handled?: boolean;
   handledBy?: string;
+  penalty?: number;
 }
 
 interface Rule {
@@ -48,14 +49,13 @@ interface AcademicWeek {
 
 export default function ViewViolationListPage() {
   const [violations, setViolations] = useState<Violation[]>([]);
-  const [filtered, setFiltered] = useState<Violation[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedWeek, setSelectedWeek] = useState<number | "" | "all">("");
   const [classList, setClassList] = useState<string[]>([]);
   const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
 
-  // Load dữ liệu
+  // --- Load dữ liệu ban đầu ---
   useEffect(() => {
     fetchClasses();
     fetchRules();
@@ -122,14 +122,13 @@ export default function ViewViolationListPage() {
         };
       });
       setViolations(dataWithWeek);
-      setFiltered(dataWithWeek);
     } catch (err) {
       console.error("Lỗi khi lấy dữ liệu vi phạm:", err);
     }
   };
 
   const applyFilters = () => {
-    let data = violations;
+    let data = [...violations];
     if (selectedClass) {
       data = data.filter(
         (v) =>
@@ -140,10 +139,10 @@ export default function ViewViolationListPage() {
     if (selectedWeek !== "" && selectedWeek !== "all") {
       data = data.filter((v) => v.weekNumber === selectedWeek);
     }
-    setFiltered(data);
+    setViolations(data);
   };
 
-  // ✅ Gọi API xử lý
+  // ✅ Xử lý đánh dấu GVCN tiếp nhận
   const handleMarkAsHandled = async (id: string, by: "GVCN" | "PGT") => {
     try {
       await api.patch(`/api/violations/${id}/handle`, { handledBy: by });
@@ -153,20 +152,30 @@ export default function ViewViolationListPage() {
     }
   };
 
-  const handleDeleteViolation = async (id: string) => {
-    if (!window.confirm("Bạn có chắc muốn xoá vi phạm này không?")) return;
-    try {
-      await api.delete(`/api/violations/${id}`);
-      fetchViolations();
-    } catch (err) {
-      console.error("Lỗi khi xoá vi phạm:", err);
-    }
+  // ✅ Format thời gian
+  const renderTime = (date: Date) => {
+    return dayjs(date).format("DD/MM/YYYY");
   };
+
+  // ✅ Tính tổng điểm trừ theo lớp — chỉ tính khi PGT xử lý
+  const classTotals: Record<string, number> = {};
+  violations.forEach((v) => {
+    const matchedRule = rules.find((r) => r.title === v.description);
+    const point = matchedRule?.point || 0;
+    if (v.handledBy === "PGT") {
+      classTotals[v.className] = (classTotals[v.className] || 0) + point;
+    }
+  });
 
   return (
     <Box sx={{ maxWidth: "100%", mx: "auto", py: 4 }}>
       <Typography variant="h5" fontWeight="bold" align="center" gutterBottom>
         Quản lý xử lý vi phạm học sinh
+      </Typography>
+
+      <Typography align="center" sx={{ color: "gray", mb: 2 }}>
+        Nếu GVCN đã xử lý vi phạm của học sinh vui lòng check vào ô{" "}
+        <b>GVCN tiếp nhận</b>. Xin cám ơn.
       </Typography>
 
       <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
@@ -225,79 +234,98 @@ export default function ViewViolationListPage() {
               <TableCell>Ngày</TableCell>
               <TableCell>Trạng thái</TableCell>
               <TableCell>Người xử lý</TableCell>
-              <TableCell>Thao tác</TableCell>
+              <TableCell>GVCN tiếp nhận</TableCell>
             </TableRow>
           </TableHead>
 
-<TableBody>
-  {violations.map((v, idx) => {
-    const matchedRule = rules.find((r) => r.title === v.description);
-    return (
-      <TableRow key={v._id}>
-        <TableCell>{idx + 1}</TableCell>
-        <TableCell>{v.description}</TableCell>
-        <TableCell>{renderTime(v.time)}</TableCell>
-        <TableCell>{v.handlingMethod}</TableCell>
+          <TableBody>
+            {violations.map((v, idx) => {
+              const matchedRule = rules.find((r) => r.title === v.description);
+              return (
+                <TableRow key={v._id}>
+                  <TableCell>{idx + 1}</TableCell>
+                  <TableCell>{v.name}</TableCell>
+                  <TableCell>{v.className}</TableCell>
+                  <TableCell>{v.description}</TableCell>
+                  <TableCell>{matchedRule?.point || 0}</TableCell>
+                  <TableCell>{renderTime(v.time)}</TableCell>
 
-        {/* ✅ Trạng thái xử lý */}
-        <TableCell>
-          {v.handled ? (
-            <Box
-              sx={{
-                backgroundColor: "green",
-                color: "white",
-                px: 1,
-                py: 0.5,
-                borderRadius: 1,
-                textAlign: "center",
-              }}
-            >
-              Đã xử lý
-            </Box>
-          ) : (
-            <Box
-              sx={{
-                backgroundColor: "#ffcccc",
-                color: "red",
-                px: 1,
-                py: 0.5,
-                borderRadius: 1,
-                textAlign: "center",
-              }}
-            >
-              Chưa xử lý
-            </Box>
-          )}
-        </TableCell>
+                  <TableCell>
+                    {v.handled ? (
+                      <Box
+                        sx={{
+                          backgroundColor: "green",
+                          color: "white",
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 1,
+                          textAlign: "center",
+                        }}
+                      >
+                        Đã xử lý
+                      </Box>
+                    ) : (
+                      <Box
+                        sx={{
+                          backgroundColor: "#ffcccc",
+                          color: "red",
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 1,
+                          textAlign: "center",
+                        }}
+                      >
+                        Chưa xử lý
+                      </Box>
+                    )}
+                  </TableCell>
 
-        {/* ✅ Cột Người xử lý */}
-        <TableCell>{v.handledBy || "—"}</TableCell>
+                  <TableCell>{v.handledBy || "—"}</TableCell>
 
-        <TableCell>{matchedRule?.point || 0}</TableCell>
-        <TableCell>{v.weekNumber ?? "N/A"}</TableCell>
-
-        {/* ✅ Cột GVCN tiếp nhận */}
-        <TableCell>
-          {!v.handled ? (
-            <Button
-              size="small"
-              variant="contained"
-              onClick={() => handleMarkAsHandled(v._id, "GVCN")}
-            >
-              GVCN tiếp nhận
-            </Button>
-          ) : (
-            <Typography color="green" fontWeight="bold">
-              ✓ GVCN đã nhận
-            </Typography>
-          )}
-        </TableCell>
-      </TableRow>
-    );
-  })}
-</TableBody>
-</Table>
+                  <TableCell>
+                    {!v.handled ? (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => handleMarkAsHandled(v._id, "GVCN")}
+                      >
+                        GVCN tiếp nhận
+                      </Button>
+                    ) : (
+                      <Typography color="green" fontWeight="bold">
+                        ✓ GVCN đã nhận
+                      </Typography>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       </Paper>
+
+      {/* ✅ Tổng điểm mỗi lớp */}
+      <Box mt={4}>
+        <Typography variant="h6" fontWeight="bold" gutterBottom>
+          Tổng điểm trừ (chỉ tính khi PGT xử lý)
+        </Typography>
+        <Table size="small" sx={{ maxWidth: 500 }}>
+          <TableHead>
+            <TableRow sx={{ backgroundColor: "#f0f0f0" }}>
+              <TableCell>Lớp</TableCell>
+              <TableCell align="right">Tổng điểm</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {Object.entries(classTotals).map(([cls, total]) => (
+              <TableRow key={cls}>
+                <TableCell>{cls}</TableCell>
+                <TableCell align="right">{total}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Box>
     </Box>
   );
 }
