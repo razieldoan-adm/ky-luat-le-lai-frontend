@@ -3,7 +3,7 @@ import {
   Box, Typography, CircularProgress, TextField, MenuItem, Button,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
 } from "@mui/material";
-import api from "@/api"; // hoặc đường dẫn tới axios instance của bạn
+import api from "../../api/api"; // hoặc đường dẫn tới axios instance của bạn
 
 interface ClassWeeklyScore {
   _id?: string;
