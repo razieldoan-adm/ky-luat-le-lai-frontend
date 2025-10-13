@@ -112,27 +112,27 @@ export default function ViewViolationStudentByClassPage() {
 
   const fetchWeeks = async () => {
   try {
-    // 🔹 Gọi hàm tiện ích
-    const { currentWeek } = await getWeeksAndCurrentWeek();
-
-    // 🔹 Lấy danh sách tuần từ API backend
-    const res = await api.get('/api/academic-weeks/study-weeks');
+    // 🔹 Lấy danh sách tuần từ backend
+    const res = await api.get("/api/academic-weeks/study-weeks");
     const allWeeks: AcademicWeek[] = res.data;
 
+    // 🔹 Tính tuần hiện tại bằng hàm helper
+    const { currentWeek } = await getWeeksAndCurrentWeek();
+
     // ⚙️ Giữ lại các tuần <= tuần hiện tại
-    const filteredWeeks = allWeeks.filter(w => w.weekNumber <= currentWeek);
+    const filteredWeeks = allWeeks.filter((w) => w.weekNumber <= currentWeek);
     setWeekList(filteredWeeks);
 
     // ✅ Tự động chọn tuần hiện tại
-    const currentWeekObj = filteredWeeks.find(w => w.weekNumber === currentWeek);
+    const currentWeekObj = filteredWeeks.find((w) => w.weekNumber === currentWeek);
     if (currentWeekObj) {
-      setSelectedWeek(currentWeekObj);
-      checkIfCalculated(currentWeekObj.weekNumber);
+      setSelectedWeek(currentWeekObj.weekNumber); // ⚠️ chọn đúng kiểu number
     }
   } catch (err) {
-    console.error('Lỗi khi lấy tuần:', err);
+    console.error("Lỗi khi lấy danh sách tuần:", err);
   }
 };
+
 
 
   const applyFilters = () => {
