@@ -301,7 +301,7 @@ export default function ViewViolationStudentByClassPage() {
                   <TableCell>
                     {v.handledBy
                       ? v.handledBy
-                      : 'Chưa xử lý'}
+                      }
             </TableCell>
                 </TableRow>
               ))
