@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import api from "../../api/api";
+import api from "../api/api";
 
 /**
  * Lấy danh sách tuần từ 1 đến tuần hiện tại (theo thời gian thực)
