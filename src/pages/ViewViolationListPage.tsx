@@ -146,18 +146,22 @@ export default function ViewViolationStudentByClassPage() {
     );
   }
 
-  // lọc theo tuần nếu có chọn (nếu rỗng thì bỏ qua = tất cả tuần)
+  // lọc theo tuần nếu có chọn
   if (selectedWeek !== '' && selectedWeek !== 'all') {
     data = data.filter((v) => v.weekNumber === selectedWeek);
   }
+
+  // lọc theo lỗi vi phạm
   if (selectedRule) {
-  data = data.filter((v) => v.description === selectedRule);
-}
+    data = data.filter((v) => v.description === selectedRule);
+  }
+
   setFiltered(data);
 
   const total = data.reduce((sum, v) => {
     const rule = rules.find((r) => r.title === v.description);
-    return sum + (rule?.point || 0);
+    const point = rule?.point || 0;
+    return v.handlingMethod === "PGT xử lý" ? sum + point : sum;
   }, 0);
   setTotalPoint(total);
 
@@ -275,6 +279,7 @@ export default function ViewViolationStudentByClassPage() {
               <TableCell>Lỗi vi phạm</TableCell>
               <TableCell>Điểm trừ</TableCell>
               <TableCell>Thời gian</TableCell>
+              <TableCell>Tình trạng xử lý</TableCell> {/* ✅ Cột mới */}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -291,6 +296,11 @@ export default function ViewViolationStudentByClassPage() {
                   <TableCell>
                     {v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}
                   </TableCell>
+                  <TableCell>
+                    {v.handlingMethod
+                      ? v.handlingMethod
+                      : 'Chưa xử lý'}
+            </TableCell>
                 </TableRow>
               ))
             ) : (
