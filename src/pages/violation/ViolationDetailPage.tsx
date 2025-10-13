@@ -60,7 +60,7 @@ const ViolationDetailPage = () => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
   const [maxConductScore, setMaxConductScore] = useState(100);
-  const [currentWeek, setCurrentWeek] = useState<any | null>(null);
+
   const [dayInput, setDayInput] = useState("");
   const [monthInput, setMonthInput] = useState("");
 
