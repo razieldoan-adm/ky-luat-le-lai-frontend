@@ -192,7 +192,7 @@ const ViolationDetailPage = () => {
   // ✅ Xử lý bởi GVCN hoặc PGT
   const handleMarkAsHandled = async (id: string, handledBy: "GVCN" | "PGT") => {
     try {
-      await api.patch(`/api/violations/${id}`, { handled: true, handledBy });
+      await api.patch(`/api/violations/${id}/handle`, { handled: true, handledBy });
       setSnackbarMessage(`Đã xử lý (${handledBy}) thành công!`);
       setSnackbarSeverity("success");
       fetchViolations();
