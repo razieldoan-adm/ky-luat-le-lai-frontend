@@ -13,13 +13,15 @@ import {
   MenuItem,
 } from "@mui/material";
 import api from "../../api/api";
-import { getWeeksAndCurrentWeek } from "../../types/weekHelper";
+import { getWeeksAndCurrentWeek } from "../../utils/weekHelper"; // 🔹 nhớ kiểm tra đường dẫn
+
 interface AcademicWeek {
   _id: string;
   weekNumber: number;
   startDate?: string;
   endDate?: string;
 }
+
 interface SummaryRow {
   id: number;
   className: string;
@@ -28,13 +30,13 @@ interface SummaryRow {
 }
 
 export default function ClassLineUpSummaryPage() {
-  const [weeks, setWeeks] = useState<number[]>([]); // ✅ mảng số tuần
-  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<string>("");
   const [multiplier, setMultiplier] = useState<number>(10);
   const [summaries, setSummaries] = useState<SummaryRow[]>([]);
 
-  // 🔹 Load danh sách tuần & chọn tuần hiện tại
-    useEffect(() => {
+  // 🔹 Load danh sách tuần (chỉ tới tuần hiện tại)
+  useEffect(() => {
     const initWeeks = async () => {
       const { weeks: weekNumbers, currentWeek } = await getWeeksAndCurrentWeek();
 
@@ -53,13 +55,16 @@ export default function ClassLineUpSummaryPage() {
     initWeeks();
   }, []);
 
-  // 🔹 Load dữ liệu lineup
+  // 🔹 Hàm load dữ liệu lineup theo tuần được chọn
   const handleLoadData = async () => {
     try {
       if (!selectedWeek) return alert("Vui lòng chọn tuần!");
 
+      const week = weeks.find((w) => w._id === selectedWeek);
+      if (!week) return alert("Không tìm thấy tuần!");
+
       const res = await api.get("/api/class-lineup-summaries/weekly", {
-        params: { weekNumber: selectedWeek },
+        params: { weekNumber: week.weekNumber },
       });
 
       const data = res.data.records || [];
@@ -84,15 +89,17 @@ export default function ClassLineUpSummaryPage() {
     }
   };
 
-  // 🔹 Lưu điểm tổng
+  // 🔹 Lưu điểm tổng vào ClassWeeklyScore
   const handleSave = async () => {
     try {
-      if (!selectedWeek) return alert("Vui lòng chọn tuần!");
+      if (!selectedWeek) return alert("Vui lòng chọn tuần trước khi lưu!");
+      const week = weeks.find((w) => w._id === selectedWeek);
+      if (!week) return alert("Không tìm thấy tuần!");
 
       for (const s of summaries) {
         await api.post("/api/class-lineup-summaries/update-weekly-score", {
           className: s.className,
-          weekNumber: selectedWeek,
+          weekNumber: week.weekNumber,
           lineUpScore: s.total,
         });
       }
@@ -115,12 +122,12 @@ export default function ClassLineUpSummaryPage() {
           select
           label="Tuần"
           value={selectedWeek}
-          onChange={(e) => setSelectedWeek(Number(e.target.value))}
+          onChange={(e) => setSelectedWeek(e.target.value)}
           sx={{ minWidth: 150 }}
         >
-          {weeks.map((w) => (
-            <MenuItem key={w} value={w}>
-              Tuần {w}
+          {weeks.map((week) => (
+            <MenuItem key={week._id} value={week._id}>
+              Tuần {week.weekNumber}
             </MenuItem>
           ))}
         </TextField>
