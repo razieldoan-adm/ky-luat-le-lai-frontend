@@ -27,6 +27,7 @@ const WeeklyScoresPage: React.FC = () => {
   const [scores, setScores] = useState<ClassWeeklyScore[]>([]);
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<{ maxDiscipline: number }>({ maxDiscipline: 100 });
+  const [hasChanges, setHasChanges] = useState(false);
 
   // --- Load danh sách tuần & tuần hiện tại
   useEffect(() => {
@@ -86,6 +87,7 @@ const WeeklyScoresPage: React.FC = () => {
       });
 
       setScores(data);
+      setHasChanges(false);
     } catch (err) {
       console.error("Lỗi khi tải điểm:", err);
       setScores([]);
@@ -100,55 +102,75 @@ const WeeklyScoresPage: React.FC = () => {
     setSelectedWeek(w);
     loadScores(w);
   };
-// --- Lưu toàn bộ điểm
-const handleSave = async () => {
-  try {
-    for (const s of scores) {
-      const payload = {
-        _id: s._id, // nếu backend cần id
-        className: s.className,
-        grade: s.grade,
-        weekNumber: s.weekNumber,
-        academicScore: s.academicScore ?? 0,
-        rewardScore: s.rewardScore ?? 0,
-      };
-      await api.post("/api/class-weekly-scores/update", payload);
+
+  // --- Lưu toàn bộ điểm
+  const handleSave = async () => {
+    try {
+      for (const s of scores) {
+        const payload = {
+          _id: s._id,
+          className: s.className,
+          grade: s.grade,
+          weekNumber: s.weekNumber,
+          academicScore: s.academicScore ?? 0,
+          rewardScore: s.rewardScore ?? 0,
+        };
+        await api.post("/api/class-weekly-scores/update", payload);
+      }
+      alert("✅ Đã lưu toàn bộ điểm tuần!");
+      loadScores(Number(selectedWeek));
+    } catch (err) {
+      console.error("Lỗi khi lưu:", err);
+      alert("❌ Lỗi khi lưu dữ liệu");
     }
-    alert("✅ Đã lưu toàn bộ điểm tuần!");
-    loadScores(Number(selectedWeek));
-  } catch (err) {
-    console.error("Lỗi khi lưu:", err);
-    alert("❌ Lỗi khi lưu dữ liệu");
-  }
-};
+  };
 
   // --- Khi sửa điểm học tập hoặc thưởng
-const handleChangeScore = (className: string, field: keyof ClassWeeklyScore, value: number) => {
-  setScores((prev) =>
-    prev.map((s) => {
-      if (s.className !== className) return s;
+  const handleChangeScore = (className: string, field: keyof ClassWeeklyScore, value: number) => {
+    setHasChanges(true);
+    setScores((prev) =>
+      prev.map((s) => {
+        if (s.className !== className) return s;
 
-      // cập nhật giá trị mới
-      const updated = { ...s, [field]: value };
+        // cập nhật giá trị mới
+        const updated = { ...s, [field]: value };
 
-      // tính lại điểm kỷ luật và tổng thi đua
-      const discipline =
-        settings.maxDiscipline -
-        ((updated.attendanceScore ?? 0) * 5 +
-          (updated.violationScore ?? 0) +
-          (updated.hygieneScore ?? 0) +
-          (updated.lineupScore ?? 0));
+        // tính lại điểm kỷ luật và tổng thi đua
+        const discipline =
+          settings.maxDiscipline -
+          ((updated.attendanceScore ?? 0) * 5 +
+            (updated.violationScore ?? 0) +
+            (updated.hygieneScore ?? 0) +
+            (updated.lineupScore ?? 0));
 
-      const total = discipline + (updated.rewardScore ?? 0) + (updated.academicScore ?? 0);
+        const total = discipline + (updated.rewardScore ?? 0) + (updated.academicScore ?? 0);
 
-      return {
-        ...updated,
-        disciplineScore: discipline,
-        totalScore: total,
-      };
-    })
-  );
-};
+        return {
+          ...updated,
+          disciplineScore: discipline,
+          totalScore: total,
+        };
+      })
+    );
+  };
+
+  // --- Cập nhật lại thứ hạng
+  const handleRecalculateRanks = () => {
+    if (!scores.length) return;
+
+    const grades = ["6", "7", "8", "9"];
+    const updated = [...scores];
+
+    grades.forEach((g) => {
+      const group = updated.filter((x) => x.grade === g);
+      group.sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
+      group.forEach((x, i) => (x.rank = i + 1));
+    });
+
+    setScores(updated);
+    setHasChanges(false);
+    alert("✅ Đã cập nhật lại xếp hạng!");
+  };
 
   // --- Xuất Excel
   const handleExport = () => {
@@ -248,6 +270,16 @@ const handleChangeScore = (className: string, field: keyof ClassWeeklyScore, val
         <Button variant="contained" color="primary" onClick={handleSave}>
           💾 Lưu điểm
         </Button>
+
+        <Button
+          variant="outlined"
+          color="secondary"
+          onClick={handleRecalculateRanks}
+          disabled={!hasChanges}
+        >
+          📊 Xếp hạng
+        </Button>
+
         <Button variant="outlined" color="success" onClick={handleExport}>
           📤 Xuất Excel
         </Button>
