@@ -29,11 +29,21 @@ export default function ClassLineUpSummaryPage() {
   const [summaries, setSummaries] = useState<SummaryRow[]>([]);
 
   // 🔹 Load danh sách tuần & chọn tuần hiện tại
-  useEffect(() => {
+    useEffect(() => {
     const initWeeks = async () => {
-      const { weeks, currentWeek } = await getWeeksAndCurrentWeek();
-      setWeeks(weeks);
-      if (currentWeek) setSelectedWeek(currentWeek);
+      const { weeks: weekNumbers, currentWeek } = await getWeeksAndCurrentWeek();
+
+      // ✅ Chuyển mảng số → mảng AcademicWeek để hiển thị dropdown
+      const formattedWeeks: AcademicWeek[] = weekNumbers.map((num) => ({
+        _id: String(num), // để làm value cho <MenuItem>
+        weekNumber: num,
+      }));
+
+      setWeeks(formattedWeeks);
+
+      if (currentWeek) {
+        setSelectedWeek(String(currentWeek));
+      }
     };
     initWeeks();
   }, []);
