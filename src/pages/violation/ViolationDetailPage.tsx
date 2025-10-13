@@ -351,7 +351,7 @@ const ViolationDetailPage = () => {
         </Alert>
       </Snackbar>
 
-      <Button variant="outlined" sx={{ mt: 3 }} onClick={() => navigate("/")}>
+      <Button variant="outlined" sx={{ mt: 3 }} onClick={() => navigate("/violations")}>
         Quay lại
       </Button>
     </Box>
