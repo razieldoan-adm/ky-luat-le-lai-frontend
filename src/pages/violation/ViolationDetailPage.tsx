@@ -37,7 +37,7 @@ interface Violation {
   time?: string;
   handled: boolean;
   handlingMethod: string;
-  handledBy?: string; // ✅ thêm trường người xử lý
+  handledBy?: string; // ✅ Người xử lý (GVCN / PGT / rỗng)
   weekNumber?: number;
 }
 
@@ -60,7 +60,6 @@ const ViolationDetailPage = () => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
   const [maxConductScore, setMaxConductScore] = useState(100);
-
   const [dayInput, setDayInput] = useState("");
   const [monthInput, setMonthInput] = useState("");
 
@@ -68,31 +67,16 @@ const ViolationDetailPage = () => {
     fetchViolations();
     fetchRules();
     fetchSettings();
-    fetchWeeks();
   }, [name, className]);
 
   const fetchSettings = async () => {
     try {
       const res = await api.get("/api/settings");
-      if (res.data?.maxConductScore) setMaxConductScore(res.data.maxConductScore);
+      if (res.data?.maxConductScore) {
+        setMaxConductScore(res.data.maxConductScore);
+      }
     } catch (err) {
       console.error("Lỗi khi lấy settings:", err);
-    }
-  };
-
-  const fetchWeeks = async () => {
-    try {
-      const res = await api.get("/api/academic-weeks/study-weeks");
-      const weeks = res.data || [];
-      const now = new Date();
-      const week = weeks.find((w: any) => {
-        const start = new Date(w.startDate);
-        const end = new Date(w.endDate);
-        return now >= start && now <= end;
-      });
-      setCurrentWeek(week || null);
-    } catch (err) {
-      console.error("Lỗi khi lấy tuần học:", err);
     }
   };
 
@@ -118,14 +102,7 @@ const ViolationDetailPage = () => {
   };
 
   const getHandlingMethodByRepeatCount = (count: number) => {
-    const methods = [
-      "Nhắc nhở",
-      "Kiểm điểm",
-      "Chép phạt",
-      "Báo phụ huynh",
-      "Mời phụ huynh",
-      "Tạm dừng việc học tập",
-    ];
+    const methods = ["Nhắc nhở", "Kiểm điểm", "Chép phạt", "Báo phụ huynh", "Mời phụ huynh", "Tạm dừng việc học tập"];
     return methods[count] || "Tạm dừng việc học tập";
   };
 
@@ -145,8 +122,16 @@ const ViolationDetailPage = () => {
 
   const renderTime = (time?: string) => {
     if (!time) return "N/A";
+    const ddmmPattern = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
+    if (ddmmPattern.test(time)) return time;
     const parsed = new Date(time);
-    if (!isNaN(parsed.getTime())) return parsed.toLocaleDateString("vi-VN");
+    if (!isNaN(parsed.getTime())) {
+      try {
+        return parsed.toLocaleDateString("vi-VN");
+      } catch {
+        return time;
+      }
+    }
     return time;
   };
 
@@ -169,6 +154,7 @@ const ViolationDetailPage = () => {
         return now >= start && now <= end;
       });
       const weekNumber = currentWeekFound ? currentWeekFound.weekNumber : null;
+
       const res = await api.get(
         `/api/violations/${encodeURIComponent(name)}?className=${encodeURIComponent(className)}`
       );
@@ -185,7 +171,7 @@ const ViolationDetailPage = () => {
         weekNumber,
         time: violationDate.toISOString(),
         handled: false,
-        handledBy: "", // ✅ mặc định trống
+        handledBy: "", // ✅ thêm mới
       });
 
       setSelectedRuleId("");
@@ -203,11 +189,11 @@ const ViolationDetailPage = () => {
     }
   };
 
-  // ✅ Hàm cập nhật người xử lý
+  // ✅ Xử lý bởi GVCN hoặc PGT
   const handleMarkAsHandled = async (id: string, handledBy: "GVCN" | "PGT") => {
     try {
-      await api.patch(`/api/violations/${id}/handle`, { handledBy });
-      setSnackbarMessage(`Đã xử lý bởi ${handledBy}!`);
+      await api.patch(`/api/violations/${id}`, { handled: true, handledBy });
+      setSnackbarMessage(`Đã xử lý (${handledBy}) thành công!`);
       setSnackbarSeverity("success");
       fetchViolations();
     } catch (err) {
@@ -238,6 +224,7 @@ const ViolationDetailPage = () => {
     const rule = rules.find((r) => r.title === v.description);
     return sum + (rule?.point || 0);
   }, 0);
+
   const finalScore = Math.max(maxConductScore - totalPenalty, 0);
   const isBelowThreshold = finalScore < maxConductScore * 0.5;
 
@@ -267,8 +254,22 @@ const ViolationDetailPage = () => {
                 ))}
               </Select>
             </FormControl>
-            <TextField label="Ngày" value={dayInput} onChange={(e) => setDayInput(e.target.value)} sx={{ width: 100 }} />
-            <TextField label="Tháng" value={monthInput} onChange={(e) => setMonthInput(e.target.value)} sx={{ width: 100 }} />
+
+            <TextField
+              label="Ngày (dd)"
+              value={dayInput}
+              onChange={(e) => setDayInput(e.target.value.replace(/\D/g, ""))}
+              inputProps={{ maxLength: 2 }}
+              sx={{ width: 100 }}
+            />
+            <TextField
+              label="Tháng (MM)"
+              value={monthInput}
+              onChange={(e) => setMonthInput(e.target.value.replace(/\D/g, ""))}
+              inputProps={{ maxLength: 2 }}
+              sx={{ width: 100 }}
+            />
+
             <Button variant="contained" onClick={handleAddViolation}>
               Ghi nhận
             </Button>
@@ -276,7 +277,7 @@ const ViolationDetailPage = () => {
         </CardContent>
       </Card>
 
-      {/* ✅ Bảng vi phạm */}
+      {/* ✅ Bảng hiển thị */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -286,7 +287,7 @@ const ViolationDetailPage = () => {
               <TableCell>Thời gian</TableCell>
               <TableCell>Xử lý</TableCell>
               <TableCell>Trạng thái</TableCell>
-              <TableCell>Người xử lý</TableCell> {/* ✅ cột mới */}
+              <TableCell>Người xử lý</TableCell> {/* ✅ Cột mới */}
               <TableCell>Điểm trừ</TableCell>
               <TableCell>Tuần</TableCell>
               <TableCell>Thao tác</TableCell>
@@ -304,42 +305,33 @@ const ViolationDetailPage = () => {
                   <TableCell>{v.handlingMethod}</TableCell>
                   <TableCell>
                     {v.handled ? (
-                      <Box sx={{ backgroundColor: "green", color: "white", px: 1, borderRadius: 1 }}>Đã xử lý</Box>
+                      <Box sx={{ backgroundColor: "green", color: "white", px: 1, py: 0.5, borderRadius: 1, textAlign: "center" }}>
+                        Đã xử lý
+                      </Box>
                     ) : (
-                      <Box sx={{ backgroundColor: "#ffcccc", color: "red", px: 1, borderRadius: 1 }}>Chưa xử lý</Box>
+                      <Box sx={{ backgroundColor: "#ffcccc", color: "red", px: 1, py: 0.5, borderRadius: 1, textAlign: "center" }}>
+                        Chưa xử lý
+                      </Box>
                     )}
                   </TableCell>
-
-                  <TableCell>{v.handledBy || ""}</TableCell> {/* ✅ hiển thị người xử lý */}
-
+                  <TableCell>{v.handledBy || ""}</TableCell> {/* ✅ Hiển thị người xử lý */}
                   <TableCell>{matchedRule?.point || 0}</TableCell>
                   <TableCell>{v.weekNumber ?? "N/A"}</TableCell>
-
                   <TableCell>
-                    {!v.handled && (
-                      <>
-                        <Button
-                          size="small"
-                          variant="contained"
-                          onClick={() => handleMarkAsHandled(v._id, "GVCN")}
-                          sx={{ mr: 1 }}
-                        >
-                          GVCN xử lý
+                    {!v.handled ? (
+                      <Stack direction="row" spacing={1}>
+                        <Button size="small" variant="contained" onClick={() => handleMarkAsHandled(v._id, "GVCN")}>
+                          GVCN
                         </Button>
-                        <Button
-                          size="small"
-                          variant="contained"
-                          color="secondary"
-                          onClick={() => handleMarkAsHandled(v._id, "PGT")}
-                          sx={{ mr: 1 }}
-                        >
-                          PGT xử lý
+                        <Button size="small" variant="contained" color="secondary" onClick={() => handleMarkAsHandled(v._id, "PGT")}>
+                          PGT
                         </Button>
-                      </>
+                      </Stack>
+                    ) : (
+                      <Button size="small" color="error" onClick={() => handleDeleteViolation(v._id)}>
+                        Xoá
+                      </Button>
                     )}
-                    <Button size="small" color="error" onClick={() => handleDeleteViolation(v._id)}>
-                      Xoá
-                    </Button>
                   </TableCell>
                 </TableRow>
               );
