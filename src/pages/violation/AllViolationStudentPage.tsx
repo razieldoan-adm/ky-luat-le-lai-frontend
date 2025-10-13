@@ -277,6 +277,7 @@ export default function AllViolationStudentPage() {
               <TableCell>Thời gian</TableCell>
               <TableCell>Hình thức xử lý</TableCell>
               <TableCell>Trạng thái</TableCell>
+              <TableCell>Người xử lý</TableCell> {/* ✅ Cột mới */}
               <TableCell>Điểm</TableCell>
               <TableCell>Thao tác</TableCell>
             </TableRow>
@@ -294,6 +295,7 @@ export default function AllViolationStudentPage() {
                   <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
                   <TableCell>{v.handlingMethod || '—'}</TableCell>
                   <TableCell>{v.handled ? 'Đã xử lý' : 'Chưa xử lý'}</TableCell>
+                  <TableCell>{v.handledBy || ""}</TableCell> {/* ✅ Hiển thị người xử lý */}
                   <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
