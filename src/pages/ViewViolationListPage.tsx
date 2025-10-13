@@ -17,6 +17,7 @@ import api from "../api/api";
 import dayjs from 'dayjs';
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import { getWeeksAndCurrentWeek } from "../types/weekHelper";
 interface Violation {
   _id: string;
   name: string;
@@ -110,13 +111,29 @@ export default function ViewViolationStudentByClassPage() {
   };
 
   const fetchWeeks = async () => {
-    try {
-      const res = await api.get('/api/academic-weeks/study-weeks');
-      setWeekList(res.data);
-    } catch (err) {
-      console.error('Lỗi khi lấy danh sách tuần:', err);
+  try {
+    // 🔹 Gọi hàm tiện ích
+    const { currentWeek } = await getWeeksAndCurrentWeek();
+
+    // 🔹 Lấy danh sách tuần từ API backend
+    const res = await api.get('/api/academic-weeks/study-weeks');
+    const allWeeks: AcademicWeek[] = res.data;
+
+    // ⚙️ Giữ lại các tuần <= tuần hiện tại
+    const filteredWeeks = allWeeks.filter(w => w.weekNumber <= currentWeek);
+    setWeekList(filteredWeeks);
+
+    // ✅ Tự động chọn tuần hiện tại
+    const currentWeekObj = filteredWeeks.find(w => w.weekNumber === currentWeek);
+    if (currentWeekObj) {
+      setSelectedWeek(currentWeekObj);
+      checkIfCalculated(currentWeekObj.weekNumber);
     }
-  };
+  } catch (err) {
+    console.error('Lỗi khi lấy tuần:', err);
+  }
+};
+
 
   const applyFilters = () => {
   let data = violations;
