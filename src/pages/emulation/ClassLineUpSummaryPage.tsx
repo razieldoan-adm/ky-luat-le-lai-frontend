@@ -13,7 +13,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import api from "../../api/api";
-
+import { getWeeksAndCurrentWeek } from "../../utils/weekHelper";
 interface AcademicWeek {
   _id: string;
   weekNumber: number;
@@ -35,9 +35,18 @@ export default function ClassLineUpSummaryPage() {
   const [summaries, setSummaries] = useState<SummaryRow[]>([]);
 
   // 🔹 Load danh sách tuần
-  useEffect(() => {
-    api.get("/api/academic-weeks").then((res) => setWeeks(res.data));
-  }, []);
+useEffect(() => {
+  const initWeeks = async () => {
+    const { weeks, currentWeek } = await getWeeksAndCurrentWeek();
+    setWeeks(weeks);
+    if (currentWeek) {
+      setSelectedWeek(currentWeek);
+      loadScores(currentWeek);
+    }
+  };
+  initWeeks();
+}, []);
+
 
   // 🔹 Hàm load dữ liệu lineup theo tuần được chọn
   const handleLoadData = async () => {
