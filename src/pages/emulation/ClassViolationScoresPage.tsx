@@ -8,7 +8,7 @@ import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import api from '../../api/api';
-import { getAvailableWeeks, getCurrentWeekNumber } from "../../types/weekHelper"; // ✅ thêm dòng này
+import { getWeeksAndCurrentWeek } from "../../types/weekHelper"; // 🔹 nhớ kiểm tra đường dẫn
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
