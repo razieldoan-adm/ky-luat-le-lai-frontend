@@ -48,14 +48,14 @@ interface AcademicWeek {
 }
 
 export default function ViewViolationListPage() {
-  const [violations, setViolations] = useState<Violation[]>([]);
+  const [allViolations, setAllViolations] = useState<Violation[]>([]);
+  const [filteredViolations, setFilteredViolations] = useState<Violation[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedWeek, setSelectedWeek] = useState<number | "" | "all">("");
   const [classList, setClassList] = useState<string[]>([]);
   const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
 
-  // --- Load dữ liệu ban đầu ---
   useEffect(() => {
     fetchClasses();
     fetchRules();
@@ -121,14 +121,15 @@ export default function ViewViolationListPage() {
           handled: v.handled || false,
         };
       });
-      setViolations(dataWithWeek);
+      setAllViolations(dataWithWeek);
+      applyFilters(dataWithWeek); // ✅ tự động áp filter sau khi fetch
     } catch (err) {
       console.error("Lỗi khi lấy dữ liệu vi phạm:", err);
     }
   };
 
-  const applyFilters = () => {
-    let data = [...violations];
+  const applyFilters = (sourceData = allViolations) => {
+    let data = [...sourceData];
     if (selectedClass) {
       data = data.filter(
         (v) =>
@@ -139,27 +140,27 @@ export default function ViewViolationListPage() {
     if (selectedWeek !== "" && selectedWeek !== "all") {
       data = data.filter((v) => v.weekNumber === selectedWeek);
     }
-    setViolations(data);
+    setFilteredViolations(data);
   };
 
-  // ✅ Xử lý đánh dấu GVCN tiếp nhận
   const handleMarkAsHandled = async (id: string, by: "GVCN" | "PGT") => {
     try {
-      await api.patch(`/api/violations/${id}/handle`, { handledBy: by });
-      await fetchViolations();
+      await api.put(`/api/violations/${id}/handle`, {
+        handled: true,
+        handledBy: by,
+        handlingMethod: `${by} xử lý`,
+      });
+      await fetchViolations(); // ✅ dữ liệu mới → tự lọc lại
     } catch (err) {
       console.error("Lỗi khi xử lý vi phạm:", err);
     }
   };
 
-  // ✅ Format thời gian
-  const renderTime = (date: Date) => {
-    return dayjs(date).format("DD/MM/YYYY");
-  };
+  const renderTime = (date: Date) => dayjs(date).format("DD/MM/YYYY");
 
-  // ✅ Tính tổng điểm trừ theo lớp — chỉ tính khi PGT xử lý
+  // ✅ Tổng điểm trừ (chỉ tính PGT xử lý)
   const classTotals: Record<string, number> = {};
-  violations.forEach((v) => {
+  filteredViolations.forEach((v) => {
     const matchedRule = rules.find((r) => r.title === v.description);
     const point = matchedRule?.point || 0;
     if (v.handledBy === "PGT") {
@@ -183,7 +184,10 @@ export default function ViewViolationListPage() {
           label="Chọn lớp"
           select
           value={selectedClass}
-          onChange={(e) => setSelectedClass(e.target.value)}
+          onChange={(e) => {
+            setSelectedClass(e.target.value);
+            applyFilters();
+          }}
           sx={{ minWidth: 150 }}
         >
           <MenuItem value="">-- Chọn lớp --</MenuItem>
@@ -198,15 +202,16 @@ export default function ViewViolationListPage() {
           label="Chọn tuần"
           select
           value={selectedWeek}
-          onChange={(e) =>
-            setSelectedWeek(
+          onChange={(e) => {
+            const val =
               e.target.value === "all"
                 ? "all"
                 : e.target.value === ""
                 ? ""
-                : Number(e.target.value)
-            )
-          }
+                : Number(e.target.value);
+            setSelectedWeek(val);
+            applyFilters();
+          }}
           sx={{ minWidth: 150 }}
         >
           <MenuItem value="all">-- Xem tất cả --</MenuItem>
@@ -217,7 +222,7 @@ export default function ViewViolationListPage() {
           ))}
         </TextField>
 
-        <Button variant="contained" onClick={applyFilters}>
+        <Button variant="contained" onClick={() => applyFilters()}>
           Áp dụng
         </Button>
       </Stack>
@@ -239,7 +244,7 @@ export default function ViewViolationListPage() {
           </TableHead>
 
           <TableBody>
-            {violations.map((v, idx) => {
+            {filteredViolations.map((v, idx) => {
               const matchedRule = rules.find((r) => r.title === v.description);
               return (
                 <TableRow key={v._id}>
@@ -249,7 +254,6 @@ export default function ViewViolationListPage() {
                   <TableCell>{v.description}</TableCell>
                   <TableCell>{matchedRule?.point || 0}</TableCell>
                   <TableCell>{renderTime(v.time)}</TableCell>
-
                   <TableCell>
                     {v.handled ? (
                       <Box
@@ -279,9 +283,7 @@ export default function ViewViolationListPage() {
                       </Box>
                     )}
                   </TableCell>
-
                   <TableCell>{v.handledBy || "—"}</TableCell>
-
                   <TableCell>
                     {!v.handled ? (
                       <Button
@@ -304,7 +306,6 @@ export default function ViewViolationListPage() {
         </Table>
       </Paper>
 
-      {/* ✅ Tổng điểm mỗi lớp */}
       <Box mt={4}>
         <Typography variant="h6" fontWeight="bold" gutterBottom>
           Tổng điểm trừ (chỉ tính khi PGT xử lý)
