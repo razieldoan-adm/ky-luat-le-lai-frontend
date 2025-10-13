@@ -296,7 +296,7 @@ export default function ViewViolationListPage() {
     );
   })}
 </TableBody>
-
+</Table>
       </Paper>
     </Box>
   );
