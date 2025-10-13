@@ -34,7 +34,7 @@ const WeeklyScoresPage: React.FC = () => {
   useEffect(() => {
     const fetchWeeks = async () => {
       try {
-        const res = await api.get("/api/weekly-scores/weeks");
+        const res = await api.get("/api/class-weekly-scores/weeks");
         setWeeks(res.data || []);
         const current = Math.max(...(res.data || []));
         setSelectedWeek(current);
@@ -77,7 +77,7 @@ const WeeklyScoresPage: React.FC = () => {
   const loadScores = async (weekNumber: number) => {
     setLoading(true);
     try {
-      const res = await api.get(`/api/weekly-scores/weekly`, { params: { weekNumber } });
+      const res = await api.get(`/api/class-weekly-scores/weekly`, { params: { weekNumber } });
       let data: ClassWeeklyScore[] = res.data || [];
 
       // Tính điểm kỷ luật và tổng thi đua
@@ -129,7 +129,7 @@ const WeeklyScoresPage: React.FC = () => {
   const handleSave = async () => {
     try {
       for (const s of scores) {
-        await api.post("/api/weekly-scores/update", s);
+        await api.post("/api/class-weekly-scores/update", s);
       }
       alert("✅ Đã lưu toàn bộ điểm tuần!");
       loadScores(Number(selectedWeek));
@@ -142,7 +142,7 @@ const WeeklyScoresPage: React.FC = () => {
   // --- Xuất Excel
   const handleExport = () => {
     if (!selectedWeek) return;
-    window.open(`/api/weekly-scores/export/${selectedWeek}`, "_blank");
+    window.open(`/api/class-weekly-scores/export/${selectedWeek}`, "_blank");
   };
 
   // --- Lọc lớp hiển thị
