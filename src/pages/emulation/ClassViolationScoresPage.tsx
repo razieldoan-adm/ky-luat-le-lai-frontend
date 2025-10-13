@@ -50,26 +50,29 @@ export default function ClassDisciplineTotalPage() {
   }, []);
 
  const fetchWeeks = async () => {
-    try {
-      const res = await api.get('/api/academic-weeks/study-weeks');
-      const allWeeks: AcademicWeek[] = res.data;
-      const currentWeekNumber = getCurrentWeekNumber();
+  try {
+    // 🔹 Gọi hàm tiện ích
+    const { currentWeek } = await getWeeksAndCurrentWeek();
 
-      // ⚙️ Giữ lại các tuần ≤ tuần hiện tại
-      const filteredWeeks = allWeeks.filter(w => w.weekNumber <= currentWeekNumber);
+    // 🔹 Lấy danh sách tuần từ API backend
+    const res = await api.get('/api/academic-weeks/study-weeks');
+    const allWeeks: AcademicWeek[] = res.data;
 
-      setWeekList(filteredWeeks);
+    // ⚙️ Giữ lại các tuần <= tuần hiện tại
+    const filteredWeeks = allWeeks.filter(w => w.weekNumber <= currentWeek);
+    setWeekList(filteredWeeks);
 
-      // ✅ Tự động chọn tuần hiện tại
-      const currentWeek = filteredWeeks.find(w => w.weekNumber === currentWeekNumber);
-      if (currentWeek) {
-        setSelectedWeek(currentWeek);
-        checkIfCalculated(currentWeek.weekNumber);
-      }
-    } catch (err) {
-      console.error('Lỗi khi lấy tuần:', err);
+    // ✅ Tự động chọn tuần hiện tại
+    const currentWeekObj = filteredWeeks.find(w => w.weekNumber === currentWeek);
+    if (currentWeekObj) {
+      setSelectedWeek(currentWeekObj);
+      checkIfCalculated(currentWeekObj.weekNumber);
     }
-  };
+  } catch (err) {
+    console.error('Lỗi khi lấy tuần:', err);
+  }
+};
+
 
   const fetchClasses = async () => {
     try {
