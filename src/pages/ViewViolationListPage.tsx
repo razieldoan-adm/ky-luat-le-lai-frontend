@@ -229,95 +229,74 @@ export default function ViewViolationListPage() {
             </TableRow>
           </TableHead>
 
-          <TableBody>
-            {filtered.length > 0 ? (
-              filtered.map((v, i) => {
-                const matchedRule = rules.find(
-                  (r) => r.title === v.description
-                );
-                return (
-                  <TableRow key={v._id}>
-                    <TableCell>{i + 1}</TableCell>
-                    <TableCell>{v.name}</TableCell>
-                    <TableCell>{v.className}</TableCell>
-                    <TableCell>{v.description}</TableCell>
-                    <TableCell>{matchedRule?.point || 0}</TableCell>
-                    <TableCell>
-                      {v.time ? dayjs(v.time).format("DD/MM/YYYY") : "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      {v.handled ? (
-                        <Box
-                          sx={{
-                            bgcolor: "#c8e6c9",
-                            px: 1,
-                            py: 0.5,
-                            borderRadius: 1,
-                            textAlign: "center",
-                          }}
-                        >
-                          Đã xử lý
-                        </Box>
-                      ) : (
-                        <Box
-                          sx={{
-                            bgcolor: "#ffcdd2",
-                            px: 1,
-                            py: 0.5,
-                            borderRadius: 1,
-                            textAlign: "center",
-                          }}
-                        >
-                          Chưa xử lý
-                        </Box>
-                      )}
-                    </TableCell>
-                    <TableCell>{v.handledBy || "-"}</TableCell>
-                    <TableCell>
-                      {!v.handled ? (
-                        <Stack direction="row" spacing={1}>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleMarkAsHandled(v._id, "GVCN")}
-                          >
-                            GVCN
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="success"
-                            onClick={() => handleMarkAsHandled(v._id, "PGT")}
-                          >
-                            PGT
-                          </Button>
-                        </Stack>
-                      ) : (
-                        <Typography sx={{ fontSize: 13, color: "gray" }}>
-                          Đã xử lý
-                        </Typography>
-                      )}
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() => handleDeleteViolation(v._id)}
-                      >
-                        Xoá
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            ) : (
-              <TableRow>
-                <TableCell colSpan={9} align="center">
-                  Không có dữ liệu.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+<TableBody>
+  {violations.map((v, idx) => {
+    const matchedRule = rules.find((r) => r.title === v.description);
+    return (
+      <TableRow key={v._id}>
+        <TableCell>{idx + 1}</TableCell>
+        <TableCell>{v.description}</TableCell>
+        <TableCell>{renderTime(v.time)}</TableCell>
+        <TableCell>{v.handlingMethod}</TableCell>
+
+        {/* ✅ Trạng thái xử lý */}
+        <TableCell>
+          {v.handled ? (
+            <Box
+              sx={{
+                backgroundColor: "green",
+                color: "white",
+                px: 1,
+                py: 0.5,
+                borderRadius: 1,
+                textAlign: "center",
+              }}
+            >
+              Đã xử lý
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                backgroundColor: "#ffcccc",
+                color: "red",
+                px: 1,
+                py: 0.5,
+                borderRadius: 1,
+                textAlign: "center",
+              }}
+            >
+              Chưa xử lý
+            </Box>
+          )}
+        </TableCell>
+
+        {/* ✅ Cột Người xử lý */}
+        <TableCell>{v.handledBy || "—"}</TableCell>
+
+        <TableCell>{matchedRule?.point || 0}</TableCell>
+        <TableCell>{v.weekNumber ?? "N/A"}</TableCell>
+
+        {/* ✅ Cột GVCN tiếp nhận */}
+        <TableCell>
+          {!v.handled ? (
+            <Button
+              size="small"
+              variant="contained"
+              onClick={() => handleMarkAsHandled(v._id, "GVCN")}
+            >
+              GVCN tiếp nhận
+            </Button>
+          ) : (
+            <Typography color="green" fontWeight="bold">
+              ✓ GVCN đã nhận
+            </Typography>
+          )}
+        </TableCell>
+      </TableRow>
+    );
+  })}
+</TableBody>
+
       </Paper>
     </Box>
   );
