@@ -25,7 +25,7 @@ interface Violation {
   description: string;
   time: Date;
   weekNumber?: number;
-  handlingMethod?: string;
+  handledBy?: string; // ✅ thêm dòng này
 }
 
 interface Rule {
@@ -81,7 +81,10 @@ export default function ViewViolationStudentByClassPage() {
           violationDate.isSameOrAfter(dayjs(w.startDate).startOf('day')) &&
           violationDate.isSameOrBefore(dayjs(w.endDate).endOf('day'))
       );
-      return { ...v, weekNumber: matchedWeek?.weekNumber || null };
+      return { ...v, 
+              weekNumber: matchedWeek?.weekNumber || null ,
+              handledBy: v.handledBy || "", // ✅ đảm bảo không bị undefined
+             }
     });
 
     setViolations(dataWithWeek);
@@ -134,8 +137,6 @@ export default function ViewViolationStudentByClassPage() {
   }
 };
 
-
-
   const applyFilters = () => {
   let data = violations;
 
@@ -162,7 +163,7 @@ export default function ViewViolationStudentByClassPage() {
   const total = data.reduce((sum, v) => {
     const rule = rules.find((r) => r.title === v.description);
     const point = rule?.point || 0;
-    return v.handlingMethod === "PGT xử lý" ? sum + point : sum;
+    return v.handledBy === "PGT xử lý" ? sum + point : sum;
   }, 0);
   setTotalPoint(total);
 
