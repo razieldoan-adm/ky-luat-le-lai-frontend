@@ -102,27 +102,32 @@ const WeeklyScoresPage: React.FC = () => {
   };
 
   // --- Khi sửa điểm học tập hoặc thưởng
-  const handleChangeScore = (className: string, field: keyof ClassWeeklyScore, value: number) => {
-    setScores((prev) =>
-      prev.map((s) =>
-        s.className === className ? { ...s, [field]: value } : s
-      )
-    );
-  };
+const handleChangeScore = (className: string, field: keyof ClassWeeklyScore, value: number) => {
+  setScores((prev) =>
+    prev.map((s) => {
+      if (s.className !== className) return s;
 
-  // --- Lưu toàn bộ điểm
-  const handleSave = async () => {
-    try {
-      for (const s of scores) {
-        await api.post("/api/class-weekly-scores/update", s);
-      }
-      alert("✅ Đã lưu toàn bộ điểm tuần!");
-      loadScores(Number(selectedWeek));
-    } catch (err) {
-      console.error("Lỗi khi lưu:", err);
-      alert("❌ Lỗi khi lưu dữ liệu");
-    }
-  };
+      // cập nhật giá trị mới
+      const updated = { ...s, [field]: value };
+
+      // tính lại điểm kỷ luật và tổng thi đua
+      const discipline =
+        settings.maxDiscipline -
+        ((updated.attendanceScore ?? 0) * 5 +
+          (updated.violationScore ?? 0) +
+          (updated.hygieneScore ?? 0) +
+          (updated.lineupScore ?? 0));
+
+      const total = discipline + (updated.rewardScore ?? 0) + (updated.academicScore ?? 0);
+
+      return {
+        ...updated,
+        disciplineScore: discipline,
+        totalScore: total,
+      };
+    })
+  );
+};
 
   // --- Xuất Excel
   const handleExport = () => {
