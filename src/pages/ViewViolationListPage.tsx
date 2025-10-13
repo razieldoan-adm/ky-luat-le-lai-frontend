@@ -25,6 +25,7 @@ interface Violation {
   description: string;
   time: Date;
   weekNumber?: number;
+  handlingMethod?: string;
 }
 
 interface Rule {
