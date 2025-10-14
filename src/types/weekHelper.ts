@@ -14,7 +14,7 @@ export async function getWeeksAndCurrentWeek() {
 
     // Tính số tuần trôi qua từ ngày bắt đầu
     const diffMs = now.getTime() - startDate.getTime();
-    const diffWeeks = Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
+    const diffWeeks = Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000));
     const currentWeek = Math.max(1, Math.min(diffWeeks, totalWeeks));
 
     // ✅ Sinh danh sách tuần từ 1 → currentWeek
