@@ -279,18 +279,7 @@ export default function UnhandledViolationsPage() {
         <TableCell>{v.handled ? 'Đã xử lý' : 'Chưa xử lý'}</TableCell> {/* ✅ trạng thái */}
         <TableCell>{v.handledBy || '-'}</TableCell> {/* ✅ đúng người xử lý */}
         <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
-        <TableCell align="center">
-          <Stack direction="row" spacing={1} justifyContent="center">
-            <Button size="small" variant="contained" color="primary"
-              onClick={() => handleMarkAsHandled(v._id, 'GVCN')}>
-              GVCN
-            </Button>
-            <Button size="small" variant="contained" color="secondary"
-              onClick={() => handleMarkAsHandled(v._id, 'PGT')}>
-              PGT
-            </Button>
-          </Stack>
-        </TableCell>
+      
       </TableRow>
     ))
   ) : (
