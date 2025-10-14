@@ -145,7 +145,7 @@ export default function ViewViolationListPage() {
 
   const handleMarkAsHandled = async (id: string, by: "GVCN" | "PGT") => {
     try {
-      await api.put(`/api/violations/${id}/handle`, {
+      await api.patch(`/api/violations/${id}/handle`, {
         handled: true,
         handledBy: by,
         handlingMethod: `${by} xử lý`,
