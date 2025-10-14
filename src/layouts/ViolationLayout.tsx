@@ -46,11 +46,11 @@ const drawerWidth = 240;
         
         <ListItemButton onClick={() => navigate('/violation/unhandled')}>
           <ListItemIcon><ClassIcon /></ListItemIcon>
-          <ListItemText primary="Danh sách vi phạm chưa xử lý" />
+          <ListItemText primary="Báo cáo danh sách theo lớp" />
         </ListItemButton>
           <ListItemButton onClick={() => navigate('/violation/all-violations')}>
           <ListItemIcon><ClassIcon /></ListItemIcon>
-          <ListItemText primary="Danh sách vi phạm tổng hợp" />
+          <ListItemText primary="Duyệt xử lý vi phạm" />
         
         </ListItemButton>
         <ListItemButton onClick={() => navigate('/violation/student-list')}>
