@@ -184,8 +184,9 @@ export default function AllViolationStudentPage() {
       await api.patch(`/api/violations/${id}/handle`, {
         handled: true,
         handlingMethod: method,
+        handledBy: method, // ✅ ghi lại người xử lý
       });
-      setSnackbar({ open: true, message: `Đã ghi nhận xử lý: ${method}`, severity: 'success' });
+      setSnackbar({ open: true, message: `Đã cập nhật: ${method}`, severity: 'success' });
       await fetchViolations();
     } catch (error) {
       console.error('Lỗi khi xử lý vi phạm:', error);
@@ -326,7 +327,7 @@ export default function AllViolationStudentPage() {
                         <>
                           <Button
                             variant="contained"
-                            color="primary"
+                            color={v.handledBy === 'GVCN xử lý' ? 'secondary' : 'primary'}
                             size="small"
                             onClick={() => handleProcessViolation(v._id, 'GVCN xử lý')}
                           >
@@ -334,7 +335,7 @@ export default function AllViolationStudentPage() {
                           </Button>
                           <Button
                             variant="contained"
-                            color="success"
+                            color={v.handledBy === 'PGT xử lý' ? 'secondary' : 'success'}
                             size="small"
                             onClick={() => handleProcessViolation(v._id, 'PGT xử lý')}
                           >
