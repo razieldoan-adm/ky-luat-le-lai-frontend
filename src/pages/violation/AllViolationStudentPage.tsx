@@ -258,8 +258,8 @@ const handleProcessViolation = async (id: string, handledBy: string) => {
           >
             <MenuItem value="">-- Tất cả --</MenuItem>
             <MenuItem value="unhandled">Chưa xử lý</MenuItem>
-            <MenuItem value="GVCN xử lý">GVCN xử lý</MenuItem>
-            <MenuItem value="PGT xử lý">PGT xử lý</MenuItem>
+            <MenuItem value="GVCN">GVCN xử lý</MenuItem>
+            <MenuItem value="PGT">PGT xử lý</MenuItem>
           </TextField>
 
           <Button variant="contained" onClick={applyFilters}>
@@ -320,8 +320,7 @@ const handleProcessViolation = async (id: string, handledBy: string) => {
                       >
                         Sửa
                       </Button>
-
-                    
+   
                           <>
                             <Button
                               variant={v.handledBy === 'GVCN' ? 'contained' : 'outlined'}
@@ -331,7 +330,7 @@ const handleProcessViolation = async (id: string, handledBy: string) => {
                             >
                               GVCN
                             </Button>
-                          
+                            
                             <Button
                               variant={v.handledBy === 'PGT' ? 'contained' : 'outlined'}
                               color="success"
@@ -341,9 +340,7 @@ const handleProcessViolation = async (id: string, handledBy: string) => {
                               PGT
                             </Button>
                           </>
-
-                   
-              
+                  
                     </Box>
                   </TableCell>
                 </TableRow>
