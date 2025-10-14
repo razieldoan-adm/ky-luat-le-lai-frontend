@@ -57,7 +57,7 @@ export default function RecordClassLineUpSummaryPage() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [recorder] = useState("Th.Huy"); // tạm thời mặc định
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-
+  const [note, setNote] = useState("");
   const [records, setRecords] = useState<Record[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -199,12 +199,14 @@ export default function RecordClassLineUpSummaryPage() {
         studentName: selectedStudents.join(", "),
         recorder,
         date: isoDatetime,
+        note, // ✅ thêm ghi chú
       };
 
       await api.post("/api/class-lineup-summaries", payload);
       setViolation("");
       setStudentInput("");
       setSelectedStudents([]);
+      setNote("");
       await loadRecords(selectedWeek || undefined);
     } catch (err) {
       console.error("Lỗi khi lưu ghi nhận:", err);
@@ -316,7 +318,14 @@ export default function RecordClassLineUpSummaryPage() {
             InputLabelProps={{ shrink: true }}
             fullWidth
           />
-
+          <TextField
+            label="Ghi chú"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            fullWidth
+            multiline
+            minRows={2}
+          />
           <Box sx={{ display: "flex", gap: 2 }}>
             <Button variant="contained" onClick={handleSave}>
               Lưu ghi nhận
