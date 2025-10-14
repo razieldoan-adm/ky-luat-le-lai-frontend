@@ -181,7 +181,7 @@ export default function AllViolationStudentPage() {
   // 🧾 Ghi nhận xử lý
 const handleProcessViolation = async (id: string, handledBy: string) => {
   try {
-    const res = await api.put(`/api/violations/${id}/handle`, { handledBy });
+    const res = await api.patch(`/api/violations/${id}/handle`, { handledBy });
     setViolations(prev =>
       prev.map(v => (v._id === id ? res.data : v))
     );
