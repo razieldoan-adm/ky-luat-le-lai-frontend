@@ -143,8 +143,14 @@ export default function AllViolationStudentPage() {
       data = data.filter((v: Violation) => v.className === selectedClass);
     if (selectedWeek)
       data = data.filter((v: Violation) => String(v.weekNumber) === selectedWeek);
-    if (handledStatus)
-      data = data.filter((v: Violation) => String(v.handled) === handledStatus);
+    if (handledStatus) {
+    if (handledStatus === 'unhandled') {
+      data = data.filter((v) => !v.handled); // chưa xử lý
+    } else {
+      data = data.filter((v) => v.handledBy === handledStatus); // GVCN / PGT xử lý
+    }
+  }
+
 
     setFiltered(data);
   };
@@ -249,11 +255,12 @@ export default function AllViolationStudentPage() {
             select
             value={handledStatus}
             onChange={(e) => setHandledStatus(e.target.value)}
-            sx={{ minWidth: 180 }}
+            sx={{ minWidth: 200 }}
           >
             <MenuItem value="">-- Tất cả --</MenuItem>
-            <MenuItem value="false">Chưa xử lý</MenuItem>
-            <MenuItem value="true">Đã xử lý</MenuItem>
+            <MenuItem value="unhandled">Chưa xử lý</MenuItem>
+            <MenuItem value="GVCN xử lý">GVCN xử lý</MenuItem>
+            <MenuItem value="PGT xử lý">PGT xử lý</MenuItem>
           </TextField>
 
           <Button variant="contained" onClick={applyFilters}>
