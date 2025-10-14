@@ -179,20 +179,18 @@ export default function AllViolationStudentPage() {
   };
 
   // 🧾 Ghi nhận xử lý
-  const handleProcessViolation = async (id: string, method: string) => {
-    try {
-      await api.patch(`/api/violations/${id}/handle`, {
-        handled: true,
-        handlingMethod: method,
-        handledBy: method, // ✅ ghi lại người xử lý
-      });
-      setSnackbar({ open: true, message: `Đã cập nhật: ${method}`, severity: 'success' });
-      await fetchViolations();
-    } catch (error) {
-      console.error('Lỗi khi xử lý vi phạm:', error);
-      setSnackbar({ open: true, message: 'Lỗi khi xử lý vi phạm', severity: 'error' });
-    }
-  };
+const handleProcessViolation = async (id: string, handledBy: string) => {
+  try {
+    const res = await api.put(`/api/violations/${id}/handle`, { handledBy });
+    setViolations(prev =>
+      prev.map(v => (v._id === id ? res.data : v))
+    );
+  } catch (err) {
+    console.error("Lỗi khi cập nhật người xử lý:", err);
+  }
+};
+
+
 
   // 💾 Lưu sửa đổi
   const handleSaveEdit = async () => {
@@ -327,17 +325,18 @@ export default function AllViolationStudentPage() {
                         <>
                           <Button
                             variant="contained"
-                            color={v.handledBy === 'GVCN xử lý' ? 'secondary' : 'primary'}
+                            color={v.handledBy === "GVCN" ? "secondary" : "primary"}
                             size="small"
-                            onClick={() => handleProcessViolation(v._id, 'GVCN xử lý')}
+                            onClick={() => handleProcessViolation(v._id, "GVCN")}
                           >
                             GVCN
                           </Button>
+                          
                           <Button
                             variant="contained"
-                            color={v.handledBy === 'PGT xử lý' ? 'secondary' : 'success'}
+                            color={v.handledBy === "PGT" ? "secondary" : "success"}
                             size="small"
-                            onClick={() => handleProcessViolation(v._id, 'PGT xử lý')}
+                            onClick={() => handleProcessViolation(v._id, "PGT")}
                           >
                             PGT
                           </Button>
