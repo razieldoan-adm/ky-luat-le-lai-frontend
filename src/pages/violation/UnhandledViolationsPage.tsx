@@ -5,12 +5,10 @@ import {
   Table, TableHead, TableBody, TableRow, TableCell, Paper, Stack, ListItemText
 } from '@mui/material';
 import api from '../../api/api';
-
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
-// ✅ Kích hoạt plugin timezone + đặt múi giờ mặc định
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.tz.setDefault("Asia/Ho_Chi_Minh");
@@ -22,15 +20,9 @@ interface Violation {
   description: string;
   time: Date | string;
   handlingMethod: string;
-  handled?: boolean; // ✅ thêm dòng này
-  handledBy?: string; // ✅ thêm
+  handled?: boolean;
 }
-interface Rule {
-  _id: string;
-  title: string;
-  point: number;
-  content: string;
-}
+
 interface Week {
   _id?: string;
   weekNumber?: number;
@@ -45,7 +37,6 @@ export default function UnhandledViolationsPage() {
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [searchName, setSearchName] = useState('');
   const [classList, setClassList] = useState<string[]>([]);
-  const [rules, setRules] = useState<Rule[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<string | number | ''>('all');
   const [onlyFrequent, setOnlyFrequent] = useState(false);
   const [weekList, setWeekList] = useState<Week[]>([]);
@@ -53,7 +44,6 @@ export default function UnhandledViolationsPage() {
   useEffect(() => {
     fetchViolations();
     fetchClasses();
-    fetchRules();
     fetchWeeks();
   }, []);
 
@@ -79,15 +69,6 @@ export default function UnhandledViolationsPage() {
     }
   };
 
-  const fetchRules = async () => {
-    try {
-      const res = await api.get('/api/rules');
-      setRules(res.data);
-    } catch (err) {
-      console.error('Lỗi khi lấy rules:', err);
-    }
-  };
-
   const fetchWeeks = async () => {
     try {
       const res = await api.get('/api/academic-weeks/study-weeks');
@@ -103,7 +84,6 @@ export default function UnhandledViolationsPage() {
       data = data.filter((v) => selectedClasses.includes(v.className));
     }
 
-    // ✅ Lọc theo tuần
     if (selectedWeek !== 'all' && selectedWeek !== '') {
       const week = weekList.find(
         (w) =>
@@ -158,19 +138,6 @@ export default function UnhandledViolationsPage() {
     setFiltered(violations);
   };
 
-  // ✅ Hàm xử lý: GVCN / PGT
-  const handleMarkAsHandled = async (id: string, role: 'GVCN' | 'PGT') => {
-    try {
-      await api.put(`/api/violations/${id}`, {
-        handled: true,
-        handledBy: role,
-      });
-      fetchViolations(); // refresh sau khi cập nhật
-    } catch (err) {
-      console.error('Lỗi khi cập nhật:', err);
-    }
-  };
-
   return (
     <Box sx={{ maxWidth: '100%', mx: 'auto', py: 4 }}>
       <Typography variant="h4" fontWeight="bold" align="center" gutterBottom>
@@ -205,7 +172,6 @@ export default function UnhandledViolationsPage() {
             ))}
           </TextField>
 
-          {/* ✅ Chọn tuần */}
           <TextField
             label="Chọn tuần"
             select
@@ -253,43 +219,38 @@ export default function UnhandledViolationsPage() {
       <Paper elevation={3} sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mt: 2 }}>
         <Table size="small">
           <TableHead>
-  <TableRow sx={{ backgroundColor: '#87cafe' }}>
-    <TableCell>STT</TableCell>
-    <TableCell>Họ tên</TableCell>
-    <TableCell>Lớp</TableCell>
-    <TableCell>Lỗi vi phạm</TableCell>
-    <TableCell>Thời gian</TableCell>
-    <TableCell>Hình thức xử lý</TableCell>
-    <TableCell>Trạng thái</TableCell>
-    <TableCell>Người xử lý</TableCell> {/* ✅ Thêm cột */}
-    <TableCell>Điểm</TableCell>
-    <TableCell align="center">Thao tác</TableCell>
-  </TableRow>
-</TableHead>
-         <TableBody>
-  {filtered.length > 0 ? (
-    filtered.map((v, i) => (
-      <TableRow key={v._id}>
-        <TableCell>{i + 1}</TableCell>
-        <TableCell>{v.name}</TableCell>
-        <TableCell>{v.className}</TableCell>
-        <TableCell>{v.description}</TableCell>
-        <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
-        <TableCell>{v.handlingMethod || '-'}</TableCell> {/* ✅ Giữ nguyên */}
-        <TableCell>{v.handled ? 'Đã xử lý' : 'Chưa xử lý'}</TableCell> {/* ✅ trạng thái */}
-        <TableCell>{v.handledBy || '-'}</TableCell> {/* ✅ đúng người xử lý */}
-        <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
-      
-      </TableRow>
-    ))
-  ) : (
-    <TableRow>
-      <TableCell colSpan={10} align="center">
-        Không có dữ liệu phù hợp.
-      </TableCell>
-    </TableRow>
-  )}
-</TableBody>
+            <TableRow sx={{ backgroundColor: '#87cafe' }}>
+              <TableCell>STT</TableCell>
+              <TableCell>Họ tên</TableCell>
+              <TableCell>Lớp</TableCell>
+              <TableCell>Lỗi vi phạm</TableCell>
+              <TableCell>Thời gian</TableCell>
+              <TableCell>Hình thức xử lý</TableCell>
+              <TableCell>Trạng thái</TableCell>
+            </TableRow>
+          </TableHead>
+
+          <TableBody>
+            {filtered.length > 0 ? (
+              filtered.map((v, i) => (
+                <TableRow key={v._id}>
+                  <TableCell>{i + 1}</TableCell>
+                  <TableCell>{v.name}</TableCell>
+                  <TableCell>{v.className}</TableCell>
+                  <TableCell>{v.description}</TableCell>
+                  <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
+                  <TableCell>{v.handlingMethod || '-'}</TableCell>
+                  <TableCell>{v.handled ? 'Đã xử lý' : 'Chưa xử lý'}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} align="center">
+                  Không có dữ liệu phù hợp.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
         </Table>
       </Paper>
     </Box>
