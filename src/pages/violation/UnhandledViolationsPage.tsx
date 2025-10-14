@@ -252,51 +252,54 @@ export default function UnhandledViolationsPage() {
       <Paper elevation={3} sx={{ width: '100%', overflowX: 'auto', borderRadius: 3, mt: 2 }}>
         <Table size="small">
           <TableHead>
-            <TableRow sx={{ backgroundColor: '#87cafe' }}>
-              <TableCell>STT</TableCell>
-              <TableCell>Họ tên</TableCell>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Lỗi vi phạm</TableCell>
-              <TableCell>Thời gian</TableCell>
-              <TableCell>Hình thức xử lý</TableCell>
-              <TableCell>Điểm</TableCell>
-              <TableCell align="center">Thao tác</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filtered.length > 0 ? (
-              filtered.map((v, i) => (
-                <TableRow key={v._id}>
-                  <TableCell>{i + 1}</TableCell>
-                  <TableCell>{v.name}</TableCell>
-                  <TableCell>{v.className}</TableCell>
-                  <TableCell>{v.description}</TableCell>
-                  <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
-                  <TableCell>{v.handlingMethod || '-'}</TableCell>
-                  <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
-                  <TableCell align="center">
-                    {/* ✅ Hai nút mới */}
-                    <Stack direction="row" spacing={1} justifyContent="center">
-                      <Button size="small" variant="contained" color="primary"
-                        onClick={() => handleMarkAsHandled(v._id, 'GVCN')}>
-                        GVCN
-                      </Button>
-                      <Button size="small" variant="contained" color="secondary"
-                        onClick={() => handleMarkAsHandled(v._id, 'PGT')}>
-                        PGT
-                      </Button>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={8} align="center">
-                  Không có dữ liệu phù hợp.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
+  <TableRow sx={{ backgroundColor: '#87cafe' }}>
+    <TableCell>STT</TableCell>
+    <TableCell>Họ tên</TableCell>
+    <TableCell>Lớp</TableCell>
+    <TableCell>Lỗi vi phạm</TableCell>
+    <TableCell>Thời gian</TableCell>
+    <TableCell>Hình thức xử lý</TableCell>
+    <TableCell>Trạng thái</TableCell>
+    <TableCell>Người xử lý</TableCell> {/* ✅ Thêm cột */}
+    <TableCell>Điểm</TableCell>
+    <TableCell align="center">Thao tác</TableCell>
+  </TableRow>
+</TableHead>
+         <TableBody>
+  {filtered.length > 0 ? (
+    filtered.map((v, i) => (
+      <TableRow key={v._id}>
+        <TableCell>{i + 1}</TableCell>
+        <TableCell>{v.name}</TableCell>
+        <TableCell>{v.className}</TableCell>
+        <TableCell>{v.description}</TableCell>
+        <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
+        <TableCell>{v.handlingMethod || '-'}</TableCell> {/* ✅ Giữ nguyên */}
+        <TableCell>{v.handled ? 'Đã xử lý' : 'Chưa xử lý'}</TableCell> {/* ✅ trạng thái */}
+        <TableCell>{v.handledBy || '-'}</TableCell> {/* ✅ đúng người xử lý */}
+        <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
+        <TableCell align="center">
+          <Stack direction="row" spacing={1} justifyContent="center">
+            <Button size="small" variant="contained" color="primary"
+              onClick={() => handleMarkAsHandled(v._id, 'GVCN')}>
+              GVCN
+            </Button>
+            <Button size="small" variant="contained" color="secondary"
+              onClick={() => handleMarkAsHandled(v._id, 'PGT')}>
+              PGT
+            </Button>
+          </Stack>
+        </TableCell>
+      </TableRow>
+    ))
+  ) : (
+    <TableRow>
+      <TableCell colSpan={10} align="center">
+        Không có dữ liệu phù hợp.
+      </TableCell>
+    </TableRow>
+  )}
+</TableBody>
         </Table>
       </Paper>
     </Box>
