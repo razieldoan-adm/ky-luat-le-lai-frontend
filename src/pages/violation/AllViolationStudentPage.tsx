@@ -37,7 +37,6 @@ interface Violation {
   className: string;
   description: string;
   time: Date;
-  handled: boolean;
   penalty: number;
   handlingMethod: string;
   handled?: boolean; // ✅ thêm dòng này
