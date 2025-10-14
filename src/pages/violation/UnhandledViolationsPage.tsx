@@ -22,6 +22,7 @@ interface Violation {
   description: string;
   time: Date | string;
   handlingMethod: string;
+  handled?: boolean; // ✅ thêm dòng này
   handledBy?: string; // ✅ thêm
 }
 interface Rule {
