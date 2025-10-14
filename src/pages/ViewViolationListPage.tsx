@@ -175,8 +175,8 @@ export default function ViewViolationListPage() {
       </Typography>
 
       <Typography align="center" sx={{ color: "gray", mb: 2 }}>
-        Nếu GVCN đã xử lý vi phạm của học sinh vui lòng check vào ô{" "}
-        <b>GVCN tiếp nhận</b>. Xin cám ơn.
+        Nếu GVCN đã xử lý vi phạm của học sinh vui lòng check vào nút{" "}
+        <b>"GVCN tiếp nhận"</b>. Xin cám ơn.
       </Typography>
 
       <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
@@ -238,7 +238,7 @@ export default function ViewViolationListPage() {
               <TableCell>Điểm trừ</TableCell>
               <TableCell>Ngày</TableCell>
               <TableCell>Trạng thái</TableCell>
-              <TableCell>GVCN tiếp nhận</TableCell>
+              <TableCell>Tiếp nhận xử lý</TableCell>
             </TableRow>
           </TableHead>
 
