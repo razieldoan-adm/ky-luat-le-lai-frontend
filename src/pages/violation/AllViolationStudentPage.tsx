@@ -321,8 +321,7 @@ const handleProcessViolation = async (id: string, handledBy: string) => {
                         Sửa
                       </Button>
 
-                      {!v.handled && (
-                        <>
+                    
                           <>
                             <Button
                               variant={v.handledBy === 'GVCN' ? 'contained' : 'outlined'}
@@ -343,8 +342,8 @@ const handleProcessViolation = async (id: string, handledBy: string) => {
                             </Button>
                           </>
 
-                        </>
-                      )}
+                   
+              
                     </Box>
                   </TableCell>
                 </TableRow>
