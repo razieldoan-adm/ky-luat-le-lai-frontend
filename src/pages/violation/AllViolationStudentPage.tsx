@@ -323,23 +323,26 @@ const handleProcessViolation = async (id: string, handledBy: string) => {
 
                       {!v.handled && (
                         <>
-                          <Button
-                            variant="contained"
-                            color={v.handledBy === "GVCN" ? "secondary" : "primary"}
-                            size="small"
-                            onClick={() => handleProcessViolation(v._id, "GVCN")}
-                          >
-                            GVCN
-                          </Button>
+                          <>
+                            <Button
+                              variant={v.handledBy === 'GVCN' ? 'contained' : 'outlined'}
+                              color="primary"
+                              size="small"
+                              onClick={() => handleProcessViolation(v._id, 'GVCN')}
+                            >
+                              GVCN
+                            </Button>
                           
-                          <Button
-                            variant="contained"
-                            color={v.handledBy === "PGT" ? "secondary" : "success"}
-                            size="small"
-                            onClick={() => handleProcessViolation(v._id, "PGT")}
-                          >
-                            PGT
-                          </Button>
+                            <Button
+                              variant={v.handledBy === 'PGT' ? 'contained' : 'outlined'}
+                              color="success"
+                              size="small"
+                              onClick={() => handleProcessViolation(v._id, 'PGT')}
+                            >
+                              PGT
+                            </Button>
+                          </>
+
                         </>
                       )}
                     </Box>
