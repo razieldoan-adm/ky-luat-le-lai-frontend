@@ -91,30 +91,49 @@ export default function ClassAttendanceSummaryPage() {
     setData(updated);
   };
 
-  const handleSave = async () => {
-    if (!selectedWeek) return;
-    setLoading(true);
-    try {
-      const payload = {
-        weekNumber: selectedWeek.weekNumber,
-        summaries: grades.flatMap(g =>
-          data[g].map(c => ({
-            className: c.className,
-            grade: c.grade,
-            data: c.scores,
-            total: c.total || 0,
-          }))
-        )
-      };
+const handleSave = async () => {
+  if (!selectedWeek) return;
+  setLoading(true);
+  try {
+    const payload = {
+      weekNumber: selectedWeek.weekNumber,
+      summaries: grades.flatMap(g =>
+        data[g].map(c => ({
+          className: c.className,
+          grade: c.grade,
+          data: c.scores,
+          total: c.total || 0,
+        }))
+      ),
+    };
 
-      await api.post('/api/class-attendance-summaries', payload);
-      setSnackbar({ open: true, message: 'Đã lưu điểm chuyên cần thành công!', severity: 'success' });
-    } catch (err) {
-      console.error('Save error:', err);
-      setSnackbar({ open: true, message: 'Lỗi khi lưu.', severity: 'error' });
+    // 🔹 1️⃣ Lưu dữ liệu chuyên cần chi tiết (nếu vẫn cần lưu riêng)
+    await api.post('/api/class-attendance-summaries', payload);
+
+    // 🔹 2️⃣ Cập nhật điểm vào bảng ClassWeeklyScore
+    for (const g of grades) {
+      for (const c of data[g]) {
+        await api.post('/api/class-weekly-scores/update', {
+          className: c.className,
+          grade: c.grade,
+          weekNumber: selectedWeek.weekNumber,
+          attendanceScore: c.total || 0, // 👈 thêm trường này trong model
+        });
+      }
     }
-    setLoading(false);
-  };
+
+    setSnackbar({
+      open: true,
+      message: '✅ Đã lưu điểm chuyên cần vào WeeklyScore thành công!',
+      severity: 'success',
+    });
+  } catch (err) {
+    console.error('Save error:', err);
+    setSnackbar({ open: true, message: '❌ Lỗi khi lưu điểm chuyên cần.', severity: 'error' });
+  }
+  setLoading(false);
+};
+
 
   const handleWeekChange = (e: any) => {
     const w = weekList.find(w => w._id === e.target.value);
