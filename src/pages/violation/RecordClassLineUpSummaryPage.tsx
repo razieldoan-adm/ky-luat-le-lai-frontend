@@ -394,7 +394,7 @@ export default function RecordClassLineUpSummaryPage() {
   >
     <TableHead>
       <TableRow>
-        <TableCell>STT</TableCell>
+        
         <TableCell>Lớp</TableCell>
         <TableCell>Lỗi vi phạm</TableCell>
         <TableCell>Học sinh vi phạm</TableCell>
@@ -427,7 +427,7 @@ export default function RecordClassLineUpSummaryPage() {
               "&:nth-of-type(odd)": { backgroundColor: "action.hover" },
             }}
           >
-            <TableCell>{idx + 1}</TableCell>
+            
             <TableCell>{r.className}</TableCell>
             <TableCell>{r.violation}</TableCell>
             <TableCell>{r.studentName || "-"}</TableCell>
