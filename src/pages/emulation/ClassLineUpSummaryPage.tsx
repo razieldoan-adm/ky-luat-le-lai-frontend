@@ -63,22 +63,50 @@ export default function ClassLineUpSummaryPage() {
     const week = weeks.find((w) => w._id === selectedWeek);
     if (!week) return alert("Không tìm thấy tuần!");
 
-    // 🔹 Lấy toàn bộ lớp
+    // 🔹 1. Lấy toàn bộ lớp
     const classRes = await api.get("/api/classes");
-    const allClasses = classRes.data || [];
+    // Tránh trường hợp API trả về { classes: [...] }
+    const allClasses = classRes.data?.classes || classRes.data || [];
 
-    // 🔹 Lấy dữ liệu vi phạm lineup của tuần
+    if (!Array.isArray(allClasses) || allClasses.length === 0) {
+      alert("⚠️ Không có dữ liệu lớp nào!");
+      return;
+    }
+
+    // 🔹 2. Lấy dữ liệu lineup trong tuần
     const res = await api.get("/api/class-lineup-summaries/weekly", {
       params: { weekNumber: week.weekNumber },
     });
-    const data = res.data.records || [];
+    const data = res.data?.records || [];
 
-    // 🔹 Gom nhóm số lần vi phạm
+    // 🔹 3. Gom nhóm số lần vi phạm theo lớp
     const grouped: Record<string, number> = {};
     data.forEach((item: any) => {
       if (!grouped[item.className]) grouped[item.className] = 0;
       grouped[item.className]++;
     });
+
+    // 🔹 4. Kết hợp toàn bộ lớp — lớp nào không vi phạm → count = 0
+    const formatted = allClasses.map((cls: any, index: number) => {
+      // tên lớp có thể là "name" hoặc "className" tùy backend
+      const className = cls.name || cls.className || `Lớp ${index + 1}`;
+      const count = grouped[className] || 0;
+
+      return {
+        id: index + 1,
+        className,
+        count,
+        total: count * multiplier,
+      };
+    });
+
+    setSummaries(formatted);
+  } catch (err) {
+    console.error("❌ Lỗi load lineup:", err);
+    alert("Không thể tải dữ liệu lineup của tuần!");
+  }
+};
+
 
     // 🔹 Kết hợp toàn bộ lớp — lớp nào không có vi phạm => count = 0
     const formatted = allClasses.map((cls: any, index: number) => {
