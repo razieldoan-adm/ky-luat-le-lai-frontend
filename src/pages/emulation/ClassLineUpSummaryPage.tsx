@@ -107,26 +107,6 @@ export default function ClassLineUpSummaryPage() {
   }
 };
 
-
-    // 🔹 Kết hợp toàn bộ lớp — lớp nào không có vi phạm => count = 0
-    const formatted = allClasses.map((cls: any, index: number) => {
-      const count = grouped[cls.name] || 0;
-      return {
-        id: index + 1,
-        className: cls.name,
-        count,
-        total: count * multiplier, // ví dụ mỗi lỗi 10 điểm
-      };
-    });
-
-    setSummaries(formatted);
-  } catch (err) {
-    console.error("Lỗi load lineup:", err);
-    alert("Không thể tải dữ liệu lineup của tuần!");
-  }
-};
-
-
   // 🔹 Lưu điểm tổng vào ClassWeeklyScore
   const handleSave = async () => {
     try {
