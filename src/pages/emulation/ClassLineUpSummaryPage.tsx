@@ -57,37 +57,47 @@ export default function ClassLineUpSummaryPage() {
 
   // 🔹 Hàm load dữ liệu lineup theo tuần được chọn
   const handleLoadData = async () => {
-    try {
-      if (!selectedWeek) return alert("Vui lòng chọn tuần!");
+  try {
+    if (!selectedWeek) return alert("Vui lòng chọn tuần!");
 
-      const week = weeks.find((w) => w._id === selectedWeek);
-      if (!week) return alert("Không tìm thấy tuần!");
+    const week = weeks.find((w) => w._id === selectedWeek);
+    if (!week) return alert("Không tìm thấy tuần!");
 
-      const res = await api.get("/api/class-lineup-summaries/weekly", {
-        params: { weekNumber: week.weekNumber },
-      });
+    // 🔹 Lấy toàn bộ lớp
+    const classRes = await api.get("/api/classes");
+    const allClasses = classRes.data || [];
 
-      const data = res.data.records || [];
-      const grouped: Record<string, number> = {};
+    // 🔹 Lấy dữ liệu vi phạm lineup của tuần
+    const res = await api.get("/api/class-lineup-summaries/weekly", {
+      params: { weekNumber: week.weekNumber },
+    });
+    const data = res.data.records || [];
 
-      data.forEach((item: any) => {
-        if (!grouped[item.className]) grouped[item.className] = 0;
-        grouped[item.className]++;
-      });
+    // 🔹 Gom nhóm số lần vi phạm
+    const grouped: Record<string, number> = {};
+    data.forEach((item: any) => {
+      if (!grouped[item.className]) grouped[item.className] = 0;
+      grouped[item.className]++;
+    });
 
-      const formatted = Object.keys(grouped).map((className, index) => ({
+    // 🔹 Kết hợp toàn bộ lớp — lớp nào không có vi phạm => count = 0
+    const formatted = allClasses.map((cls: any, index: number) => {
+      const count = grouped[cls.name] || 0;
+      return {
         id: index + 1,
-        className,
-        count: grouped[className],
-        total: grouped[className] * multiplier,
-      }));
+        className: cls.name,
+        count,
+        total: count * multiplier, // ví dụ mỗi lỗi 10 điểm
+      };
+    });
 
-      setSummaries(formatted);
-    } catch (err) {
-      console.error("Lỗi load lineup:", err);
-      alert("Không thể tải dữ liệu lineup của tuần!");
-    }
-  };
+    setSummaries(formatted);
+  } catch (err) {
+    console.error("Lỗi load lineup:", err);
+    alert("Không thể tải dữ liệu lineup của tuần!");
+  }
+};
+
 
   // 🔹 Lưu điểm tổng vào ClassWeeklyScore
   const handleSave = async () => {
