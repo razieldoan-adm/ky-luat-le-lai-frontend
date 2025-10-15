@@ -73,18 +73,28 @@ const WeeklyScoresPage: React.FC = () => {
           ((item.attendanceScore ?? 0) * 5 +
             (item.violationScore ?? 0) +
             (item.hygieneScore ?? 0) +
-            (item.lineupScore ?? 0));
+            (item.lineUpScore ?? 0));
         const total = discipline + (item.rewardScore ?? 0) + (item.academicScore ?? 0);
         return { ...item, disciplineScore: discipline, totalScore: total };
       });
 
       // Xếp hạng riêng theo khối
       const grades = ["6", "7", "8", "9"];
-      grades.forEach((g) => {
+     grades.forEach((g) => {
         const filtered = data.filter((d) => d.grade === g);
         filtered.sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
-        filtered.forEach((d, i) => (d.rank = i + 1));
+      
+        let currentRank = 1;
+        filtered.forEach((d, i) => {
+          if (i > 0 && d.totalScore === filtered[i - 1].totalScore) {
+            d.rank = filtered[i - 1].rank; // đồng hạng với lớp trước
+          } else {
+            d.rank = currentRank;
+          }
+          currentRank++;
+        });
       });
+
 
       setScores(data);
       setHasChanges(false);
@@ -141,7 +151,7 @@ const WeeklyScoresPage: React.FC = () => {
           ((updated.attendanceScore ?? 0) * 5 +
             (updated.violationScore ?? 0) +
             (updated.hygieneScore ?? 0) +
-            (updated.lineupScore ?? 0));
+            (updated.lineUpScore ?? 0));
 
         const total = discipline + (updated.rewardScore ?? 0) + (updated.academicScore ?? 0);
 
@@ -161,11 +171,20 @@ const WeeklyScoresPage: React.FC = () => {
     const grades = ["6", "7", "8", "9"];
     const updated = [...scores];
 
-    grades.forEach((g) => {
-      const group = updated.filter((x) => x.grade === g);
-      group.sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
-      group.forEach((x, i) => (x.rank = i + 1));
-    });
+   grades.forEach((g) => {
+  const filtered = data.filter((d) => d.grade === g);
+  filtered.sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
+
+  let currentRank = 1;
+  filtered.forEach((d, i) => {
+    if (i > 0 && d.totalScore === filtered[i - 1].totalScore) {
+      d.rank = filtered[i - 1].rank; // đồng hạng với lớp trước
+    } else {
+      d.rank = currentRank;
+    }
+    currentRank++;
+  });
+});
 
     setScores(updated);
     setHasChanges(false);
@@ -209,7 +228,7 @@ const WeeklyScoresPage: React.FC = () => {
                 <TableRow key={row.className}>
                   <TableCell>{row.className}</TableCell>
                   <TableCell align="center">{row.hygieneScore}</TableCell>
-                  <TableCell align="center">{row.lineupScore}</TableCell>
+                  <TableCell align="center">{row.lineUpScore}</TableCell>
                   <TableCell align="center">{row.violationScore}</TableCell>
                   <TableCell align="center">{row.attendanceScore}</TableCell>
                   <TableCell align="center">
