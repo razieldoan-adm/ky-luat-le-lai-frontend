@@ -297,6 +297,7 @@ const WeeklyScoresPage: React.FC = () => {
           variant="outlined"
           color="secondary"
           onClick={handleRecalculateRanks}
+          disabled={!hasChanges}
         >
           📊 Xếp hạng
         </Button>
