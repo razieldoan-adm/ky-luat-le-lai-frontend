@@ -419,7 +419,7 @@ export default function RecordClassLineUpSummaryPage() {
           </TableCell>
         </TableRow>
       ) : (
-        records.map((r, idx) => (
+        records.map((r) => (
           <TableRow
             key={r._id}
             hover
