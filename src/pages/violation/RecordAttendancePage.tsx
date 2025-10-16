@@ -2,15 +2,15 @@ import { useEffect, useState } from "react";
 import {
   Box, Typography, TextField, MenuItem, Button, Paper,
   Table, TableHead, TableBody, TableRow, TableCell, Stack,
-  Autocomplete, IconButton, Chip, FormControlLabel, RadioGroup, Radio
+  IconButton, Chip, RadioGroup, FormControlLabel, Radio
 } from "@mui/material";
 import { Delete } from "@mui/icons-material";
 import api from "../../api/api";
 
-interface Student {
-  _id?: string;
+interface StudentSuggestion {
+  _id: string;
   name: string;
-  className?: string;
+  className: string;
 }
 
 interface AttendanceRecord {
@@ -25,21 +25,21 @@ interface AttendanceRecord {
 export default function RecordAttendancePage() {
   const [classes, setClasses] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
-  const [students, setStudents] = useState<Student[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [studentInput, setStudentInput] = useState("");
+  const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<StudentSuggestion | null>(null);
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [session, setSession] = useState("Sáng");
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [viewMode, setViewMode] = useState<"ngày" | "tuần">("ngày");
 
-  // ✅ Mặc định người ghi nhận
+  // ✅ Người ghi nhận mặc định
   const recorder = "PGT";
 
-  // ✅ Tự xác định buổi học
+  // ✅ Xác định buổi học tự động
   useEffect(() => {
     const hour = new Date().getHours();
-    if (hour >= 12) setSession("Chiều");
-    else setSession("Sáng");
+    setSession(hour >= 12 ? "Chiều" : "Sáng");
   }, []);
 
   // ✅ Lấy danh sách lớp
@@ -56,19 +56,25 @@ export default function RecordAttendancePage() {
     loadClasses();
   }, []);
 
-  // ✅ Lấy danh sách học sinh theo lớp
+  // ✅ Gợi ý học sinh theo tên + lớp
   useEffect(() => {
-    if (!selectedClass) return;
-    const loadStudents = async () => {
+    if (!studentInput.trim() || !selectedClass) {
+      setSuggestions([]);
+      return;
+    }
+    const t = setTimeout(async () => {
       try {
-        const res = await api.get(`/api/students/class/${selectedClass}`);
-        setStudents(res.data || []);
+        const res = await api.get("/api/students/search", {
+          params: { name: studentInput.trim(), className: selectedClass },
+        });
+        setSuggestions(res.data || []);
       } catch (err) {
-        console.error("Lỗi khi tải học sinh:", err);
+        console.error("Lỗi tìm học sinh:", err);
+        setSuggestions([]);
       }
-    };
-    loadStudents();
-  }, [selectedClass]);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [studentInput, selectedClass]);
 
   // ✅ Tải danh sách nghỉ học
   const loadRecords = async () => {
@@ -78,7 +84,6 @@ export default function RecordAttendancePage() {
       if (viewMode === "ngày") {
         res = await api.get(`/attendance/list?className=${selectedClass}&date=${date}`);
       } else {
-        // 🔹 Tính đầu & cuối tuần (theo ngày đã chọn)
         const d = new Date(date);
         const day = d.getDay() || 7;
         const start = new Date(d);
@@ -101,21 +106,27 @@ export default function RecordAttendancePage() {
 
   // ✅ Ghi nhận nghỉ học
   const handleAdd = async () => {
-    if (!selectedStudent || !selectedClass)
-      return alert("Chưa chọn lớp hoặc học sinh");
-
-    await api.post("/attendance/record", {
-      className: selectedClass,
-      studentName: selectedStudent.name,
-      date,
-      session,
-      recordedBy: recorder,
-      permission: false,
-    });
-
-    alert("✅ Đã ghi nhận nghỉ học không phép");
-    setSelectedStudent(null);
-    loadRecords();
+    if (!selectedStudent || !selectedClass) {
+      alert("Chưa chọn lớp hoặc học sinh!");
+      return;
+    }
+    try {
+      await api.post("/attendance/record", {
+        className: selectedClass,
+        studentName: selectedStudent.name,
+        date,
+        session,
+        recordedBy: recorder,
+        permission: false, // chưa được GVCN xác nhận
+      });
+      alert("✅ Đã ghi nhận nghỉ học không phép");
+      setStudentInput("");
+      setSelectedStudent(null);
+      setSuggestions([]);
+      loadRecords();
+    } catch (err) {
+      console.error("Lỗi ghi nhận:", err);
+    }
   };
 
   // ✅ Xóa bản ghi nghỉ học
@@ -123,6 +134,13 @@ export default function RecordAttendancePage() {
     if (!window.confirm("Xóa bản ghi này?")) return;
     await api.delete(`/attendance/${id}`);
     loadRecords();
+  };
+
+  // ✅ Chọn học sinh từ gợi ý
+  const handleSelectSuggestion = (s: StudentSuggestion) => {
+    setSelectedStudent(s);
+    setStudentInput(s.name);
+    setSuggestions([]);
   };
 
   return (
@@ -167,8 +185,8 @@ export default function RecordAttendancePage() {
           value={viewMode}
           onChange={(e) => setViewMode(e.target.value as "ngày" | "tuần")}
         >
-          <FormControlLabel value="ngày" control={<Radio />} label="Xem theo ngày" />
-          <FormControlLabel value="tuần" control={<Radio />} label="Xem theo tuần" />
+          <FormControlLabel value="ngày" control={<Radio />} label="Theo ngày" />
+          <FormControlLabel value="tuần" control={<Radio />} label="Theo tuần" />
         </RadioGroup>
 
         <Button variant="outlined" onClick={loadRecords}>
@@ -176,19 +194,39 @@ export default function RecordAttendancePage() {
         </Button>
       </Stack>
 
-      {/* Autocomplete thêm học sinh */}
+      {/* Nhập tên học sinh và gợi ý */}
       {selectedClass && (
         <Stack direction="row" spacing={2} mb={2}>
-          <Autocomplete
-            options={students}
-            getOptionLabel={(option) => option.name}
-            value={selectedStudent}
-            onChange={(_, val) => setSelectedStudent(val)}
-            sx={{ width: 250 }}
-            renderInput={(params) => (
-              <TextField {...params} label="Tên học sinh" />
+          <Box sx={{ position: "relative", width: 250 }}>
+            <TextField
+              label="Tên học sinh"
+              value={studentInput}
+              onChange={(e) => setStudentInput(e.target.value)}
+              fullWidth
+            />
+            {suggestions.length > 0 && (
+              <Paper
+                sx={{
+                  position: "absolute", zIndex: 10, width: "100%",
+                  maxHeight: 200, overflowY: "auto"
+                }}
+              >
+                {suggestions.map((s) => (
+                  <Box
+                    key={s._id}
+                    sx={{
+                      p: 1,
+                      "&:hover": { backgroundColor: "#f0f0f0", cursor: "pointer" },
+                    }}
+                    onClick={() => handleSelectSuggestion(s)}
+                  >
+                    {s.name}
+                  </Box>
+                ))}
+              </Paper>
             )}
-          />
+          </Box>
+
           <Button variant="contained" onClick={handleAdd}>
             Thêm nghỉ học
           </Button>
@@ -223,9 +261,7 @@ export default function RecordAttendancePage() {
               <TableRow key={r._id}>
                 <TableCell>{r.studentName}</TableCell>
                 <TableCell>{r.session}</TableCell>
-                <TableCell>
-                  {new Date(r.date).toLocaleDateString("vi-VN")}
-                </TableCell>
+                <TableCell>{new Date(r.date).toLocaleDateString("vi-VN")}</TableCell>
                 <TableCell>
                   {r.permission ? (
                     <Chip label="Có phép" color="success" size="small" />
