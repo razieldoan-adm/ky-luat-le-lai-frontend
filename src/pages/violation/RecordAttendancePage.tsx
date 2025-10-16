@@ -36,6 +36,35 @@ export default function RecordAttendancePage() {
     };
     loadClasses();
   }, []);
+   useEffect(() => {
+    if (!studentInput.trim() || !className) {
+      setSuggestions([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await api.get("/api/students/search", {
+          params: { name: studentInput.trim(), className },
+        });
+        setSuggestions(res.data || []);
+      } catch (err) {
+        console.error("Lỗi tìm học sinh:", err);
+        setSuggestions([]);
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [studentInput, className]);
+
+  // --- Chọn học sinh
+  const handleSelectSuggestion = (s: StudentSuggestion) => {
+    if (!selectedStudents.includes(s.name)) setSelectedStudents((p) => [...p, s.name]);
+    setStudentInput("");
+    setSuggestions([]);
+  };
+
+  const removeSelectedStudent = (name: string) => {
+    setSelectedStudents((p) => p.filter((x) => x !== name));
+  };
 
   // ✅ Lấy danh sách học sinh theo lớp
   useEffect(() => {
