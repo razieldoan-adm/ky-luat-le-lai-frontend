@@ -43,6 +43,10 @@ const drawerWidth = 240;
           <ListItemText primary="Ghi nhận lỗi xếp hàng" />
         </ListItemButton>
           
+        <ListItemButton onClick={() => navigate('/violation/class-attendance-list')}>
+          <ListItemIcon><MenuBook /></ListItemIcon>
+          <ListItemText primary="Ghi nhận chuyên cần" />
+        </ListItemButton>
         
         <ListItemButton onClick={() => navigate('/violation/unhandled')}>
           <ListItemIcon><ClassIcon /></ListItemIcon>
