@@ -1,186 +1,232 @@
-import { useState, useEffect } from "react";
+// src/pages/violation/RecordAttendancePage.tsx
+import { useEffect, useState } from "react";
 import {
-  Box,
-  Typography,
-  Button,
-  TextField,
-  MenuItem,
-  Paper,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Select,
-  FormControl,
-  InputLabel,
-  Snackbar,
-  Alert,
+  Box, Typography, TextField, MenuItem, Button, Paper,
+  Table, TableHead, TableBody, TableRow, TableCell, Stack,
+  Autocomplete, IconButton, Chip, Snackbar, Alert
 } from "@mui/material";
+import { Delete } from "@mui/icons-material";
 import api from "../../api/api";
+import type { AlertColor } from "@mui/material";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
-import type { AlertColor } from "@mui/material";
+
 dayjs.extend(isoWeek);
 
-interface Student {
-  _id: string;
-  fullName: string;
-  className: string;
-}
-
-interface Attendance {
-  _id?: string;
-  studentId: string;
-  date: string;
-  hasPermission: boolean;
-}
-
 export default function RecordAttendancePage() {
-  const [className, setClassName] = useState("6A1");
-  const [students, setStudents] = useState<Student[]>([]);
-  const [attendances, setAttendances] = useState<Attendance[]>([]);
-  const [viewMode, setViewMode] = useState("day"); // "day" | "week"
-  const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
- const [snackbar, setSnackbar] = useState<{
-  open: boolean;
-  message: string;
-  severity: AlertColor;
-}>({
-  open: false,
-  message: "",
-  severity: "success",
-});
+  const [classes, setClasses] = useState<string[]>([]);
+  const [selectedClass, setSelectedClass] = useState("");
+  const [studentInput, setStudentInput] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [session, setSession] = useState("Sáng");
+  const [records, setRecords] = useState<any[]>([]);
+  const [viewMode, setViewMode] = useState<"Ngày" | "Tuần">("Ngày");
 
-  // ✅ Load danh sách học sinh (đúng API backend thật)
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: AlertColor }>({
+    open: false, message: "", severity: "info"
+  });
+
+  // ✅ Tự xác định buổi học
   useEffect(() => {
-    const fetchStudents = async () => {
+    const hour = new Date().getHours();
+    setSession(hour >= 12 ? "Chiều" : "Sáng");
+  }, []);
+
+  // ✅ Lấy danh sách lớp
+  useEffect(() => {
+    const loadClasses = async () => {
       try {
-        const res = await api.get(`/api/students?className=${className}`);
-        setStudents(res.data);
+        const res = await api.get("/api/classes");
+        const arr = (res.data || []).map((c: any) => c.className ?? c.name ?? String(c));
+        setClasses(arr);
       } catch (err) {
-        console.error("Lỗi tải danh sách học sinh:", err);
+        console.error("Lỗi khi tải danh sách lớp:", err);
       }
     };
-    fetchStudents();
-  }, [className]);
+    loadClasses();
+  }, []);
 
-  // ✅ Load dữ liệu điểm danh (theo ngày hoặc tuần)
+  // ✅ Gợi ý học sinh theo lớp + tên
   useEffect(() => {
-    const fetchAttendance = async () => {
+    if (!studentInput.trim() || !selectedClass) {
+      setSuggestions([]);
+      return;
+    }
+    const t = setTimeout(async () => {
       try {
-        let url = `/api/class-attendance-summaries/list?className=${className}`;
-        if (viewMode === "day") {
-          url += `&date=${selectedDate}`;
-        } else {
-          const startOfWeek = dayjs(selectedDate).startOf("week").format("YYYY-MM-DD");
-          const endOfWeek = dayjs(selectedDate).endOf("week").format("YYYY-MM-DD");
-          url += `&from=${startOfWeek}&to=${endOfWeek}`;
-        }
-        const res = await api.get(url);
-        setAttendances(res.data || []);
+        const res = await api.get("/api/students/search", {
+          params: { name: studentInput.trim(), className: selectedClass },
+        });
+        setSuggestions(res.data || []);
       } catch (err) {
-        console.error("Lỗi tải danh sách điểm danh:", err);
+        console.error("Lỗi tìm học sinh:", err);
+        setSuggestions([]);
       }
-    };
-    fetchAttendance();
-  }, [className, selectedDate, viewMode]);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [studentInput, selectedClass]);
+
+  // ✅ Tải danh sách nghỉ học
+  const loadRecords = async () => {
+    if (!selectedClass) return;
+    try {
+      let url = `/api/class-attendance-summaries/list?className=${selectedClass}`;
+      if (viewMode === "Ngày") {
+        url += `&date=${date}`;
+      } else {
+        const start = dayjs(date).startOf("isoWeek").format("YYYY-MM-DD");
+        const end = dayjs(date).endOf("isoWeek").format("YYYY-MM-DD");
+        url += `&start=${start}&end=${end}`;
+      }
+      const res = await api.get(url);
+      setRecords(res.data || []);
+    } catch (err) {
+      console.error("Lỗi tải danh sách nghỉ:", err);
+      setSnackbar({ open: true, message: "Không tải được dữ liệu", severity: "error" });
+    }
+  };
 
   // ✅ Ghi nhận nghỉ học
-  const handleRecord = async (studentId: string, hasPermission: boolean) => {
+  const handleAdd = async () => {
+    if (!selectedStudent || !selectedClass)
+      return alert("Chưa chọn lớp hoặc học sinh");
+
     try {
       await api.post("/api/class-attendance-summaries/record", {
-        studentId,
-        className,
-        date: selectedDate,
-        hasPermission,
+        className: selectedClass,
+        studentName: selectedStudent.name,
+        date,
+        session,
+        recordedBy: "PGT",
+        permission: false,
       });
-      setSnackbar({ open: true, message: "Ghi nhận thành công", severity: "success" });
+      setSnackbar({ open: true, message: "✅ Đã ghi nhận nghỉ học", severity: "success" });
+      setSelectedStudent(null);
+      loadRecords();
     } catch (err) {
       console.error("Lỗi ghi nhận:", err);
-      setSnackbar({ open: true, message: "Lỗi khi ghi nhận", severity: "error" });
+      setSnackbar({ open: true, message: "❌ Ghi nhận thất bại", severity: "error" });
+    }
+  };
+
+  // ✅ Xóa bản ghi nghỉ học
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Xóa bản ghi này?")) return;
+    try {
+      await api.delete(`/api/class-attendance-summaries/${id}`);
+      loadRecords();
+    } catch (err) {
+      console.error("Lỗi xóa:", err);
     }
   };
 
   return (
     <Box p={3}>
-      <Typography variant="h5" mb={2}>
+      <Typography variant="h5" fontWeight="bold" mb={2}>
         Ghi nhận nghỉ học
       </Typography>
 
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
-          <TextField
-            select
-            label="Lớp"
-            value={className}
-            onChange={(e) => setClassName(e.target.value)}
-            size="small"
-          >
-            <MenuItem value="6A1">6A1</MenuItem>
-            <MenuItem value="6A2">6A2</MenuItem>
-            <MenuItem value="6A3">6A3</MenuItem>
-          </TextField>
+      {/* Bộ lọc */}
+      <Stack direction="row" spacing={2} mb={2}>
+        <TextField
+          select label="Lớp"
+          value={selectedClass}
+          onChange={(e) => setSelectedClass(e.target.value)}
+          sx={{ minWidth: 140 }}
+        >
+          {classes.map(cls => (
+            <MenuItem key={cls} value={cls}>{cls}</MenuItem>
+          ))}
+        </TextField>
 
-          <FormControl size="small">
-            <InputLabel>Xem theo</InputLabel>
-            <Select
-              value={viewMode}
-              label="Xem theo"
-              onChange={(e) => setViewMode(e.target.value)}
-            >
-              <MenuItem value="day">Ngày</MenuItem>
-              <MenuItem value="week">Tuần</MenuItem>
-            </Select>
-          </FormControl>
+        <TextField
+          select label="Xem theo"
+          value={viewMode}
+          onChange={(e) => setViewMode(e.target.value as "Ngày" | "Tuần")}
+          sx={{ minWidth: 120 }}
+        >
+          <MenuItem value="Ngày">Ngày</MenuItem>
+          <MenuItem value="Tuần">Tuần</MenuItem>
+        </TextField>
 
-          <TextField
-            type="date"
-            label={viewMode === "day" ? "Ngày" : "Ngày trong tuần"}
-            size="small"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
+        <TextField
+          label="Ngày"
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+        />
+
+        <Button variant="outlined" onClick={loadRecords}>
+          Xem danh sách
+        </Button>
+      </Stack>
+
+      {/* Thêm học sinh nghỉ */}
+      {selectedClass && (
+        <Stack direction="row" spacing={2} mb={2}>
+          <Autocomplete
+            options={suggestions}
+            getOptionLabel={(option) => option.name}
+            value={selectedStudent}
+            onInputChange={(_, val) => setStudentInput(val)}
+            onChange={(_, val) => setSelectedStudent(val)}
+            sx={{ width: 250 }}
+            renderInput={(params) => (
+              <TextField {...params} label="Tên học sinh" />
+            )}
           />
-        </Box>
-      </Paper>
+          <Button variant="contained" onClick={handleAdd}>
+            Thêm nghỉ học
+          </Button>
+        </Stack>
+      )}
 
-      <Paper>
+      {/* Danh sách */}
+      <Paper sx={{ mt: 2 }}>
+        <Typography variant="h6" p={2}>
+          Danh sách học sinh nghỉ {viewMode === "Ngày" ? `ngày ${date}` : "theo tuần"}
+        </Typography>
         <Table>
           <TableHead>
             <TableRow>
               <TableCell>Họ tên</TableCell>
-              <TableCell align="center">Nghỉ có phép</TableCell>
-              <TableCell align="center">Nghỉ không phép</TableCell>
+              <TableCell>Buổi</TableCell>
+              <TableCell>Ngày</TableCell>
+              <TableCell>Phép</TableCell>
+              <TableCell>Thao tác</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {students.map((student) => {
-              const record = attendances.find((a) => a.studentId === student._id);
-              return (
-                <TableRow key={student._id}>
-                  <TableCell>{student.fullName}</TableCell>
-                  <TableCell align="center">
-                    <Button
-                      variant={record?.hasPermission ? "contained" : "outlined"}
-                      color="success"
-                      onClick={() => handleRecord(student._id, true)}
-                    >
-                      Có phép
-                    </Button>
+            {records.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} align="center">
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            ) : (
+              records.map((r) => (
+                <TableRow key={r._id}>
+                  <TableCell>{r.studentId?.name || r.studentName}</TableCell>
+                  <TableCell>{r.session}</TableCell>
+                  <TableCell>{new Date(r.date).toLocaleDateString("vi-VN")}</TableCell>
+                  <TableCell>
+                    {r.permission ? (
+                      <Chip label="Có phép" color="success" size="small" />
+                    ) : (
+                      <Chip label="Không phép" color="error" size="small" />
+                    )}
                   </TableCell>
-                  <TableCell align="center">
-                    <Button
-                      variant={!record?.hasPermission ? "contained" : "outlined"}
-                      color="error"
-                      onClick={() => handleRecord(student._id, false)}
-                    >
-                      Không phép
-                    </Button>
+                  <TableCell>
+                    <IconButton color="error" onClick={() => handleDelete(r._id)}>
+                      <Delete />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
-              );
-            })}
+              ))
+            )}
           </TableBody>
         </Table>
       </Paper>
@@ -189,6 +235,7 @@ export default function RecordAttendancePage() {
         open={snackbar.open}
         autoHideDuration={3000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
