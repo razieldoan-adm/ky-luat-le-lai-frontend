@@ -23,7 +23,7 @@ import UnhandledViolationsPage from './pages/violation/UnhandledViolationsPage';
 import AllStudentPage from './pages/violation/AllViolationStudentPage';
 import StudentListPage from './pages/violation/StudentListPage.tsx';
 import RecordClassLineUpSummaryPage from './pages/violation/RecordClassLineUpSummaryPage.tsx';
-import RecordAttendancePage from './pages/violation/RecordAttendancePage.tsx
+import RecordAttendancePage from './pages/violation/RecordAttendancePage.tsx';
 // Admin
 import AdminLayout from './layouts/AdminLayout';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
