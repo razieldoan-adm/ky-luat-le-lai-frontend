@@ -232,10 +232,11 @@ const ViolationDetailPage = () => {
     }
   };
 
-  const totalPenalty = violations.reduce((sum, v) => {
-    const rule = rules.find((r) => r.title === v.description);
-    return sum + (rule?.point || 0);
-  }, 0);
+const totalPenalty = violations.reduce(
+  (sum, v) => sum + ((rules.find((r) => r.title === v.description)?.point) || 0),
+  0
+);
+
 
   const finalScore = Math.max(maxConductScore - totalPenalty, 0);
   const isBelowThreshold = finalScore < maxConductScore * 0.5;
