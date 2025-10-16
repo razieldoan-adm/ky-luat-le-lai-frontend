@@ -20,7 +20,7 @@ import {
 import api from "../../api/api";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
-
+import { AlertColor } from "@mui/material";
 dayjs.extend(isoWeek);
 
 interface Student {
@@ -42,7 +42,15 @@ export default function RecordAttendancePage() {
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [viewMode, setViewMode] = useState("day"); // "day" | "week"
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+ const [snackbar, setSnackbar] = useState<{
+  open: boolean;
+  message: string;
+  severity: AlertColor;
+}>({
+  open: false,
+  message: "",
+  severity: "success",
+});
 
   // ✅ Load danh sách học sinh (đúng API backend thật)
   useEffect(() => {
