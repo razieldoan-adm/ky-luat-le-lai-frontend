@@ -131,7 +131,18 @@ const ViolationDetailPage = () => {
     if (!isNaN(parsed.getTime())) return parsed.toLocaleDateString("vi-VN");
     return time;
   };
-
+  const getHandlingMethodByRepeatCount = (count: number) => {
+  const methods = [
+    "Nhắc nhở",
+    "Kiểm điểm",
+    "Chép phạt",
+    "Báo phụ huynh",
+    "Mời phụ huynh",
+    "Tạm dừng việc học tập",
+    "Xét hạ hạnh kiểm" // ✅ thêm hình thức mới
+  ];
+  return methods[count] || "Xét hạ hạnh kiểm";
+};
   // ➕ Ghi nhận lỗi mới
   const handleAddViolation = async () => {
     const selectedRule = rules.find((r) => r._id === selectedRuleId);
@@ -314,17 +325,7 @@ const totalPenalty = violations.reduce(
                   <TableCell>{idx + 1}</TableCell>
                   <TableCell>{v.description}</TableCell>
                   <TableCell>{renderTime(v.time)}</TableCell>
-                  <TableCell>
-                    <Select size="small" value={v.handlingMethod} disabled>
-                      <MenuItem value="Nhắc nhở">Nhắc nhở</MenuItem>
-                      <MenuItem value="Kiểm điểm">Kiểm điểm</MenuItem>
-                      <MenuItem value="Chép phạt">Chép phạt</MenuItem>
-                      <MenuItem value="Báo phụ huynh">Báo phụ huynh</MenuItem>
-                      <MenuItem value="Mời phụ huynh">Mời phụ huynh</MenuItem>
-                      <MenuItem value="Tạm dừng việc học tập">Tạm dừng việc học tập</MenuItem>
-                      <MenuItem value="Xét hạ hạnh kiểm">Xét hạ hạnh kiểm</MenuItem>
-                    </Select>
-                  </TableCell>
+                  <TableCell>{v.handlingMethod || "—"}</TableCell>
                   <TableCell>
                     {v.handled ? (
                       <Box sx={{ backgroundColor: "green", color: "white", px: 1, py: 0.5, borderRadius: 1, textAlign: "center" }}>
