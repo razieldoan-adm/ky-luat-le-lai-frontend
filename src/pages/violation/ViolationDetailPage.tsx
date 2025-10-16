@@ -20,6 +20,10 @@ import {
   TableRow,
   Paper,
   TextField,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
 } from "@mui/material";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/api";
@@ -63,6 +67,12 @@ const ViolationDetailPage = () => {
   const [dayInput, setDayInput] = useState("");
   const [monthInput, setMonthInput] = useState("");
 
+  // 🔧 Dialog chỉnh sửa lỗi
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editItem, setEditItem] = useState<Violation | null>(null);
+  const [editDescription, setEditDescription] = useState("");
+  const [editDate, setEditDate] = useState("");
+
   useEffect(() => {
     fetchViolations();
     fetchRules();
@@ -101,11 +111,6 @@ const ViolationDetailPage = () => {
     }
   };
 
-  const getHandlingMethodByRepeatCount = (count: number) => {
-    const methods = ["Nhắc nhở", "Kiểm điểm", "Chép phạt", "Báo phụ huynh", "Mời phụ huynh", "Tạm dừng việc học tập"];
-    return methods[count] || "Tạm dừng việc học tập";
-  };
-
   const getViolationDate = (): Date => {
     const now = new Date();
     const year = now.getFullYear();
@@ -122,20 +127,12 @@ const ViolationDetailPage = () => {
 
   const renderTime = (time?: string) => {
     if (!time) return "N/A";
-    const ddmmPattern = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
-    if (ddmmPattern.test(time)) return time;
     const parsed = new Date(time);
-    if (!isNaN(parsed.getTime())) {
-      try {
-        return parsed.toLocaleDateString("vi-VN");
-      } catch {
-        return time;
-      }
-    }
+    if (!isNaN(parsed.getTime())) return parsed.toLocaleDateString("vi-VN");
     return time;
   };
 
-  // ✅ Ghi nhận lỗi mới
+  // ➕ Ghi nhận lỗi mới
   const handleAddViolation = async () => {
     const selectedRule = rules.find((r) => r._id === selectedRuleId);
     if (!selectedRule || !name || !className) {
@@ -156,19 +153,13 @@ const ViolationDetailPage = () => {
       });
       const weekNumber = currentWeekFound ? currentWeekFound.weekNumber : null;
 
-      const res = await api.get(
-        `/api/violations/${encodeURIComponent(name)}?className=${encodeURIComponent(className)}`
-      );
-      const sameViolations = (res.data || []).filter((v: Violation) => v.description === selectedRule.title);
-      const repeatCount = sameViolations.length;
-      const autoHandlingMethod = getHandlingMethodByRepeatCount(repeatCount);
       const violationDate = getViolationDate();
 
       await api.post("/api/violations", {
         name,
         className,
         description: selectedRule.title,
-        handlingMethod: autoHandlingMethod,
+        handlingMethod: "",
         weekNumber,
         time: violationDate.toISOString(),
         handled: false,
@@ -190,7 +181,7 @@ const ViolationDetailPage = () => {
     }
   };
 
-  // ✅ Xoá vi phạm
+  // ❌ Xoá vi phạm
   const handleDeleteViolation = async (id: string) => {
     try {
       await api.delete(`/api/violations/${id}`);
@@ -206,18 +197,37 @@ const ViolationDetailPage = () => {
     }
   };
 
-  // ✅ Sửa vi phạm (chỉ cho phép đổi hình thức xử lý)
-  const handleEditViolation = async (id: string, newHandling: string) => {
+  // ✏️ Mở dialog sửa
+  const openEditDialog = (v: Violation) => {
+    setEditItem(v);
+    setEditDescription(v.description);
+    setEditDate(renderTime(v.time));
+    setEditDialogOpen(true);
+  };
+
+  // 💾 Lưu sửa
+  const handleSaveEdit = async () => {
+    if (!editItem) return;
     try {
-      await api.patch(`/api/violations/${id}`, { handlingMethod: newHandling });
-      setSnackbarMessage("Cập nhật xử lý thành công!");
+      const rule = rules.find((r) => r.title === editDescription);
+      const formattedDate = dayjs(editDate, "DD/MM/YYYY").isValid()
+        ? dayjs(editDate, "DD/MM/YYYY").toDate()
+        : new Date();
+
+      await api.put(`/api/violations/${editItem._id}`, {
+        description: editDescription,
+        time: formattedDate,
+      });
+
+      setSnackbarMessage("Đã cập nhật lỗi vi phạm!");
       setSnackbarSeverity("success");
+      setSnackbarOpen(true);
+      setEditDialogOpen(false);
       fetchViolations();
     } catch (err) {
-      console.error("Lỗi khi sửa vi phạm:", err);
-      setSnackbarMessage("Lỗi khi sửa vi phạm.");
+      console.error("Lỗi khi cập nhật vi phạm:", err);
+      setSnackbarMessage("Không thể cập nhật vi phạm.");
       setSnackbarSeverity("error");
-    } finally {
       setSnackbarOpen(true);
     }
   };
@@ -242,6 +252,7 @@ const ViolationDetailPage = () => {
         Điểm hạnh kiểm: {finalScore}/{maxConductScore}
       </Typography>
 
+      {/* Form thêm lỗi */}
       <Card sx={{ my: 3 }}>
         <CardContent>
           <Typography variant="h6">Ghi nhận lỗi mới</Typography>
@@ -279,7 +290,7 @@ const ViolationDetailPage = () => {
         </CardContent>
       </Card>
 
-      {/* ✅ Bảng hiển thị */}
+      {/* Bảng hiển thị */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -287,14 +298,13 @@ const ViolationDetailPage = () => {
               <TableCell>STT</TableCell>
               <TableCell>Lỗi vi phạm</TableCell>
               <TableCell>Thời gian</TableCell>
-              <TableCell>Xử lý</TableCell>
+              <TableCell>Hình thức xử lý</TableCell>
               <TableCell>Trạng thái</TableCell>
               <TableCell>Điểm trừ</TableCell>
               <TableCell>Tuần</TableCell>
               <TableCell>Thao tác</TableCell>
             </TableRow>
           </TableHead>
-
           <TableBody>
             {violations.map((v, idx) => {
               const matchedRule = rules.find((r) => r.title === v.description);
@@ -304,17 +314,14 @@ const ViolationDetailPage = () => {
                   <TableCell>{v.description}</TableCell>
                   <TableCell>{renderTime(v.time)}</TableCell>
                   <TableCell>
-                    <Select
-                      size="small"
-                      value={v.handlingMethod}
-                      onChange={(e) => handleEditViolation(v._id, e.target.value)}
-                    >
+                    <Select size="small" value={v.handlingMethod} disabled>
                       <MenuItem value="Nhắc nhở">Nhắc nhở</MenuItem>
                       <MenuItem value="Kiểm điểm">Kiểm điểm</MenuItem>
                       <MenuItem value="Chép phạt">Chép phạt</MenuItem>
                       <MenuItem value="Báo phụ huynh">Báo phụ huynh</MenuItem>
                       <MenuItem value="Mời phụ huynh">Mời phụ huynh</MenuItem>
                       <MenuItem value="Tạm dừng việc học tập">Tạm dừng việc học tập</MenuItem>
+                      <MenuItem value="Xét hạ hạnh kiểm">Xét hạ hạnh kiểm</MenuItem>
                     </Select>
                   </TableCell>
                   <TableCell>
@@ -331,6 +338,9 @@ const ViolationDetailPage = () => {
                   <TableCell>{matchedRule?.point || 0}</TableCell>
                   <TableCell>{v.weekNumber ?? "N/A"}</TableCell>
                   <TableCell>
+                    <Button size="small" onClick={() => openEditDialog(v)}>
+                      Sửa
+                    </Button>
                     <Button size="small" color="error" onClick={() => handleDeleteViolation(v._id)}>
                       Xoá
                     </Button>
@@ -341,6 +351,36 @@ const ViolationDetailPage = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Dialog sửa lỗi */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
+        <DialogTitle>Sửa lỗi vi phạm</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>Lỗi vi phạm</InputLabel>
+            <Select value={editDescription} label="Lỗi vi phạm" onChange={(e) => setEditDescription(e.target.value)}>
+              {rules.map((rule) => (
+                <MenuItem key={rule._id} value={rule.title}>
+                  {rule.title} ({rule.point} điểm)
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            fullWidth
+            sx={{ mt: 2 }}
+            label="Ngày vi phạm (dd/mm/yyyy)"
+            value={editDate}
+            onChange={(e) => setEditDate(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Hủy</Button>
+          <Button variant="contained" onClick={handleSaveEdit}>
+            Lưu
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbarOpen}
@@ -359,6 +399,5 @@ const ViolationDetailPage = () => {
     </Box>
   );
 };
-
 
 export default ViolationDetailPage;
