@@ -359,50 +359,6 @@ const ViolationDetailPage = () => {
     </Box>
   );
 };
-// ✏️ Sửa lỗi vi phạm (không thay đổi phần xử lý)
-exports.updateViolation = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      description,
-      weekNumber,
-      time,
-      className,
-      name: rawName,
-    } = req.body;
 
-    const name = rawName ? rawName.trim().toLowerCase() : undefined;
-
-    // ✅ Tìm vi phạm
-    const violation = await Violation.findById(id);
-    if (!violation) {
-      return res.status(404).json({ error: "Không tìm thấy vi phạm." });
-    }
-
-    // 🔧 Cập nhật các trường cho phép sửa
-    if (description) {
-      violation.description = description;
-
-      // tự động cập nhật lại điểm phạt nếu mô tả đổi
-      const rule = await Rule.findOne({ title: description });
-      violation.penalty = rule && typeof rule.point === "number" ? rule.point : 0;
-    }
-
-    if (weekNumber !== undefined) violation.weekNumber = weekNumber;
-    if (time) violation.time = new Date(time);
-    if (className) violation.className = className;
-    if (name) violation.name = name;
-
-    await violation.save();
-
-    // ⚙️ Cập nhật lại điểm hạnh kiểm
-    await updateMeritScore(violation.name, violation.className);
-
-    res.json({ message: "Đã cập nhật vi phạm thành công.", violation });
-  } catch (error) {
-    console.error("❌ Lỗi khi cập nhật vi phạm:", error);
-    res.status(500).json({ error: "Lỗi server khi cập nhật vi phạm." });
-  }
-};
 
 export default ViolationDetailPage;
