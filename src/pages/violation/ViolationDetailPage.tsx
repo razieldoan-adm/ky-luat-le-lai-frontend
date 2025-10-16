@@ -209,7 +209,7 @@ const ViolationDetailPage = () => {
   const handleSaveEdit = async () => {
     if (!editItem) return;
     try {
-      const rule = rules.find((r) => r.title === editDescription);
+     
       const formattedDate = dayjs(editDate, "DD/MM/YYYY").isValid()
         ? dayjs(editDate, "DD/MM/YYYY").toDate()
         : new Date();
