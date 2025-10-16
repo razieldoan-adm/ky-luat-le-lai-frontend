@@ -20,7 +20,7 @@ import {
 import api from "../../api/api";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
-import { AlertColor } from "@mui/material";
+import type { AlertColor } from "@mui/material";
 dayjs.extend(isoWeek);
 
 interface Student {
