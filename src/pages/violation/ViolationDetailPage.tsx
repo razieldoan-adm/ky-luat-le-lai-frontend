@@ -37,7 +37,7 @@ interface Violation {
   time?: string;
   handled: boolean;
   handlingMethod: string;
-  handledBy?: string; // ✅ Người xử lý (GVCN / PGT / rỗng)
+  handledBy?: string;
   weekNumber?: number;
 }
 
@@ -135,6 +135,7 @@ const ViolationDetailPage = () => {
     return time;
   };
 
+  // ✅ Ghi nhận lỗi mới
   const handleAddViolation = async () => {
     const selectedRule = rules.find((r) => r._id === selectedRuleId);
     if (!selectedRule || !name || !className) {
@@ -171,7 +172,7 @@ const ViolationDetailPage = () => {
         weekNumber,
         time: violationDate.toISOString(),
         handled: false,
-        handledBy: "", // ✅ thêm mới
+        handledBy: "",
       });
 
       setSelectedRuleId("");
@@ -189,22 +190,7 @@ const ViolationDetailPage = () => {
     }
   };
 
-  // ✅ Xử lý bởi GVCN hoặc PGT
-  const handleMarkAsHandled = async (id: string, handledBy: "GVCN" | "PGT") => {
-    try {
-      await api.patch(`/api/violations/${id}/handle`, { handled: true, handledBy });
-      setSnackbarMessage(`Đã xử lý (${handledBy}) thành công!`);
-      setSnackbarSeverity("success");
-      fetchViolations();
-    } catch (err) {
-      console.error("Lỗi khi xử lý vi phạm:", err);
-      setSnackbarMessage("Lỗi khi xử lý vi phạm.");
-      setSnackbarSeverity("error");
-    } finally {
-      setSnackbarOpen(true);
-    }
-  };
-
+  // ✅ Xoá vi phạm
   const handleDeleteViolation = async (id: string) => {
     try {
       await api.delete(`/api/violations/${id}`);
@@ -214,6 +200,22 @@ const ViolationDetailPage = () => {
     } catch (err) {
       console.error("Lỗi xoá vi phạm:", err);
       setSnackbarMessage("Lỗi xoá vi phạm.");
+      setSnackbarSeverity("error");
+    } finally {
+      setSnackbarOpen(true);
+    }
+  };
+
+  // ✅ Sửa vi phạm (chỉ cho phép đổi hình thức xử lý)
+  const handleEditViolation = async (id: string, newHandling: string) => {
+    try {
+      await api.patch(`/api/violations/${id}`, { handlingMethod: newHandling });
+      setSnackbarMessage("Cập nhật xử lý thành công!");
+      setSnackbarSeverity("success");
+      fetchViolations();
+    } catch (err) {
+      console.error("Lỗi khi sửa vi phạm:", err);
+      setSnackbarMessage("Lỗi khi sửa vi phạm.");
       setSnackbarSeverity("error");
     } finally {
       setSnackbarOpen(true);
@@ -287,7 +289,6 @@ const ViolationDetailPage = () => {
               <TableCell>Thời gian</TableCell>
               <TableCell>Xử lý</TableCell>
               <TableCell>Trạng thái</TableCell>
-              <TableCell>Người xử lý</TableCell> {/* ✅ Cột mới */}
               <TableCell>Điểm trừ</TableCell>
               <TableCell>Tuần</TableCell>
               <TableCell>Thao tác</TableCell>
@@ -302,7 +303,20 @@ const ViolationDetailPage = () => {
                   <TableCell>{idx + 1}</TableCell>
                   <TableCell>{v.description}</TableCell>
                   <TableCell>{renderTime(v.time)}</TableCell>
-                  <TableCell>{v.handlingMethod}</TableCell>
+                  <TableCell>
+                    <Select
+                      size="small"
+                      value={v.handlingMethod}
+                      onChange={(e) => handleEditViolation(v._id, e.target.value)}
+                    >
+                      <MenuItem value="Nhắc nhở">Nhắc nhở</MenuItem>
+                      <MenuItem value="Kiểm điểm">Kiểm điểm</MenuItem>
+                      <MenuItem value="Chép phạt">Chép phạt</MenuItem>
+                      <MenuItem value="Báo phụ huynh">Báo phụ huynh</MenuItem>
+                      <MenuItem value="Mời phụ huynh">Mời phụ huynh</MenuItem>
+                      <MenuItem value="Tạm dừng việc học tập">Tạm dừng việc học tập</MenuItem>
+                    </Select>
+                  </TableCell>
                   <TableCell>
                     {v.handled ? (
                       <Box sx={{ backgroundColor: "green", color: "white", px: 1, py: 0.5, borderRadius: 1, textAlign: "center" }}>
@@ -314,15 +328,12 @@ const ViolationDetailPage = () => {
                       </Box>
                     )}
                   </TableCell>
-                  <TableCell>{v.handledBy || ""}</TableCell> {/* ✅ Hiển thị người xử lý */}
                   <TableCell>{matchedRule?.point || 0}</TableCell>
                   <TableCell>{v.weekNumber ?? "N/A"}</TableCell>
                   <TableCell>
-                    {(
-                      <Button size="small" color="error" onClick={() => handleDeleteViolation(v._id)}>
-                        Xoá
-                      </Button>
-                    )}
+                    <Button size="small" color="error" onClick={() => handleDeleteViolation(v._id)}>
+                      Xoá
+                    </Button>
                   </TableCell>
                 </TableRow>
               );
