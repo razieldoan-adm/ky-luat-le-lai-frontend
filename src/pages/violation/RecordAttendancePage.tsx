@@ -8,7 +8,7 @@ import { Delete } from "@mui/icons-material";
 import api from "../../api/api";
 
 export default function RecordAttendancePage() {
-  const [classes, setClasses] = useState<string[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
@@ -16,9 +16,26 @@ export default function RecordAttendancePage() {
   const [session, setSession] = useState("Sáng");
   const [records, setRecords] = useState<any[]>([]);
 
-  // ✅ Lấy danh sách lớp
+  // ✅ Xác định buổi học tự động (nhưng vẫn có thể đổi)
   useEffect(() => {
-    api.get("/classes").then(res => setClasses(res.data));
+    const hour = new Date().getHours();
+    if (hour >= 12) setSession("Chiều");
+    else setSession("Sáng");
+  }, []);
+
+  // ✅ Lấy danh sách lớp (fix lỗi không load được)
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const res = await api.get("/classes");
+        // Dữ liệu có thể là [{className: '10A1'}, ...] hoặc ['10A1', ...]
+        const classList = res.data.map((c: any) => c.className || c);
+        setClasses(classList);
+      } catch (err) {
+        console.error("Lỗi tải danh sách lớp:", err);
+      }
+    };
+    fetchClasses();
   }, []);
 
   // ✅ Lấy danh sách học sinh theo lớp
@@ -44,8 +61,8 @@ export default function RecordAttendancePage() {
       studentName: selectedStudent.name,
       date,
       session,
-      recordedBy: "GVCN",
-      permission: false, // mặc định là nghỉ không phép
+      recordedBy: "PGT", // ✅ mặc định là PGT
+      permission: false, // nghỉ không phép
     });
 
     alert("✅ Đã ghi nhận nghỉ học không phép");
