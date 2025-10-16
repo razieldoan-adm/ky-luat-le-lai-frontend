@@ -82,7 +82,7 @@ export default function RecordAttendancePage() {
     try {
       let res;
       if (viewMode === "ngày") {
-        res = await api.get(`/attendance/list?className=${selectedClass}&date=${date}`);
+        res = await api.get(`/class-attendance-summaries/list?className=${selectedClass}&date=${date}`);
       } else {
         const d = new Date(date);
         const day = d.getDay() || 7;
@@ -111,7 +111,7 @@ export default function RecordAttendancePage() {
       return;
     }
     try {
-      await api.post("/attendance/record", {
+      await api.post("/class-attendance-summaries/record", {
         className: selectedClass,
         studentName: selectedStudent.name,
         date,
@@ -132,7 +132,7 @@ export default function RecordAttendancePage() {
   // ✅ Xóa bản ghi nghỉ học
   const handleDelete = async (id: string) => {
     if (!window.confirm("Xóa bản ghi này?")) return;
-    await api.delete(`/attendance/${id}`);
+    await api.delete(`/class-attendance-summaries/${id}`);
     loadRecords();
   };
 
