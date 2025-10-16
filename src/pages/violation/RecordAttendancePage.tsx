@@ -25,17 +25,16 @@ export default function RecordAttendancePage() {
 
   // ✅ Lấy danh sách lớp (fix lỗi không load được)
   useEffect(() => {
-    const fetchClasses = async () => {
+    const loadClasses = async () => {
       try {
-        const res = await api.get("/classes");
-        // Dữ liệu có thể là [{className: '10A1'}, ...] hoặc ['10A1', ...]
-        const classList = res.data.map((c: any) => c.className || c);
-        setClasses(classList);
+        const res = await api.get("/api/classes");
+        const arr = (res.data || []).map((c: any) => c.className ?? c.name ?? String(c));
+        setClasses(arr);
       } catch (err) {
-        console.error("Lỗi tải danh sách lớp:", err);
+        console.error("Lỗi khi tải danh sách lớp:", err);
       }
     };
-    fetchClasses();
+    loadClasses();
   }, []);
 
   // ✅ Lấy danh sách học sinh theo lớp
