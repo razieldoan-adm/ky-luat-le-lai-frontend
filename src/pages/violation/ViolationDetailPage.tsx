@@ -131,18 +131,7 @@ const ViolationDetailPage = () => {
     if (!isNaN(parsed.getTime())) return parsed.toLocaleDateString("vi-VN");
     return time;
   };
-  const getHandlingMethodByRepeatCount = (count: number) => {
-  const methods = [
-    "Nhắc nhở",
-    "Kiểm điểm",
-    "Chép phạt",
-    "Báo phụ huynh",
-    "Mời phụ huynh",
-    "Tạm dừng việc học tập",
-    "Xét hạ hạnh kiểm" // ✅ thêm hình thức mới
-  ];
-  return methods[count] || "Xét hạ hạnh kiểm";
-};
+  
   // ➕ Ghi nhận lỗi mới
   const handleAddViolation = async () => {
     const selectedRule = rules.find((r) => r._id === selectedRuleId);
