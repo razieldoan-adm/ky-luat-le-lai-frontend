@@ -318,16 +318,7 @@ const ViolationDetailPage = () => {
                   <TableCell>{matchedRule?.point || 0}</TableCell>
                   <TableCell>{v.weekNumber ?? "N/A"}</TableCell>
                   <TableCell>
-                    {!v.handled ? (
-                      <Stack direction="row" spacing={1}>
-                        <Button size="small" variant="contained" onClick={() => handleMarkAsHandled(v._id, "GVCN")}>
-                          GVCN
-                        </Button>
-                        <Button size="small" variant="contained" color="secondary" onClick={() => handleMarkAsHandled(v._id, "PGT")}>
-                          PGT
-                        </Button>
-                      </Stack>
-                    ) : (
+                    {(
                       <Button size="small" color="error" onClick={() => handleDeleteViolation(v._id)}>
                         Xoá
                       </Button>
