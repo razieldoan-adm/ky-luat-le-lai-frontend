@@ -68,14 +68,14 @@ export default function RecordAttendancePage() {
           label="Ngày"
           type="date"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          onChange={(_) => setDate(e.target.value)}
           InputLabelProps={{ shrink: true }}
         />
 
         <TextField
           select label="Buổi"
           value={session}
-          onChange={(e) => setSession(e.target.value)}
+          onChange={(_) => setSession(e.target.value)}
           sx={{ minWidth: 120 }}
         >
           <MenuItem value="Sáng">Sáng</MenuItem>
