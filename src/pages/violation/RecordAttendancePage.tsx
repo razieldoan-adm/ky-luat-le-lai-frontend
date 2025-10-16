@@ -16,9 +16,7 @@ export default function RecordAttendancePage() {
   const [session, setSession] = useState("Sáng");
   const [records, setRecords] = useState<any[]>([]);
 
-  const [className, setClassName] = useState("");
 
-  const [violation, setViolation] = useState("");
   const [studentInput, setStudentInput] = useState("");
   const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
   const [recorder] = useState("Th.Huy"); // tạm thời mặc định
