@@ -8,7 +8,7 @@ import { Delete } from "@mui/icons-material";
 import api from "../../api/api";
 
 export default function RecordAttendancePage() {
-  const [classes, setClasses] = useState<any[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [students, setStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
@@ -16,20 +16,13 @@ export default function RecordAttendancePage() {
   const [session, setSession] = useState("Sáng");
   const [records, setRecords] = useState<any[]>([]);
 
-
-  const [studentInput, setStudentInput] = useState("");
-  const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
-  const [recorder] = useState("Th.Huy"); // tạm thời mặc định
-
-
-  // ✅ Xác định buổi học tự động (nhưng vẫn có thể đổi)
+  // ✅ Tự động chọn buổi
   useEffect(() => {
     const hour = new Date().getHours();
-    if (hour >= 12) setSession("Chiều");
-    else setSession("Sáng");
+    setSession(hour >= 12 ? "Chiều" : "Sáng");
   }, []);
 
-  // ✅ Lấy danh sách lớp (fix lỗi không load được)
+  // ✅ Lấy danh sách lớp
   useEffect(() => {
     const loadClasses = async () => {
       try {
@@ -42,40 +35,13 @@ export default function RecordAttendancePage() {
     };
     loadClasses();
   }, []);
-   useEffect(() => {
-    if (!studentInput.trim() || !className) {
-      setSuggestions([]);
-      return;
-    }
-    const t = setTimeout(async () => {
-      try {
-        const res = await api.get("/api/students/search", {
-          params: { name: studentInput.trim(), className },
-        });
-        setSuggestions(res.data || []);
-      } catch (err) {
-        console.error("Lỗi tìm học sinh:", err);
-        setSuggestions([]);
-      }
-    }, 250);
-    return () => clearTimeout(t);
-  }, [studentInput, className]);
-
-  // --- Chọn học sinh
-  const handleSelectSuggestion = (s: StudentSuggestion) => {
-    if (!selectedStudents.includes(s.name)) setSelectedStudents((p) => [...p, s.name]);
-    setStudentInput("");
-    setSuggestions([]);
-  };
-
-  const removeSelectedStudent = (name: string) => {
-    setSelectedStudents((p) => p.filter((x) => x !== name));
-  };
 
   // ✅ Lấy danh sách học sinh theo lớp
   useEffect(() => {
-    if (selectedClass)
-      api.get(`/attendance/students/${selectedClass}`).then(res => setStudents(res.data));
+    if (!selectedClass) return;
+    api.get(`/attendance/students/${selectedClass}`)
+      .then(res => setStudents(res.data))
+      .catch(err => console.error("Lỗi tải học sinh:", err));
   }, [selectedClass]);
 
   // ✅ Tải danh sách nghỉ học
@@ -87,8 +53,10 @@ export default function RecordAttendancePage() {
 
   // ✅ Ghi nhận nghỉ học
   const handleAdd = async () => {
-    if (!selectedStudent || !selectedClass)
-      return alert("Chưa chọn lớp hoặc học sinh");
+    if (!selectedStudent || !selectedClass) {
+      alert("Chưa chọn lớp hoặc học sinh");
+      return;
+    }
 
     await api.post("/attendance/record", {
       className: selectedClass,
@@ -199,9 +167,7 @@ export default function RecordAttendancePage() {
               <TableRow key={r._id}>
                 <TableCell>{r.studentId?.name || r.studentName}</TableCell>
                 <TableCell>{r.session}</TableCell>
-                <TableCell>
-                  {new Date(r.date).toLocaleDateString("vi-VN")}
-                </TableCell>
+                <TableCell>{new Date(r.date).toLocaleDateString("vi-VN")}</TableCell>
                 <TableCell>
                   {r.permission ? (
                     <Chip label="Có phép" color="success" size="small" />
