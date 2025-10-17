@@ -49,25 +49,7 @@ export default function RecordAttendancePage() {
   }, []);
 
   // ✅ Gợi ý học sinh theo lớp + tên
-  useEffect(() => {
-    if (!studentInput.trim() || !selectedClass) {
-      setSuggestions([]);
-      return;
-    }
-    const t = setTimeout(async () => {
-      try {
-        const res = await api.get("/api/students/" + selectedClass);
-        const filtered = (res.data || []).filter((s: any) =>
-          s.name.toLowerCase().includes(studentInput.trim().toLowerCase())
-        );
-        setSuggestions(filtered);
-      } catch (err) {
-        console.error("Lỗi tìm học sinh:", err);
-        setSuggestions([]);
-      }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [studentInput, selectedClass]);
+  useEffect(() => { if (!studentInput.trim() || !selectedClass) { setSuggestions([]); return; } const t = setTimeout(async () => { try { const res = await api.get("/api/students/search", { params: { name: studentInput.trim(), className: selectedClass }, }); setSuggestions(res.data || []); } catch (err) { console.error("Lỗi tìm học sinh:", err); setSuggestions([]); } }, 250); return () => clearTimeout(t); }, [studentInput, selectedClass]);
 
   // ✅ Tải danh sách nghỉ học
   const loadRecords = async () => {
