@@ -56,7 +56,7 @@ export default function RecordAttendancePage() {
     }
     const t = setTimeout(async () => {
       try {
-        const res = await api.get("/api/class-attendance-summaries/students/" + selectedClass);
+        const res = await api.get("/api/classes/students/" + selectedClass);
         const filtered = (res.data || []).filter((s: any) =>
           s.name.toLowerCase().includes(studentInput.trim().toLowerCase())
         );
