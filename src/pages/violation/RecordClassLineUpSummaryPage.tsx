@@ -72,7 +72,7 @@ export default function RecordClassLineUpSummaryPage() {
     'Mất trật tự, đùa giỡn khi xếp hàng',
     'Mất trật tự khi di chuyển, di chuyện lộn xộn không theo hàng lối',
     'Không dọn vệ sinh vị trí xếp hàng',
-    'Nhiều học sinh ngồi trong lớp giờ chơi, không ra xếp hàng',
+    'Nhiều học sinh ngồi trong lớp giờ chơi, giờ xếp hàng',
     'Mất trật tự trong khi xếp hàng giờ SHDC',
   ];
 
