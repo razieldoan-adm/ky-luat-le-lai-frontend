@@ -70,11 +70,15 @@ export default function ClassAttendanceSummaryPage() {
 
       // 3️⃣ Gom nhóm số lần nghỉ học theo lớp
       const grouped: Record<string, number> = {};
-      records.forEach((r: any) => {
-        const cls = r.className;
-        if (!cls) return; // bỏ qua nếu không có className
-        if (!grouped[cls]) grouped[cls] = 0;
-        grouped[cls]++;
+
+      records.forEach((r) => {
+        const cls = r.className?.trim();
+        if (!cls) return;
+      
+        // ✅ Chỉ đếm khi vắng và không phép
+        if (r.present === false && r.excuse === false) {
+          grouped[cls] = (grouped[cls] || 0) + 1;
+        }
       });
 
       // 4️⃣ Ghép toàn bộ lớp (lớp không có nghỉ = 0)
