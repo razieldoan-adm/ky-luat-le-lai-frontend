@@ -71,7 +71,7 @@ export default function ClassAttendanceSummaryPage() {
       // 3️⃣ Gom nhóm số lần nghỉ học theo lớp
       const grouped: Record<string, number> = {};
 
-      records.forEach((r) => {
+      records.forEach(((r: any)) => {
         const cls = r.className?.trim();
         if (!cls) return;
       
