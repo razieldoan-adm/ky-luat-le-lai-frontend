@@ -29,7 +29,12 @@ interface SummaryRow {
   absentCount: number;
   total: number;
 }
-
+interface AttendanceRecord {
+  className: string;
+  present: boolean;
+  excuse: boolean;
+  date: string;
+}
 export default function ClassAttendanceSummaryPage() {
   const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<string>("");
@@ -71,12 +76,11 @@ export default function ClassAttendanceSummaryPage() {
       // 3️⃣ Gom nhóm số lần nghỉ học theo lớp
       const grouped: Record<string, number> = {};
 
-      records.forEach(((r: any)) => {
+      records.forEach((r: AttendanceRecord) => {
         const cls = r.className?.trim();
         if (!cls) return;
       
-        // ✅ Chỉ đếm khi vắng và không phép
-        if (r.present === false && r.excuse === false) {
+        if (!r.present && !r.excuse) {
           grouped[cls] = (grouped[cls] || 0) + 1;
         }
       });
