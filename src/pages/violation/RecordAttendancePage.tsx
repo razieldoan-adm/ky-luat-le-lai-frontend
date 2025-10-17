@@ -56,15 +56,16 @@ export default function RecordAttendancePage() {
     }
     const t = setTimeout(async () => {
       try {
-        const res = await api.get("/api/students/search", {
-          params: { name: studentInput.trim(), className: selectedClass },
-        });
-        setSuggestions(res.data || []);
+        const res = await api.get("/api/class-attendance-summaries/students/" + selectedClass);
+        const filtered = (res.data || []).filter((s: any) =>
+          s.name.toLowerCase().includes(studentInput.trim().toLowerCase())
+        );
+        setSuggestions(filtered);
       } catch (err) {
         console.error("Lỗi tìm học sinh:", err);
         setSuggestions([]);
       }
-    }, 250);
+    }, 300);
     return () => clearTimeout(t);
   }, [studentInput, selectedClass]);
 
@@ -75,10 +76,6 @@ export default function RecordAttendancePage() {
       let url = `/api/class-attendance-summaries/list?className=${selectedClass}`;
       if (viewMode === "Ngày") {
         url += `&date=${date}`;
-      } else {
-        const start = dayjs(date).startOf("isoWeek").format("YYYY-MM-DD");
-        const end = dayjs(date).endOf("isoWeek").format("YYYY-MM-DD");
-        url += `&start=${start}&end=${end}`;
       }
       const res = await api.get(url);
       setRecords(res.data || []);
@@ -100,7 +97,6 @@ export default function RecordAttendancePage() {
         date,
         session,
         recordedBy: "PGT",
-        permission: false,
       });
       setSnackbar({ open: true, message: "✅ Đã ghi nhận nghỉ học", severity: "success" });
       setSelectedStudent(null);
@@ -119,6 +115,7 @@ export default function RecordAttendancePage() {
       loadRecords();
     } catch (err) {
       console.error("Lỗi xóa:", err);
+      setSnackbar({ open: true, message: "Lỗi khi xóa bản ghi", severity: "error" });
     }
   };
 
@@ -213,7 +210,7 @@ export default function RecordAttendancePage() {
                   <TableCell>{r.session}</TableCell>
                   <TableCell>{new Date(r.date).toLocaleDateString("vi-VN")}</TableCell>
                   <TableCell>
-                    {r.permission ? (
+                    {r.isExcused ? (
                       <Chip label="Có phép" color="success" size="small" />
                     ) : (
                       <Chip label="Không phép" color="error" size="small" />
