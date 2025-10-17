@@ -119,7 +119,7 @@ export default function ClassDisciplineTotalPage() {
           t.isAfter(start) &&
           t.isBefore(end) &&
           v.handled === true &&
-          v.handlingMethod === "PGT xử lý"
+          ["PGT", "PGT xử lý"].includes(v.handlingMethod)
         );
       });
 
