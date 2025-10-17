@@ -72,6 +72,7 @@ export default function ClassAttendanceSummaryPage() {
       const grouped: Record<string, number> = {};
       records.forEach((r: any) => {
         const cls = r.className;
+        if (!cls) return; // bỏ qua nếu không có className
         if (!grouped[cls]) grouped[cls] = 0;
         grouped[cls]++;
       });
