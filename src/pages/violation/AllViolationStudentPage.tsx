@@ -24,7 +24,7 @@ import api from '../../api/api';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-
+import { Switch, FormControlLabel } from "@mui/material";
 // ✅ Cấu hình timezone cho VN
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -71,6 +71,25 @@ export default function AllViolationStudentPage() {
   const [violationBeingEdited, setViolationBeingEdited] = useState<Violation | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
+  const fetchSetting = async () => {
+  try {
+    const res = await api.get("/api/settings");
+    setLimitGVCN(res.data.limitGVCNHandling ?? false);
+  } catch (err) {
+    console.error("Lỗi khi lấy cài đặt GVCN:", err);
+  }
+};
+
+// 🔹 Cập nhật trạng thái khi bật/tắt
+const toggleLimitGVCN = async () => {
+  try {
+    const newValue = !limitGVCN;
+    await api.put("/api/settings/update", { limitGVCNHandling: newValue });
+    setLimitGVCN(newValue);
+  } catch (err) {
+    console.error("Lỗi khi cập nhật giới hạn GVCN:", err);
+  }
+};
   // 🚀 Khởi tạo dữ liệu ban đầu
   useEffect(() => {
     const init = async () => {
@@ -78,6 +97,7 @@ export default function AllViolationStudentPage() {
       await fetchClasses();
       await fetchRules();
       await fetchViolations();
+      await fetchSetting();
     };
     init();
   }, []);
@@ -212,6 +232,28 @@ const handleProcessViolation = async (id: string, handledBy: string) => {
       <Typography variant="h4" fontWeight="bold" align="center" gutterBottom>
         Danh sách tất cả học sinh vi phạm
       </Typography>
+
+      {/* 🔘 Nút bật/tắt giới hạn GVCN */}
+<Box
+  sx={{
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    mb: 2,
+    pr: 2,
+  }}
+>
+  <FormControlLabel
+    control={
+      <Switch
+        checked={limitGVCN}
+        onChange={toggleLimitGVCN}
+        color="primary"
+      />
+    }
+    label="Giới hạn số lần xử lý của GVCN đối với học sinh vi phạm lần 2 trở lên"
+  />
+</Box>
 
       {/* Bộ lọc */}
       <Paper sx={{ p: 2, borderRadius: 3, mb: 4 }} elevation={3}>
