@@ -176,7 +176,9 @@ export default function RecordAttendancePage() {
           color="primary"
           value={viewMode}
           exclusive
-          onChange={(v) => v && setViewMode(v)}
+          onChange={(_event, newValue) => {
+            if (newValue) setViewMode(newValue);
+          }}
         >
           <ToggleButton value="day">Theo ngày</ToggleButton>
           <ToggleButton value="week">Theo tuần</ToggleButton>
