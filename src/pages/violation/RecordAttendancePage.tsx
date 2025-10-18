@@ -157,7 +157,7 @@ export default function RecordAttendancePage() {
             options={students}
             getOptionLabel={(s) => s.name || ""}
             value={selectedStudent}
-            onChange={(e, v) => setSelectedStudent(v)}
+            onChange={(v) => setSelectedStudent(v)}
             sx={{ width: 250 }}
             renderInput={(params) => <TextField {...params} label="Học sinh nghỉ học" size="small" />}
           />
@@ -176,7 +176,7 @@ export default function RecordAttendancePage() {
           color="primary"
           value={viewMode}
           exclusive
-          onChange={(e, v) => v && setViewMode(v)}
+          onChange={(v) => v && setViewMode(v)}
         >
           <ToggleButton value="day">Theo ngày</ToggleButton>
           <ToggleButton value="week">Theo tuần</ToggleButton>
