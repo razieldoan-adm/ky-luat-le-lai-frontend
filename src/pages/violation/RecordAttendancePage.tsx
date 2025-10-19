@@ -17,8 +17,6 @@ import {
   IconButton,
   Snackbar,
   Alert,
-  ToggleButton,
-  ToggleButtonGroup,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -42,7 +40,6 @@ interface AttendanceRecord {
 export default function RecordAttendancePage() {
   const [className, setClassName] = useState("");
   const [classes, setClasses] = useState<string[]>([]);
-
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -53,9 +50,9 @@ export default function RecordAttendancePage() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
 
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [viewMode, setViewMode] = useState<"day" | "week">("day");
-
-  const [alert, setAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [alert, setAlert] = useState<{ type: "success" | "error"; msg: string } | null>(
+    null
+  );
 
   // --- Lấy danh sách lớp ---
   useEffect(() => {
@@ -108,7 +105,8 @@ export default function RecordAttendancePage() {
 
   // --- Chọn học sinh ---
   const handleSelectSuggestion = (s: StudentSuggestion) => {
-    if (!selectedStudents.includes(s.name)) setSelectedStudents((p) => [...p, s.name]);
+    if (!selectedStudents.includes(s.name))
+      setSelectedStudents((p) => [...p, s.name]);
     setStudentInput("");
     setSuggestions([]);
   };
@@ -322,16 +320,19 @@ export default function RecordAttendancePage() {
         </Table>
       </TableContainer>
 
-      {/* --- Thông báo --- */}
+      {/* --- Snackbar --- */}
       <Snackbar
         open={!!alert}
         autoHideDuration={2000}
         onClose={() => setAlert(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        {alert && (
+        {alert ? (
           <Alert severity={alert.type} sx={{ width: "100%" }}>
             {alert.msg}
           </Alert>
+        ) : (
+          <></>
         )}
       </Snackbar>
     </Box>
