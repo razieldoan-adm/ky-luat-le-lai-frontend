@@ -18,7 +18,10 @@ import {
   ToggleButtonGroup,
   Snackbar,
   Alert,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
+import { CheckCircle, Delete } from "@mui/icons-material";
 import dayjs from "dayjs";
 import api from "../../api/api";
 
@@ -37,7 +40,7 @@ export default function RecordAttendancePage() {
     severity: "success",
   });
 
-  // 🔹 Lấy danh sách lớp từ API
+  // 🔹 Lấy danh sách lớp
   useEffect(() => {
     const loadClasses = async () => {
       try {
@@ -106,6 +109,29 @@ export default function RecordAttendancePage() {
     }
   };
 
+  // 🔹 Duyệt phép
+  const handleApprove = async (id: string) => {
+    try {
+      await api.put(`/attendance/${id}/approve`);
+      setSnackbar({ open: true, message: "✅ Đã duyệt phép cho học sinh.", severity: "success" });
+      fetchRecords();
+    } catch {
+      setSnackbar({ open: true, message: "Lỗi khi duyệt phép!", severity: "error" });
+    }
+  };
+
+  // 🔹 Xóa bản ghi
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Xác nhận xóa bản ghi này?")) return;
+    try {
+      await api.delete(`/attendance/${id}`);
+      setSnackbar({ open: true, message: "🗑️ Đã xóa bản ghi.", severity: "success" });
+      fetchRecords();
+    } catch {
+      setSnackbar({ open: true, message: "Lỗi khi xóa bản ghi!", severity: "error" });
+    }
+  };
+
   return (
     <Box p={3}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -114,7 +140,7 @@ export default function RecordAttendancePage() {
 
       {/* Bộ lọc và nhập nhanh */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Stack direction="row" spacing={2}>
+        <Stack direction="row" spacing={2} alignItems="center">
           <TextField
             label="Lớp"
             select
@@ -130,12 +156,14 @@ export default function RecordAttendancePage() {
             ))}
           </TextField>
 
-          <TextField
-            label="Ngày"
-            type="date"
-            size="small"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
+          <Autocomplete
+            disablePortal
+            options={students}
+            getOptionLabel={(s) => s.name || ""}
+            value={selectedStudent}
+            onChange={(_e, v) => setSelectedStudent(v)}
+            sx={{ width: 250 }}
+            renderInput={(params) => <TextField {...params} label="Học sinh" size="small" />}
           />
 
           <TextField
@@ -150,14 +178,12 @@ export default function RecordAttendancePage() {
             <MenuItem value="chiều">Chiều</MenuItem>
           </TextField>
 
-          <Autocomplete
-            disablePortal
-            options={students}
-            getOptionLabel={(s) => s.name || ""}
-            value={selectedStudent}
-            onChange={(_e, v) => setSelectedStudent(v)}
-            sx={{ width: 250 }}
-            renderInput={(params) => <TextField {...params} label="Học sinh nghỉ học" size="small" />}
+          <TextField
+            label="Ngày"
+            type="date"
+            size="small"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
           />
 
           <Button variant="contained" color="primary" onClick={handleRecord}>
@@ -193,7 +219,8 @@ export default function RecordAttendancePage() {
               <TableCell>Họ tên</TableCell>
               <TableCell>Buổi</TableCell>
               <TableCell>Ngày</TableCell>
-              <TableCell>Ghi nhận</TableCell>
+              <TableCell>Trạng thái</TableCell>
+              <TableCell align="center">Hành động</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -204,7 +231,27 @@ export default function RecordAttendancePage() {
                 <TableCell>{r.studentName}</TableCell>
                 <TableCell>{r.session}</TableCell>
                 <TableCell>{dayjs(r.date).format("DD/MM/YYYY")}</TableCell>
-                <TableCell>{dayjs(r.createdAt).format("HH:mm:ss DD/MM")}</TableCell>
+                <TableCell>
+                  {r.permission ? (
+                    <Typography color="green">Có phép</Typography>
+                  ) : (
+                    <Typography color="error">Không phép</Typography>
+                  )}
+                </TableCell>
+                <TableCell align="center">
+                  {!r.permission && (
+                    <Tooltip title="Duyệt phép">
+                      <IconButton color="success" onClick={() => handleApprove(r._id)}>
+                        <CheckCircle />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  <Tooltip title="Xóa bản ghi">
+                    <IconButton color="error" onClick={() => handleDelete(r._id)}>
+                      <Delete />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
