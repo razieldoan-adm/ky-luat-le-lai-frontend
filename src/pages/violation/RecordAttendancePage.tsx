@@ -20,10 +20,11 @@ import {
   Alert,
 } from "@mui/material";
 import dayjs from "dayjs";
-import api from "../../api/api"; // ✅ Dùng instance axios của bạn
+import api from "../../api/api";
 
 export default function RecordAttendancePage() {
   const [grade, setGrade] = useState("");
+  const [classes, setClasses] = useState<string[]>([]);
   const [className, setClassName] = useState("");
   const [students, setStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -37,22 +38,37 @@ export default function RecordAttendancePage() {
     severity: "success",
   });
 
-  // 🔹 Lấy danh sách học sinh trong lớp
+  // --- Load danh sách lớp
   useEffect(() => {
-    if (grade && className) {
+    const loadClasses = async () => {
+      try {
+        const res = await api.get("/api/classes");
+        const arr = (res.data || []).map((c: any) => c.className ?? c.name ?? String(c));
+        setClasses(arr);
+      } catch (err) {
+        console.error("Lỗi khi tải danh sách lớp:", err);
+        setClasses([]);
+      }
+    };
+    loadClasses();
+  }, []);
+
+  // --- Load danh sách học sinh theo lớp
+  useEffect(() => {
+    if (className) {
       api
-        .get(`/students`, { params: { grade, className } })
+        .get(`/students`, { params: { className } })
         .then((res) => setStudents(res.data))
         .catch(() => setStudents([]));
     }
-  }, [grade, className]);
+  }, [className]);
 
-  // 🔹 Lấy danh sách nghỉ học trong ngày
+  // --- Lấy danh sách nghỉ học theo ngày
   const fetchRecords = async () => {
-    if (!className || !grade) return;
+    if (!className) return;
     try {
       const res = await api.get(`/attendance/by-date`, {
-        params: { className, grade, date },
+        params: { className, date },
       });
       setRecords(res.data);
     } catch (err) {
@@ -62,11 +78,11 @@ export default function RecordAttendancePage() {
 
   useEffect(() => {
     fetchRecords();
-  }, [className, grade, date]);
+  }, [className, date]);
 
-  // 🔹 Ghi nhận nghỉ học
+  // --- Ghi nhận nghỉ học
   const handleRecord = async () => {
-    if (!selectedStudent || !className || !grade) {
+    if (!selectedStudent || !className) {
       setSnackbar({ open: true, message: "Vui lòng chọn đủ thông tin!", severity: "error" });
       return;
     }
@@ -76,7 +92,6 @@ export default function RecordAttendancePage() {
         studentId: selectedStudent._id,
         studentName: selectedStudent.name,
         className,
-        grade,
         date,
         session,
       });
@@ -99,7 +114,7 @@ export default function RecordAttendancePage() {
         Ghi nhận học sinh nghỉ học
       </Typography>
 
-      {/* Bộ lọc */}
+      {/* --- Bộ lọc --- */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Stack direction="row" spacing={2}>
           <TextField
@@ -125,9 +140,9 @@ export default function RecordAttendancePage() {
             onChange={(e) => setClassName(e.target.value)}
             sx={{ width: 150 }}
           >
-            {[...Array(5)].map((_, i) => (
-              <MenuItem key={i + 1} value={`${grade}A${i + 1}`}>
-                {grade}A{i + 1}
+            {classes.map((c) => (
+              <MenuItem key={c} value={c}>
+                {c}
               </MenuItem>
             ))}
           </TextField>
@@ -157,7 +172,7 @@ export default function RecordAttendancePage() {
             options={students}
             getOptionLabel={(s) => s.name || ""}
             value={selectedStudent}
-            onChange={(v) => setSelectedStudent(v)}
+            onChange={(_e, v) => setSelectedStudent(v)}
             sx={{ width: 250 }}
             renderInput={(params) => <TextField {...params} label="Học sinh nghỉ học" size="small" />}
           />
@@ -168,7 +183,7 @@ export default function RecordAttendancePage() {
         </Stack>
       </Paper>
 
-      {/* Chuyển chế độ xem */}
+      {/* --- Chế độ xem --- */}
       <Stack direction="row" alignItems="center" spacing={2} mb={2}>
         <Typography fontWeight="bold">Xem danh sách:</Typography>
         <ToggleButtonGroup
@@ -185,7 +200,7 @@ export default function RecordAttendancePage() {
         </ToggleButtonGroup>
       </Stack>
 
-      {/* Bảng danh sách nghỉ học */}
+      {/* --- Bảng danh sách nghỉ học --- */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -203,7 +218,7 @@ export default function RecordAttendancePage() {
                 <TableCell>{i + 1}</TableCell>
                 <TableCell>{r.studentName}</TableCell>
                 <TableCell>{r.session}</TableCell>
-                <TableCell>{r.date}</TableCell>
+                <TableCell>{dayjs(r.date).format("DD/MM/YYYY")}</TableCell>
                 <TableCell>
                   {r.permission ? (
                     <Typography color="green">Có phép</Typography>
@@ -217,6 +232,7 @@ export default function RecordAttendancePage() {
         </Table>
       </TableContainer>
 
+      {/* --- Thông báo --- */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
