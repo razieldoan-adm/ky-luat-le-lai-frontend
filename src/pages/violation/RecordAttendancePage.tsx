@@ -43,7 +43,13 @@ export default function RecordAttendancePage() {
     message: "",
     severity: "success",
   });
-
+  function removeVietnameseTones(str: string): string {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // xoá dấu
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D");
+}
   // --- Load danh sách lớp
   useEffect(() => {
     const loadClasses = async () => {
