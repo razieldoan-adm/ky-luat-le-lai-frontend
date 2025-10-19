@@ -81,7 +81,12 @@ export default function RecordAttendancePage() {
   const fetchRecords = async () => {
     if (!className) return;
     try {
-      const res = await api.get(BASE_URL, {
+      const endpoint =
+        viewMode === "week"
+          ? `${BASE_URL}/by-week`
+          : `${BASE_URL}/by-date`;
+
+      const res = await api.get(endpoint, {
         params: { className, date },
       });
       setRecords(res.data || []);
@@ -93,7 +98,7 @@ export default function RecordAttendancePage() {
 
   useEffect(() => {
     fetchRecords();
-  }, [className, date]);
+  }, [className, date, viewMode]);
 
   // --- Ghi nhận nghỉ học
   const handleRecord = async () => {
@@ -103,7 +108,7 @@ export default function RecordAttendancePage() {
     }
 
     try {
-      await api.post(BASE_URL, {
+      await api.post(`${BASE_URL}/record`, {
         studentId: selectedStudent._id,
         studentName: selectedStudent.name,
         className,
@@ -127,7 +132,7 @@ export default function RecordAttendancePage() {
   // --- Duyệt phép
   const handleExcuse = async (id: string) => {
     try {
-      await api.put(`${BASE_URL}/${id}/excuse`);
+      await api.put(`${BASE_URL}/approve/${id}`);
       setSnackbar({ open: true, message: "Đã duyệt phép cho học sinh.", severity: "success" });
       fetchRecords();
     } catch (err) {
