@@ -85,7 +85,7 @@ export default function RecordAttendancePage() {
       const endpoint = viewMode === "week" ? `${BASE_URL}/by-week` : `${BASE_URL}/by-date`;
       const cleanDate = date.split(":")[0];
       const res = await api.get(endpoint, {
-        params: { className, date },
+        params: { className, date:cleanDate },
       });
       setRecords(res.data || []);
     } catch (err) {
