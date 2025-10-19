@@ -23,9 +23,8 @@ import dayjs from "dayjs";
 import api from "../../api/api";
 
 export default function RecordAttendancePage() {
-  const [grade, setGrade] = useState("");
-  const [classes, setClasses] = useState<string[]>([]);
   const [className, setClassName] = useState("");
+  const [classes, setClasses] = useState<string[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [date, setDate] = useState(dayjs().format("YYYY-MM-DD"));
@@ -38,7 +37,7 @@ export default function RecordAttendancePage() {
     severity: "success",
   });
 
-  // --- Load danh sách lớp
+  // 🔹 Lấy danh sách lớp từ API
   useEffect(() => {
     const loadClasses = async () => {
       try {
@@ -47,13 +46,12 @@ export default function RecordAttendancePage() {
         setClasses(arr);
       } catch (err) {
         console.error("Lỗi khi tải danh sách lớp:", err);
-        setClasses([]);
       }
     };
     loadClasses();
   }, []);
 
-  // --- Load danh sách học sinh theo lớp
+  // 🔹 Lấy danh sách học sinh theo lớp
   useEffect(() => {
     if (className) {
       api
@@ -63,7 +61,7 @@ export default function RecordAttendancePage() {
     }
   }, [className]);
 
-  // --- Lấy danh sách nghỉ học theo ngày
+  // 🔹 Lấy danh sách nghỉ học trong ngày
   const fetchRecords = async () => {
     if (!className) return;
     try {
@@ -80,10 +78,10 @@ export default function RecordAttendancePage() {
     fetchRecords();
   }, [className, date]);
 
-  // --- Ghi nhận nghỉ học
+  // 🔹 Ghi nhận nghỉ học
   const handleRecord = async () => {
     if (!selectedStudent || !className) {
-      setSnackbar({ open: true, message: "Vui lòng chọn đủ thông tin!", severity: "error" });
+      setSnackbar({ open: true, message: "Vui lòng chọn lớp và học sinh!", severity: "error" });
       return;
     }
 
@@ -96,7 +94,7 @@ export default function RecordAttendancePage() {
         session,
       });
 
-      setSnackbar({ open: true, message: "Đã ghi nhận nghỉ học.", severity: "success" });
+      setSnackbar({ open: true, message: "✅ Đã ghi nhận nghỉ học.", severity: "success" });
       setSelectedStudent(null);
       fetchRecords();
     } catch (err: any) {
@@ -114,24 +112,9 @@ export default function RecordAttendancePage() {
         Ghi nhận học sinh nghỉ học
       </Typography>
 
-      {/* --- Bộ lọc --- */}
+      {/* Bộ lọc và nhập nhanh */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Stack direction="row" spacing={2}>
-          <TextField
-            label="Khối"
-            select
-            size="small"
-            value={grade}
-            onChange={(e) => setGrade(e.target.value)}
-            sx={{ width: 120 }}
-          >
-            {[10, 11, 12].map((g) => (
-              <MenuItem key={g} value={g}>
-                {g}
-              </MenuItem>
-            ))}
-          </TextField>
-
           <TextField
             label="Lớp"
             select
@@ -140,9 +123,9 @@ export default function RecordAttendancePage() {
             onChange={(e) => setClassName(e.target.value)}
             sx={{ width: 150 }}
           >
-            {classes.map((c) => (
-              <MenuItem key={c} value={c}>
-                {c}
+            {classes.map((cls) => (
+              <MenuItem key={cls} value={cls}>
+                {cls}
               </MenuItem>
             ))}
           </TextField>
@@ -183,7 +166,7 @@ export default function RecordAttendancePage() {
         </Stack>
       </Paper>
 
-      {/* --- Chế độ xem --- */}
+      {/* Chuyển chế độ xem */}
       <Stack direction="row" alignItems="center" spacing={2} mb={2}>
         <Typography fontWeight="bold">Xem danh sách:</Typography>
         <ToggleButtonGroup
@@ -200,39 +183,34 @@ export default function RecordAttendancePage() {
         </ToggleButtonGroup>
       </Stack>
 
-      {/* --- Bảng danh sách nghỉ học --- */}
+      {/* Bảng danh sách nghỉ học */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
               <TableCell>STT</TableCell>
+              <TableCell>Lớp</TableCell>
               <TableCell>Họ tên</TableCell>
               <TableCell>Buổi</TableCell>
               <TableCell>Ngày</TableCell>
-              <TableCell>Phép</TableCell>
+              <TableCell>Ghi nhận</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {records.map((r, i) => (
               <TableRow key={r._id}>
                 <TableCell>{i + 1}</TableCell>
+                <TableCell>{r.className}</TableCell>
                 <TableCell>{r.studentName}</TableCell>
                 <TableCell>{r.session}</TableCell>
                 <TableCell>{dayjs(r.date).format("DD/MM/YYYY")}</TableCell>
-                <TableCell>
-                  {r.permission ? (
-                    <Typography color="green">Có phép</Typography>
-                  ) : (
-                    <Typography color="error">Không phép</Typography>
-                  )}
-                </TableCell>
+                <TableCell>{dayjs(r.createdAt).format("HH:mm:ss DD/MM")}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
 
-      {/* --- Thông báo --- */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
