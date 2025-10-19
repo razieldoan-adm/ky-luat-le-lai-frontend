@@ -30,6 +30,7 @@ export default function RecordAttendancePage() {
 
   const [classes, setClasses] = useState<string[]>([]);
   const [className, setClassName] = useState("");
+  const [grade, setGrade] = useState(""); // ✅ thêm grade
   const [studentInput, setStudentInput] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -81,10 +82,7 @@ export default function RecordAttendancePage() {
   const fetchRecords = async () => {
     if (!className) return;
     try {
-      const endpoint =
-        viewMode === "week"
-          ? `${BASE_URL}/by-week`
-          : `${BASE_URL}/by-date`;
+      const endpoint = viewMode === "week" ? `${BASE_URL}/by-week` : `${BASE_URL}/by-date`;
 
       const res = await api.get(endpoint, {
         params: { className, date },
@@ -112,6 +110,7 @@ export default function RecordAttendancePage() {
         studentId: selectedStudent._id,
         studentName: selectedStudent.name,
         className,
+        grade, // ✅ thêm grade vào payload
         date,
         session,
       });
@@ -163,12 +162,18 @@ export default function RecordAttendancePage() {
       {/* Khu vực nhập nhanh */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Stack direction="row" spacing={2} flexWrap="wrap">
+          {/* Lớp */}
           <TextField
             select
             label="Lớp"
             size="small"
             value={className}
-            onChange={(e) => setClassName(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setClassName(value);
+              const g = value.match(/^\d+/)?.[0] || "";
+              setGrade(g);
+            }}
             sx={{ width: 160 }}
           >
             {classes.map((c) => (
@@ -178,6 +183,21 @@ export default function RecordAttendancePage() {
             ))}
           </TextField>
 
+          {/* Ô nhập tên học sinh gợi ý — di chuyển vào giữa */}
+          <Autocomplete
+            freeSolo
+            options={suggestions}
+            getOptionLabel={(s) => s.name || ""}
+            inputValue={studentInput}
+            onInputChange={(_, v) => setStudentInput(v)}
+            onChange={(_, v) => setSelectedStudent(v)}
+            sx={{ width: 250 }}
+            renderInput={(params) => (
+              <TextField {...params} label="Học sinh nghỉ học" size="small" />
+            )}
+          />
+
+          {/* Ngày */}
           <TextField
             label="Ngày"
             type="date"
@@ -186,6 +206,7 @@ export default function RecordAttendancePage() {
             onChange={(e) => setDate(e.target.value)}
           />
 
+          {/* Buổi */}
           <TextField
             select
             label="Buổi"
@@ -197,17 +218,6 @@ export default function RecordAttendancePage() {
             <MenuItem value="sáng">Sáng</MenuItem>
             <MenuItem value="chiều">Chiều</MenuItem>
           </TextField>
-
-          <Autocomplete
-            freeSolo
-            options={suggestions}
-            getOptionLabel={(s) => s.name || ""}
-            inputValue={studentInput}
-            onInputChange={(_, v) => setStudentInput(v)}
-            onChange={(_, v) => setSelectedStudent(v)}
-            sx={{ width: 250 }}
-            renderInput={(params) => <TextField {...params} label="Học sinh nghỉ học" size="small" />}
-          />
 
           <Button variant="contained" color="primary" onClick={handleRecord}>
             Ghi nhận
