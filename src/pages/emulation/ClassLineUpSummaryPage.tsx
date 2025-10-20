@@ -14,14 +14,7 @@ import {
 } from "@mui/material";
 import dayjs from "dayjs";
 import api from "../../api/api";
-import { getWeeksAndCurrentWeek } from "../../types/weekHelper"; // ✅ Dùng chung helper
-
-interface AcademicWeek {
-  _id: string;
-  weekNumber: number;
-  startDate?: string;
-  endDate?: string;
-}
+import useAcademicWeeks from "../../types/useAcademicWeeks"; // ✅ Dùng hook chung thay vì helper
 
 interface SummaryRow {
   id: number;
@@ -31,46 +24,25 @@ interface SummaryRow {
 }
 
 export default function ClassLineUpSummaryPage() {
-  const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
+  const { weeks, currentWeek } = useAcademicWeeks(); // ✅ Lấy tuần học kỳ + tuần hiện tại
   const [selectedWeek, setSelectedWeek] = useState<string>("");
-  const [currentWeek, setCurrentWeek] = useState<number | null>(null);
   const [multiplier, setMultiplier] = useState<number>(10);
   const [summaries, setSummaries] = useState<SummaryRow[]>([]);
 
-  // 🔹 Load danh sách tuần (chỉ tới tuần hiện tại)
+  // 🔹 Gán mặc định tuần hiện tại khi có dữ liệu từ hook
   useEffect(() => {
-    const initWeeks = async () => {
-      const { weeks: weekNumbers, currentWeek } = await getWeeksAndCurrentWeek();
-
-      // ✅ Chuyển mảng số → mảng AcademicWeek để hiển thị dropdown
-      const formattedWeeks: AcademicWeek[] = weekNumbers.map((num) => ({
-        _id: String(num),
-        weekNumber: num,
-        // 👇 Tạo start/end date giả định để hiển thị range (giống trang vi phạm)
-        startDate: dayjs()
-          .startOf("week")
-          .add((num - 1) * 7, "day")
-          .toISOString(),
-        endDate: dayjs()
-          .startOf("week")
-          .add(num * 7 - 1, "day")
-          .toISOString(),
-      }));
-
-      setWeeks(formattedWeeks);
-      setCurrentWeek(currentWeek);
+    if (currentWeek && weeks.length > 0) {
       setSelectedWeek(String(currentWeek));
-    };
-    initWeeks();
-  }, []);
+    }
+  }, [currentWeek, weeks]);
 
-  // 🔹 Hàm load dữ liệu lineup theo tuần được chọn
+  // 🔹 Load dữ liệu lineup theo tuần được chọn
   const handleLoadData = async () => {
     try {
       if (!selectedWeek) return alert("Vui lòng chọn tuần!");
 
-      const week = weeks.find((w) => w._id === selectedWeek);
-      if (!week) return alert("Không tìm thấy tuần!");
+      const weekObj = weeks.find((w) => String(w.weekNumber) === selectedWeek);
+      if (!weekObj) return alert("Không tìm thấy tuần!");
 
       // 🔹 1. Lấy toàn bộ lớp
       const classRes = await api.get("/api/classes");
@@ -83,7 +55,7 @@ export default function ClassLineUpSummaryPage() {
 
       // 🔹 2. Lấy dữ liệu lineup trong tuần
       const res = await api.get("/api/class-lineup-summaries/weekly", {
-        params: { weekNumber: week.weekNumber },
+        params: { weekNumber: weekObj.weekNumber },
       });
       const data = res.data?.records || [];
 
@@ -118,13 +90,13 @@ export default function ClassLineUpSummaryPage() {
   const handleSave = async () => {
     try {
       if (!selectedWeek) return alert("Vui lòng chọn tuần trước khi lưu!");
-      const week = weeks.find((w) => w._id === selectedWeek);
-      if (!week) return alert("Không tìm thấy tuần!");
+      const weekObj = weeks.find((w) => String(w.weekNumber) === selectedWeek);
+      if (!weekObj) return alert("Không tìm thấy tuần!");
 
       for (const s of summaries) {
         await api.post("/api/class-lineup-summaries/update-weekly-score", {
           className: s.className,
-          weekNumber: week.weekNumber,
+          weekNumber: weekObj.weekNumber,
           lineUpScore: s.total,
         });
       }
@@ -155,10 +127,10 @@ export default function ClassLineUpSummaryPage() {
           label="Chọn tuần"
           value={selectedWeek}
           onChange={(e) => setSelectedWeek(e.target.value)}
-          sx={{ minWidth: 180 }}
+          sx={{ minWidth: 200 }}
         >
           {weeks.map((w) => (
-            <MenuItem key={w._id} value={w._id}>
+            <MenuItem key={w.weekNumber} value={w.weekNumber}>
               Tuần {w.weekNumber} ({dayjs(w.startDate).format("DD/MM")} -{" "}
               {dayjs(w.endDate).format("DD/MM")})
             </MenuItem>
