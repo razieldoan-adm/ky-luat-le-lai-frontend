@@ -368,14 +368,6 @@ const handleProcessViolation = async (id: string, handledBy: string) => {
                       </Button>
    
                           <>
-                            <Button
-                              variant={v.handledBy === 'GVCN' ? 'contained' : 'outlined'}
-                              color="primary"
-                              size="small"
-                              onClick={() => handleProcessViolation(v._id, 'GVCN')}
-                            >
-                              GVCN
-                            </Button>
                             
                             <Button
                               variant={v.handledBy === 'PGT' ? 'contained' : 'outlined'}
