@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Box,
@@ -16,6 +15,8 @@ import {
   FormControl,
   InputLabel,
   Select,
+  Snackbar,
+  Alert, // ✅ Thêm Alert
 } from "@mui/material";
 import api from "../api/api";
 import dayjs from "dayjs";
@@ -51,15 +52,31 @@ export default function ViewViolationListPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [viewMode, setViewMode] = useState<"week" | "day">("week");
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
+  const [limitGVCN, setLimitGVCN] = useState(false); // ✅ Trạng thái bật/tắt giới hạn
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
 
   // ✅ Dùng hook chung để load danh sách tuần
-  const { weeks, currentWeek, selectedWeek, setSelectedWeek } = useAcademicWeeks();
+  const { weeks, selectedWeek, setSelectedWeek } = useAcademicWeeks();
 
   useEffect(() => {
+    fetchSetting();
     fetchClasses();
     fetchRules();
     fetchViolations();
   }, []);
+
+  const fetchSetting = async () => {
+    try {
+      const res = await api.get("/api/settings");
+      setLimitGVCN(res.data.limitGVCNHandling ?? false);
+    } catch (err) {
+      console.error("Lỗi khi lấy setting:", err);
+    }
+  };
 
   useEffect(() => {
     applyFilters(allViolations);
@@ -134,7 +151,7 @@ export default function ViewViolationListPage() {
     setFilteredViolations(data);
   };
 
-  const handleMarkAsHandled = async (id: string, by: "GVCN" | "PGT") => {
+  const handleProcessViolation = async (id: string, by: "GVCN" | "PGT") => {
     try {
       await api.patch(`/api/violations/${id}/handle`, {
         handled: true,
@@ -158,6 +175,13 @@ export default function ViewViolationListPage() {
       classTotals[v.className] = (classTotals[v.className] || 0) + point;
     }
   });
+
+  // ✅ Đếm số lần vi phạm của học sinh trong tuần hiện tại
+  const getRepeatCount = (studentName: string) => {
+    return filteredViolations.filter(
+      (v) => v.name === studentName && v.weekNumber === selectedWeek
+    ).length;
+  };
 
   return (
     <Box sx={{ maxWidth: "100%", mx: "auto", py: 4 }}>
@@ -203,22 +227,20 @@ export default function ViewViolationListPage() {
 
         {/* Nếu xem theo tuần */}
         {viewMode === "week" && (
-          <>
-            <TextField
-              select
-              label="Chọn tuần"
-              value={selectedWeek}
-              onChange={(e) => setSelectedWeek(Number(e.target.value))}
-              sx={{ minWidth: 150 }}
-            >
-              {weeks.map((w: any) => (
-                <MenuItem key={w.weekNumber} value={w.weekNumber}>
-                  Tuần {w.weekNumber} (Tuần hiện tại) ({dayjs(w.startDate).format("DD/MM")} -{" "}
-                  {dayjs(w.endDate).format("DD/MM")})
-                </MenuItem>
-              ))}
-            </TextField>
-          </>
+          <TextField
+            select
+            label="Chọn tuần"
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(Number(e.target.value))}
+            sx={{ minWidth: 150 }}
+          >
+            {weeks.map((w: any) => (
+              <MenuItem key={w.weekNumber} value={w.weekNumber}>
+                Tuần {w.weekNumber} ({dayjs(w.startDate).format("DD/MM")} -{" "}
+                {dayjs(w.endDate).format("DD/MM")})
+              </MenuItem>
+            ))}
+          </TextField>
         )}
 
         {/* Nếu xem theo ngày */}
@@ -255,6 +277,7 @@ export default function ViewViolationListPage() {
           <TableBody>
             {filteredViolations.map((v, idx) => {
               const matchedRule = rules.find((r) => r.title === v.description);
+              const repeatCount = getRepeatCount(v.name); // ✅ Sử dụng hàm đếm
               return (
                 <TableRow key={v._id}>
                   <TableCell>{idx + 1}</TableCell>
@@ -265,58 +288,35 @@ export default function ViewViolationListPage() {
                   <TableCell>{renderTime(v.time)}</TableCell>
                   <TableCell>
                     {v.handled ? (
-                      <Box
-                        sx={{
-                          backgroundColor: "green",
-                          color: "white",
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 1,
-                          textAlign: "center",
-                        }}
-                      >
+                      <Box sx={{ backgroundColor: "green", color: "white", px: 1, borderRadius: 1 }}>
                         Đã xử lý
                       </Box>
                     ) : (
-                      <Box
-                        sx={{
-                          backgroundColor: "#ffcccc",
-                          color: "red",
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 1,
-                          textAlign: "center",
-                        }}
-                      >
+                      <Box sx={{ backgroundColor: "#ffcccc", color: "red", px: 1, borderRadius: 1 }}>
                         Chưa xử lý
                       </Box>
                     )}
                   </TableCell>
                   <TableCell>
-                    {v.handledBy === "PGT" ? (
-                      <Typography color="gray" fontStyle="italic">
-                        Đã do PGT xử lý
-                      </Typography>
-                    ) : !v.handled ? (
+                    {!v.handled ? (
                       <Button
-                      variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
-                      color="primary"
-                      size="small"
-                      onClick={() => {
-                        if (limitGVCN && repeatCount > 1) {
-                          setSnackbar({
-                            open: true,
-                            message:
-                              "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần. GVCN không được phép xử lý.",
-                            severity: "warning",
-                          });
-                          return;
-                        }
-                        handleProcessViolation(v._id, "GVCN");
-                      }}
-                    >
-                      GVCN
-                    </Button>
+                        variant="outlined"
+                        color="primary"
+                        size="small"
+                        onClick={() => {
+                          if (limitGVCN && repeatCount > 1) {
+                            setSnackbar({
+                              open: true,
+                              message: "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần. GVCN không được phép xử lý.",
+                              severity: "warning",
+                            });
+                            return;
+                          }
+                          handleProcessViolation(v._id, "GVCN");
+                        }}
+                      >
+                        GVCN
+                      </Button>
                     ) : (
                       <Typography color="green" fontWeight="bold">
                         ✓ GVCN đã nhận
@@ -329,7 +329,8 @@ export default function ViewViolationListPage() {
           </TableBody>
         </Table>
       </Paper>
-      {/* 🔔 Snackbar hiển thị cảnh báo */}
+
+      {/* 🔔 Snackbar */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
@@ -340,29 +341,6 @@ export default function ViewViolationListPage() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-      {/* --- Tổng điểm trừ --- */}
-      <Box mt={4}>
-        <Typography variant="h6" fontWeight="bold" gutterBottom>
-          Tổng điểm trừ:
-        </Typography>
-        <Table size="small" sx={{ maxWidth: 500 }}>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: "#f0f0f0" }}>
-              <TableCell>Lớp</TableCell>
-              <TableCell align="right">Tổng điểm</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {Object.entries(classTotals).map(([cls, total]) => (
-              <TableRow key={cls}>
-                <TableCell>{cls}</TableCell>
-                <TableCell align="right">{total}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      
-      </Box>
     </Box>
   );
 }
