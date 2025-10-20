@@ -72,11 +72,8 @@ export default function AllViolationStudentPage() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [limitGVCN, setLimitGVCN] = useState(false);
 
-  useEffect(() => {
-  fetchSetting();
-  }, []);
-  
-  const fetchSetting = async () => {
+  // 🧩 Gọi API lấy trạng thái lưu trong DB khi load trang
+const fetchSetting = async () => {
   try {
     const res = await api.get("/api/settings");
     setLimitGVCN(res.data.limitGVCNHandling ?? false);
@@ -85,16 +82,18 @@ export default function AllViolationStudentPage() {
   }
 };
 
-// 🔹 Cập nhật trạng thái khi bật/tắt
+// ⚙️ Cập nhật trạng thái khi bật/tắt
 const toggleLimitGVCN = async () => {
   try {
     const newValue = !limitGVCN;
-    await api.put("/api/settings/update", { limitGVCNHandling: newValue });
-    setLimitGVCN(newValue);
+    setLimitGVCN(newValue); // cập nhật tạm UI
+    await api.put("/api/settings/update", { limitGVCNHandling: newValue }); // ✅ lưu DB
+    console.log("✅ Cập nhật thành công:", newValue);
   } catch (err) {
     console.error("Lỗi khi cập nhật giới hạn GVCN:", err);
   }
 };
+
   // 🚀 Khởi tạo dữ liệu ban đầu
   useEffect(() => {
     const init = async () => {
