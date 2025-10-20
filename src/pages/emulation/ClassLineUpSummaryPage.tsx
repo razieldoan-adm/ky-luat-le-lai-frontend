@@ -116,11 +116,6 @@ export default function ClassLineUpSummaryPage() {
 
       <Box display="flex" alignItems="center" gap={2} mb={2}>
         {/* 🔹 Hiển thị tuần hiện tại */}
-        {currentWeek && (
-          <Typography variant="subtitle1">
-            Tuần hiện tại: {currentWeek}
-          </Typography>
-        )}
 
         <TextField
           select
