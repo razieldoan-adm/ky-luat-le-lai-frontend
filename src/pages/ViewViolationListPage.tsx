@@ -20,7 +20,7 @@ import api from "../api/api";
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
-import useAcademicWeeks from "../../types/useAcademicWeeks";
+import useAcademicWeeks from "../types/useAcademicWeeks";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -112,7 +112,7 @@ export default function ViewViolationListPage() {
     }
 
     if (viewMode === "week" && selectedWeek) {
-      const selectedWeekData = weeks.find((w) => w.weekNumber === selectedWeek);
+      const selectedWeekData = weeks.find((w: any) => w.weekNumber === selectedWeek);
       if (selectedWeekData) {
         data = data.filter((v) => {
           const date = dayjs(v.time);
@@ -209,7 +209,7 @@ export default function ViewViolationListPage() {
             onChange={(e) => setSelectedWeek(Number(e.target.value))}
             sx={{ minWidth: 150 }}
           >
-            {weeks.map((w) => (
+            {weeks.map((w: any) => (
               <MenuItem key={w.weekNumber} value={w.weekNumber}>
                 Tuần {w.weekNumber} ({dayjs(w.startDate).format("DD/MM")} -{" "}
                 {dayjs(w.endDate).format("DD/MM")})
