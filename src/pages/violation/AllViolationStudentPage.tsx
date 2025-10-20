@@ -94,7 +94,7 @@ export default function AllViolationStudentPage() {
     setLoading(true);
 
     try {
-      await api.put("/settings/update", { limitGVCNHandling: newValue });
+      await api.put("/api/settings/update", { limitGVCNHandling: newValue });
     } catch (err) {
       console.error("Lỗi khi cập nhật setting:", err);
       // rollback nếu cập nhật thất bại
