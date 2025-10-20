@@ -15,9 +15,9 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
-import api from "../../api/api";
+import api from "../api/api";
 import dayjs from "dayjs";
-import useAcademicWeeks from "../../types/useAcademicWeeks";
+import useAcademicWeeks from "../types/useAcademicWeeks";
 
 interface Violation {
   _id: string;
