@@ -1,4 +1,4 @@
- 
+// ✅ src/pages/ViewViolationListPage.tsx
 import { useState, useEffect } from "react";
 import {
   Box,
@@ -16,6 +16,8 @@ import {
   FormControl,
   InputLabel,
   Select,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import api from "../api/api";
 import dayjs from "dayjs";
@@ -35,6 +37,7 @@ interface Violation {
   weekNumber?: number;
   handled?: boolean;
   handledBy?: string;
+  studentId?: string;
 }
 
 interface Rule {
@@ -51,11 +54,18 @@ export default function ViewViolationListPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [viewMode, setViewMode] = useState<"week" | "day">("week");
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
-
-  // ✅ Dùng hook chung để load danh sách tuần
   const { weeks, currentWeek, selectedWeek, setSelectedWeek } = useAcademicWeeks();
 
+  // ✅ Cài đặt giới hạn GVCN
+  const [limitGVCN, setLimitGVCN] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info" as "info" | "warning" | "error" | "success",
+  });
+
   useEffect(() => {
+    fetchSetting();
     fetchClasses();
     fetchRules();
     fetchViolations();
@@ -64,6 +74,15 @@ export default function ViewViolationListPage() {
   useEffect(() => {
     applyFilters(allViolations);
   }, [selectedClass, selectedWeek, selectedDate, viewMode]);
+
+  const fetchSetting = async () => {
+    try {
+      const res = await api.get("/api/settings");
+      setLimitGVCN(res.data?.limitGVCNHandling ?? false);
+    } catch (err) {
+      console.error("Lỗi khi lấy setting:", err);
+    }
+  };
 
   const fetchClasses = async () => {
     try {
@@ -134,7 +153,7 @@ export default function ViewViolationListPage() {
     setFilteredViolations(data);
   };
 
-  const handleMarkAsHandled = async (id: string, by: "GVCN" | "PGT") => {
+  const handleProcessViolation = async (id: string, by: "GVCN" | "PGT") => {
     try {
       await api.patch(`/api/violations/${id}/handle`, {
         handled: true,
@@ -172,7 +191,6 @@ export default function ViewViolationListPage() {
 
       {/* --- Bộ lọc --- */}
       <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
-        {/* Chọn lớp */}
         <TextField
           label="Chọn lớp"
           select
@@ -188,7 +206,6 @@ export default function ViewViolationListPage() {
           ))}
         </TextField>
 
-        {/* Chế độ xem */}
         <FormControl sx={{ minWidth: 150 }}>
           <InputLabel>Chế độ xem</InputLabel>
           <Select
@@ -201,13 +218,11 @@ export default function ViewViolationListPage() {
           </Select>
         </FormControl>
 
-        {/* Nếu xem theo tuần */}
         {viewMode === "week" && (
           <>
             <Typography variant="h6" sx={{ mb: 1 }}>
               Tuần hiện tại: {currentWeek}
             </Typography>
-
             <TextField
               select
               label="Chọn tuần"
@@ -225,7 +240,6 @@ export default function ViewViolationListPage() {
           </>
         )}
 
-        {/* Nếu xem theo ngày */}
         {viewMode === "day" && (
           <TextField
             label="Chọn ngày"
@@ -259,6 +273,12 @@ export default function ViewViolationListPage() {
           <TableBody>
             {filteredViolations.map((v, idx) => {
               const matchedRule = rules.find((r) => r.title === v.description);
+              const repeatCount = allViolations.filter(
+                (item) =>
+                  item.studentId === v.studentId &&
+                  item.weekNumber === v.weekNumber
+              ).length;
+
               return (
                 <TableRow key={v._id}>
                   <TableCell>{idx + 1}</TableCell>
@@ -296,6 +316,8 @@ export default function ViewViolationListPage() {
                       </Box>
                     )}
                   </TableCell>
+
+                  {/* ✅ Button xử lý có giới hạn GVCN */}
                   <TableCell>
                     {v.handledBy === "PGT" ? (
                       <Typography color="gray" fontStyle="italic">
@@ -303,9 +325,23 @@ export default function ViewViolationListPage() {
                       </Typography>
                     ) : !v.handled ? (
                       <Button
+                        variant={
+                          v.handledBy === "GVCN" ? "contained" : "outlined"
+                        }
+                        color="primary"
                         size="small"
-                        variant="contained"
-                        onClick={() => handleMarkAsHandled(v._id, "GVCN")}
+                        onClick={() => {
+                          if (limitGVCN && repeatCount > 1) {
+                            setSnackbar({
+                              open: true,
+                              message:
+                                "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần. GVCN không được phép xử lý.",
+                              severity: "warning",
+                            });
+                            return;
+                          }
+                          handleProcessViolation(v._id, "GVCN");
+                        }}
                       >
                         GVCN tiếp nhận
                       </Button>
@@ -321,8 +357,23 @@ export default function ViewViolationListPage() {
           </TableBody>
         </Table>
       </Paper>
-      {/* 🔔 Snackbar hiển thị cảnh báo */}
-      
+
+      {/* ✅ Snackbar hiển thị cảnh báo */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
       {/* --- Tổng điểm trừ --- */}
       <Box mt={4}>
         <Typography variant="h6" fontWeight="bold" gutterBottom>
