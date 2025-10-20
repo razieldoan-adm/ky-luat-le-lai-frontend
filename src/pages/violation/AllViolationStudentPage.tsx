@@ -76,7 +76,7 @@ export default function AllViolationStudentPage() {
   // ✅ Lấy trạng thái hiện tại từ backend khi load trang
   const fetchSetting = async () => {
     try {
-      const res = await api.get("/settings");
+      const res = await api.get("/api/settings");
       setLimitGVCNHandling(res.data.limitGVCNHandling || false);
     } catch (err) {
       console.error("Lỗi khi lấy setting:", err);
