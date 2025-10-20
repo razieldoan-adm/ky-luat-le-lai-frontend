@@ -70,8 +70,6 @@ export default function AllViolationStudentPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [violationBeingEdited, setViolationBeingEdited] = useState<Violation | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
-  const [limitGVCN, setLimitGVCN] = useState(false);
-
   // ⚙️ Bật / tắt giới hạn xử lý của GVCN
   const [limitGVCNHandling, setLimitGVCNHandling] = useState(false);
 
