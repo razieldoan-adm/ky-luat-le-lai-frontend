@@ -320,7 +320,17 @@ export default function ViewViolationListPage() {
           </TableBody>
         </Table>
       </Paper>
-
+      {/* 🔔 Snackbar hiển thị cảnh báo */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity={snackbar.severity as any} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
       {/* --- Tổng điểm trừ --- */}
       <Box mt={4}>
         <Typography variant="h6" fontWeight="bold" gutterBottom>
