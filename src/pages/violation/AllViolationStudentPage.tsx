@@ -71,30 +71,39 @@ export default function AllViolationStudentPage() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   // ⚙️ Bật / tắt giới hạn xử lý của GVCN
   const [limitGVCNHandling, setLimitGVCNHandling] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-useEffect(() => {
+  // ✅ Lấy trạng thái hiện tại từ backend khi load trang
   const fetchSetting = async () => {
     try {
-      const res = await api.get("/api/settings");
-      setLimitGVCNHandling(res.data.limitGVCNHandling);
+      const res = await api.get("/settings");
+      setLimitGVCNHandling(res.data.limitGVCNHandling || false);
     } catch (err) {
-      console.error("Lỗi khi tải setting:", err);
+      console.error("Lỗi khi lấy setting:", err);
     }
   };
-  fetchSetting();
-}, []);
 
-const handleToggleLimit = async () => {
-  const newValue = !limitGVCNHandling;
-  setLimitGVCNHandling(newValue); // cập nhật UI ngay lập tức
+  useEffect(() => {
+    fetchSetting();
+  }, []);
 
-  try {
-    await api.put("/api/settings/update", { limitGVCNHandling: newValue });
-    console.log("✅ Cập nhật thành công");
-  } catch (err) {
-    console.error("Lỗi khi cập nhật setting:", err);
-  }
-};
+  // ✅ Khi click bật/tắt → gọi PUT để lưu lên backend
+  const handleToggle = async () => {
+    const newValue = !limitGVCNHandling;
+    setLimitGVCNHandling(newValue);
+    setLoading(true);
+
+    try {
+      await api.put("/settings/update", { limitGVCNHandling: newValue });
+    } catch (err) {
+      console.error("Lỗi khi cập nhật setting:", err);
+      // rollback nếu cập nhật thất bại
+      setLimitGVCNHandling(!newValue);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   // 🚀 Khởi tạo dữ liệu ban đầu
   useEffect(() => {
@@ -240,7 +249,8 @@ const handleProcessViolation = async (id: string, handledBy: string) => {
    <Button
     variant="contained"
     color={limitGVCNHandling ? "success" : "error"}
-    onClick={handleToggleLimit}
+    onClick={handleToggle}
+     disabled={loading}
     sx={{ borderRadius: "50px", mb: 2 }}
   >
     {limitGVCNHandling ? "🟢 GIỚI HẠN GVCN: BẬT" : "🔴 GIỚI HẠN GVCN: TẮT"}
