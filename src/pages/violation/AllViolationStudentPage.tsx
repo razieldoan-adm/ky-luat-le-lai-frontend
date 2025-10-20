@@ -72,6 +72,9 @@ export default function AllViolationStudentPage() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [limitGVCN, setLimitGVCN] = useState(false);
 
+  useEffect(() => {
+  fetchSetting();
+  }, []);
   
   const fetchSetting = async () => {
   try {
