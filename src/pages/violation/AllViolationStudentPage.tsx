@@ -86,7 +86,7 @@ export default function AllViolationStudentPage() {
   const handleToggleLimit = async () => {
     try {
       const newValue = !limitGVCNHandling;
-      await api.put("/api/settings/updateSetting", { limitGVCNHandling: newValue });
+      await api.put("/api/settings/update", { limitGVCNHandling: newValue });
       await fetchSetting(); // đảm bảo load lại trạng thái thực từ server
     } catch (err) {
       console.error("Lỗi khi cập nhật setting:", err);
