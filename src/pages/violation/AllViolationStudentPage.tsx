@@ -72,27 +72,25 @@ export default function AllViolationStudentPage() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [limitGVCN, setLimitGVCN] = useState(false);
 
-  // 🧩 Gọi API lấy trạng thái lưu trong DB khi load trang
-const fetchSetting = async () => {
-  try {
-    const res = await api.get("/api/settings");
-    setLimitGVCN(res.data.limitGVCNHandling ?? false);
-  } catch (err) {
-    console.error("Lỗi khi lấy cài đặt GVCN:", err);
-  }
-};
-
-// ⚙️ Cập nhật trạng thái khi bật/tắt
-const toggleLimitGVCN = async () => {
-  try {
-    const newValue = !limitGVCN;
-    setLimitGVCN(newValue); // cập nhật tạm UI
-    await api.put("/api/settings/update", { limitGVCNHandling: newValue }); // ✅ lưu DB
-    console.log("✅ Cập nhật thành công:", newValue);
-  } catch (err) {
-    console.error("Lỗi khi cập nhật giới hạn GVCN:", err);
-  }
-};
+    // 🧩 Gọi API lấy trạng thái lưu trong DB khi load trang
+  const fetchSetting = async () => {
+    const res = await axios.get("/api/settings");
+    setLimitGVCNHandling(res.data.limitGVCNHandling);
+  };
+  
+  const handleToggleLimit = async () => {
+    try {
+      const newValue = !limitGVCNHandling;
+      await axios.put("/api/settings/updateSetting", { limitGVCNHandling: newValue });
+      setLimitGVCNHandling(newValue);
+    } catch (err) {
+      console.error("Lỗi cập nhật:", err);
+    }
+  };
+  
+  useEffect(() => {
+    fetchSetting();
+  }, []);
 
   // 🚀 Khởi tạo dữ liệu ban đầu
   useEffect(() => {
@@ -101,7 +99,6 @@ const toggleLimitGVCN = async () => {
       await fetchClasses();
       await fetchRules();
       await fetchViolations();
-      await fetchSetting();
     };
     init();
   }, []);
@@ -238,26 +235,13 @@ const handleProcessViolation = async (id: string, handledBy: string) => {
       </Typography>
 
       {/* 🔘 Nút bật/tắt giới hạn GVCN */}
-<Box
-  sx={{
-    display: "flex",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    mb: 2,
-    pr: 2,
-  }}
+<Button
+  variant={limitGVCNHandling ? "contained" : "outlined"}
+  color={limitGVCNHandling ? "success" : "error"}
+  onClick={handleToggleLimit}
 >
-  <FormControlLabel
-    control={
-      <Switch
-        checked={limitGVCN}
-        onChange={toggleLimitGVCN}
-        color="primary"
-      />
-    }
-    label="Giới hạn số lần xử lý của GVCN đối với học sinh vi phạm lần 2 trở lên"
-  />
-</Box>
+  {limitGVCNHandling ? "🟢 Đang giới hạn GVCN" : "🔴 Không giới hạn GVCN"}
+</Button>
 
       {/* Bộ lọc */}
       <Paper sx={{ p: 2, borderRadius: 3, mb: 4 }} elevation={3}>
