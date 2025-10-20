@@ -16,11 +16,11 @@ import {
   InputLabel,
   Select,
 } from "@mui/material";
-import api from "../../api/api";
+import api from "../api/api";
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
-import useAcademicWeeks from "../../hooks/useAcademicWeeks";
+import useAcademicWeeks from "../../types/useAcademicWeeks";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
