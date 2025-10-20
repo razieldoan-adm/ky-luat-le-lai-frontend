@@ -315,66 +315,33 @@ export default function ViewViolationListPage() {
                   </TableCell>
 
                   {/* ✅ Button xử lý có giới hạn GVCN */}
-<TableCell>
-  {v.handledBy === "PGT" ? (
-    <Typography color="gray" fontStyle="italic">
-      Đã do PGT xử lý
-    </Typography>
-  ) : !v.handled ? (
-    <Button
-      variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
-      color="primary"
-      size="small"
-      disabled={
-        limitGVCN &&
-        violations.filter(
-          (vi) =>
-            vi.name === v.name &&
-            vi.className === v.className &&
-            vi.weekNumber === v.weekNumber
-        ).length > 1
-      } // ✅ Mờ & khóa khi vi phạm lần 2+
-      onClick={() => {
-        const repeatCount = violations.filter(
-          (vi) =>
-            vi.name === v.name &&
-            vi.className === v.className &&
-            vi.weekNumber === v.weekNumber
-        ).length;
-
-        if (limitGVCN && repeatCount > 1) {
-          setSnackbar({
-            open: true,
-            message: `⚠️ Học sinh ${v.name} đã vi phạm ${repeatCount} lần trong tuần này.`,
-            severity: "warning",
-          });
-          return;
-        }
-
-        handleProcessViolation(v._id, "GVCN");
-      }}
-      sx={{
-        opacity:
-          limitGVCN &&
-          violations.filter(
-            (vi) =>
-              vi.name === v.name &&
-              vi.className === v.className &&
-              vi.weekNumber === v.weekNumber
-          ).length > 1
-            ? 0.5
-            : 1, // ✅ Làm mờ khi bị giới hạn
-        fontWeight: v.handledBy === "GVCN" ? "bold" : "normal",
-      }}
-    >
-      GVCN tiếp nhận
-    </Button>
-  ) : (
-    <Typography color="green" fontWeight="bold">
-      ✓ GVCN đã nhận
-    </Typography>
-  )}
-</TableCell>
+                  <TableCell> {v.handledBy === "PGT" ? ( 
+                    <Typography color="gray" fontStyle="italic"> 
+                      PGT đã xử lý 
+                    </Typography> 
+                  ) : !v.handled ? (
+                    <Button variant={ v.handledBy === "GVCN" ? "contained" : "outlined" 
+                    }
+                      color="primary" 
+                      size="small" 
+                      onClick={() => {
+                        if (limitGVCN && repeatCount > 1) {
+                          setSnackbar({
+                            open: true, message: "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần.", 
+                            severity: "warning",
+                          }); 
+                          return; 
+                        } 
+                        handleProcessViolation(v._id, "GVCN"); 
+                      }} 
+                      > 
+                      GVCN tiếp nhận 
+                    </Button> 
+                  ) : (
+                    <Typography color="green" fontWeight="bold"> 
+                      ✓ GVCN đã xử lý 
+                    </Typography> )} 
+                  </TableCell>
                 </TableRow>
               );
             })}
