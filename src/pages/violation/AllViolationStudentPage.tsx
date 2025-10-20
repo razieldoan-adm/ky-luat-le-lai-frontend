@@ -77,6 +77,7 @@ export default function AllViolationStudentPage() {
   const fetchSetting = async () => {
     try {
       const res = await api.get("/api/settings");
+      console.log("Dữ liệu trả về từ backend:", res.data); // 👈 thêm dòng này
       setLimitGVCNHandling(res.data.limitGVCNHandling || false);
     } catch (err) {
       console.error("Lỗi khi lấy setting:", err);
