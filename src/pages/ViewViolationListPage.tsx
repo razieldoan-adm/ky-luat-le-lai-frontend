@@ -1,30 +1,4 @@
-bo sung them 
-<Button
-  variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
-  color="primary"
-  size="small"
-  onClick={() => {
-    const repeatCount = violations.filter(
-      (item) =>
-        item.studentId === v.studentId &&
-        item.weekNumber === v.weekNumber
-    ).length;
-
-    if (limitGVCN && repeatCount > 1) {
-      setSnackbar({
-        open: true,
-        message: "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần. GVCN không được phép xử lý.",
-        severity: "warning",
-      });
-      return;
-    }
-
-    handleProcessViolation(v._id, "GVCN");
-  }}
->
-  GVCN
-</Button>
- vao trang 
+ 
 import { useState, useEffect } from "react";
 import {
   Box,
@@ -348,16 +322,7 @@ export default function ViewViolationListPage() {
         </Table>
       </Paper>
       {/* 🔔 Snackbar hiển thị cảnh báo */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert severity={snackbar.severity as any} sx={{ width: "100%" }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+      
       {/* --- Tổng điểm trừ --- */}
       <Box mt={4}>
         <Typography variant="h6" fontWeight="bold" gutterBottom>
