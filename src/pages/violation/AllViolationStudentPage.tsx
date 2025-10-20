@@ -82,6 +82,7 @@ export default function AllViolationStudentPage() {
     try {
       const newValue = !limitGVCNHandling;
       await axios.put("/api/settings/updateSetting", { limitGVCNHandling: newValue });
+      await fetchSetting(); // <— thêm dòng này
       setLimitGVCNHandling(newValue);
     } catch (err) {
       console.error("Lỗi cập nhật:", err);
