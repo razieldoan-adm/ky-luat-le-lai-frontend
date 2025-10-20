@@ -62,7 +62,7 @@ export default function ViewViolationListPage() {
   });
   const [limitGVCN, setLimitGVCN] = useState(false);
 
-  const { weeks, currentWeek, selectedWeek, setSelectedWeek } = useAcademicWeeks();
+  const { weeks, selectedWeek, setSelectedWeek } = useAcademicWeeks();
 
   useEffect(() => {
     fetchClasses();
