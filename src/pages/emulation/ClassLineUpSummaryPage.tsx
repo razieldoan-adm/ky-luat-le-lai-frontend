@@ -12,8 +12,9 @@ import {
   Paper,
   MenuItem,
 } from "@mui/material";
+import dayjs from "dayjs";
 import api from "../../api/api";
-import { getWeeksAndCurrentWeek } from "../../types/weekHelper"; // 🔹 nhớ kiểm tra đường dẫn
+import { getWeeksAndCurrentWeek } from "../../types/weekHelper"; // ✅ Dùng chung helper
 
 interface AcademicWeek {
   _id: string;
@@ -32,6 +33,7 @@ interface SummaryRow {
 export default function ClassLineUpSummaryPage() {
   const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<string>("");
+  const [currentWeek, setCurrentWeek] = useState<number | null>(null);
   const [multiplier, setMultiplier] = useState<number>(10);
   const [summaries, setSummaries] = useState<SummaryRow[]>([]);
 
@@ -42,70 +44,75 @@ export default function ClassLineUpSummaryPage() {
 
       // ✅ Chuyển mảng số → mảng AcademicWeek để hiển thị dropdown
       const formattedWeeks: AcademicWeek[] = weekNumbers.map((num) => ({
-        _id: String(num), // để làm value cho <MenuItem>
+        _id: String(num),
         weekNumber: num,
+        // 👇 Tạo start/end date giả định để hiển thị range (giống trang vi phạm)
+        startDate: dayjs()
+          .startOf("week")
+          .add((num - 1) * 7, "day")
+          .toISOString(),
+        endDate: dayjs()
+          .startOf("week")
+          .add(num * 7 - 1, "day")
+          .toISOString(),
       }));
 
       setWeeks(formattedWeeks);
-
-      if (currentWeek) {
-        setSelectedWeek(String(currentWeek));
-      }
+      setCurrentWeek(currentWeek);
+      setSelectedWeek(String(currentWeek));
     };
     initWeeks();
   }, []);
 
   // 🔹 Hàm load dữ liệu lineup theo tuần được chọn
   const handleLoadData = async () => {
-  try {
-    if (!selectedWeek) return alert("Vui lòng chọn tuần!");
+    try {
+      if (!selectedWeek) return alert("Vui lòng chọn tuần!");
 
-    const week = weeks.find((w) => w._id === selectedWeek);
-    if (!week) return alert("Không tìm thấy tuần!");
+      const week = weeks.find((w) => w._id === selectedWeek);
+      if (!week) return alert("Không tìm thấy tuần!");
 
-    // 🔹 1. Lấy toàn bộ lớp
-    const classRes = await api.get("/api/classes");
-    // Tránh trường hợp API trả về { classes: [...] }
-    const allClasses = classRes.data?.classes || classRes.data || [];
+      // 🔹 1. Lấy toàn bộ lớp
+      const classRes = await api.get("/api/classes");
+      const allClasses = classRes.data?.classes || classRes.data || [];
 
-    if (!Array.isArray(allClasses) || allClasses.length === 0) {
-      alert("⚠️ Không có dữ liệu lớp nào!");
-      return;
+      if (!Array.isArray(allClasses) || allClasses.length === 0) {
+        alert("⚠️ Không có dữ liệu lớp nào!");
+        return;
+      }
+
+      // 🔹 2. Lấy dữ liệu lineup trong tuần
+      const res = await api.get("/api/class-lineup-summaries/weekly", {
+        params: { weekNumber: week.weekNumber },
+      });
+      const data = res.data?.records || [];
+
+      // 🔹 3. Gom nhóm số lần vi phạm theo lớp
+      const grouped: Record<string, number> = {};
+      data.forEach((item: any) => {
+        if (!grouped[item.className]) grouped[item.className] = 0;
+        grouped[item.className]++;
+      });
+
+      // 🔹 4. Kết hợp toàn bộ lớp — lớp nào không vi phạm → count = 0
+      const formatted = allClasses.map((cls: any, index: number) => {
+        const className = cls.name || cls.className || `Lớp ${index + 1}`;
+        const count = grouped[className] || 0;
+
+        return {
+          id: index + 1,
+          className,
+          count,
+          total: count * multiplier,
+        };
+      });
+
+      setSummaries(formatted);
+    } catch (err) {
+      console.error("❌ Lỗi load lineup:", err);
+      alert("Không thể tải dữ liệu lineup của tuần!");
     }
-
-    // 🔹 2. Lấy dữ liệu lineup trong tuần
-    const res = await api.get("/api/class-lineup-summaries/weekly", {
-      params: { weekNumber: week.weekNumber },
-    });
-    const data = res.data?.records || [];
-
-    // 🔹 3. Gom nhóm số lần vi phạm theo lớp
-    const grouped: Record<string, number> = {};
-    data.forEach((item: any) => {
-      if (!grouped[item.className]) grouped[item.className] = 0;
-      grouped[item.className]++;
-    });
-
-    // 🔹 4. Kết hợp toàn bộ lớp — lớp nào không vi phạm → count = 0
-    const formatted = allClasses.map((cls: any, index: number) => {
-      // tên lớp có thể là "name" hoặc "className" tùy backend
-      const className = cls.name || cls.className || `Lớp ${index + 1}`;
-      const count = grouped[className] || 0;
-
-      return {
-        id: index + 1,
-        className,
-        count,
-        total: count * multiplier,
-      };
-    });
-
-    setSummaries(formatted);
-  } catch (err) {
-    console.error("❌ Lỗi load lineup:", err);
-    alert("Không thể tải dữ liệu lineup của tuần!");
-  }
-};
+  };
 
   // 🔹 Lưu điểm tổng vào ClassWeeklyScore
   const handleSave = async () => {
@@ -136,16 +143,24 @@ export default function ClassLineUpSummaryPage() {
       </Typography>
 
       <Box display="flex" alignItems="center" gap={2} mb={2}>
+        {/* 🔹 Hiển thị tuần hiện tại */}
+        {currentWeek && (
+          <Typography variant="subtitle1">
+            Tuần hiện tại: {currentWeek}
+          </Typography>
+        )}
+
         <TextField
           select
-          label="Tuần"
+          label="Chọn tuần"
           value={selectedWeek}
           onChange={(e) => setSelectedWeek(e.target.value)}
-          sx={{ minWidth: 150 }}
+          sx={{ minWidth: 180 }}
         >
-          {weeks.map((week) => (
-            <MenuItem key={week._id} value={week._id}>
-              Tuần {week.weekNumber}
+          {weeks.map((w) => (
+            <MenuItem key={w._id} value={w._id}>
+              Tuần {w.weekNumber} ({dayjs(w.startDate).format("DD/MM")} -{" "}
+              {dayjs(w.endDate).format("DD/MM")})
             </MenuItem>
           ))}
         </TextField>
