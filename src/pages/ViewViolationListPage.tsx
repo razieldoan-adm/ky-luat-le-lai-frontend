@@ -54,7 +54,7 @@ export default function ViewViolationListPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [viewMode, setViewMode] = useState<"week" | "day">("week");
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
-  const { weeks, currentWeek, selectedWeek, setSelectedWeek } = useAcademicWeeks();
+  const { weeks, selectedWeek, setSelectedWeek } = useAcademicWeeks();
 
   // ✅ Cài đặt giới hạn GVCN
   const [limitGVCN, setLimitGVCN] = useState(false);
@@ -220,9 +220,6 @@ export default function ViewViolationListPage() {
 
         {viewMode === "week" && (
           <>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Tuần hiện tại: {currentWeek}
-            </Typography>
             <TextField
               select
               label="Chọn tuần"
@@ -232,7 +229,7 @@ export default function ViewViolationListPage() {
             >
               {weeks.map((w: any) => (
                 <MenuItem key={w.weekNumber} value={w.weekNumber}>
-                  Tuần {w.weekNumber} ({dayjs(w.startDate).format("DD/MM")} -{" "}
+                  Tuần {w.weekNumber} (Tuần hiện tại) ({dayjs(w.startDate).format("DD/MM")} -{" "}
                   {dayjs(w.endDate).format("DD/MM")})
                 </MenuItem>
               ))}
