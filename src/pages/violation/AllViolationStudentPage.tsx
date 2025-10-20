@@ -72,30 +72,29 @@ export default function AllViolationStudentPage() {
   // ⚙️ Bật / tắt giới hạn xử lý của GVCN
   const [limitGVCNHandling, setLimitGVCNHandling] = useState(false);
 
+useEffect(() => {
   const fetchSetting = async () => {
     try {
       const res = await api.get("/api/settings");
-      if (res.data && typeof res.data.limitGVCNHandling === "boolean") {
-        setLimitGVCNHandling(res.data.limitGVCNHandling);
-      }
+      setLimitGVCNHandling(res.data.limitGVCNHandling);
     } catch (err) {
       console.error("Lỗi khi tải setting:", err);
     }
   };
-  
-  const handleToggleLimit = async () => {
-    try {
-      const newValue = !limitGVCNHandling;
-      await api.put("/api/settings/update", { limitGVCNHandling: newValue });
-      await fetchSetting(); // đảm bảo load lại trạng thái thực từ server
-    } catch (err) {
-      console.error("Lỗi khi cập nhật setting:", err);
-    }
-  };
-  
-  useEffect(() => {
-    fetchSetting();
-  }, []);
+  fetchSetting();
+}, []);
+
+const handleToggleLimit = async () => {
+  const newValue = !limitGVCNHandling;
+  setLimitGVCNHandling(newValue); // cập nhật UI ngay lập tức
+
+  try {
+    await api.put("/api/settings/update", { limitGVCNHandling: newValue });
+    console.log("✅ Cập nhật thành công");
+  } catch (err) {
+    console.error("Lỗi khi cập nhật setting:", err);
+  }
+};
 
   // 🚀 Khởi tạo dữ liệu ban đầu
   useEffect(() => {
@@ -238,15 +237,14 @@ const handleProcessViolation = async (id: string, handledBy: string) => {
       </Typography>
 
       {/* 🔘 Nút bật/tắt giới hạn GVCN */}
-    <Button
-      variant={limitGVCNHandling ? "contained" : "outlined"}
-      color={limitGVCNHandling ? "success" : "error"}
-      onClick={handleToggleLimit}
-      sx={{ mb: 2 }}
-    >
-      {limitGVCNHandling ? "🟢 Giới hạn GVCN: BẬT" : "🔴 Giới hạn GVCN: TẮT"}
-    </Button>
-
+   <Button
+    variant="contained"
+    color={limitGVCNHandling ? "success" : "error"}
+    onClick={handleToggleLimit}
+    sx={{ borderRadius: "50px", mb: 2 }}
+  >
+    {limitGVCNHandling ? "🟢 GIỚI HẠN GVCN: BẬT" : "🔴 GIỚI HẠN GVCN: TẮT"}
+  </Button>
 
       {/* Bộ lọc */}
       <Paper sx={{ p: 2, borderRadius: 3, mb: 4 }} elevation={3}>
