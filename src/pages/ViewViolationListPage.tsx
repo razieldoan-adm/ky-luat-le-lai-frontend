@@ -202,20 +202,26 @@ export default function ViewViolationListPage() {
 
         {/* Nếu xem theo tuần */}
         {viewMode === "week" && (
-          <TextField
-            select
-            label="Chọn tuần"
-            value={selectedWeek}
-            onChange={(e) => setSelectedWeek(Number(e.target.value))}
-            sx={{ minWidth: 150 }}
-          >
-            {weeks.map((w: any) => (
-              <MenuItem key={w.weekNumber} value={w.weekNumber}>
-                Tuần {w.weekNumber} ({dayjs(w.startDate).format("DD/MM")} -{" "}
-                {dayjs(w.endDate).format("DD/MM")})
-              </MenuItem>
-            ))}
-          </TextField>
+          <>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Tuần hiện tại: {currentWeek}
+            </Typography>
+        
+            <TextField
+              select
+              label="Chọn tuần"
+              value={selectedWeek}
+              onChange={(e) => setSelectedWeek(Number(e.target.value))}
+              sx={{ minWidth: 150 }}
+            >
+              {weeks.map((w: any) => (
+                <MenuItem key={w.weekNumber} value={w.weekNumber}>
+                  Tuần {w.weekNumber} ({dayjs(w.startDate).format("DD/MM")} -{" "}
+                  {dayjs(w.endDate).format("DD/MM")})
+                </MenuItem>
+              ))}
+            </TextField>
+          </>
         )}
 
         {/* Nếu xem theo ngày */}
