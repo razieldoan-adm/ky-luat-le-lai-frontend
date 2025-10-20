@@ -3,307 +3,174 @@ import {
   Box,
   Typography,
   TextField,
-  MenuItem,
   Button,
   Table,
   TableHead,
-  TableBody,
   TableRow,
   TableCell,
+  TableBody,
   Paper,
-  Stack,
-  Snackbar,
-  Alert,
+  MenuItem,
 } from "@mui/material";
 import dayjs from "dayjs";
-import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
-import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import api from "../../api/api";
-import useAcademicWeeks from "../../types/useAcademicWeeks"; // ✅ Dùng hook chung
+import useAcademicWeeks from "../../types/useAcademicWeeks"; // ✅ Dùng hook chung thay vì helper
 
-dayjs.extend(isSameOrAfter);
-dayjs.extend(isSameOrBefore);
-
-interface Class {
-  _id: string;
+interface SummaryRow {
+  id: number;
   className: string;
-  homeroomTeacher: string;
+  count: number;
+  total: number;
 }
 
-interface Violation {
-  _id: string;
-  className: string;
-  penalty: number;
-  weekNumber: number;
-  time: string;
-  handled: boolean;
-  handledBy?: "GVCN" | "PGT xử lý" | null;
-}
+export default function ClassLineUpSummaryPage() {
+  const { weeks, currentWeek } = useAcademicWeeks(); // ✅ Lấy tuần học kỳ + tuần hiện tại
+  const [selectedWeek, setSelectedWeek] = useState<string>("");
+  const [multiplier, setMultiplier] = useState<number>(10);
+  const [summaries, setSummaries] = useState<SummaryRow[]>([]);
 
-export default function ClassDisciplineTotalPage() {
-  const { weeks: weekList, currentWeek } = useAcademicWeeks(); // ✅ Lấy danh sách tuần & tuần hiện tại
-  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
-  const [classList, setClassList] = useState<Class[]>([]);
-  const [tableData, setTableData] = useState<any[]>([]);
-  const [isCalculated, setIsCalculated] = useState(false);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "success",
-  });
-
-  // ✅ Gán tuần hiện tại mặc định
+  // 🔹 Gán mặc định tuần hiện tại khi có dữ liệu từ hook
   useEffect(() => {
-    if (currentWeek) {
-      setSelectedWeek(currentWeek);
-      checkIfCalculated(currentWeek);
+    if (currentWeek && weeks.length > 0) {
+      setSelectedWeek(String(currentWeek));
     }
-  }, [currentWeek]);
+  }, [currentWeek, weeks]);
 
-  // ✅ Load danh sách lớp
-  useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        const res = await api.get("/api/classes");
-        setClassList(res.data);
-      } catch (err) {
-        console.error("Lỗi khi lấy lớp:", err);
-      }
-    };
-    fetchClasses();
-  }, []);
-
-  // ✅ Check xem tuần đó đã có dữ liệu tổng vi phạm chưa
-  const checkIfCalculated = async (weekNumber: number) => {
-    try {
-      const res = await api.get("/api/class-weekly-scores/weekly", {
-        params: { weekNumber },
-      });
-      if (res.data && res.data.length > 0) {
-        setIsCalculated(true);
-        setSnackbar({
-          open: true,
-          message: `Tuần ${weekNumber} đã có dữ liệu.`,
-          severity: "info",
-        });
-      } else {
-        setIsCalculated(false);
-      }
-    } catch (err) {
-      console.error("Lỗi khi check tuần:", err);
-    }
-  };
-
-  // ✅ Load dữ liệu vi phạm trong tuần
+  // 🔹 Load dữ liệu lineup theo tuần được chọn
   const handleLoadData = async () => {
-    if (!selectedWeek) {
-      setSnackbar({
-        open: true,
-        message: "Vui lòng chọn tuần.",
-        severity: "error",
-      });
-      return;
-    }
-
     try {
-      const weekObj = weekList.find((w) => w.weekNumber === selectedWeek);
-      if (!weekObj) {
-        setSnackbar({
-          open: true,
-          message: "Không tìm thấy thông tin tuần.",
-          severity: "error",
-        });
+      if (!selectedWeek) return alert("Vui lòng chọn tuần!");
+
+      const weekObj = weeks.find((w) => String(w.weekNumber) === selectedWeek);
+      if (!weekObj) return alert("Không tìm thấy tuần!");
+
+      // 🔹 1. Lấy toàn bộ lớp
+      const classRes = await api.get("/api/classes");
+      const allClasses = classRes.data?.classes || classRes.data || [];
+
+      if (!Array.isArray(allClasses) || allClasses.length === 0) {
+        alert("⚠️ Không có dữ liệu lớp nào!");
         return;
       }
 
-      const res = await api.get("/api/violations/all/all-student");
-      const data: Violation[] = res.data;
+      // 🔹 2. Lấy dữ liệu lineup trong tuần
+      const res = await api.get("/api/class-lineup-summaries/weekly", {
+        params: { weekNumber: weekObj.weekNumber },
+      });
+      const data = res.data?.records || [];
 
-      const start = dayjs(weekObj.startDate).startOf("day");
-      const end = dayjs(weekObj.endDate).endOf("day");
-
-      // ✅ Lọc các vi phạm PGT xử lý trong tuần
-      const filtered = data.filter((v) => {
-        const t = dayjs(v.time);
-        return (
-          t.isSameOrAfter(start) &&
-          t.isSameOrBefore(end) &&
-          v.handled === true &&
-          ["PGT", "PGT xử lý"].includes(v.handledBy ?? "")
-        );
+      // 🔹 3. Gom nhóm số lần vi phạm theo lớp
+      const grouped: Record<string, number> = {};
+      data.forEach((item: any) => {
+        if (!grouped[item.className]) grouped[item.className] = 0;
+        grouped[item.className]++;
       });
 
-      // ✅ Gom theo lớp
-      const newTableData = classList.map((cls) => {
-        const penalties = filtered
-          .filter((v) => v.className === cls.className)
-          .map((v) => v.penalty);
+      // 🔹 4. Kết hợp toàn bộ lớp — lớp nào không vi phạm → count = 0
+      const formatted = allClasses.map((cls: any, index: number) => {
+        const className = cls.name || cls.className || `Lớp ${index + 1}`;
+        const count = grouped[className] || 0;
 
         return {
-          className: cls.className,
-          homeroomTeacher: cls.homeroomTeacher,
-          penalties,
-          penaltiesString: penalties.join(", "),
-          total: penalties.reduce((sum, p) => sum + p, 0),
-          count: penalties.length,
+          id: index + 1,
+          className,
+          count,
+          total: count * multiplier,
         };
       });
 
-      setTableData(newTableData);
-      setSnackbar({
-        open: true,
-        message: "Đã load dữ liệu vi phạm.",
-        severity: "success",
-      });
+      setSummaries(formatted);
     } catch (err) {
-      console.error("Lỗi khi load vi phạm:", err);
-      setSnackbar({
-        open: true,
-        message: "Lỗi khi tải dữ liệu.",
-        severity: "error",
-      });
+      console.error("❌ Lỗi load lineup:", err);
+      alert("Không thể tải dữ liệu lineup của tuần!");
     }
   };
 
-  // ✅ Lưu dữ liệu vào bảng tổng
-  const handleSaveData = async () => {
-    if (!selectedWeek) {
-      setSnackbar({
-        open: true,
-        message: "Vui lòng chọn tuần.",
-        severity: "error",
-      });
-      return;
-    }
-
+  // 🔹 Lưu điểm tổng vào ClassWeeklyScore
+  const handleSave = async () => {
     try {
-      for (const row of tableData) {
-        const gradeMatch = row.className.match(/^(\d+)/);
-        const grade = gradeMatch ? gradeMatch[1] : "Khác";
+      if (!selectedWeek) return alert("Vui lòng chọn tuần trước khi lưu!");
+      const weekObj = weeks.find((w) => String(w.weekNumber) === selectedWeek);
+      if (!weekObj) return alert("Không tìm thấy tuần!");
 
-        await api.post("/api/class-weekly-scores/update", {
-          className: row.className,
-          grade,
-          weekNumber: selectedWeek,
-          violationScore: row.total,
+      for (const s of summaries) {
+        await api.post("/api/class-lineup-summaries/update-weekly-score", {
+          className: s.className,
+          weekNumber: weekObj.weekNumber,
+          lineUpScore: s.total,
         });
       }
 
-      setSnackbar({
-        open: true,
-        message: "✅ Đã lưu điểm vi phạm vào bảng tổng tuần.",
-        severity: "success",
-      });
+      alert("✅ Đã lưu điểm lineup của tất cả lớp!");
     } catch (err) {
-      console.error("Lỗi khi lưu:", err);
-      setSnackbar({
-        open: true,
-        message: "❌ Lỗi khi lưu dữ liệu.",
-        severity: "error",
-      });
+      console.error("Lỗi khi lưu điểm lineup:", err);
+      alert("❌ Lưu thất bại!");
     }
   };
 
   return (
-    <Box sx={{ maxWidth: "100%", mx: "auto", py: 4 }}>
-      <Typography variant="h4" fontWeight="bold" align="center" gutterBottom>
-        Tổng điểm vi phạm các lớp theo tuần
+    <Box p={3}>
+      <Typography variant="h6" gutterBottom>
+        Tổng điểm xếp hàng các lớp theo tuần
       </Typography>
 
-      <Paper sx={{ p: 2, mb: 4 }} elevation={3}>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={2}
-          alignItems="center"
-          flexWrap="wrap"
+      <Box display="flex" alignItems="center" gap={2} mb={2}>
+
+        <TextField
+          select
+          label="Chọn tuần"
+          value={selectedWeek}
+          onChange={(e) => setSelectedWeek(e.target.value)}
+          sx={{ minWidth: 200 }}
         >
-          {/* ✅ Hiển thị tuần hiện tại */}
-          {currentWeek && (
-            <Typography variant="subtitle1">
-              Tuần hiện tại: {currentWeek}
-            </Typography>
-          )}
+          {weeks.map((w) => (
+            <MenuItem key={w.weekNumber} value={w.weekNumber}>
+              Tuần {w.weekNumber} (Tuần hiện tại) ({dayjs(w.startDate).format("DD/MM")} -{" "}
+              {dayjs(w.endDate).format("DD/MM")})
+            </MenuItem>
+          ))}
+        </TextField>
 
-          <TextField
-            label="Tuần"
-            select
-            value={selectedWeek || ""}
-            onChange={(e) => {
-              const val = Number(e.target.value);
-              setSelectedWeek(val);
-              setTableData([]);
-              setIsCalculated(false);
-              checkIfCalculated(val);
-            }}
-            sx={{ minWidth: 180 }}
-          >
-            <MenuItem value="">-- Chọn tuần --</MenuItem>
-            {weekList.map((w) => (
-              <MenuItem key={w.weekNumber} value={w.weekNumber}>
-                Tuần {w.weekNumber} ({dayjs(w.startDate).format("DD/MM")} -{" "}
-                {dayjs(w.endDate).format("DD/MM")})
-              </MenuItem>
-            ))}
-          </TextField>
+        <TextField
+          label="Hệ số điểm"
+          type="number"
+          value={multiplier}
+          onChange={(e) => setMultiplier(Number(e.target.value))}
+          sx={{ width: 120 }}
+        />
 
-          <Button variant="contained" onClick={handleLoadData}>
-            Load dữ liệu
-          </Button>
-          <Button variant="contained" color="success" onClick={handleSaveData}>
-            Lưu
-          </Button>
-        </Stack>
+        <Button variant="contained" onClick={handleLoadData}>
+          LOAD DỮ LIỆU
+        </Button>
+        <Button variant="contained" color="success" onClick={handleSave}>
+          LƯU
+        </Button>
+      </Box>
 
-        {isCalculated && (
-          <Typography color="green" sx={{ mt: 2 }}>
-            Tuần này đã có dữ liệu tổng điểm.
-          </Typography>
-        )}
-      </Paper>
-
-      <Paper elevation={3}>
-        <Table size="small">
+      <Paper>
+        <Table>
           <TableHead>
-            <TableRow sx={{ backgroundColor: "#87cafe" }}>
+            <TableRow>
               <TableCell>STT</TableCell>
               <TableCell>Lớp</TableCell>
-              <TableCell>Điểm vi phạm</TableCell>
+              <TableCell>Số lần vi phạm</TableCell>
+              <TableCell>Hệ số</TableCell>
               <TableCell>Tổng điểm</TableCell>
-              <TableCell>Số lỗi</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {tableData.length > 0 ? (
-              tableData.map((row, i) => (
-                <TableRow key={row.className}>
-                  <TableCell>{i + 1}</TableCell>
-                  <TableCell>{row.className}</TableCell>
-                  <TableCell>{row.penaltiesString}</TableCell>
-                  <TableCell>{row.total}</TableCell>
-                  <TableCell>{row.count}</TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={5} align="center">
-                  Chưa có dữ liệu.
-                </TableCell>
+            {summaries.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{row.id}</TableCell>
+                <TableCell>{row.className}</TableCell>
+                <TableCell>{row.count}</TableCell>
+                <TableCell>{multiplier}</TableCell>
+                <TableCell>{row.total}</TableCell>
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
       </Paper>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert severity={snackbar.severity as any} sx={{ width: "100%" }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }
