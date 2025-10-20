@@ -21,7 +21,7 @@ import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import useAcademicWeeks from "../types/useAcademicWeeks";
-
+import { Snackbar, Alert } from "@mui/material";
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
@@ -302,12 +302,31 @@ export default function ViewViolationListPage() {
                       </Typography>
                     ) : !v.handled ? (
                       <Button
-                        size="small"
-                        variant="contained"
-                        onClick={() => handleMarkAsHandled(v._id, "GVCN")}
-                      >
-                        GVCN tiếp nhận
-                      </Button>
+  variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
+  color="primary"
+  size="small"
+  onClick={() => {
+    const repeatCount = violations.filter(
+      (item) =>
+        item.studentId === v.studentId &&
+        item.weekNumber === v.weekNumber
+    ).length;
+
+    if (limitGVCN && repeatCount > 1) {
+      setSnackbar({
+        open: true,
+        message: "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần. GVCN không được phép xử lý.",
+        severity: "warning",
+      });
+      return;
+    }
+
+    handleProcessViolation(v._id, "GVCN");
+  }}
+>
+  GVCN
+</Button>
+
                     ) : (
                       <Typography color="green" fontWeight="bold">
                         ✓ GVCN đã nhận
