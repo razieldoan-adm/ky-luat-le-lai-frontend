@@ -12,12 +12,15 @@ import {
   TableCell,
   Paper,
   Stack,
+  FormControl,
+  InputLabel,
+  Select,
 } from "@mui/material";
-import api from "../api/api";
+import api from "../../api/api";
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
-import { getWeeksAndCurrentWeek } from "../types/weekHelper";
+import useAcademicWeeks from "../../hooks/useAcademicWeeks";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -31,7 +34,6 @@ interface Violation {
   weekNumber?: number;
   handled?: boolean;
   handledBy?: string;
-  penalty?: number;
 }
 
 interface Rule {
@@ -40,31 +42,27 @@ interface Rule {
   point: number;
 }
 
-interface AcademicWeek {
-  _id: string;
-  weekNumber: number;
-  startDate: string;
-  endDate: string;
-}
-
 export default function ViewViolationListPage() {
   const [allViolations, setAllViolations] = useState<Violation[]>([]);
   const [filteredViolations, setFilteredViolations] = useState<Violation[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
-  const [selectedWeek, setSelectedWeek] = useState<number | "" | "all">("");
   const [classList, setClassList] = useState<string[]>([]);
-  const [weekList, setWeekList] = useState<AcademicWeek[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
+  const [viewMode, setViewMode] = useState<"week" | "day">("week");
+  const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
+
+  // ✅ Dùng hook chung để load danh sách tuần
+  const { weeks, currentWeek, selectedWeek, setSelectedWeek } = useAcademicWeeks();
 
   useEffect(() => {
     fetchClasses();
     fetchRules();
-    fetchWeeks();
+    fetchViolations();
   }, []);
 
   useEffect(() => {
-    if (weekList.length > 0) fetchViolations();
-  }, [weekList]);
+    applyFilters(allViolations);
+  }, [selectedClass, selectedWeek, selectedDate, viewMode]);
 
   const fetchClasses = async () => {
     try {
@@ -87,42 +85,16 @@ export default function ViewViolationListPage() {
     }
   };
 
-  const fetchWeeks = async () => {
-    try {
-      const res = await api.get("/api/academic-weeks/study-weeks");
-      const allWeeks: AcademicWeek[] = res.data;
-      const { currentWeek } = await getWeeksAndCurrentWeek();
-      const filteredWeeks = allWeeks.filter((w) => w.weekNumber <= currentWeek);
-      setWeekList(filteredWeeks);
-      const currentWeekObj = filteredWeeks.find(
-        (w) => w.weekNumber === currentWeek
-      );
-      if (currentWeekObj) setSelectedWeek(currentWeekObj.weekNumber);
-    } catch (err) {
-      console.error("Lỗi khi lấy danh sách tuần:", err);
-    }
-  };
-
   const fetchViolations = async () => {
     try {
       const res = await api.get("/api/violations/all/all-student");
-      const rawData = res.data;
-      const dataWithWeek = rawData.map((v: any) => {
-        const violationDate = dayjs(v.time).startOf("day");
-        const matchedWeek = weekList.find(
-          (w) =>
-            violationDate.isSameOrAfter(dayjs(w.startDate).startOf("day")) &&
-            violationDate.isSameOrBefore(dayjs(w.endDate).endOf("day"))
-        );
-        return {
-          ...v,
-          weekNumber: matchedWeek?.weekNumber || null,
-          handledBy: v.handledBy || "",
-          handled: v.handled || false,
-        };
-      });
-      setAllViolations(dataWithWeek);
-      applyFilters(dataWithWeek); // ✅ tự động áp filter sau khi fetch
+      const data = res.data.map((v: any) => ({
+        ...v,
+        handledBy: v.handledBy || "",
+        handled: v.handled || false,
+      }));
+      setAllViolations(data);
+      applyFilters(data);
     } catch (err) {
       console.error("Lỗi khi lấy dữ liệu vi phạm:", err);
     }
@@ -130,6 +102,7 @@ export default function ViewViolationListPage() {
 
   const applyFilters = (sourceData = allViolations) => {
     let data = [...sourceData];
+
     if (selectedClass) {
       data = data.filter(
         (v) =>
@@ -137,9 +110,26 @@ export default function ViewViolationListPage() {
           selectedClass.trim().toLowerCase()
       );
     }
-    if (selectedWeek !== "" && selectedWeek !== "all") {
-      data = data.filter((v) => v.weekNumber === selectedWeek);
+
+    if (viewMode === "week" && selectedWeek) {
+      const selectedWeekData = weeks.find((w) => w.weekNumber === selectedWeek);
+      if (selectedWeekData) {
+        data = data.filter((v) => {
+          const date = dayjs(v.time);
+          return (
+            date.isSameOrAfter(dayjs(selectedWeekData.startDate), "day") &&
+            date.isSameOrBefore(dayjs(selectedWeekData.endDate), "day")
+          );
+        });
+      }
     }
+
+    if (viewMode === "day") {
+      data = data.filter((v) =>
+        dayjs(v.time).isSame(dayjs(selectedDate), "day")
+      );
+    }
+
     setFilteredViolations(data);
   };
 
@@ -150,7 +140,7 @@ export default function ViewViolationListPage() {
         handledBy: by,
         handlingMethod: `${by} xử lý`,
       });
-      await fetchViolations(); // ✅ dữ liệu mới → tự lọc lại
+      await fetchViolations();
     } catch (err) {
       console.error("Lỗi khi xử lý vi phạm:", err);
     }
@@ -179,18 +169,17 @@ export default function ViewViolationListPage() {
         <b>"GVCN tiếp nhận"</b>. Xin cám ơn.
       </Typography>
 
+      {/* --- Bộ lọc --- */}
       <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
+        {/* Chọn lớp */}
         <TextField
           label="Chọn lớp"
           select
           value={selectedClass}
-          onChange={(e) => {
-            setSelectedClass(e.target.value);
-            applyFilters();
-          }}
+          onChange={(e) => setSelectedClass(e.target.value)}
           sx={{ minWidth: 150 }}
         >
-          <MenuItem value="">-- Chọn lớp --</MenuItem>
+          <MenuItem value="">-- Tất cả lớp --</MenuItem>
           {classList.map((cls) => (
             <MenuItem key={cls} value={cls}>
               {cls}
@@ -198,35 +187,54 @@ export default function ViewViolationListPage() {
           ))}
         </TextField>
 
-        <TextField
-          label="Chọn tuần"
-          select
-          value={selectedWeek}
-          onChange={(e) => {
-            const val =
-              e.target.value === "all"
-                ? "all"
-                : e.target.value === ""
-                ? ""
-                : Number(e.target.value);
-            setSelectedWeek(val);
-            applyFilters();
-          }}
-          sx={{ minWidth: 150 }}
-        >
-          <MenuItem value="all">-- Xem tất cả --</MenuItem>
-          {weekList.map((w) => (
-            <MenuItem key={w._id} value={w.weekNumber}>
-              Tuần {w.weekNumber}
-            </MenuItem>
-          ))}
-        </TextField>
+        {/* Chế độ xem */}
+        <FormControl sx={{ minWidth: 150 }}>
+          <InputLabel>Chế độ xem</InputLabel>
+          <Select
+            value={viewMode}
+            label="Chế độ xem"
+            onChange={(e) => setViewMode(e.target.value as "week" | "day")}
+          >
+            <MenuItem value="week">Theo tuần</MenuItem>
+            <MenuItem value="day">Theo ngày</MenuItem>
+          </Select>
+        </FormControl>
+
+        {/* Nếu xem theo tuần */}
+        {viewMode === "week" && (
+          <TextField
+            select
+            label="Chọn tuần"
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(Number(e.target.value))}
+            sx={{ minWidth: 150 }}
+          >
+            {weeks.map((w) => (
+              <MenuItem key={w.weekNumber} value={w.weekNumber}>
+                Tuần {w.weekNumber} ({dayjs(w.startDate).format("DD/MM")} -{" "}
+                {dayjs(w.endDate).format("DD/MM")})
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
+
+        {/* Nếu xem theo ngày */}
+        {viewMode === "day" && (
+          <TextField
+            label="Chọn ngày"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            sx={{ minWidth: 180 }}
+          />
+        )}
 
         <Button variant="contained" onClick={() => applyFilters()}>
           Áp dụng
         </Button>
       </Stack>
 
+      {/* --- Bảng dữ liệu --- */}
       <Paper elevation={3} sx={{ width: "100%", overflowX: "auto" }}>
         <Table size="small">
           <TableHead>
@@ -241,7 +249,6 @@ export default function ViewViolationListPage() {
               <TableCell>Tiếp nhận xử lý</TableCell>
             </TableRow>
           </TableHead>
-
           <TableBody>
             {filteredViolations.map((v, idx) => {
               const matchedRule = rules.find((r) => r.title === v.description);
@@ -282,27 +289,25 @@ export default function ViewViolationListPage() {
                       </Box>
                     )}
                   </TableCell>
-                 
                   <TableCell>
-                  {/* Nếu PGT đã xử lý → không cho GVCN tiếp nhận */}
-                  {v.handledBy === "PGT" ? (
-                    <Typography color="gray" fontStyle="italic">
-                      Đã do PGT xử lý
-                    </Typography>
-                  ) : !v.handled ? (
-                    <Button
-                      size="small"
-                      variant="contained"
-                      onClick={() => handleMarkAsHandled(v._id, "GVCN")}
-                    >
-                      GVCN tiếp nhận
-                    </Button>
-                  ) : (
-                    <Typography color="green" fontWeight="bold">
-                      ✓ GVCN đã nhận
-                    </Typography>
-                  )}
-                </TableCell>
+                    {v.handledBy === "PGT" ? (
+                      <Typography color="gray" fontStyle="italic">
+                        Đã do PGT xử lý
+                      </Typography>
+                    ) : !v.handled ? (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => handleMarkAsHandled(v._id, "GVCN")}
+                      >
+                        GVCN tiếp nhận
+                      </Button>
+                    ) : (
+                      <Typography color="green" fontWeight="bold">
+                        ✓ GVCN đã nhận
+                      </Typography>
+                    )}
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -310,6 +315,7 @@ export default function ViewViolationListPage() {
         </Table>
       </Paper>
 
+      {/* --- Tổng điểm trừ --- */}
       <Box mt={4}>
         <Typography variant="h6" fontWeight="bold" gutterBottom>
           Tổng điểm trừ:
