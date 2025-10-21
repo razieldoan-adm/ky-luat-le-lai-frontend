@@ -54,7 +54,7 @@ export default function ViewViolationListPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [viewMode, setViewMode] = useState<"week" | "day">("week");
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
-  const { weeks, selectedWeek, setSelectedWeek } = useAcademicWeeks();
+  const { weeks, selectedWeek,currentWeek, setSelectedWeek } = useAcademicWeeks();
 
   // ✅ Cài đặt giới hạn GVCN
   const [limitGVCN, setLimitGVCN] = useState(false);
@@ -273,7 +273,7 @@ export default function ViewViolationListPage() {
               const repeatCount = allViolations.filter(
                 (item) =>
                   item.studentId === v.studentId &&
-                  item.weekNumber === v.weekNumber &&
+                  item.weekNumber === currentWeek &&
                   item._id !== v._id //loại bản ghi
               ).length;
 
