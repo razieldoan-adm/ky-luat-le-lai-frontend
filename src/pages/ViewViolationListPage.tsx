@@ -325,8 +325,8 @@ export default function ViewViolationListPage() {
                             (item) =>
                               item.studentId === v.studentId &&
                               item.weekNumber === v.weekNumber &&
-                              item.className === v.className &&
-                              item._id !== v._id //loại bản ghi
+                              item.className === v.className
+                              
                           ).length;
                         if (limitGVCN && repeatCount > 1) {
                           setSnackbar({
