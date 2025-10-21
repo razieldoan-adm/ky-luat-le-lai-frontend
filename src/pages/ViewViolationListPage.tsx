@@ -274,7 +274,8 @@ export default function ViewViolationListPage() {
                 (item) =>
                   item.studentId === v.studentId &&
                   item.className === v.className &&
-                  item.weekNumber === v.weekNumber
+                  item.weekNumber === v.weekNumber &&
+                  item._id !== v._id //loại bản ghi
               ).length;
 
               return (
