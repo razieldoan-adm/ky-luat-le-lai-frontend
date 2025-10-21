@@ -273,7 +273,6 @@ export default function ViewViolationListPage() {
               const repeatCount = allViolations.filter(
                 (item) =>
                   item.studentId === v.studentId &&
-                  item.className === v.className &&
                   item.weekNumber === v.weekNumber &&
                   item._id !== v._id //loại bản ghi
               ).length;
