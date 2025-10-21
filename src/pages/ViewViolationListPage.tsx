@@ -325,7 +325,7 @@ export default function ViewViolationListPage() {
                       color="primary" 
                       size="small" 
                       onClick={() => {
-                        if (limitGVCN && repeatCount > 1) {
+                        if (limitGVCN && repeatCount > 2) {
                           setSnackbar({
                             open: true, message: "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần.", 
                             severity: "warning",
