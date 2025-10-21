@@ -270,13 +270,7 @@ export default function ViewViolationListPage() {
           <TableBody>
             {filteredViolations.map((v, idx) => {
               const matchedRule = rules.find((r) => r.title === v.description);
-              const repeatCount = allViolations.filter(
-                (item) =>
-                  item.studentId === v.studentId &&
-                  item.weekNumber === v.weekNumber &&
-                  item.className === v.className &&
-                  item._id !== v._id //loại bản ghi
-              ).length;
+              
 
               return (
                 <TableRow key={v._id}>
@@ -327,12 +321,12 @@ export default function ViewViolationListPage() {
                       color="primary" 
                       size="small" 
                       onClick={() => {
-                        const repeatCount = violations.filter(
+                        const repeatCount = allViolations.filter(
                             (item) =>
                               item.studentId === v.studentId &&
-                              item.className === v.className &&
                               item.weekNumber === v.weekNumber &&
-                              item._id !== v._id
+                              item.className === v.className &&
+                              item._id !== v._id //loại bản ghi
                           ).length;
                         if (limitGVCN && repeatCount >= 2) {
                           setSnackbar({
