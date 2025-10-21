@@ -328,7 +328,7 @@ export default function ViewViolationListPage() {
                               item.className === v.className &&
                               item._id !== v._id //loại bản ghi
                           ).length;
-                        if (limitGVCN && repeatCount >= 2) {
+                        if (limitGVCN && repeatCount > 1) {
                           setSnackbar({
                             open: true, message: "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần.", 
                             severity: "warning",
