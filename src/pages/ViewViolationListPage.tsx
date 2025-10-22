@@ -54,7 +54,7 @@ export default function ViewViolationListPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [viewMode, setViewMode] = useState<"week" | "day">("week");
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
-  const { weeks, selectedWeek, setSelectedWeek } = useAcademicWeeks();
+  const { weeks, selectedWeek, setSelectedWeek, currentWeek } = useAcademicWeeks();
 
   // ✅ Cài đặt giới hạn GVCN
   const [limitGVCN, setLimitGVCN] = useState(false);
@@ -270,8 +270,6 @@ export default function ViewViolationListPage() {
           <TableBody>
             {filteredViolations.map((v, idx) => {
               const matchedRule = rules.find((r) => r.title === v.description);
-              
-
               return (
                 <TableRow key={v._id}>
                   <TableCell>{idx + 1}</TableCell>
@@ -321,13 +319,24 @@ export default function ViewViolationListPage() {
                       color="primary" 
                       size="small" 
                       onClick={() => {
-                        const repeatCount = allViolations.filter(
-                            (item) =>
-                              item.studentId === v.studentId &&
-                              item.weekNumber === v.weekNumber &&
-                              item.className === v.className
-                              
-                          ).length;
+                        // 🔹 Lấy thông tin tuần hiện tại của vi phạm
+const currentWeek = weeks.find(
+  (w: any) =>
+    dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
+    dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
+);
+
+const repeatCount = allViolations.filter((item) => {
+  if (item.studentId !== v.studentId || item.className !== v.className) return false;
+
+  // 🔹 Kiểm tra item có nằm trong cùng tuần không
+  if (!currentWeek) return false;
+  return (
+    dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
+    dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
+  );
+}).length;
+
                         if (limitGVCN && repeatCount > 1) {
                           setSnackbar({
                             open: true, message: "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần.", 
