@@ -26,7 +26,7 @@ import dayjs from "dayjs";
 import api from "../../api/api";
 
 export default function RecordAttendancePage() {
-  const BASE_URL = "/api/class-attendance-summaries";
+
 
   const [classes, setClasses] = useState<string[]>([]);
   const [className, setClassName] = useState("");
