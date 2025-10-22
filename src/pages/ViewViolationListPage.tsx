@@ -326,20 +326,23 @@ export default function ViewViolationListPage() {
     );
     if (!currentWeek) return false;
 
-    // 🔹 Chỉ đếm lỗi của cùng học sinh, cùng tuần (loại chính lỗi này)
-    const count = allViolations.filter(
+    // ✅ Lọc ra tất cả lỗi của cùng học sinh trong cùng tuần
+    const sameStudentThisWeek = allViolations.filter(
       (item) =>
         item._id !== v._id &&
         item.name?.trim().toLowerCase() === v.name?.trim().toLowerCase() &&
         item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
         dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
         dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
-    ).length;
-     // 🔹 Kiểm tra học sinh này đã có lỗi được GVCN xử lý chưa
+    );
+
+    // 🔹 Kiểm tra học sinh này đã có lỗi được GVCN xử lý chưa
     const hasHandledByGVCN = sameStudentThisWeek.some(
       (item) => item.handledBy === "GVCN"
     );
-    return limitGVCN && count > 1; // chỉ khóa khi hs đã có >= 1 lỗi trong tuần
+
+    // 🔹 Nếu đã có GVCN xử lý ít nhất 1 lỗi → khóa lại
+    return limitGVCN && hasHandledByGVCN;
   })()}
   onClick={async () => {
     const currentWeek = weeks.find(
@@ -352,20 +355,24 @@ export default function ViewViolationListPage() {
       return;
     }
 
-    const repeatCount = allViolations.filter(
+    const sameStudentThisWeek = allViolations.filter(
       (item) =>
         item._id !== v._id &&
-        item.studentId === v.studentId && // ✅ chỉ học sinh này
+        item.name?.trim().toLowerCase() === v.name?.trim().toLowerCase() &&
+        item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
         dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
         dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
-    ).length;
-       const hasHandledByGVCN = sameStudentThisWeek.some(
+    );
+
+    const hasHandledByGVCN = sameStudentThisWeek.some(
       (item) => item.handledBy === "GVCN"
     );
-    if (limitGVCN && repeatCount >= 1) {
+
+    if (limitGVCN && hasHandledByGVCN) {
       setSnackbar({
         open: true,
-        message: "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần. GVCN không thể xử lý tiếp.",
+        message:
+          "⚠️ Học sinh này đã có vi phạm được GVCN xử lý trong tuần. Không thể xử lý thêm.",
         severity: "warning",
       });
       return;
@@ -376,6 +383,7 @@ export default function ViewViolationListPage() {
 >
   GVCN tiếp nhận
 </Button>
+
                   ) : (
                     <Typography color="green" fontWeight="bold"> 
                       ✓ GVCN đã xử lý 
