@@ -124,6 +124,8 @@ export default function ViewHygieneDisciplinePage() {
       else setRecords([]);
     } catch (err) {
       console.error("Lỗi khi tải danh sách vi phạm:", err);
+      console.log("📦 Dữ liệu nhận từ API:", res.data);
+
       setRecords([]);
     } finally {
       setLoading(false);
