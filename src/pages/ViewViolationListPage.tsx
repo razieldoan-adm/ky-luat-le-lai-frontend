@@ -320,38 +320,48 @@ export default function ViewViolationListPage() {
                       size="small" 
                       
 onClick={async () => {
-  // 🔹 Xác định tuần hiện tại của vi phạm này
-  const currentWeek = weeks.find(
-    (w: any) =>
-      dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
-      dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
-  );
-
-  // 🔹 Đếm số lần vi phạm trong cùng tuần của cùng học sinh
-  const repeatCount = allViolations.filter((item) => {
-    if (item.studentId !== v.studentId && item._id !== v._id ) return false;
-    if (!currentWeek) return false;
-
-    return (
-      dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-      dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
+  try {
+    // 🔹 Xác định tuần tương ứng với ngày vi phạm này
+    const currentWeek = weeks.find(
+      (w: any) =>
+        dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
+        dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
     );
-  }).length;
 
-  // 🔹 Nếu bị giới hạn GVCN và học sinh vi phạm lần >= 2 → cảnh báo
-  if (limitGVCN && repeatCount > 1) {
-    setSnackbar({
-      open: true,
-      message: "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần. GVCN không thể xử lý tiếp.",
-      severity: "warning",
-    });
-    return;
+    if (!currentWeek) {
+      console.warn("Không xác định được tuần của vi phạm:", v.time);
+      await handleProcessViolation(v._id, "GVCN");
+      return;
+    }
+
+    // 🔹 Đếm số lần vi phạm của học sinh đó trong cùng lớp và cùng tuần
+    const repeatCount = allViolations.filter((item) => {
+      if (item.studentId !== v.studentId) return false;
+      if (item.className !== v.className) return false;
+
+      return (
+        dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
+        dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
+      );
+    }).length;
+
+    // 🔹 Nếu GVCN bị giới hạn và học sinh vi phạm >= 2 lần → chặn xử lý
+    if (limitGVCN && repeatCount > 1) {
+      setSnackbar({
+        open: true,
+        message:
+          "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần. GVCN không thể xử lý tiếp.",
+        severity: "warning",
+      });
+      return;
+    }
+
+    // 🔹 Nếu lần đầu → cho phép xử lý
+    await handleProcessViolation(v._id, "GVCN");
+  } catch (err) {
+    console.error("Lỗi khi xử lý:", err);
   }
-
-  // 🔹 Cho phép GVCN xử lý bình thường
-  await handleProcessViolation(v._id, "GVCN");
 }}
-
                       > 
                       GVCN tiếp nhận 
                     </Button> 
