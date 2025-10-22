@@ -138,7 +138,7 @@ export default function ViewHygieneDisciplinePage() {
       if (weekNumber) params.weekNumber = weekNumber;
       if (className) params.className = className;
       params.permission = false; // thay cho params.excused
-      const res = await api.get("/api/attendance/unexcused", { params });
+      const res = await api.get("/api/class-attendance-summaries/unexcused", { params });
       setAbsences(res.data || []);
     } catch (err) {
       console.error("Lỗi khi tải danh sách nghỉ học:", err);
@@ -170,7 +170,7 @@ export default function ViewHygieneDisciplinePage() {
   // ✅ GVCN xác nhận có phép → cập nhật trong DB chuyên cần
   const handleExcuseAbsence = async (id: string) => {
   try {
-    await api.put(`/api/attendance/confirm/${id}`); // ✅ Đúng route backend
+    await api.put(`/api/class-attendance-summaries/confirm/${id}`); // ✅ Đúng route backend
     setSnackbar({
       open: true,
       message: "✅ Đã xác nhận có phép cho học sinh!",
