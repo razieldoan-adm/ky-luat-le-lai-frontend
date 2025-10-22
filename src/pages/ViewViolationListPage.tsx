@@ -54,7 +54,7 @@ export default function ViewViolationListPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [viewMode, setViewMode] = useState<"week" | "day">("week");
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
-  const { weeks, selectedWeek, setSelectedWeek, currentWeek } = useAcademicWeeks();
+  const { weeks, selectedWeek, setSelectedWeek} = useAcademicWeeks();
 
   // ✅ Cài đặt giới hạn GVCN
   const [limitGVCN, setLimitGVCN] = useState(false);
