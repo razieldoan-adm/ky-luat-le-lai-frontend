@@ -109,28 +109,32 @@ export default function ViewHygieneDisciplinePage() {
 
   // --- Load records theo tuần + lớp
   const loadRecords = async (weekNumber?: number, className?: string) => {
-    setLoading(true);
-    try {
-      const params: any = {};
-      if (weekNumber) params.weekNumber = weekNumber;
-      if (className) params.className = className;
-      const res = await api.get("/api/class-lineup-summaries/weekly", {
-        params,
-      });
+  setLoading(true);
+  try {
+    const params: any = {};
+    if (weekNumber) params.weekNumber = weekNumber;
+    if (className) params.className = className;
 
-      let data = res.data;
-      if (Array.isArray(data)) setRecords(data);
-      else if (Array.isArray(data.records)) setRecords(data.records);
-      else setRecords([]);
-    } catch (err) {
-      console.error("Lỗi khi tải danh sách vi phạm:", err);
-      console.log("📦 Dữ liệu nhận từ API:", res.data);
+    const res = await api.get("/api/class-lineup-summaries/weekly", { params });
+    const data = res.data;
 
+    if (Array.isArray(data)) {
+      setRecords(data);
+    } else if (Array.isArray(data.records)) {
+      setRecords(data.records);
+    } else {
       setRecords([]);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    console.log("📦 Dữ liệu vi phạm nhận được:", res.data);
+  } catch (err) {
+    console.error("Lỗi khi tải danh sách vi phạm:", err);
+    setRecords([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // --- Load danh sách nghỉ học không phép
   const loadAbsences = async (weekNumber?: number, className?: string) => {
