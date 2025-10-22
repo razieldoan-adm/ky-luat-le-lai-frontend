@@ -314,7 +314,7 @@ export default function ViewViolationListPage() {
                       PGT đã xử lý 
                     </Typography> 
                   ) : !v.handled ? (
-                    <Button
+  <Button
   variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
   color="primary"
   size="small"
@@ -326,17 +326,16 @@ export default function ViewViolationListPage() {
     );
     if (!currentWeek) return false;
 
-    // 🔹 Đếm các lỗi KHÁC lỗi hiện tại
+    // 🔹 Chỉ đếm lỗi của cùng học sinh, cùng tuần (loại chính lỗi này)
     const count = allViolations.filter(
       (item) =>
-        item._id !== v._id && // ❗ loại chính lỗi này ra
-        item.studentId === v.studentId &&
+        item._id !== v._id &&
+        item.studentId === v.studentId && // ✅ chỉ học sinh này
         dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
         dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
     ).length;
 
-    // 🔹 Chỉ vô hiệu nếu học sinh đã có >= 1 lỗi khác trong tuần
-    return limitGVCN && count >= 1;
+    return limitGVCN && count >= 1; // chỉ khóa khi hs đã có >= 1 lỗi trong tuần
   })()}
   onClick={async () => {
     const currentWeek = weeks.find(
@@ -351,8 +350,8 @@ export default function ViewViolationListPage() {
 
     const repeatCount = allViolations.filter(
       (item) =>
-        item._id !== v._id && // ❗ loại chính lỗi này ra
-        item.studentId === v.studentId &&
+        item._id !== v._id &&
+        item.studentId === v.studentId && // ✅ chỉ học sinh này
         dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
         dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
     ).length;
