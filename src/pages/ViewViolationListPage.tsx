@@ -335,7 +335,10 @@ export default function ViewViolationListPage() {
         dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
         dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
     ).length;
-
+     // 🔹 Kiểm tra học sinh này đã có lỗi được GVCN xử lý chưa
+    const hasHandledByGVCN = sameStudentThisWeek.some(
+      (item) => item.handledBy === "GVCN"
+    );
     return limitGVCN && count > 1; // chỉ khóa khi hs đã có >= 1 lỗi trong tuần
   })()}
   onClick={async () => {
@@ -356,7 +359,9 @@ export default function ViewViolationListPage() {
         dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
         dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
     ).length;
-
+       const hasHandledByGVCN = sameStudentThisWeek.some(
+      (item) => item.handledBy === "GVCN"
+    );
     if (limitGVCN && repeatCount >= 1) {
       setSnackbar({
         open: true,
