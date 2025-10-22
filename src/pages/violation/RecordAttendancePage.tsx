@@ -114,7 +114,7 @@ export default function RecordAttendancePage() {
         date,
         session,
       });
-
+      console.log("📤 Dữ liệu gửi đi:", payload);
       setSnackbar({ open: true, message: "Đã ghi nhận nghỉ học.", severity: "success" });
       setSelectedStudent(null);
       setStudentInput("");
