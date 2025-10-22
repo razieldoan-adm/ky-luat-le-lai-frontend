@@ -82,7 +82,7 @@ export default function RecordAttendancePage() {
   const fetchRecords = async () => {
     if (!className) return;
     try {
-      const endpoint = viewMode === "week" ? `${BASE_URL}/by-week` : `${BASE_URL}/by-date`;
+      const endpoint = viewMode === "week" ? `/api/class-attendance-summaries/by-week` : `/api/class-attendance-summaries/by-date`;
       const cleanDate = date.split(":")[0];
       const res = await api.get(endpoint, {
         params: { className, date:cleanDate },
@@ -106,7 +106,7 @@ export default function RecordAttendancePage() {
     }
 
     try {
-      await api.post(`${BASE_URL}/record`, {
+      await api.post(`/api/class-attendance-summaries/record`, {
         studentId: selectedStudent._id,
         studentName: selectedStudent.name,
         className,
@@ -131,7 +131,7 @@ export default function RecordAttendancePage() {
   // --- Duyệt phép
   const handleExcuse = async (id: string) => {
     try {
-      await api.put(`${BASE_URL}/approve/${id}`);
+      await api.put(`/api/class-attendance-summaries/approve/${id}`);
       setSnackbar({ open: true, message: "Đã duyệt phép cho học sinh.", severity: "success" });
       fetchRecords();
     } catch (err) {
