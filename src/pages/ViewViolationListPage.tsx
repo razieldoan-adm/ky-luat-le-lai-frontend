@@ -319,37 +319,45 @@ export default function ViewViolationListPage() {
   color="primary"
   size="small"
   disabled={(() => {
-    // Tính trước điều kiện disable
-    const currentWeek = weeks.find((w: any) =>
-      dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
-      dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
+    const currentWeek = weeks.find(
+      (w: any) =>
+        dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
+        dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
     );
     if (!currentWeek) return false;
-    const count = allViolations.filter((item) =>
-      item.studentId === v.studentId &&
-      dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-      dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
+
+    // 🔹 Đếm các lỗi KHÁC lỗi hiện tại
+    const count = allViolations.filter(
+      (item) =>
+        item._id !== v._id && // ❗ loại chính lỗi này ra
+        item.studentId === v.studentId &&
+        dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
+        dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
     ).length;
-    // disable nếu đã vi phạm **ít nhất 2 lỗi trước hoặc cùng lúc** (>=2)
-    return limitGVCN && count >= 2;
+
+    // 🔹 Chỉ vô hiệu nếu học sinh đã có >= 1 lỗi khác trong tuần
+    return limitGVCN && count >= 1;
   })()}
   onClick={async () => {
-    const currentWeek = weeks.find((w: any) =>
-      dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
-      dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
+    const currentWeek = weeks.find(
+      (w: any) =>
+        dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
+        dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
     );
     if (!currentWeek) {
-      // nếu không xác định được tuần thì vẫn cho xử lý
       await handleProcessViolation(v._id, "GVCN");
       return;
     }
-    const repeatCount = allViolations.filter((item) =>
-      item.studentId === v.studentId &&
-      dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-      dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
+
+    const repeatCount = allViolations.filter(
+      (item) =>
+        item._id !== v._id && // ❗ loại chính lỗi này ra
+        item.studentId === v.studentId &&
+        dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
+        dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
     ).length;
 
-    if (limitGVCN && repeatCount >= 2) {
+    if (limitGVCN && repeatCount >= 1) {
       setSnackbar({
         open: true,
         message: "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần. GVCN không thể xử lý tiếp.",
@@ -363,7 +371,6 @@ export default function ViewViolationListPage() {
 >
   GVCN tiếp nhận
 </Button>
-
                   ) : (
                     <Typography color="green" fontWeight="bold"> 
                       ✓ GVCN đã xử lý 
