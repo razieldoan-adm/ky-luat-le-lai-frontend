@@ -314,57 +314,56 @@ export default function ViewViolationListPage() {
                       PGT đã xử lý 
                     </Typography> 
                   ) : !v.handled ? (
-                    <Button variant={ v.handledBy === "GVCN" ? "contained" : "outlined" 
-                    }
-                      color="primary" 
-                      size="small" 
-                      
-onClick={async () => {
-  try {
-    // 🔹 Xác định tuần tương ứng với ngày vi phạm này
-    const currentWeek = weeks.find(
-      (w: any) =>
-        dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
-        dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
+                    <Button
+  variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
+  color="primary"
+  size="small"
+  disabled={(() => {
+    // Tính trước điều kiện disable
+    const currentWeek = weeks.find((w: any) =>
+      dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
+      dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
     );
-
+    if (!currentWeek) return false;
+    const count = allViolations.filter((item) =>
+      item.studentId === v.studentId &&
+      dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
+      dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
+    ).length;
+    // disable nếu đã vi phạm **ít nhất 2 lỗi trước hoặc cùng lúc** (>=2)
+    return limitGVCN && count >= 2;
+  })()}
+  onClick={async () => {
+    const currentWeek = weeks.find((w: any) =>
+      dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
+      dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
+    );
     if (!currentWeek) {
-      console.warn("Không xác định được tuần của vi phạm:", v.time);
+      // nếu không xác định được tuần thì vẫn cho xử lý
       await handleProcessViolation(v._id, "GVCN");
       return;
     }
+    const repeatCount = allViolations.filter((item) =>
+      item.studentId === v.studentId &&
+      dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
+      dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
+    ).length;
 
-    // 🔹 Đếm số lần vi phạm của học sinh đó trong cùng lớp và cùng tuần
-    const repeatCount = allViolations.filter((item) => {
-      if (item.studentId !== v.studentId) return false;
-      if (item.className !== v.className) return false;
-
-      return (
-        dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-        dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
-      );
-    }).length;
-
-    // 🔹 Nếu GVCN bị giới hạn và học sinh vi phạm >= 2 lần → chặn xử lý
-    if (limitGVCN && repeatCount > 1) {
+    if (limitGVCN && repeatCount >= 2) {
       setSnackbar({
         open: true,
-        message:
-          "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần. GVCN không thể xử lý tiếp.",
+        message: "⚠️ Học sinh này đã vi phạm nhiều lần trong tuần. GVCN không thể xử lý tiếp.",
         severity: "warning",
       });
       return;
     }
 
-    // 🔹 Nếu lần đầu → cho phép xử lý
     await handleProcessViolation(v._id, "GVCN");
-  } catch (err) {
-    console.error("Lỗi khi xử lý:", err);
-  }
-}}
-                      > 
-                      GVCN tiếp nhận 
-                    </Button> 
+  }}
+>
+  GVCN tiếp nhận
+</Button>
+
                   ) : (
                     <Typography color="green" fontWeight="bold"> 
                       ✓ GVCN đã xử lý 
