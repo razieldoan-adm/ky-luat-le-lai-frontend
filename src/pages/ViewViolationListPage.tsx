@@ -329,7 +329,7 @@ onClick={async () => {
 
   // 🔹 Đếm số lần vi phạm trong cùng tuần của cùng học sinh
   const repeatCount = allViolations.filter((item) => {
-    if (item.studentId !== v.studentId || item.className !== v.className) return false;
+    if (item.studentId !== v.studentId) return false;
     if (!currentWeek) return false;
 
     return (
