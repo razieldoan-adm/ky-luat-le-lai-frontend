@@ -144,7 +144,7 @@ export default function RecordAttendancePage() {
   const handleDelete = async (id: string) => {
     if (!window.confirm("Bạn có chắc muốn xóa ghi nhận này không?")) return;
     try {
-      await api.delete(`${BASE_URL}/${id}`);
+      await api.delete(`/api/class-attendance-summaries/${id}`);
       setSnackbar({ open: true, message: "Đã xóa ghi nhận.", severity: "success" });
       fetchRecords();
     } catch (err) {
