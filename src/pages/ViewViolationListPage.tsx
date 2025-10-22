@@ -330,7 +330,8 @@ export default function ViewViolationListPage() {
     const count = allViolations.filter(
       (item) =>
         item._id !== v._id &&
-        item.studentId === v.studentId && // ✅ chỉ học sinh này
+        item.name?.trim().toLowerCase() === v.name?.trim().toLowerCase() &&
+        item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
         dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
         dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
     ).length;
