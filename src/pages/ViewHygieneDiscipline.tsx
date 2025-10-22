@@ -40,7 +40,7 @@ interface Absence {
   grade: string;
   date: string;
   session: string;
-  excused: boolean; // false = không phép
+  permission: boolean; // false = không phép ✅
 }
 
 interface AcademicWeek {
@@ -137,7 +137,7 @@ export default function ViewHygieneDisciplinePage() {
       const params: any = {};
       if (weekNumber) params.weekNumber = weekNumber;
       if (className) params.className = className;
-      params.excused = false; // chỉ lấy nghỉ không phép
+      params.permission = false; // thay cho params.excused
       const res = await api.get("/api/attendance/unexcused", { params });
       setAbsences(res.data || []);
     } catch (err) {
@@ -169,23 +169,23 @@ export default function ViewHygieneDisciplinePage() {
 
   // ✅ GVCN xác nhận có phép → cập nhật trong DB chuyên cần
   const handleExcuseAbsence = async (id: string) => {
-    try {
-      await api.patch(`/api/attendance/${id}/excuse`, { excused: true });
-      setSnackbar({
-        open: true,
-        message: "✅ Đã xác nhận có phép cho học sinh!",
-        severity: "success",
-      });
-      await loadAbsences(selectedWeek || undefined, selectedClass || undefined);
-    } catch (err) {
-      console.error("Lỗi khi cập nhật nghỉ học:", err);
-      setSnackbar({
-        open: true,
-        message: "❌ Lỗi khi xác nhận nghỉ học có phép!",
-        severity: "error",
-      });
-    }
-  };
+  try {
+    await api.put(`/api/attendance/confirm/${id}`); // ✅ Đúng route backend
+    setSnackbar({
+      open: true,
+      message: "✅ Đã xác nhận có phép cho học sinh!",
+      severity: "success",
+    });
+    await loadAbsences(selectedWeek || undefined, selectedClass || undefined);
+  } catch (err) {
+    console.error("Lỗi khi cập nhật nghỉ học:", err);
+    setSnackbar({
+      open: true,
+      message: "❌ Lỗi khi xác nhận nghỉ học có phép!",
+      severity: "error",
+    });
+  }
+};
 
   return (
     <Box p={3}>
@@ -336,7 +336,7 @@ export default function ViewHygieneDisciplinePage() {
                   <TableCell>{a.studentName}</TableCell>
                   <TableCell>{a.className}</TableCell>
                   <TableCell>{dayjs(a.date).format("DD/MM/YYYY")}</TableCell>
-                  <TableCell>{a.session === "morning" ? "Sáng" : "Chiều"}</TableCell>
+                  <TableCell>{a.session === "Sáng" ? "Sáng" : "Chiều"}</TableCell>
                   <TableCell sx={{ color: "red", fontWeight: 600 }}>
                     Không phép
                   </TableCell>
