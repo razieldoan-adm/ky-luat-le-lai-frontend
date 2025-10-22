@@ -106,7 +106,7 @@ export default function RecordAttendancePage() {
     }
 
     try {
-      await api.post(`/api/class-attendance-summaries/record`, {
+      await api.post(`/api/class-attendance-summaries/`, {
         studentId: selectedStudent._id,
         studentName: selectedStudent.name,
         className,
