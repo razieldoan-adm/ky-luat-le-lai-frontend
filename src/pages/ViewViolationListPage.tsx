@@ -335,7 +335,7 @@ export default function ViewViolationListPage() {
         dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
     ).length;
 
-    return limitGVCN && count >= 1; // chỉ khóa khi hs đã có >= 1 lỗi trong tuần
+    return limitGVCN && count > 1; // chỉ khóa khi hs đã có >= 1 lỗi trong tuần
   })()}
   onClick={async () => {
     const currentWeek = weeks.find(
