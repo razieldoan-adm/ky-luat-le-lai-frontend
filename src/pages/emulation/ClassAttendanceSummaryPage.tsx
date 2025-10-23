@@ -36,6 +36,7 @@ interface AttendanceRecord {
   present: boolean;
   excuse: boolean;
   date: string;
+  permission?: boolean; // ✅ thêm dòng này
 }
 
 export default function ClassAttendanceSummaryPage() {
