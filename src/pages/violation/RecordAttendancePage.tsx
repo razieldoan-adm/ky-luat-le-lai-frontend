@@ -106,15 +106,19 @@ export default function RecordAttendancePage() {
     }
 
     try {
-      await api.post(`/api/class-attendance-summaries/`, {
+      const payload = {
         studentId: selectedStudent._id,
         studentName: selectedStudent.name,
         className,
-        grade, // ✅ thêm grade vào payload
+        grade,
         date,
         session,
-      });
+      };
+      
       console.log("📤 Dữ liệu gửi đi:", payload);
+      
+      await api.post(`/api/class-attendance-summaries/`, payload);
+
       setSnackbar({ open: true, message: "Đã ghi nhận nghỉ học.", severity: "success" });
       setSelectedStudent(null);
       setStudentInput("");
