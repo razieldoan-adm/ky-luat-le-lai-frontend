@@ -1,4 +1,3 @@
-// src/pages/emulation/ClassAttendanceSummaryPage.tsx
 import { useState, useEffect } from "react";
 import {
   Box,
@@ -12,6 +11,8 @@ import {
   TableBody,
   Paper,
   MenuItem,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import api from "../../api/api";
 import { getWeeksAndCurrentWeek } from "../../types/weekHelper";
@@ -29,17 +30,24 @@ interface SummaryRow {
   absentCount: number;
   total: number;
 }
+
 interface AttendanceRecord {
   className: string;
   present: boolean;
   excuse: boolean;
   date: string;
 }
+
 export default function ClassAttendanceSummaryPage() {
   const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<string>("");
-  const [multiplier, setMultiplier] = useState<number>(10);
+  const [multiplier, setMultiplier] = useState<number>(5); // ✅ hệ số mặc định = 5
   const [summaries, setSummaries] = useState<SummaryRow[]>([]);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" | "info" }>({
+    open: false,
+    message: "",
+    severity: "info",
+  });
 
   // 🔹 Load danh sách tuần
   useEffect(() => {
@@ -58,10 +66,16 @@ export default function ClassAttendanceSummaryPage() {
   // 🔹 Hàm load dữ liệu chuyên cần
   const handleLoadData = async () => {
     try {
-      if (!selectedWeek) return alert("Vui lòng chọn tuần!");
+      if (!selectedWeek) {
+        setSnackbar({ open: true, message: "Vui lòng chọn tuần!", severity: "error" });
+        return;
+      }
 
       const week = weeks.find((w) => w._id === selectedWeek);
-      if (!week) return alert("Không tìm thấy tuần!");
+      if (!week) {
+        setSnackbar({ open: true, message: "Không tìm thấy tuần!", severity: "error" });
+        return;
+      }
 
       // 1️⃣ Lấy toàn bộ lớp
       const classRes = await api.get("/api/classes");
@@ -73,19 +87,20 @@ export default function ClassAttendanceSummaryPage() {
       });
       const records = res.data?.records || [];
 
-      // 3️⃣ Gom nhóm số lần nghỉ học theo lớp
+      // 3️⃣ Gom nhóm số lần nghỉ học không phép theo lớp
       const grouped: Record<string, number> = {};
 
       records.forEach((r: AttendanceRecord) => {
         const cls = r.className?.trim();
         if (!cls) return;
-      
+
+        // chỉ tính nghỉ không phép
         if (!r.present && !r.excuse) {
           grouped[cls] = (grouped[cls] || 0) + 1;
         }
       });
 
-      // 4️⃣ Ghép toàn bộ lớp (lớp không có nghỉ = 0)
+      // 4️⃣ Tạo bảng tổng hợp: mỗi lớp = số lần nghỉ * hệ số (âm)
       const formatted = allClasses.map((cls: any, index: number) => {
         const className = cls.name || cls.className || `Lớp ${index + 1}`;
         const absentCount = grouped[className] || 0;
@@ -94,36 +109,48 @@ export default function ClassAttendanceSummaryPage() {
           id: index + 1,
           className,
           absentCount,
-          total: absentCount * multiplier,
+          total: absentCount * multiplier * -1, // ✅ điểm trừ
         };
       });
 
       setSummaries(formatted);
+      setSnackbar({ open: true, message: "✅ Đã tải dữ liệu chuyên cần.", severity: "success" });
     } catch (err) {
       console.error("❌ Lỗi load dữ liệu chuyên cần:", err);
-      alert("Không thể tải dữ liệu chuyên cần của tuần!");
+      setSnackbar({ open: true, message: "Không thể tải dữ liệu chuyên cần của tuần!", severity: "error" });
     }
   };
 
   // 🔹 Lưu điểm vào ClassWeeklyScore
   const handleSave = async () => {
     try {
-      if (!selectedWeek) return alert("Vui lòng chọn tuần trước khi lưu!");
+      if (!selectedWeek) {
+        setSnackbar({ open: true, message: "Vui lòng chọn tuần trước khi lưu!", severity: "error" });
+        return;
+      }
+
       const week = weeks.find((w) => w._id === selectedWeek);
-      if (!week) return alert("Không tìm thấy tuần!");
+      if (!week) {
+        setSnackbar({ open: true, message: "Không tìm thấy tuần!", severity: "error" });
+        return;
+      }
 
       for (const s of summaries) {
-        await api.post("/api/class-attendance-summaries/update-weekly-score", {
+        const gradeMatch = s.className.match(/^(\d+)/);
+        const grade = gradeMatch ? gradeMatch[1] : "Khác";
+
+        await api.post("/api/class-weekly-scores/update", {
           className: s.className,
+          grade,
           weekNumber: week.weekNumber,
-          attendanceScore: s.total,
+          attendanceScore: s.total, // ✅ lưu đúng trường chuyên cần
         });
       }
 
-      alert("✅ Đã lưu điểm chuyên cần của tất cả lớp!");
+      setSnackbar({ open: true, message: "✅ Đã lưu điểm chuyên cần của tất cả lớp!", severity: "success" });
     } catch (err) {
       console.error("Lỗi khi lưu điểm chuyên cần:", err);
-      alert("❌ Lưu thất bại!");
+      setSnackbar({ open: true, message: "❌ Lưu thất bại!", severity: "error" });
     }
   };
 
@@ -154,6 +181,7 @@ export default function ClassAttendanceSummaryPage() {
           value={multiplier}
           onChange={(e) => setMultiplier(Number(e.target.value))}
           sx={{ width: 120 }}
+          helperText="Mặc định: 5"
         />
 
         <Button variant="contained" onClick={handleLoadData}>
@@ -170,9 +198,9 @@ export default function ClassAttendanceSummaryPage() {
             <TableRow>
               <TableCell>STT</TableCell>
               <TableCell>Lớp</TableCell>
-              <TableCell>Số lần nghỉ</TableCell>
+              <TableCell>Số lần nghỉ (không phép)</TableCell>
               <TableCell>Hệ số</TableCell>
-              <TableCell>Tổng điểm</TableCell>
+              <TableCell>Điểm trừ</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -188,6 +216,17 @@ export default function ClassAttendanceSummaryPage() {
           </TableBody>
         </Table>
       </Paper>
+
+      {/* Snackbar hiển thị thông báo */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+      >
+        <Alert severity={snackbar.severity} variant="filled">
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
