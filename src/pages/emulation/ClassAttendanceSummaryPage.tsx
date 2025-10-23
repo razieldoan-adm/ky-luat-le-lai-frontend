@@ -95,7 +95,7 @@ export default function ClassAttendanceSummaryPage() {
         if (!cls) return;
 
         // chỉ tính nghỉ không phép
-        if (!r.present && !r.excuse) {
+        if (!r.present && !r.permission) {
           grouped[cls] = (grouped[cls] || 0) + 1;
         }
       });
