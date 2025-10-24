@@ -31,10 +31,13 @@ const RecordAttendancePage = () => {
   const [statusFilter, setStatusFilter] = useState(""); // ✅ lọc trạng thái nghỉ
 
   useEffect(() => {
-    const { weeks, currentWeek } = getWeeksAndCurrentWeek();
+  const loadWeeks = async () => {
+    const { weeks, currentWeek } = await getWeeksAndCurrentWeek();
     setWeeks(weeks);
     setWeekNumber(currentWeek);
-  }, []);
+  };
+  loadWeeks();
+}, []);
 
   // --- Lấy danh sách lớp
   const fetchClasses = async () => {
