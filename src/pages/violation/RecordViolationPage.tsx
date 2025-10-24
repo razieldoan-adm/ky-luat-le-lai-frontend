@@ -207,7 +207,7 @@ export default function RecordAttendancePage() {
         )}
       </Paper>
     </Box>
-
+ );
       {/* Bảng dữ liệu */}
       <TableContainer component={Paper}>
         <Table>
