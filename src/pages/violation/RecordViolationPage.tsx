@@ -135,7 +135,7 @@ export default function RecordAttendancePage() {
   }, [viewMode, className, date, selectedStudent]);
 
   return (
-    <Box p={3}>
+        <Box p={3}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
         Ghi nhận chuyên cần
       </Typography>
@@ -158,14 +158,19 @@ export default function RecordAttendancePage() {
       {/* Bộ lọc dữ liệu */}
       <Paper sx={{ p: 2, mb: 3 }}>
         {viewMode === "student" ? (
-          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+          <Stack
+            direction="row"
+            spacing={2}
+            alignItems="center"
+            flexWrap="wrap"
+          >
             <Autocomplete
               freeSolo
               options={suggestions}
-              getOptionLabel={(s) => s.name || ""}
+              getOptionLabel={(s) => (s ? s.name : "")}
               inputValue={studentInput}
               onInputChange={(_, v) => setStudentInput(v)}
-              onChange={(_, v) => setSelectedStudent(v)}
+              onChange={(_, v) => setSelectedStudent(v as Student | null)}
               sx={{ width: 250 }}
               renderInput={(params) => (
                 <TextField {...params} label="Nhập tên học sinh" size="small" />
@@ -178,7 +183,12 @@ export default function RecordAttendancePage() {
             )}
           </Stack>
         ) : (
-          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+          <Stack
+            direction="row"
+            spacing={2}
+            alignItems="center"
+            flexWrap="wrap"
+          >
             <TextField
               select
               label="Lớp"
@@ -193,17 +203,10 @@ export default function RecordAttendancePage() {
                 </MenuItem>
               ))}
             </TextField>
-
-            <TextField
-              label="Ngày"
-              type="date"
-              size="small"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
           </Stack>
         )}
       </Paper>
+    </Box>
 
       {/* Bảng dữ liệu */}
       <TableContainer component={Paper}>
