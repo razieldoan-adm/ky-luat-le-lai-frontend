@@ -23,6 +23,9 @@ import {
 } from "@mui/material";
 import { Check, Delete } from "@mui/icons-material";
 import dayjs from "dayjs";
+import dayjs from "dayjs";
+import weekOfYear from "dayjs/plugin/weekOfYear"; // 🧩 import plugin
+dayjs.extend(weekOfYear); // 🔧 kích hoạt
 import api from "../../api/api";
 
 export default function RecordAttendancePage() {
