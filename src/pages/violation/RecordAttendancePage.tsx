@@ -1,5 +1,3 @@
-src/pages/violation/RecordAttendancePage.tsx(117,41): error TS2304: Cannot find name 'payload'.
-treng record dang lỗi
 // src/pages/violation/RecordAttendancePage.tsx
 import { useEffect, useState } from "react";
 import {
@@ -108,16 +106,18 @@ export default function RecordAttendancePage() {
     }
 
     try {
-      const payload = {
+      await api.post(`/api/class-attendance-summaries/`, {
         studentId: selectedStudent._id,
         studentName: selectedStudent.name,
         className,
-        grade,
+        grade, // ✅ thêm grade vào payload
         date,
         session,
-      };
-      
-      await api.post(`/api/class-attendance-summaries/`, payload);
+      });
+
+      console.log("📤 Dữ liệu gửi đi:", payload);
+
+
 
       setSnackbar({ open: true, message: "Đã ghi nhận nghỉ học.", severity: "success" });
       setSelectedStudent(null);
