@@ -32,7 +32,7 @@ export default function RecordAttendancePage() {
   const [selectedClass, setSelectedClass] = useState("");
   const [mode, setMode] = useState("Theo tuần");
   const [weeks, setWeeks] = useState<number[]>([]);
-  const [currentWeek, setCurrentWeek] = useState<number>(0);
+  
   const [selectedWeek, setSelectedWeek] = useState<number>(0);
   const [studentName, setStudentName] = useState("");
   const [attendance, setAttendance] = useState<AcademicWeek[]>([]);
@@ -53,17 +53,14 @@ export default function RecordAttendancePage() {
 
   // Lấy tuần học
   useEffect(() => {
-  const fetchWeeks = async () => {
-    try {
-      const { weeks, currentWeek } = await getWeeksAndCurrentWeek();
-      setWeeks(weeks);
-      setSelectedWeek(currentWeek); // dùng luôn biến currentWeek
-    } catch (err) {
-      console.error("Lỗi lấy tuần:", err);
-    }
+  const loadWeeks = async () => {
+    const { weeks, currentWeek } = await getWeeksAndCurrentWeek();
+    setWeeks(weeks);
+    setSelectedWeek(currentWeek); // ✅ dùng currentWeek để tránh lỗi
   };
-  fetchWeeks();
+  loadWeeks();
 }, []);
+
 
   const loadAttendance = async () => {
     if (!selectedClass) return;
