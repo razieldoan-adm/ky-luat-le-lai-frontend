@@ -105,8 +105,8 @@ export default function RecordAttendancePage() {
           : { className, date: cleanDate };
 
       const res = await api.get(endpoint, { params });
-      let data = res.data || [];
-
+      let data = res.data.records || res.data || [];
+      
       // ✅ Lọc theo trạng thái nghỉ
       if (statusFilter !== "Tất cả") {
         data = data.filter((r: any) =>
