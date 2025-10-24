@@ -1,173 +1,260 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+// src/pages/attendance/RecordAttendancePage.tsx
+import { useEffect, useState } from "react";
 import {
   Box,
-  TextField,
   Typography,
-  Button,
-  List,
-  ListItemButton,
-  ListItemText,
   Paper,
   Stack,
+  Button,
+  TextField,
   MenuItem,
-} from '@mui/material';
-import api from '../../api/api';
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  TableContainer,
+  Snackbar,
+  Alert,
+  ToggleButtonGroup,
+  ToggleButton,
+  Autocomplete,
+} from "@mui/material";
+import dayjs from "dayjs";
+import api from "../../api/api";
 
-interface StudentSuggestion {
+interface Student {
   _id: string;
   name: string;
   className: string;
 }
 
-interface ClassOption {
+interface AttendanceRecord {
   _id: string;
+  studentId: string;
+  studentName: string;
   className: string;
-  teacher: string;
+  date: string;
+  session: string;
+  permission: boolean;
 }
 
 function removeVietnameseTones(str: string): string {
   return str
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // xoá dấu
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/đ/g, "d")
     .replace(/Đ/g, "D");
 }
 
-export default function RecordViolationPage() {
-  const [name, setName] = useState('');
-  const [className, setClassName] = useState('');
-  const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
-  const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
-  const navigate = useNavigate();
+export default function RecordAttendancePage() {
+  const [viewMode, setViewMode] = useState<"day" | "week" | "student">("day");
+  const [className, setClassName] = useState("");
+  const [classes, setClasses] = useState<string[]>([]);
+  const [date, setDate] = useState(dayjs().format("YYYY-MM-DD"));
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: any }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
-  // 🔎 Gợi ý học sinh từ DB (theo tên hoặc lớp hoặc cả hai)
+  // Học sinh
+  const [studentInput, setStudentInput] = useState("");
+  const [suggestions, setSuggestions] = useState<Student[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+  // 📘 Load danh sách lớp
   useEffect(() => {
-    if (!name.trim() && !className.trim()) {
+    const loadClasses = async () => {
+      try {
+        const res = await api.get("/api/classes");
+        const arr = (res.data || []).map((c: any) => c.className ?? c.name ?? String(c));
+        setClasses(arr);
+      } catch (err) {
+        console.error("Lỗi khi tải danh sách lớp:", err);
+      }
+    };
+    loadClasses();
+  }, []);
+
+  // 🔍 Gợi ý học sinh khi nhập
+  useEffect(() => {
+    if (!studentInput.trim()) {
       setSuggestions([]);
       return;
     }
 
-    const timeout = setTimeout(() => {
-      const params = new URLSearchParams();
-      if (name.trim()) {
-        params.append('name', name.trim());
-        params.append('normalizedName', removeVietnameseTones(name.trim())); // 🔥 thêm dòng này
-      }
-      if (className.trim()) params.append('className', className.trim());
-
-      api
-        .get(`/api/students/search?${params.toString()}`)
-        .then((res) => setSuggestions(res.data))
-        .catch((err) => {
-          console.error('Search error:', err);
-          setSuggestions([]);
-        });
-    }, 300);
-
-    return () => clearTimeout(timeout);
-  }, [name, className]);
-
-  // 📌 Lấy danh sách lớp có GVCN
-  useEffect(() => {
-    const fetchClasses = async () => {
+    const timeout = setTimeout(async () => {
       try {
-        const res = await api.get('/api/classes/with-teacher');
-        setClassOptions(res.data);
+        const params = new URLSearchParams({
+          name: studentInput.trim(),
+          normalizedName: removeVietnameseTones(studentInput.trim()),
+        });
+        const res = await api.get(`/api/students/search?${params.toString()}`);
+        setSuggestions(res.data || []);
       } catch (err) {
-        console.error('Lỗi khi lấy danh sách lớp:', err);
+        console.error("Lỗi tìm học sinh:", err);
+        setSuggestions([]);
       }
-    };
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [studentInput]);
 
-    fetchClasses();
-  }, []);
+  // 📦 Lấy danh sách nghỉ học theo chế độ xem
+  const fetchRecords = async () => {
+    try {
+      let res;
+      const cleanDate = date.split(":")[0];
 
-  const handleManualSubmit = () => {
-    if (!name.trim() || !className.trim()) return;
+      if (viewMode === "day") {
+        res = await api.get(`/api/class-attendance-summaries/by-date`, {
+          params: { className, date: cleanDate },
+        });
+      } else if (viewMode === "week") {
+        res = await api.get(`/api/class-attendance-summaries/by-week`, {
+          params: { className, date: cleanDate },
+        });
+      } else if (viewMode === "student" && selectedStudent) {
+        res = await api.get(`/api/class-attendance-summaries/by-student/${selectedStudent._id}`);
+      } else {
+        setRecords([]);
+        return;
+      }
 
-    navigate(
-      `/violation/violations/${encodeURIComponent(name)}?className=${encodeURIComponent(
-        className
-      )}`
-    );
+      setRecords(res.data || []);
+    } catch (err) {
+      console.error("Lỗi tải danh sách:", err);
+      setRecords([]);
+    }
   };
 
+  // 🔁 Tự động fetch khi thay đổi điều kiện
+  useEffect(() => {
+    fetchRecords();
+  }, [viewMode, className, date, selectedStudent]);
+
   return (
-    <Box
-      sx={{
-        width: '75vw',
-        minHeight: '100vh',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        py: 6,
-      }}
-    >
-      <Box sx={{ width: '100%', maxWidth: 1000 }}>
-        <Typography variant="h4" align="center" gutterBottom>
-          Ghi nhận lỗi học sinh vi phạm kỷ luật
-        </Typography>
+    <Box p={3}>
+      <Typography variant="h5" fontWeight="bold" gutterBottom>
+        Ghi nhận chuyên cần
+      </Typography>
 
-        <Stack spacing={2}>
-          <TextField
-            label="Nhập tên học sinh"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            fullWidth
-          />
+      {/* Bộ chọn chế độ xem */}
+      <Stack direction="row" spacing={2} mb={2}>
+        <Typography fontWeight="bold">Xem danh sách theo:</Typography>
+        <ToggleButtonGroup
+          color="primary"
+          value={viewMode}
+          exclusive
+          onChange={(_, v) => v && setViewMode(v)}
+        >
+          <ToggleButton value="day">Ngày</ToggleButton>
+          <ToggleButton value="week">Tuần</ToggleButton>
+          <ToggleButton value="student">Học sinh</ToggleButton>
+        </ToggleButtonGroup>
+      </Stack>
 
-          <TextField
-            label="Chọn lớp"
-            select
-            value={className}
-            onChange={(e) => setClassName(e.target.value)}
-            fullWidth
-          >
-            {classOptions.map((cls) => (
-              <MenuItem key={cls._id} value={cls.className}>
-                {cls.className} — {cls.teacher}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleManualSubmit}
-            disabled={!name.trim() || !className.trim()}
-          >
-            Ghi nhận lỗi
-          </Button>
-        </Stack>
-
-        {/* Danh sách gợi ý */}
-        {suggestions.length > 0 && (
-          <Paper sx={{ mt: 4, p: 2 }}>
-            <Typography variant="subtitle1" gutterBottom>
-              Gợi ý học sinh:
-            </Typography>
-            <List>
-              {suggestions.map((s) => (
-                <ListItemButton
-                  key={s._id}
-                  onClick={() =>
-                    navigate(
-                      `/violation/violations/${encodeURIComponent(
-                        s.name
-                      )}?className=${encodeURIComponent(s.className)}`
-                    )
-                  }
-                >
-                  <ListItemText
-                    primary={`Tên: ${s.name}`}
-                    secondary={`Lớp: ${s.className}`}
-                  />
-                </ListItemButton>
+      {/* Bộ lọc dữ liệu */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        {viewMode === "student" ? (
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+            <Autocomplete
+              freeSolo
+              options={suggestions}
+              getOptionLabel={(s) => s.name || ""}
+              inputValue={studentInput}
+              onInputChange={(_, v) => setStudentInput(v)}
+              onChange={(_, v) => setSelectedStudent(v)}
+              sx={{ width: 250 }}
+              renderInput={(params) => (
+                <TextField {...params} label="Nhập tên học sinh" size="small" />
+              )}
+            />
+            {selectedStudent && (
+              <Typography variant="body2" color="gray">
+                Lớp: {selectedStudent.className}
+              </Typography>
+            )}
+          </Stack>
+        ) : (
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+            <TextField
+              select
+              label="Lớp"
+              size="small"
+              value={className}
+              onChange={(e) => setClassName(e.target.value)}
+              sx={{ width: 160 }}
+            >
+              {classes.map((c) => (
+                <MenuItem key={c} value={c}>
+                  {c}
+                </MenuItem>
               ))}
-            </List>
-          </Paper>
+            </TextField>
+
+            <TextField
+              label="Ngày"
+              type="date"
+              size="small"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </Stack>
         )}
-      </Box>
+      </Paper>
+
+      {/* Bảng dữ liệu */}
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>STT</TableCell>
+              <TableCell>Họ tên</TableCell>
+              <TableCell>Lớp</TableCell>
+              <TableCell>Ngày</TableCell>
+              <TableCell>Buổi</TableCell>
+              <TableCell>Phép</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {records.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  Không có dữ liệu
+                </TableCell>
+              </TableRow>
+            ) : (
+              records.map((r, i) => (
+                <TableRow key={r._id}>
+                  <TableCell>{i + 1}</TableCell>
+                  <TableCell>{r.studentName}</TableCell>
+                  <TableCell>{r.className}</TableCell>
+                  <TableCell>{dayjs(r.date).format("DD/MM/YYYY")}</TableCell>
+                  <TableCell>{r.session}</TableCell>
+                  <TableCell>
+                    {r.permission ? (
+                      <Typography color="green">Có phép</Typography>
+                    ) : (
+                      <Typography color="error">Không phép</Typography>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* Thông báo */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
     </Box>
   );
 }
