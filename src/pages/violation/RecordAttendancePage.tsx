@@ -40,6 +40,19 @@ export default function RecordAttendancePage() {
 
   // Lấy danh sách lớp
   useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const res = await api.get("/class");
+        setClasses(res.data.map((c: any) => c.name));
+      } catch (err) {
+        console.error("Lỗi tải danh sách lớp:", err);
+      }
+    };
+    fetchClasses();
+  }, []);
+
+  // Lấy tuần học
+  useEffect(() => {
   const fetchWeeks = async () => {
     try {
       const { weeks, currentWeek } = await getWeeksAndCurrentWeek();
@@ -51,21 +64,6 @@ export default function RecordAttendancePage() {
   };
   fetchWeeks();
 }, []);
-
-  // Lấy tuần học
-  useEffect(() => {
-    const fetchWeeks = async () => {
-      try {
-        const { weeks, currentWeek } = await getWeeksAndCurrentWeek();
-        setWeeks(weeks);
-        setCurrentWeek(currentWeek);
-        setSelectedWeek(currentWeek);
-      } catch (err) {
-        console.error("Lỗi lấy tuần:", err);
-      }
-    };
-    fetchWeeks();
-  }, []);
 
   const loadAttendance = async () => {
     if (!selectedClass) return;
