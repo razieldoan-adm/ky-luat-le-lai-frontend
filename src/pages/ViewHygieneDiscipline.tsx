@@ -342,7 +342,7 @@ export default function ViewHygieneDisciplinePage() {
                   <TableCell>{a.studentName}</TableCell>
                   <TableCell>{a.className}</TableCell>
                   <TableCell>{dayjs(a.date).format("DD/MM/YYYY")}</TableCell>
-                  <TableCell>{a.session === "Sáng" ? "Sáng" : "Chiều"}</TableCell>
+                  <TableCell>{a.session?.toLowerCase() === "sáng" ? "Sáng" : "Chiều"}</TableCell>
                   <TableCell sx={{ color: "red", fontWeight: 600 }}>
                     Không phép
                   </TableCell>
