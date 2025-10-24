@@ -26,8 +26,6 @@ import dayjs from "dayjs";
 import api from "../../api/api";
 
 export default function RecordAttendancePage() {
-
-
   const [classes, setClasses] = useState<string[]>([]);
   const [className, setClassName] = useState("");
   const [grade, setGrade] = useState(""); // ✅ thêm grade
@@ -37,7 +35,7 @@ export default function RecordAttendancePage() {
   const [date, setDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [session, setSession] = useState("sáng");
   const [records, setRecords] = useState<any[]>([]);
-  const [viewMode, setViewMode] = useState<"day" | "week">("day");
+  const [viewMode, setViewMode] = useState<"day" | "week" | "student">("day"); // ✅ thêm student
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: any }>({
     open: false,
     message: "",
@@ -60,14 +58,16 @@ export default function RecordAttendancePage() {
 
   // --- Gợi ý học sinh theo lớp
   useEffect(() => {
-    if (!studentInput.trim() || !className) {
+    if (!studentInput.trim() || (!className && viewMode !== "student")) {
       setSuggestions([]);
       return;
     }
     const t = setTimeout(async () => {
       try {
         const res = await api.get("/api/students/search", {
-          params: { name: studentInput.trim(), className },
+          params: viewMode === "student"
+            ? { name: studentInput.trim() }
+            : { name: studentInput.trim(), className },
         });
         setSuggestions(res.data || []);
       } catch (err) {
@@ -76,18 +76,29 @@ export default function RecordAttendancePage() {
       }
     }, 250);
     return () => clearTimeout(t);
-  }, [studentInput, className]);
+  }, [studentInput, className, viewMode]);
 
   // --- Lấy danh sách nghỉ học
   const fetchRecords = async () => {
-    if (!className) return;
     try {
-      const endpoint = viewMode === "week" ? `/api/class-attendance-summaries/by-week` : `/api/class-attendance-summaries/by-date`;
-      const cleanDate = date.split(":")[0];
-      const res = await api.get(endpoint, {
-        params: { className, date:cleanDate },
-      });
-      setRecords(res.data || []);
+      let res;
+
+      if (viewMode === "student") {
+        if (!selectedStudent?._id) return;
+        res = await api.get(`/api/class-attendance-summaries/by-student/${selectedStudent._id}`);
+      } else {
+        if (!className) return;
+        const endpoint =
+          viewMode === "week"
+            ? `/api/class-attendance-summaries/by-week`
+            : `/api/class-attendance-summaries/by-date`;
+        const cleanDate = date.split(":")[0];
+        res = await api.get(endpoint, {
+          params: { className, date: cleanDate },
+        });
+      }
+
+      setRecords(res?.data || []);
     } catch (err) {
       console.error("Lỗi tải danh sách:", err);
       setRecords([]);
@@ -95,8 +106,12 @@ export default function RecordAttendancePage() {
   };
 
   useEffect(() => {
-    fetchRecords();
+    if (viewMode !== "student") fetchRecords();
   }, [className, date, viewMode]);
+
+  useEffect(() => {
+    if (viewMode === "student") fetchRecords();
+  }, [selectedStudent]);
 
   // --- Ghi nhận nghỉ học
   const handleRecord = async () => {
@@ -114,9 +129,9 @@ export default function RecordAttendancePage() {
         date,
         session,
       };
-      
+
       console.log("📤 Dữ liệu gửi đi:", payload);
-      
+
       await api.post(`/api/class-attendance-summaries/`, payload);
 
       setSnackbar({ open: true, message: "Đã ghi nhận nghỉ học.", severity: "success" });
@@ -164,70 +179,97 @@ export default function RecordAttendancePage() {
       </Typography>
 
       {/* Khu vực nhập nhanh */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Stack direction="row" spacing={2} flexWrap="wrap">
-          {/* Lớp */}
-          <TextField
-            select
-            label="Lớp"
-            size="small"
-            value={className}
-            onChange={(e) => {
-              const value = e.target.value;
-              setClassName(value);
-              const g = value.match(/^\d+/)?.[0] || "";
-              setGrade(g);
-            }}
-            sx={{ width: 160 }}
-          >
-            {classes.map((c) => (
-              <MenuItem key={c} value={c}>
-                {c}
-              </MenuItem>
-            ))}
-          </TextField>
+      {viewMode !== "student" && (
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Stack direction="row" spacing={2} flexWrap="wrap">
+            {/* Lớp */}
+            <TextField
+              select
+              label="Lớp"
+              size="small"
+              value={className}
+              onChange={(e) => {
+                const value = e.target.value;
+                setClassName(value);
+                const g = value.match(/^\d+/)?.[0] || "";
+                setGrade(g);
+              }}
+              sx={{ width: 160 }}
+            >
+              {classes.map((c) => (
+                <MenuItem key={c} value={c}>
+                  {c}
+                </MenuItem>
+              ))}
+            </TextField>
 
-          {/* Ô nhập tên học sinh gợi ý — di chuyển vào giữa */}
-          <Autocomplete
-            freeSolo
-            options={suggestions}
-            getOptionLabel={(s) => s.name || ""}
-            inputValue={studentInput}
-            onInputChange={(_, v) => setStudentInput(v)}
-            onChange={(_, v) => setSelectedStudent(v)}
-            sx={{ width: 250 }}
-            renderInput={(params) => (
-              <TextField {...params} label="Học sinh nghỉ học" size="small" />
+            {/* Ô nhập tên học sinh gợi ý */}
+            <Autocomplete
+              freeSolo
+              options={suggestions}
+              getOptionLabel={(s) => s.name || ""}
+              inputValue={studentInput}
+              onInputChange={(_, v) => setStudentInput(v)}
+              onChange={(_, v) => setSelectedStudent(v)}
+              sx={{ width: 250 }}
+              renderInput={(params) => (
+                <TextField {...params} label="Học sinh nghỉ học" size="small" />
+              )}
+            />
+
+            {/* Ngày */}
+            <TextField
+              label="Ngày"
+              type="date"
+              size="small"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+
+            {/* Buổi */}
+            <TextField
+              select
+              label="Buổi"
+              size="small"
+              value={session}
+              onChange={(e) => setSession(e.target.value)}
+              sx={{ width: 120 }}
+            >
+              <MenuItem value="sáng">Sáng</MenuItem>
+              <MenuItem value="chiều">Chiều</MenuItem>
+            </TextField>
+
+            <Button variant="contained" color="primary" onClick={handleRecord}>
+              Ghi nhận
+            </Button>
+          </Stack>
+        </Paper>
+      )}
+
+      {/* Bộ lọc riêng cho chế độ học sinh */}
+      {viewMode === "student" && (
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+            <Autocomplete
+              freeSolo
+              options={suggestions}
+              getOptionLabel={(s) => s.name || ""}
+              inputValue={studentInput}
+              onInputChange={(_, v) => setStudentInput(v)}
+              onChange={(_, v) => setSelectedStudent(v)}
+              sx={{ width: 250 }}
+              renderInput={(params) => (
+                <TextField {...params} label="Nhập tên học sinh" size="small" />
+              )}
+            />
+            {selectedStudent && (
+              <Typography variant="body2" color="gray">
+                Lớp: {selectedStudent.className}
+              </Typography>
             )}
-          />
-
-          {/* Ngày */}
-          <TextField
-            label="Ngày"
-            type="date"
-            size="small"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-
-          {/* Buổi */}
-          <TextField
-            select
-            label="Buổi"
-            size="small"
-            value={session}
-            onChange={(e) => setSession(e.target.value)}
-            sx={{ width: 120 }}
-          >
-            <MenuItem value="sáng">Sáng</MenuItem>
-            <MenuItem value="chiều">Chiều</MenuItem>
-          </TextField>
-
-          <Button variant="contained" color="primary" onClick={handleRecord}>
-            Ghi nhận
-          </Button>
-        </Stack>
-      </Paper>
+          </Stack>
+        </Paper>
+      )}
 
       {/* Chế độ xem danh sách */}
       <Stack direction="row" alignItems="center" spacing={2} mb={2}>
@@ -241,6 +283,7 @@ export default function RecordAttendancePage() {
         >
           <ToggleButton value="day">Theo ngày</ToggleButton>
           <ToggleButton value="week">Theo tuần</ToggleButton>
+          <ToggleButton value="student">Theo học sinh</ToggleButton>
         </ToggleButtonGroup>
       </Stack>
 
