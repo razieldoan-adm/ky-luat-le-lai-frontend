@@ -1,382 +1,243 @@
+// src/pages/violation/RecordAttendancePage.tsx
 import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
   Paper,
+  Stack,
+  Button,
+  TextField,
+  MenuItem,
   Table,
   TableHead,
   TableRow,
   TableCell,
   TableBody,
-  TableContainer,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  Stack,
-  Button,
-  Snackbar,
-  Alert,
+  CircularProgress,
 } from "@mui/material";
-import api from "../api/api";
-import dayjs from "dayjs";
+import api from "../../api/api";
+import { getWeeksAndCurrentWeek } from "../../types/weekHelper";
 
-interface Record {
-  _id: string;
-  className: string;
-  violation: string;
-  studentName?: string;
-  date: string;
-  recorder?: string;
-  scoreChange?: number;
-  note?: string;
-}
-
-interface Absence {
+interface AttendanceRecord {
   _id: string;
   studentId: string;
   studentName: string;
   className: string;
-  grade: string;
+  grade: number;
   date: string;
   session: string;
-  permission: boolean; // false = không phép ✅
-}
-
-interface AcademicWeek {
-  _id: string;
+  permission: boolean;
   weekNumber: number;
-  startDate: string;
-  endDate: string;
 }
 
-export default function ViewHygieneDisciplinePage() {
-  const [records, setRecords] = useState<Record[]>([]);
-  const [absences, setAbsences] = useState<Absence[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingAbsence, setLoadingAbsence] = useState(false);
-
-  const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
+export default function RecordAttendancePage() {
+  const [absences, setAbsences] = useState<AttendanceRecord[]>([]);
+  const [weeks, setWeeks] = useState<{ weekNumber: number; start: string; end: string }[]>([]);
+  const [currentWeek, setCurrentWeek] = useState<number>(0);
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
-  const [currentWeek, setCurrentWeek] = useState<number | null>(null);
-
-  const [classes, setClasses] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedClass, setSelectedClass] = useState<string>("");
+  const [selectedStudent, setSelectedStudent] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [students, setStudents] = useState<{ _id: string; name: string }[]>([]);
 
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "info" as "info" | "success" | "error" | "warning",
-  });
+  // ✅ Lấy danh sách tuần
+  useEffect(() => {
+    const { weeks, currentWeek } = getWeeksAndCurrentWeek();
+    setWeeks(weeks);
+    setCurrentWeek(currentWeek);
+  }, []);
 
-  // --- Load tuần học + tuần hiện tại
-  const loadWeeks = async () => {
+  // ✅ Load danh sách lớp
+  useEffect(() => {
+    const loadClasses = async () => {
+      try {
+        const res = await api.get("/api/classes");
+        setClasses(res.data.map((c: any) => c.name));
+      } catch (err) {
+        console.error("Lỗi khi tải danh sách lớp:", err);
+      }
+    };
+    loadClasses();
+  }, []);
+
+  // ✅ Load danh sách học sinh khi chọn lớp
+  useEffect(() => {
+    if (!selectedClass) return;
+    const loadStudents = async () => {
+      try {
+        const res = await api.get(`/api/students/by-class/${selectedClass}`);
+        setStudents(res.data || []);
+      } catch (err) {
+        console.error("Lỗi khi tải học sinh:", err);
+        setStudents([]);
+      }
+    };
+    loadStudents();
+  }, [selectedClass]);
+
+  // ✅ Hàm load danh sách nghỉ học
+  const loadAbsences = async () => {
+    setLoading(true);
     try {
-      const res = await api.get("/api/academic-weeks/study-weeks");
-      setWeeks(res.data || []);
-    } catch (err) {
-      console.error("Lỗi khi tải danh sách tuần:", err);
-      setWeeks([]);
-    }
-
-    try {
-      const cur = await api.get("/api/academic-weeks/current");
-      const wk = cur.data?.weekNumber ?? null;
-      setCurrentWeek(wk);
-      setSelectedWeek(wk ?? "");
-      await loadRecords(wk ?? undefined, selectedClass || undefined);
-      await loadAbsences(wk ?? undefined, selectedClass || undefined);
-    } catch (err) {
-      console.error("Lỗi khi tải tuần hiện tại:", err);
-      setCurrentWeek(null);
-      setSelectedWeek("");
-    }
-  };
-
-  // --- Load danh sách lớp
-  const loadClasses = async () => {
-    try {
-      const res = await api.get("/api/classes");
-      const arr = (res.data || []).map(
-        (c: any) => c.className ?? c.name ?? String(c)
-      );
-      setClasses(arr);
-    } catch (err) {
-      console.error("Lỗi khi tải danh sách lớp:", err);
-      setClasses([]);
-    }
-  };
-
-  // --- Load records theo tuần + lớp
-  const loadRecords = async (weekNumber?: number, className?: string) => {
-  setLoading(true);
-  try {
-    const params: any = {};
-    if (weekNumber) params.weekNumber = weekNumber;
-    if (className) params.className = className;
-
-    const res = await api.get("/api/class-lineup-summaries/weekly", { params });
-    const data = res.data;
-
-    if (Array.isArray(data)) {
-      setRecords(data);
-    } else if (Array.isArray(data.records)) {
-      setRecords(data.records);
-    } else {
-      setRecords([]);
-    }
-
-    console.log("📦 Dữ liệu vi phạm nhận được:", res.data);
-  } catch (err) {
-    console.error("Lỗi khi tải danh sách vi phạm:", err);
-    setRecords([]);
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-  // --- Load danh sách nghỉ học không phép
-  const loadAbsences = async (weekNumber?: number, className?: string) => {
-    setLoadingAbsence(true);
-    try {
+      let url = "/api/class-attendance-summaries";
       const params: any = {};
-      if (weekNumber) params.weekNumber = weekNumber;
-      if (className) params.className = className;
-      params.permission = false; // thay cho params.excused
-      const res = await api.get("/api/class-attendance-summaries/unexcused", { params });
+      if (selectedWeek) params.weekNumber = selectedWeek;
+      if (selectedDate) params.date = selectedDate;
+      if (selectedClass) params.className = selectedClass;
+
+      const res = await api.get(url, { params });
       setAbsences(res.data || []);
     } catch (err) {
       console.error("Lỗi khi tải danh sách nghỉ học:", err);
       setAbsences([]);
     } finally {
-      setLoadingAbsence(false);
+      setLoading(false);
     }
   };
 
+  // ✅ Khi chọn học sinh: hiển thị tất cả ngày nghỉ của học sinh đó (cả phép + không phép)
+  const loadStudentAbsences = async (studentId: string) => {
+    if (!studentId) return;
+    setLoading(true);
+    try {
+      const res = await api.get(`/api/class-attendance-summaries/by-student/${studentId}`);
+      setAbsences(res.data || []);
+    } catch (err) {
+      console.error("Lỗi khi tải nghỉ học học sinh:", err);
+      setAbsences([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ Tự load dữ liệu khi đổi tuần hoặc ngày
   useEffect(() => {
-    loadWeeks();
-    loadClasses();
-  }, []);
-
-  const handleWeekChange = (e: any) => {
-    const value = e.target.value;
-    setSelectedWeek(value);
-    loadRecords(value || undefined, selectedClass || undefined);
-    loadAbsences(value || undefined, selectedClass || undefined);
-  };
-
-  const handleClassChange = (e: any) => {
-    const value = e.target.value;
-    setSelectedClass(value);
-    loadRecords(selectedWeek || undefined, value || undefined);
-    loadAbsences(selectedWeek || undefined, value || undefined);
-  };
-
-  // ✅ GVCN xác nhận có phép → cập nhật trong DB chuyên cần
-  const handleExcuseAbsence = async (id: string) => {
-  try {
-    await api.put(`/api/class-attendance-summaries/confirm/${id}`); // ✅ Đúng route backend
-    setSnackbar({
-      open: true,
-      message: "✅ Đã xác nhận có phép cho học sinh!",
-      severity: "success",
-    });
-    await loadAbsences(selectedWeek || undefined, selectedClass || undefined);
-  } catch (err) {
-    console.error("Lỗi khi cập nhật nghỉ học:", err);
-    setSnackbar({
-      open: true,
-      message: "❌ Lỗi khi xác nhận nghỉ học có phép!",
-      severity: "error",
-    });
-  }
-};
+    if (selectedStudent) {
+      loadStudentAbsences(selectedStudent);
+    } else {
+      loadAbsences();
+    }
+  }, [selectedWeek, selectedDate, selectedClass, selectedStudent]);
 
   return (
     <Box p={3}>
-      <Typography variant="h5" mb={3} fontWeight="bold">
-        Danh sách vi phạm vệ sinh – nề nếp
+      <Typography variant="h5" fontWeight="bold" mb={2}>
+        Ghi nhận nghỉ học học sinh
       </Typography>
 
-      {/* Bộ lọc tuần + lớp */}
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        justifyContent="space-between"
-        alignItems={{ xs: "stretch", sm: "center" }}
-        spacing={2}
-        mb={2}
-      >
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel id="week-select-label">Chọn tuần</InputLabel>
-          <Select
-            labelId="week-select-label"
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+          <TextField
+            select
             label="Chọn tuần"
             value={selectedWeek}
-            onChange={handleWeekChange}
+            onChange={(e) => {
+              setSelectedWeek(e.target.value === "" ? "" : Number(e.target.value));
+              setSelectedDate("");
+            }}
+            sx={{ minWidth: 150 }}
           >
-            <MenuItem value="">
-              {currentWeek
-                ? `Tuần ${currentWeek} (hiện tại)`
-                : "Tuần hiện tại"}
-            </MenuItem>
+            <MenuItem value="">Tất cả</MenuItem>
             {weeks.map((w) => (
-              <MenuItem key={w._id} value={w.weekNumber}>
-                Tuần {w.weekNumber}
-                {currentWeek === w.weekNumber ? " (hiện tại)" : ""} —{" "}
-                {dayjs(w.startDate).format("DD/MM")} →{" "}
-                {dayjs(w.endDate).format("DD/MM")}
+              <MenuItem key={w.weekNumber} value={w.weekNumber}>
+                Tuần {w.weekNumber} ({w.start} → {w.end})
               </MenuItem>
             ))}
-          </Select>
-        </FormControl>
+          </TextField>
 
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel id="class-select-label">Chọn lớp</InputLabel>
-          <Select
-            labelId="class-select-label"
-            label="Chọn lớp"
+          <TextField
+            label="Chọn ngày"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => {
+              setSelectedDate(e.target.value);
+              setSelectedWeek("");
+            }}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 180 }}
+          />
+
+          <TextField
+            select
+            label="Lớp"
             value={selectedClass}
-            onChange={handleClassChange}
+            onChange={(e) => {
+              setSelectedClass(e.target.value);
+              setSelectedStudent("");
+            }}
+            sx={{ minWidth: 120 }}
           >
-            <MenuItem value="">Tất cả lớp</MenuItem>
+            <MenuItem value="">Tất cả</MenuItem>
             {classes.map((cls) => (
               <MenuItem key={cls} value={cls}>
                 {cls}
               </MenuItem>
             ))}
-          </Select>
-        </FormControl>
-      </Stack>
+          </TextField>
 
-      {/* Bảng vi phạm */}
-      <TableContainer
-        component={Paper}
-        sx={{ width: "100%", overflowX: "auto", borderRadius: 2, mb: 4 }}
-      >
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ backgroundColor: "#e3f2fd" }}>
-              <TableCell>STT</TableCell>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Lỗi vi phạm</TableCell>
-              <TableCell>Học sinh</TableCell>
-              <TableCell>Thời gian</TableCell>
-              <TableCell align="center">Điểm trừ</TableCell>
-              <TableCell>Ghi chú</TableCell>
-            </TableRow>
-          </TableHead>
+          <TextField
+            select
+            label="Học sinh"
+            value={selectedStudent}
+            onChange={(e) => setSelectedStudent(e.target.value)}
+            sx={{ minWidth: 200 }}
+          >
+            <MenuItem value="">Tất cả</MenuItem>
+            {students.map((s) => (
+              <MenuItem key={s._id} value={s._id}>
+                {s.name}
+              </MenuItem>
+            ))}
+          </TextField>
 
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={8} align="center">
-                  Đang tải...
-                </TableCell>
-              </TableRow>
-            ) : records.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} align="center">
-                  Không có dữ liệu
-                </TableCell>
-              </TableRow>
-            ) : (
-              records.map((r, idx) => (
-                <TableRow key={r._id} hover>
-                  <TableCell>{idx + 1}</TableCell>
-                  <TableCell>{r.className}</TableCell>
-                  <TableCell>{r.violation}</TableCell>
-                  <TableCell>{r.studentName || "-"}</TableCell>
-                  <TableCell>
-                    {dayjs(r.date).format("DD/MM/YYYY HH:mm")}
-                  </TableCell>
-                  <TableCell
-                    align="center"
-                    sx={{ color: "red", fontWeight: 600 }}
-                  >
-                    -{Math.abs(r.scoreChange ?? 10)}
-                  </TableCell>
-                  <TableCell>{r.note || "-"}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          <Button variant="contained" color="primary" onClick={loadAbsences}>
+            Tải lại
+          </Button>
+        </Stack>
+      </Paper>
 
-      {/* --- Danh sách nghỉ học không phép --- */}
-      <Typography variant="h6" fontWeight="bold" gutterBottom>
-        Danh sách học sinh nghỉ học <span style={{ color: "red" }}>không phép</span>
-      </Typography>
-
-      <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ backgroundColor: "#ffeaea" }}>
-              <TableCell>STT</TableCell>
-              <TableCell>Họ tên</TableCell>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Ngày nghỉ</TableCell>
-              <TableCell>Buổi</TableCell>
-              <TableCell>Trạng thái</TableCell>
-              <TableCell>Thao tác</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loadingAbsence ? (
+      <Paper sx={{ p: 2 }}>
+        {loading ? (
+          <Box display="flex" justifyContent="center" py={4}>
+            <CircularProgress />
+          </Box>
+        ) : absences.length === 0 ? (
+          <Typography textAlign="center" color="text.secondary">
+            Không có dữ liệu nghỉ học
+          </Typography>
+        ) : (
+          <Table>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={7} align="center">
-                  Đang tải...
-                </TableCell>
+                <TableCell>Họ tên</TableCell>
+                <TableCell>Lớp</TableCell>
+                <TableCell>Ngày</TableCell>
+                <TableCell>Buổi</TableCell>
+                <TableCell align="center">Trạng thái</TableCell>
               </TableRow>
-            ) : absences.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  Không có học sinh nghỉ không phép
-                </TableCell>
-              </TableRow>
-            ) : (
-              absences.map((a, idx) => (
+            </TableHead>
+            <TableBody>
+              {absences.map((a) => (
                 <TableRow key={a._id}>
-                  <TableCell>{idx + 1}</TableCell>
                   <TableCell>{a.studentName}</TableCell>
                   <TableCell>{a.className}</TableCell>
-                  <TableCell>{dayjs(a.date).format("DD/MM/YYYY")}</TableCell>
-                  <TableCell>{a.session?.toLowerCase() === "sáng" ? "Sáng" : "Chiều"}</TableCell>
-                  <TableCell sx={{ color: "red", fontWeight: 600 }}>
-                    Không phép
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="small"
-                      onClick={() => handleExcuseAbsence(a._id)}
-                    >
-                      Xác nhận có phép
-                    </Button>
+                  <TableCell>{new Date(a.date).toLocaleDateString("vi-VN")}</TableCell>
+                  <TableCell>{a.session}</TableCell>
+                  <TableCell align="center">
+                    {a.permission ? (
+                      <Typography color="green">Có phép</Typography>
+                    ) : (
+                      <Typography color="red">Không phép</Typography>
+                    )}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Paper>
     </Box>
   );
 }
