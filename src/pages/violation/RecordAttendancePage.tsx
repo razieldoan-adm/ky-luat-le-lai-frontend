@@ -85,30 +85,41 @@ export default function RecordAttendancePage() {
 
   // --- Lấy danh sách nghỉ học (toàn bộ, không theo lớp)
   const fetchRecords = async () => {
-    try {
-      const endpoint =
-        viewMode === "week"
-          ? `/api/class-attendance-summaries/by-week`
-          : `/api/class-attendance-summaries/by-date`;
+  try {
+    const endpoint =
+      viewMode === "week"
+        ? `/api/class-attendance-summaries/by-week`
+        : `/api/class-attendance-summaries/by-date`;
 
-      const params: any = {};
-      if (viewMode === "day") params.date = dayjs(viewDate).format("YYYY-MM-DD");
-      if (viewMode === "week" && viewWeek) params.weekNumber = viewWeek;
+    // ✅ Tham số gửi đi
+    const params: any = {};
 
-      const res = await api.get(endpoint, { params });
-      const data = res.data.records || res.data || [];
-      setRecords(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("❌ Lỗi tải danh sách:", err);
-      setRecords([]);
+    // Nếu xem theo ngày → gửi ngày cụ thể
+    if (viewMode === "day") {
+      params.date = dayjs(viewDate).format("YYYY-MM-DD");
     }
-  };
+
+    // Nếu xem theo tuần → vẫn phải gửi 1 ngày bất kỳ trong tuần (ví dụ hôm nay)
+    if (viewMode === "week") {
+      params.date = dayjs(viewDate).format("YYYY-MM-DD"); // 👉 gửi cùng ngày đang chọn
+    }
+
+    const res = await api.get(endpoint, { params });
+    const data = res.data.records || res.data || [];
+    setRecords(Array.isArray(data) ? data : []);
+  } catch (err) {
+    console.error("❌ Lỗi tải danh sách:", err);
+    setRecords([]);
+  }
+};
+
 
   // --- Gọi lại khi bộ lọc thay đổi
   useEffect(() => {
-    if (viewMode === "day" && viewDate) fetchRecords();
-    if (viewMode === "week" && viewWeek) fetchRecords();
-  }, [viewMode, viewDate, viewWeek]);
+  if (viewMode === "day" && viewDate) fetchRecords();
+  if (viewMode === "week" && viewDate) fetchRecords(); // ✅ đổi viewWeek → viewDate
+}, [viewMode, viewDate]);
+
 
   // --- Ghi nhận nghỉ học
   const handleRecord = async () => {
