@@ -71,28 +71,24 @@ export default function AllViolationStudentPage() {
     severity: 'success' as 'success' | 'error' | 'warning',
   });
 
-  // ⚙️ Giới hạn: toggle (boolean) và settings (số)
-  // limitGVCNHandling -> boolean toggle: bật/tắt tính năng giới hạn GVCN
-  // settings.limitGVCNHandling -> số lần GVCN xử lý/HS/tuần (number)
-  // settings.classViolationLimit -> tổng lượt GVCN xử lý/lớp/tuần (number)
+  // ⚙️ Giới hạn
   const [limitGVCNHandling, setLimitGVCNHandling] = useState(false);
   const [settings, setSettings] = useState({
-    limitGVCNHandling: 1, // numeric per-student limit
+    limitGVCNHandling: 1,
     classViolationLimit: 10,
   });
   const [loading, setLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false); // trạng thái "Điều chỉnh" (edit mode)
+  const [isEditing, setIsEditing] = useState(false);
+  const [disabledAfterSave, setDisabledAfterSave] = useState(false); // ✅ Thêm trạng thái disable sau khi lưu
 
   // -------------------------
-  // Fetch setting (robust với nhiều shape của backend)
+  // Fetch setting
   // -------------------------
   const fetchSetting = async () => {
     try {
       const res = await api.get('/api/settings');
       const data = res.data || {};
 
-      // Lấy toggle boolean: nếu backend trả field limitGVCNHandlingEnabled (preferred),
-      // hoặc fallback nếu backend dùng the boolean directly.
       const toggle =
         typeof data.limitGVCNHandlingEnabled === 'boolean'
           ? data.limitGVCNHandlingEnabled
@@ -100,7 +96,6 @@ export default function AllViolationStudentPage() {
           ? data.limitGVCNHandling
           : false;
 
-      // Lấy numeric per-student limit: try numeric field first; fallback safe defaults
       const perStudentLimit =
         typeof data.limitGVCNHandling === 'number'
           ? data.limitGVCNHandling
@@ -121,24 +116,21 @@ export default function AllViolationStudentPage() {
   };
 
   // -------------------------
-  // Toggle bật/tắt tính năng giới hạn GVCN
+  // Toggle giới hạn
   // -------------------------
   const handleToggle = async () => {
-    // Toggle UI immediately
     const newValue = !limitGVCNHandling;
     setLimitGVCNHandling(newValue);
     setLoading(true);
 
     try {
-      // Gửi cả hai key để backend không bị lẫn (tùy backend có tên trường nào)
       await api.put('/api/settings/update', {
-        limitGVCNHandling: newValue, // legacy
-        limitGVCNHandlingEnabled: newValue, // explicit boolean flag
+        limitGVCNHandling: newValue,
+        limitGVCNHandlingEnabled: newValue,
       });
       setSnackbar({ open: true, message: 'Đã cập nhật trạng thái giới hạn GVCN', severity: 'success' });
     } catch (err) {
       console.error('Lỗi khi cập nhật setting:', err);
-      // rollback UI
       setLimitGVCNHandling(!newValue);
       setSnackbar({ open: true, message: 'Lỗi cập nhật giới hạn', severity: 'error' });
     } finally {
@@ -147,23 +139,19 @@ export default function AllViolationStudentPage() {
   };
 
   // -------------------------
-  // Lưu settings (sao lưu cả 2 trường số)
+  // Lưu settings
   // -------------------------
   const handleSaveSettings = async () => {
     try {
       setLoading(true);
-
-      // chuẩn hóa số để backend luôn nhận number
       const payload = {
-        limitGVCNHandling: Number(settings.limitGVCNHandling), // numeric
+        limitGVCNHandling: Number(settings.limitGVCNHandling),
         classViolationLimit: Number(settings.classViolationLimit),
       };
-
-      // Gửi lên backend
       await api.put('/api/settings/update', payload);
-
       setSnackbar({ open: true, message: 'Đã lưu cấu hình giới hạn thành công!', severity: 'success' });
-      setIsEditing(false); // khóa lại sau khi lưu
+      setIsEditing(false);
+      setDisabledAfterSave(true); // ✅ Sau khi lưu thì disable
     } catch (err) {
       console.error('Lỗi khi lưu settings:', err);
       setSnackbar({ open: true, message: 'Lỗi khi lưu cấu hình!', severity: 'error' });
@@ -173,7 +161,7 @@ export default function AllViolationStudentPage() {
   };
 
   // -------------------------
-  // Init data
+  // Init
   // -------------------------
   useEffect(() => {
     const init = async () => {
@@ -184,7 +172,6 @@ export default function AllViolationStudentPage() {
       await fetchViolations();
     };
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchWeeks = async () => {
@@ -206,9 +193,8 @@ export default function AllViolationStudentPage() {
   const fetchViolations = async () => {
     try {
       const res = await api.get('/api/violations/all/all-student');
-      const data: Violation[] = res.data;
-      setViolations(data);
-      setFiltered(data);
+      setViolations(res.data);
+      setFiltered(res.data);
     } catch (err) {
       console.error('Lỗi khi lấy dữ liệu vi phạm:', err);
     }
@@ -217,9 +203,7 @@ export default function AllViolationStudentPage() {
   const fetchClasses = async () => {
     try {
       const res = await api.get('/api/classes');
-      const validClasses: string[] = res.data
-        .filter((cls: any) => cls.teacher)
-        .map((cls: any) => cls.className);
+      const validClasses: string[] = res.data.filter((cls: any) => cls.teacher).map((cls: any) => cls.className);
       setClassList(validClasses);
     } catch (err) {
       console.error('Lỗi khi lấy danh sách lớp:', err);
@@ -229,26 +213,19 @@ export default function AllViolationStudentPage() {
   const fetchRules = async () => {
     try {
       const res = await api.get('/api/rules');
-      const data: Rule[] = res.data;
-      setRules(data);
+      setRules(res.data);
     } catch (err) {
       console.error('Lỗi khi lấy rules:', err);
     }
   };
 
-  // -------------------------
-  // Filters
-  // -------------------------
   const applyFilters = () => {
     let data: Violation[] = [...violations];
-    if (selectedClass) data = data.filter((v: Violation) => v.className === selectedClass);
-    if (selectedWeek) data = data.filter((v: Violation) => String(v.weekNumber) === selectedWeek);
+    if (selectedClass) data = data.filter((v) => v.className === selectedClass);
+    if (selectedWeek) data = data.filter((v) => String(v.weekNumber) === selectedWeek);
     if (handledStatus) {
-      if (handledStatus === 'unhandled') {
-        data = data.filter((v) => !v.handled);
-      } else {
-        data = data.filter((v) => v.handledBy === handledStatus);
-      }
+      if (handledStatus === 'unhandled') data = data.filter((v) => !v.handled);
+      else data = data.filter((v) => v.handledBy === handledStatus);
     }
     setFiltered(data);
   };
@@ -262,12 +239,8 @@ export default function AllViolationStudentPage() {
 
   useEffect(() => {
     applyFilters();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWeek, selectedClass, handledStatus, violations]);
 
-  // -------------------------
-  // Actions on violations
-  // -------------------------
   const handleDeleteViolation = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn xoá vi phạm này không?')) return;
     try {
@@ -324,22 +297,19 @@ export default function AllViolationStudentPage() {
             {limitGVCNHandling ? '🟢 GIỚI HẠN GVCN: BẬT' : '🔴 GIỚI HẠN GVCN: TẮT'}
           </Button>
 
-          {/* NOTE: đảm bảo value luôn là number hoặc '' (không phải boolean) */}
           <TextField
             label="Số lần GVCN xử lý/HS/tuần"
             type="number"
             size="small"
             sx={{ width: 200 }}
-            value={settings.limitGVCNHandling !== null && settings.limitGVCNHandling !== undefined ? settings.limitGVCNHandling : ''}
+            value={settings.limitGVCNHandling}
             onChange={(e) =>
               setSettings((prev) => ({
                 ...prev,
-                // convert to number, but allow empty string to clear
                 limitGVCNHandling: e.target.value === '' ? '' : Number(e.target.value),
               }))
             }
-            disabled={!isEditing || loading}
-            inputProps={{ min: 0 }}
+            disabled={!isEditing || loading || disabledAfterSave}
           />
 
           <TextField
@@ -347,28 +317,36 @@ export default function AllViolationStudentPage() {
             type="number"
             size="small"
             sx={{ width: 230 }}
-            value={settings.classViolationLimit !== null && settings.classViolationLimit !== undefined ? settings.classViolationLimit : ''}
+            value={settings.classViolationLimit}
             onChange={(e) =>
               setSettings((prev) => ({
                 ...prev,
                 classViolationLimit: e.target.value === '' ? '' : Number(e.target.value),
               }))
             }
-            disabled={!isEditing || loading}
-            inputProps={{ min: 0 }}
+            disabled={!isEditing || loading || disabledAfterSave}
           />
 
           {isEditing ? (
-            <Button variant="contained" color="primary" onClick={handleSaveSettings} disabled={loading}>
+            <Button variant="contained" color="primary" onClick={handleSaveSettings} disabled={loading || disabledAfterSave}>
               {loading ? 'Đang lưu...' : 'Lưu'}
             </Button>
           ) : (
-            <Button variant="outlined" color="secondary" onClick={() => setIsEditing(true)}>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => {
+                setIsEditing(true);
+                setDisabledAfterSave(false);
+              }}
+            >
               Điều chỉnh
             </Button>
           )}
         </Stack>
       </Paper>
+
+
 
       {/* Bộ lọc */}
       <Paper sx={{ p: 2, borderRadius: 3, mb: 4 }} elevation={3}>
