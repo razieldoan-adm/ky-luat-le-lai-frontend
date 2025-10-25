@@ -298,34 +298,37 @@ export default function AllViolationStudentPage() {
           </Button>
 
           <TextField
-            label="Số lần GVCN xử lý/HS/tuần"
-            type="number"
-            size="small"
-            sx={{ width: 200 }}
-            value={settings.limitGVCNHandling}
-            onChange={(e) =>
-              setSettings((prev) => ({
-                ...prev,
-                limitGVCNHandling: e.target.value === '' ? '' : Number(e.target.value),
-              }))
-            }
-            disabled={!isEditing || loading || disabledAfterSave}
-          />
+              label="Số lần GVCN xử lý/HS/tuần"
+              type="number"
+              size="small"
+              sx={{ width: 200 }}
+              value={settings.limitGVCNHandling}
+              onChange={(e) =>
+                setSettings((prev) => ({
+                  ...prev,
+                  limitGVCNHandling: Number(e.target.value) || 0,
+                }))
+              }
+              disabled={!isEditing || loading}
+              inputProps={{ min: 0 }}
+            />
+            
+            <TextField
+              label="Tổng lượt GVCN xử lý/lớp/tuần"
+              type="number"
+              size="small"
+              sx={{ width: 230 }}
+              value={settings.classViolationLimit}
+              onChange={(e) =>
+                setSettings((prev) => ({
+                  ...prev,
+                  classViolationLimit: Number(e.target.value) || 0,
+                }))
+              }
+              disabled={!isEditing || loading}
+              inputProps={{ min: 0 }}
+            />
 
-          <TextField
-            label="Tổng lượt GVCN xử lý/lớp/tuần"
-            type="number"
-            size="small"
-            sx={{ width: 230 }}
-            value={settings.classViolationLimit}
-            onChange={(e) =>
-              setSettings((prev) => ({
-                ...prev,
-                classViolationLimit: e.target.value === '' ? '' : Number(e.target.value),
-              }))
-            }
-            disabled={!isEditing || loading || disabledAfterSave}
-          />
 
           {isEditing ? (
             <Button variant="contained" color="primary" onClick={handleSaveSettings} disabled={loading || disabledAfterSave}>
