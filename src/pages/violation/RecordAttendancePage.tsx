@@ -32,10 +32,17 @@ export default function RecordAttendancePage() {
   const [studentInput, setStudentInput] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
+
+  // 🔹 Dữ liệu nhập ghi nhận
   const [date, setDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [session, setSession] = useState("sáng");
+
+  // 🔹 Dữ liệu xem danh sách
   const [records, setRecords] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
+  const [viewDate, setViewDate] = useState(dayjs().format("YYYY-MM-DD"));
+  const [viewWeek, setViewWeek] = useState<number | null>(null);
+
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: any }>({
     open: false,
     message: "",
@@ -78,18 +85,18 @@ export default function RecordAttendancePage() {
 
   // --- Lấy danh sách nghỉ học
   const fetchRecords = async () => {
-    if (!className || !date) return; // ✅ tránh lỗi khi chưa chọn lớp
     try {
       const endpoint =
         viewMode === "week"
           ? `/api/class-attendance-summaries/by-week`
           : `/api/class-attendance-summaries/by-date`;
-      const cleanDate = dayjs(date).format("YYYY-MM-DD");
-      const res = await api.get(endpoint, {
-        params: { className, date: cleanDate },
-      });
 
-      // ✅ kiểm tra dữ liệu trả về từ backend
+      const params: any = {};
+      if (className) params.className = className;
+      if (viewMode === "day") params.date = dayjs(viewDate).format("YYYY-MM-DD");
+      if (viewMode === "week" && viewWeek) params.weekNumber = viewWeek;
+
+      const res = await api.get(endpoint, { params });
       const data = res.data.records || res.data || [];
       setRecords(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -98,9 +105,11 @@ export default function RecordAttendancePage() {
     }
   };
 
+  // --- Gọi lại khi bộ lọc thay đổi
   useEffect(() => {
-    if (className) fetchRecords(); // ✅ chỉ gọi khi có lớp
-  }, [className, date, viewMode]);
+    if (viewMode === "day" && viewDate) fetchRecords();
+    if (viewMode === "week" && viewWeek) fetchRecords();
+  }, [viewMode, viewDate, viewWeek, className]);
 
   // --- Ghi nhận nghỉ học
   const handleRecord = async () => {
@@ -122,8 +131,6 @@ export default function RecordAttendancePage() {
         date,
         session,
       };
-
-      console.log("📤 Dữ liệu gửi đi:", payload);
 
       await api.post(`/api/class-attendance-summaries/`, payload);
       setSnackbar({
@@ -205,7 +212,7 @@ export default function RecordAttendancePage() {
               setClassName(value);
               const g = value.match(/^\d+/)?.[0] || "";
               setGrade(g);
-              setRecords([]); // ✅ reset dữ liệu khi đổi lớp
+              setRecords([]);
             }}
             sx={{ width: 160 }}
           >
@@ -258,22 +265,54 @@ export default function RecordAttendancePage() {
         </Stack>
       </Paper>
 
-      {/* Chế độ xem */}
-      <Stack direction="row" alignItems="center" spacing={2} mb={2}>
-        <Typography fontWeight="bold">Xem danh sách:</Typography>
-        <ToggleButtonGroup
-          size="small"
-          color="primary"
-          value={viewMode}
-          exclusive
-          onChange={(_e, v) => v && setViewMode(v)}
-        >
-          <ToggleButton value="day">Theo ngày</ToggleButton>
-          <ToggleButton value="week">Theo tuần</ToggleButton>
-        </ToggleButtonGroup>
+      {/* --- Chế độ xem --- */}
+      <Stack direction="column" spacing={2} mb={2}>
+        <Stack direction="row" alignItems="center" spacing={2}>
+          <Typography fontWeight="bold">Xem danh sách:</Typography>
+          <ToggleButtonGroup
+            size="small"
+            color="primary"
+            value={viewMode}
+            exclusive
+            onChange={(_e, v) => v && setViewMode(v)}
+          >
+            <ToggleButton value="day">Theo ngày</ToggleButton>
+            <ToggleButton value="week">Theo tuần</ToggleButton>
+          </ToggleButtonGroup>
+        </Stack>
+
+        {/* Nếu chọn xem theo ngày */}
+        {viewMode === "day" && (
+          <TextField
+            label="Chọn ngày xem"
+            type="date"
+            size="small"
+            value={viewDate}
+            onChange={(e) => setViewDate(e.target.value)}
+            sx={{ width: 200 }}
+          />
+        )}
+
+        {/* Nếu chọn xem theo tuần */}
+        {viewMode === "week" && (
+          <TextField
+            label="Chọn tuần"
+            select
+            size="small"
+            value={viewWeek || ""}
+            onChange={(e) => setViewWeek(Number(e.target.value))}
+            sx={{ width: 200 }}
+          >
+            {[...Array(20)].map((_, i) => (
+              <MenuItem key={i + 1} value={i + 1}>
+                Tuần {i + 1}
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
       </Stack>
 
-      {/* Danh sách nghỉ */}
+      {/* --- Danh sách nghỉ --- */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -327,7 +366,7 @@ export default function RecordAttendancePage() {
               <TableRow>
                 <TableCell colSpan={7} align="center">
                   <Typography color="gray">
-                    Không có học sinh nghỉ học trong ngày này.
+                    Không có học sinh nghỉ học trong thời gian này.
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -336,7 +375,7 @@ export default function RecordAttendancePage() {
         </Table>
       </TableContainer>
 
-      {/* Thông báo */}
+      {/* --- Thông báo --- */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
