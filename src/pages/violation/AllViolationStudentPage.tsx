@@ -1,102 +1,113 @@
+gộp vào file này luôn 
+import { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  Button,
-  Paper,
-  Stack,
   TextField,
-  Snackbar,
-  Alert,
-  CircularProgress,
+  MenuItem,
+  Button,
   Table,
   TableHead,
   TableBody,
-  TableCell,
   TableRow,
-  TablePagination,
-} from "@mui/material";
-import { useState, useEffect } from "react";
-import api from "../../api/api";
-import { getWeeksAndCurrentWeek } from "../../types/weekHelper";
+  TableCell,
+  Paper,
+  Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Snackbar,
+  Alert,
+} from '@mui/material';
+import api from '../../api/api';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.tz.setDefault('Asia/Ho_Chi_Minh');
 
-const AllViolationStudentPage = () => {
-  const [violations, setViolations] = useState([]);
-  const [loading, setLoading] = useState(false);
+interface Violation {
+  _id: string;
+  name: string;
+  className: string;
+  description: string;
+  time: Date;
+  penalty: number;
+  handlingMethod: string;
+  handled?: boolean;
+  handledBy?: string;
+  weekNumber?: number;
+}
+
+interface Rule {
+  _id: string;
+  title: string;
+  point: number;
+  content: string;
+}
+
+interface Week {
+  _id: string;
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+}
+
+export default function AllViolationStudentPage() {
+  const [violations, setViolations] = useState<Violation[]>([]);
+  const [filtered, setFiltered] = useState<Violation[]>([]);
+  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedWeek, setSelectedWeek] = useState('');
+  const [handledStatus, setHandledStatus] = useState('');
+  const [classList, setClassList] = useState<string[]>([]);
+  const [rules, setRules] = useState<Rule[]>([]);
+  const [weeks, setWeeks] = useState<Week[]>([]);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [violationBeingEdited, setViolationBeingEdited] = useState<Violation | null>(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
-    message: "",
-    severity: "success",
+    message: '',
+    severity: 'success' as 'success' | 'error' | 'warning',
   });
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [weeks, setWeeks] = useState([]);
-  const [selectedWeek, setSelectedWeek] = useState("");
-  const [settings, setSettings] = useState({
-    limitGVCNHandling: 0,
-    classViolationLimit: 0,
-  });
+
+  // ⚙️ Giới hạn
   const [limitGVCNHandling, setLimitGVCNHandling] = useState(false);
-  const [isEditing, setIsEditing] = useState(false); // 🔹 Trạng thái chỉnh sửa giới hạn
+  const [settings, setSettings] = useState({
+    limitGVCNHandling: 1,
+    classViolationLimit: 10,
+  });
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const { weeks, currentWeek } = getWeeksAndCurrentWeek();
-    setWeeks(weeks);
-    setSelectedWeek(currentWeek);
-  }, []);
-
-  useEffect(() => {
-    fetchViolations();
-    fetchSettings();
-  }, [selectedWeek]);
-
-  const fetchViolations = async () => {
+  // ✅ Lấy trạng thái hiện tại từ backend
+  const fetchSetting = async () => {
     try {
-      setLoading(true);
-      const res = await api.get("/api/violations", {
-        params: { weekNumber: selectedWeek },
-      });
-      setViolations(res.data);
+      const res = await api.get('/api/settings');
+      if (res.data) {
+        setLimitGVCNHandling(res.data.limitGVCNHandling || false);
+        setSettings({
+          limitGVCNHandling: res.data.limitGVCNHandling ?? 1,
+          classViolationLimit: res.data.classViolationLimit ?? 10,
+        });
+      }
     } catch (err) {
-      console.error("Lỗi khi tải danh sách vi phạm:", err);
-    } finally {
-      setLoading(false);
+      console.error('Lỗi khi lấy setting:', err);
     }
   };
 
-  const fetchSettings = async () => {
-    try {
-      const res = await api.get("/api/settings");
-      const data = res.data;
-      setSettings({
-        limitGVCNHandling: data.limitGVCNHandling || 0,
-        classViolationLimit: data.classViolationLimit || 0,
-      });
-      setLimitGVCNHandling(data.limitGVCNHandlingEnabled || false);
-    } catch (err) {
-      console.error("Lỗi khi tải settings:", err);
-    }
-  };
-
-  // ✅ Bật/tắt giới hạn GVCN
+  // ✅ Khi bật/tắt giới hạn GVCN
   const handleToggle = async () => {
     const newValue = !limitGVCNHandling;
     setLimitGVCNHandling(newValue);
     setLoading(true);
     try {
-      await api.put("/api/settings/update", { limitGVCNHandling: newValue });
-      setSnackbar({
-        open: true,
-        message: "Đã cập nhật trạng thái giới hạn GVCN",
-        severity: "success",
-      });
+      await api.put('/api/settings/update', { limitGVCNHandling: newValue });
+      setSnackbar({ open: true, message: 'Đã cập nhật trạng thái giới hạn GVCN', severity: 'success' });
     } catch (err) {
-      console.error("Lỗi khi cập nhật setting:", err);
+      console.error('Lỗi khi cập nhật setting:', err);
       setLimitGVCNHandling(!newValue);
-      setSnackbar({
-        open: true,
-        message: "Lỗi cập nhật giới hạn",
-        severity: "error",
-      });
+      setSnackbar({ open: true, message: 'Lỗi cập nhật giới hạn', severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -106,29 +117,138 @@ const AllViolationStudentPage = () => {
   const handleSaveSettings = async () => {
     try {
       setLoading(true);
-      await api.put("/api/settings/update", settings);
-      setSnackbar({
-        open: true,
-        message: "Đã lưu cấu hình giới hạn thành công!",
-        severity: "success",
-      });
-      setIsEditing(false); // 🔒 Khóa lại sau khi lưu
+      await api.put('/api/settings/update', settings);
+      setSnackbar({ open: true, message: 'Đã lưu cấu hình giới hạn thành công!', severity: 'success' });
     } catch (err) {
-      console.error("Lỗi khi lưu settings:", err);
-      setSnackbar({
-        open: true,
-        message: "Lỗi khi lưu cấu hình!",
-        severity: "error",
-      });
+      console.error('Lỗi khi lưu settings:', err);
+      setSnackbar({ open: true, message: 'Lỗi khi lưu cấu hình!', severity: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
+  // 🚀 Khởi tạo dữ liệu
+  useEffect(() => {
+    const init = async () => {
+      await fetchSetting();
+      await fetchWeeks();
+      await fetchClasses();
+      await fetchRules();
+      await fetchViolations();
+    };
+    init();
+  }, []);
+
+  const fetchWeeks = async () => {
+    try {
+      const [weeksRes, currentRes] = await Promise.all([
+        api.get('/api/academic-weeks/study-weeks'),
+        api.get('/api/academic-weeks/current'),
+      ]);
+      const weekList: Week[] = weeksRes.data;
+      setWeeks(weekList);
+      if (currentRes.data?.weekNumber) {
+        setSelectedWeek(String(currentRes.data.weekNumber));
+      }
+    } catch (err) {
+      console.error('Lỗi khi lấy danh sách tuần học:', err);
+    }
+  };
+
+  const fetchViolations = async () => {
+    try {
+      const res = await api.get('/api/violations/all/all-student');
+      const data: Violation[] = res.data;
+      setViolations(data);
+      setFiltered(data);
+    } catch (err) {
+      console.error('Lỗi khi lấy dữ liệu vi phạm:', err);
+    }
+  };
+
+  const fetchClasses = async () => {
+    try {
+      const res = await api.get('/api/classes');
+      const validClasses: string[] = res.data
+        .filter((cls: any) => cls.teacher)
+        .map((cls: any) => cls.className);
+      setClassList(validClasses);
+    } catch (err) {
+      console.error('Lỗi khi lấy danh sách lớp:', err);
+    }
+  };
+
+  const fetchRules = async () => {
+    try {
+      const res = await api.get('/api/rules');
+      const data: Rule[] = res.data;
+      setRules(data);
+    } catch (err) {
+      console.error('Lỗi khi lấy rules:', err);
+    }
+  };
+
+  const applyFilters = () => {
+    let data: Violation[] = [...violations];
+    if (selectedClass) data = data.filter((v: Violation) => v.className === selectedClass);
+    if (selectedWeek) data = data.filter((v: Violation) => String(v.weekNumber) === selectedWeek);
+    if (handledStatus) {
+      if (handledStatus === 'unhandled') {
+        data = data.filter((v) => !v.handled);
+      } else {
+        data = data.filter((v) => v.handledBy === handledStatus);
+      }
+    }
+    setFiltered(data);
+  };
+
+  const clearFilters = () => {
+    setSelectedClass('');
+    setSelectedWeek('');
+    setHandledStatus('');
+    setFiltered(violations);
+  };
+
+  useEffect(() => {
+    applyFilters();
+  }, [selectedWeek, selectedClass, handledStatus, violations]);
+
+  const handleDeleteViolation = async (id: string) => {
+    if (!window.confirm('Bạn có chắc muốn xoá vi phạm này không?')) return;
+    try {
+      await api.delete(`/api/violations/${id}`);
+      await fetchViolations();
+    } catch (error) {
+      console.error('Lỗi khi xoá vi phạm:', error);
+    }
+  };
+
+  const handleProcessViolation = async (id: string, handledBy: string) => {
+    try {
+      const res = await api.patch(`/api/violations/${id}/handle`, { handledBy });
+      setViolations((prev) => prev.map((v) => (v._id === id ? res.data : v)));
+    } catch (err) {
+      console.error('Lỗi khi cập nhật người xử lý:', err);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!violationBeingEdited) return;
+    try {
+      await api.put(`/api/violations/${violationBeingEdited._id}`, violationBeingEdited);
+      setSnackbar({ open: true, message: 'Cập nhật thành công', severity: 'success' });
+      setEditDialogOpen(false);
+      await fetchViolations();
+    } catch (error) {
+      console.error('Lỗi khi cập nhật vi phạm:', error);
+      setSnackbar({ open: true, message: 'Lỗi cập nhật vi phạm', severity: 'error' });
+    }
+  };
+
   return (
-    <Box p={3}>
-      <Typography variant="h5" gutterBottom>
-        📋 Tổng hợp vi phạm học sinh
+    <Box sx={{ maxWidth: '100%', mx: 'auto', py: 4 }}>
+      <Typography variant="h4" fontWeight="bold" align="center" gutterBottom>
+        Danh sách tất cả học sinh vi phạm
       </Typography>
 
       {/* ⚙️ Giới hạn xử lý */}
@@ -136,14 +256,12 @@ const AllViolationStudentPage = () => {
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
           <Button
             variant="contained"
-            color={limitGVCNHandling ? "success" : "error"}
+            color={limitGVCNHandling ? 'success' : 'error'}
             onClick={handleToggle}
             disabled={loading}
-            sx={{ borderRadius: "50px" }}
+            sx={{ borderRadius: '50px' }}
           >
-            {limitGVCNHandling
-              ? "🟢 GIỚI HẠN GVCN: BẬT"
-              : "🔴 GIỚI HẠN GVCN: TẮT"}
+            {limitGVCNHandling ? '🟢 GIỚI HẠN GVCN: BẬT' : '🔴 GIỚI HẠN GVCN: TẮT'}
           </Button>
 
           <TextField
@@ -153,12 +271,8 @@ const AllViolationStudentPage = () => {
             sx={{ width: 200 }}
             value={settings.limitGVCNHandling}
             onChange={(e) =>
-              setSettings((prev) => ({
-                ...prev,
-                limitGVCNHandling: Number(e.target.value),
-              }))
+              setSettings((prev) => ({ ...prev, limitGVCNHandling: Number(e.target.value) }))
             }
-            disabled={!isEditing || loading}
           />
 
           <TextField
@@ -168,137 +282,192 @@ const AllViolationStudentPage = () => {
             sx={{ width: 230 }}
             value={settings.classViolationLimit}
             onChange={(e) =>
-              setSettings((prev) => ({
-                ...prev,
-                classViolationLimit: Number(e.target.value),
-              }))
+              setSettings((prev) => ({ ...prev, classViolationLimit: Number(e.target.value) }))
             }
-            disabled={!isEditing || loading}
           />
 
-          {isEditing ? (
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleSaveSettings}
-              disabled={loading}
-            >
-              {loading ? "Đang lưu..." : "Lưu"}
-            </Button>
-          ) : (
-            <Button
-              variant="outlined"
-              color="secondary"
-              onClick={() => setIsEditing(true)} // 🔓 bật chỉnh sửa
-            >
-              Điều chỉnh
-            </Button>
-          )}
+          <Button variant="contained" color="primary" onClick={handleSaveSettings} disabled={loading}>
+            {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
+          </Button>
         </Stack>
       </Paper>
 
-      {/* 🔹 Chọn tuần */}
-      <Stack direction="row" spacing={2} alignItems="center" mb={2}>
-        <Typography variant="body1">Chọn tuần:</Typography>
-        <TextField
-          select
-          size="small"
-          value={selectedWeek}
-          onChange={(e) => setSelectedWeek(e.target.value)}
-          sx={{ width: 150 }}
-          SelectProps={{ native: true }}
-        >
-          {weeks.map((w) => (
-            <option key={w.weekNumber} value={w.weekNumber}>
-              Tuần {w.weekNumber}
-            </option>
-          ))}
-        </TextField>
-      </Stack>
+      {/* Bộ lọc */}
+      <Paper sx={{ p: 2, borderRadius: 3, mb: 4 }} elevation={3}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
+          <TextField
+            label="Lọc theo lớp"
+            select
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)}
+            sx={{ minWidth: 150 }}
+          >
+            <MenuItem value="">-- Tất cả lớp --</MenuItem>
+            {classList.map((cls) => (
+              <MenuItem key={cls} value={cls}>
+                {cls}
+              </MenuItem>
+            ))}
+          </TextField>
 
-      {/* 📊 Bảng vi phạm */}
-      <Paper sx={{ borderRadius: 3, p: 2 }}>
-        {loading ? (
-          <Box display="flex" justifyContent="center" p={3}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>STT</TableCell>
-                  <TableCell>Họ và tên</TableCell>
-                  <TableCell>Lớp</TableCell>
-                  <TableCell>Lỗi vi phạm</TableCell>
-                  <TableCell>Ngày</TableCell>
-                  <TableCell>Người xử lý</TableCell>
-                  <TableCell>Hình thức xử lý</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {violations.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      Không có dữ liệu
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  violations
-                    .slice(
-                      page * rowsPerPage,
-                      page * rowsPerPage + rowsPerPage
-                    )
-                    .map((v, i) => (
-                      <TableRow key={v._id}>
-                        <TableCell>{page * rowsPerPage + i + 1}</TableCell>
-                        <TableCell>{v.studentName}</TableCell>
-                        <TableCell>{v.className}</TableCell>
-                        <TableCell>{v.violationType}</TableCell>
-                        <TableCell>
-                          {new Date(v.date).toLocaleDateString("vi-VN")}
-                        </TableCell>
-                        <TableCell>{v.handledBy}</TableCell>
-                        <TableCell>{v.handlingMethod}</TableCell>
-                      </TableRow>
-                    ))
-                )}
-              </TableBody>
-            </Table>
+          <TextField
+            label="Tuần học"
+            select
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(e.target.value)}
+            sx={{ minWidth: 200 }}
+          >
+            <MenuItem value="">-- Tất cả tuần --</MenuItem>
+            {weeks.map((w) => (
+              <MenuItem key={w._id} value={String(w.weekNumber)}>
+                Tuần {w.weekNumber} ({dayjs(w.startDate).format('DD/MM')} -{' '}
+                {dayjs(w.endDate).format('DD/MM')})
+              </MenuItem>
+            ))}
+          </TextField>
 
-            <TablePagination
-              component="div"
-              count={violations.length}
-              page={page}
-              onPageChange={(e, newPage) => setPage(newPage)}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={(e) => {
-                setRowsPerPage(parseInt(e.target.value, 10));
-                setPage(0);
-              }}
-              labelRowsPerPage="Số dòng / trang"
-            />
-          </>
-        )}
+          <TextField
+            label="Tình trạng xử lý"
+            select
+            value={handledStatus}
+            onChange={(e) => setHandledStatus(e.target.value)}
+            sx={{ minWidth: 200 }}
+          >
+            <MenuItem value="">-- Tất cả --</MenuItem>
+            <MenuItem value="unhandled">Chưa xử lý</MenuItem>
+            <MenuItem value="GVCN">GVCN xử lý</MenuItem>
+            <MenuItem value="PGT">PGT xử lý</MenuItem>
+          </TextField>
+
+          <Button variant="contained" onClick={applyFilters}>
+            Áp dụng
+          </Button>
+          <Button variant="outlined" onClick={clearFilters}>
+            Xóa lọc
+          </Button>
+        </Stack>
       </Paper>
 
-      {/* 🔔 Snackbar */}
+      {/* Bảng dữ liệu */}
+      <Paper elevation={3} sx={{ borderRadius: 3, overflowX: 'auto' }}>
+        <Table size="small">
+          <TableHead>
+            <TableRow sx={{ backgroundColor: '#87cafe' }}>
+              <TableCell>STT</TableCell>
+              <TableCell>Họ tên</TableCell>
+              <TableCell>Lớp</TableCell>
+              <TableCell>Tuần</TableCell>
+              <TableCell>Lỗi vi phạm</TableCell>
+              <TableCell>Thời gian</TableCell>
+              <TableCell>Hình thức xử lý</TableCell>
+              <TableCell>Trạng thái</TableCell>
+              <TableCell>Người xử lý</TableCell>
+              <TableCell>Điểm</TableCell>
+              <TableCell>Thao tác</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filtered.length > 0 ? (
+              filtered.map((v, i) => (
+                <TableRow key={v._id}>
+                  <TableCell>{i + 1}</TableCell>
+                  <TableCell>{v.name}</TableCell>
+                  <TableCell>{v.className}</TableCell>
+                  <TableCell>{v.weekNumber || '-'}</TableCell>
+                  <TableCell>{v.description}</TableCell>
+                  <TableCell>
+                    {v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}
+                  </TableCell>
+                  <TableCell>{v.handlingMethod || '—'}</TableCell>
+                  <TableCell>{v.handled ? 'Đã xử lý' : 'Chưa xử lý'}</TableCell>
+                  <TableCell>{v.handledBy || ''}</TableCell>
+                  <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        size="small"
+                        onClick={() => handleDeleteViolation(v._id)}
+                      >
+                        Xoá
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="secondary"
+                        size="small"
+                        onClick={() => {
+                          setViolationBeingEdited(v);
+                          setEditDialogOpen(true);
+                        }}
+                      >
+                        Sửa
+                      </Button>
+                      <Button
+                        variant={v.handledBy === 'PGT' ? 'contained' : 'outlined'}
+                        color="success"
+                        size="small"
+                        onClick={() => handleProcessViolation(v._id, 'PGT')}
+                      >
+                        PGT
+                      </Button>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={11} align="center">
+                  Không có dữ liệu phù hợp.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Paper>
+
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} fullWidth>
+        <DialogTitle>Sửa lỗi vi phạm</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <TextField
+              label="Lỗi vi phạm"
+              fullWidth
+              value={violationBeingEdited?.description || ''}
+              onChange={(e) =>
+                setViolationBeingEdited((prev) =>
+                  prev ? { ...prev, description: e.target.value } : prev
+                )
+              }
+            />
+            <TextField
+              label="Hình thức xử lý"
+              fullWidth
+              value={violationBeingEdited?.handlingMethod || ''}
+              onChange={(e) =>
+                setViolationBeingEdited((prev) =>
+                  prev ? { ...prev, handlingMethod: e.target.value } : prev
+                )
+              }
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Huỷ</Button>
+          <Button variant="contained" onClick={handleSaveEdit}>
+            Lưu
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={2500}
+        autoHideDuration={3000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity as "success" | "error"}
-          variant="filled"
-        >
-          {snackbar.message}
-        </Alert>
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
     </Box>
   );
-};
-
-export default AllViolationStudentPage;
+}
