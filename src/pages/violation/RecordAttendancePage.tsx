@@ -26,11 +26,9 @@ import dayjs from "dayjs";
 import api from "../../api/api";
 
 export default function RecordAttendancePage() {
-
-
   const [classes, setClasses] = useState<string[]>([]);
   const [className, setClassName] = useState("");
-  const [grade, setGrade] = useState(""); // ✅ thêm grade
+  const [grade, setGrade] = useState("");
   const [studentInput, setStudentInput] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -52,7 +50,7 @@ export default function RecordAttendancePage() {
         const arr = (res.data || []).map((c: any) => c.className ?? c.name ?? String(c));
         setClasses(arr);
       } catch (err) {
-        console.error("Lỗi khi tải danh sách lớp:", err);
+        console.error("❌ Lỗi khi tải danh sách lớp:", err);
       }
     };
     loadClasses();
@@ -71,37 +69,47 @@ export default function RecordAttendancePage() {
         });
         setSuggestions(res.data || []);
       } catch (err) {
-        console.error("Lỗi tìm học sinh:", err);
+        console.error("❌ Lỗi tìm học sinh:", err);
         setSuggestions([]);
       }
-    }, 250);
+    }, 300);
     return () => clearTimeout(t);
   }, [studentInput, className]);
 
   // --- Lấy danh sách nghỉ học
   const fetchRecords = async () => {
-    if (!className) return;
+    if (!className || !date) return; // ✅ tránh lỗi khi chưa chọn lớp
     try {
-      const endpoint = viewMode === "week" ? `/api/class-attendance-summaries/by-week` : `/api/class-attendance-summaries/by-date`;
-      const cleanDate = date.split(":")[0];
+      const endpoint =
+        viewMode === "week"
+          ? `/api/class-attendance-summaries/by-week`
+          : `/api/class-attendance-summaries/by-date`;
+      const cleanDate = dayjs(date).format("YYYY-MM-DD");
       const res = await api.get(endpoint, {
-        params: { className, date:cleanDate },
+        params: { className, date: cleanDate },
       });
-      setRecords(res.data || []);
+
+      // ✅ kiểm tra dữ liệu trả về từ backend
+      const data = res.data.records || res.data || [];
+      setRecords(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Lỗi tải danh sách:", err);
+      console.error("❌ Lỗi tải danh sách:", err);
       setRecords([]);
     }
   };
 
   useEffect(() => {
-    fetchRecords();
+    if (className) fetchRecords(); // ✅ chỉ gọi khi có lớp
   }, [className, date, viewMode]);
 
   // --- Ghi nhận nghỉ học
   const handleRecord = async () => {
     if (!selectedStudent || !className) {
-      setSnackbar({ open: true, message: "Vui lòng chọn lớp và học sinh!", severity: "error" });
+      setSnackbar({
+        open: true,
+        message: "Vui lòng chọn lớp và học sinh!",
+        severity: "error",
+      });
       return;
     }
 
@@ -114,12 +122,16 @@ export default function RecordAttendancePage() {
         date,
         session,
       };
-      
-      console.log("📤 Dữ liệu gửi đi:", payload);
-      
-      await api.post(`/api/class-attendance-summaries/`, payload);
 
-      setSnackbar({ open: true, message: "Đã ghi nhận nghỉ học.", severity: "success" });
+      console.log("📤 Dữ liệu gửi đi:", payload);
+
+      await api.post(`/api/class-attendance-summaries/`, payload);
+      setSnackbar({
+        open: true,
+        message: "✅ Đã ghi nhận nghỉ học.",
+        severity: "success",
+      });
+
       setSelectedStudent(null);
       setStudentInput("");
       fetchRecords();
@@ -136,11 +148,19 @@ export default function RecordAttendancePage() {
   const handleExcuse = async (id: string) => {
     try {
       await api.put(`/api/class-attendance-summaries/approve/${id}`);
-      setSnackbar({ open: true, message: "Đã duyệt phép cho học sinh.", severity: "success" });
+      setSnackbar({
+        open: true,
+        message: "✅ Đã duyệt phép cho học sinh.",
+        severity: "success",
+      });
       fetchRecords();
     } catch (err) {
-      console.error("Lỗi duyệt phép:", err);
-      setSnackbar({ open: true, message: "Lỗi khi duyệt phép.", severity: "error" });
+      console.error("❌ Lỗi duyệt phép:", err);
+      setSnackbar({
+        open: true,
+        message: "Lỗi khi duyệt phép.",
+        severity: "error",
+      });
     }
   };
 
@@ -149,11 +169,19 @@ export default function RecordAttendancePage() {
     if (!window.confirm("Bạn có chắc muốn xóa ghi nhận này không?")) return;
     try {
       await api.delete(`/api/class-attendance-summaries/${id}`);
-      setSnackbar({ open: true, message: "Đã xóa ghi nhận.", severity: "success" });
+      setSnackbar({
+        open: true,
+        message: "✅ Đã xóa ghi nhận.",
+        severity: "success",
+      });
       fetchRecords();
     } catch (err) {
-      console.error("Lỗi xóa:", err);
-      setSnackbar({ open: true, message: "Lỗi khi xóa ghi nhận.", severity: "error" });
+      console.error("❌ Lỗi xóa:", err);
+      setSnackbar({
+        open: true,
+        message: "Lỗi khi xóa ghi nhận.",
+        severity: "error",
+      });
     }
   };
 
@@ -163,10 +191,10 @@ export default function RecordAttendancePage() {
         Ghi nhận chuyên cần
       </Typography>
 
-      {/* Khu vực nhập nhanh */}
+      {/* Nhập dữ liệu */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Stack direction="row" spacing={2} flexWrap="wrap">
-          {/* Lớp */}
+          {/* Chọn lớp */}
           <TextField
             select
             label="Lớp"
@@ -177,6 +205,7 @@ export default function RecordAttendancePage() {
               setClassName(value);
               const g = value.match(/^\d+/)?.[0] || "";
               setGrade(g);
+              setRecords([]); // ✅ reset dữ liệu khi đổi lớp
             }}
             sx={{ width: 160 }}
           >
@@ -187,7 +216,7 @@ export default function RecordAttendancePage() {
             ))}
           </TextField>
 
-          {/* Ô nhập tên học sinh gợi ý — di chuyển vào giữa */}
+          {/* Học sinh */}
           <Autocomplete
             freeSolo
             options={suggestions}
@@ -229,7 +258,7 @@ export default function RecordAttendancePage() {
         </Stack>
       </Paper>
 
-      {/* Chế độ xem danh sách */}
+      {/* Chế độ xem */}
       <Stack direction="row" alignItems="center" spacing={2} mb={2}>
         <Typography fontWeight="bold">Xem danh sách:</Typography>
         <ToggleButtonGroup
@@ -244,7 +273,7 @@ export default function RecordAttendancePage() {
         </ToggleButtonGroup>
       </Stack>
 
-      {/* Danh sách ghi nhận */}
+      {/* Danh sách nghỉ */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -259,38 +288,55 @@ export default function RecordAttendancePage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {records.map((r, i) => (
-              <TableRow key={r._id}>
-                <TableCell>{i + 1}</TableCell>
-                <TableCell>{r.className}</TableCell>
-                <TableCell>{r.studentName}</TableCell>
-                <TableCell>{r.session}</TableCell>
-                <TableCell>{r.date}</TableCell>
-                <TableCell>
-                  {r.permission ? (
-                    <Typography color="green">Có phép</Typography>
-                  ) : (
-                    <Typography color="error">Không phép</Typography>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Stack direction="row" spacing={1}>
-                    {!r.permission && (
-                      <IconButton color="success" onClick={() => handleExcuse(r._id)}>
-                        <Check />
-                      </IconButton>
+            {records.length > 0 ? (
+              records.map((r, i) => (
+                <TableRow key={r._id || i}>
+                  <TableCell>{i + 1}</TableCell>
+                  <TableCell>{r.className}</TableCell>
+                  <TableCell>{r.studentName}</TableCell>
+                  <TableCell>{r.session}</TableCell>
+                  <TableCell>{r.date}</TableCell>
+                  <TableCell>
+                    {r.permission ? (
+                      <Typography color="green">Có phép</Typography>
+                    ) : (
+                      <Typography color="error">Không phép</Typography>
                     )}
-                    <IconButton color="error" onClick={() => handleDelete(r._id)}>
-                      <Delete />
-                    </IconButton>
-                  </Stack>
+                  </TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={1}>
+                      {!r.permission && (
+                        <IconButton
+                          color="success"
+                          onClick={() => handleExcuse(r._id)}
+                        >
+                          <Check />
+                        </IconButton>
+                      )}
+                      <IconButton
+                        color="error"
+                        onClick={() => handleDelete(r._id)}
+                      >
+                        <Delete />
+                      </IconButton>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} align="center">
+                  <Typography color="gray">
+                    Không có học sinh nghỉ học trong ngày này.
+                  </Typography>
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </TableContainer>
 
+      {/* Thông báo */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
