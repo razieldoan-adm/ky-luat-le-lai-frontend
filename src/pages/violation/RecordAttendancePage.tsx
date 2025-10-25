@@ -49,7 +49,7 @@ export default function RecordAttendancePage() {
     severity: "success",
   });
 
-  // --- Load danh sách lớp
+  // --- Load danh sách lớp (chỉ phục vụ ghi nhận)
   useEffect(() => {
     const loadClasses = async () => {
       try {
@@ -83,7 +83,7 @@ export default function RecordAttendancePage() {
     return () => clearTimeout(t);
   }, [studentInput, className]);
 
-  // --- Lấy danh sách nghỉ học
+  // --- Lấy danh sách nghỉ học (toàn bộ, không theo lớp)
   const fetchRecords = async () => {
     try {
       const endpoint =
@@ -92,7 +92,6 @@ export default function RecordAttendancePage() {
           : `/api/class-attendance-summaries/by-date`;
 
       const params: any = {};
-      if (className) params.className = className;
       if (viewMode === "day") params.date = dayjs(viewDate).format("YYYY-MM-DD");
       if (viewMode === "week" && viewWeek) params.weekNumber = viewWeek;
 
@@ -109,7 +108,7 @@ export default function RecordAttendancePage() {
   useEffect(() => {
     if (viewMode === "day" && viewDate) fetchRecords();
     if (viewMode === "week" && viewWeek) fetchRecords();
-  }, [viewMode, viewDate, viewWeek, className]);
+  }, [viewMode, viewDate, viewWeek]);
 
   // --- Ghi nhận nghỉ học
   const handleRecord = async () => {
@@ -198,7 +197,7 @@ export default function RecordAttendancePage() {
         Ghi nhận chuyên cần
       </Typography>
 
-      {/* Nhập dữ liệu */}
+      {/* --- Nhập dữ liệu ghi nhận --- */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Stack direction="row" spacing={2} flexWrap="wrap">
           {/* Chọn lớp */}
@@ -212,7 +211,6 @@ export default function RecordAttendancePage() {
               setClassName(value);
               const g = value.match(/^\d+/)?.[0] || "";
               setGrade(g);
-              setRecords([]);
             }}
             sx={{ width: 160 }}
           >
@@ -312,7 +310,7 @@ export default function RecordAttendancePage() {
         )}
       </Stack>
 
-      {/* --- Danh sách nghỉ --- */}
+      {/* --- Danh sách nghỉ học --- */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -345,17 +343,11 @@ export default function RecordAttendancePage() {
                   <TableCell>
                     <Stack direction="row" spacing={1}>
                       {!r.permission && (
-                        <IconButton
-                          color="success"
-                          onClick={() => handleExcuse(r._id)}
-                        >
+                        <IconButton color="success" onClick={() => handleExcuse(r._id)}>
                           <Check />
                         </IconButton>
                       )}
-                      <IconButton
-                        color="error"
-                        onClick={() => handleDelete(r._id)}
-                      >
+                      <IconButton color="error" onClick={() => handleDelete(r._id)}>
                         <Delete />
                       </IconButton>
                     </Stack>
