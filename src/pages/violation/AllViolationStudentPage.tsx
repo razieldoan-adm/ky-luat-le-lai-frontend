@@ -116,7 +116,7 @@ export default function AllViolationStudentPage() {
   const handleSaveSettings = async () => {
     try {
       setLoading(true);
-      await api.patch('/api/settings/update', settings);
+      await api.put('/api/settings/update', settings);
       setSnackbar({ open: true, message: 'Đã lưu cấu hình giới hạn thành công!', severity: 'success' });
     } catch (err) {
       console.error('Lỗi khi lưu settings:', err);
