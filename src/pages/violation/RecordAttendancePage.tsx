@@ -88,7 +88,7 @@ export default function RecordAttendancePage() {
   }, [studentInput, className]);
 
   // --- Lấy danh sách nghỉ học (toàn bộ, không theo lớp)
-  const fetchRecords = async () => {
+   const fetchRecords = async () => {
   try {
     const endpoint =
       viewMode === "week"
@@ -98,16 +98,14 @@ export default function RecordAttendancePage() {
     // ✅ Tham số gửi đi
     const params: any = {};
 
-    // 🟢 Bổ sung className (bắt buộc theo backend)
-    // 👉 Nếu bạn có biến className trong component
-    params.className = className; // ví dụ: "10A1"
+    // Nếu xem theo ngày → gửi ngày cụ thể
+    if (viewMode === "day") {
+      params.date = dayjs(viewDate).format("YYYY-MM-DD");
+    }
 
-    // 📅 Ngày cần xem
-    params.date = dayjs(viewDate).format("YYYY-MM-DD");
-
-    // 🗓️ Nếu xem theo tuần → có thể thêm weekNumber
-    if (viewMode === "week" && viewWeek) {
-      params.weekNumber = viewWeek;
+    // Nếu xem theo tuần → vẫn phải gửi 1 ngày bất kỳ trong tuần (ví dụ hôm nay)
+    if (viewMode === "week") {
+      params.date = dayjs(viewDate).format("YYYY-MM-DD"); // 👉 gửi cùng ngày đang chọn
     }
 
     const res = await api.get(endpoint, { params });
