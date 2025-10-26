@@ -24,7 +24,7 @@ import {
 import { Check, Delete } from "@mui/icons-material";
 import dayjs from "dayjs";
 import api from "../../api/api";
-import { useSearchParams } from "react-router-dom";
+
 export default function RecordAttendancePage() {
   const [classes, setClasses] = useState<string[]>([]);
   const [className, setClassName] = useState("");
@@ -42,8 +42,6 @@ export default function RecordAttendancePage() {
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [viewDate, setViewDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [viewWeek, setViewWeek] = useState<number | null>(null);
- 
-  
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: any }>({
     open: false,
     message: "",
@@ -94,7 +92,12 @@ export default function RecordAttendancePage() {
 
     // ✅ Tham số gửi đi
     const params: any = {};
-    if (className) params.className = className;
+    if (className) {
+      params.className = className;
+    }
+
+    // ✅ Thêm ngày
+    params.date = dayjs(viewDate).format("YYYY-MM-DD");
     // Nếu xem theo ngày → gửi ngày cụ thể
     if (viewMode === "day") {
       params.date = dayjs(viewDate).format("YYYY-MM-DD");
