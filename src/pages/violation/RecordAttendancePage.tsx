@@ -85,25 +85,36 @@ export default function RecordAttendancePage() {
   }, [studentInput, className]);
 
   // --- Lấy danh sách nghỉ học (toàn bộ, không theo lớp)
-  const fetchRecords = async () => {
-    try {
-      const endpoint =
-        viewMode === "week"
-          ? `/api/class-attendance-summaries/by-week`
-          : `/api/class-attendance-summaries/by-date`;
-
-      const params: any = {
-        date: dayjs(viewDate).format("YYYY-MM-DD"),
-      };
-
-      const res = await api.get(endpoint, { params });
-      const data = res.data.records || res.data || [];
-      setRecords(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("❌ Lỗi tải danh sách:", err);
-      setRecords([]);
+  // --- Lấy danh sách nghỉ học theo tuần ---
+const fetchRecords = async () => {
+  try {
+    if (!viewWeek) {
+      console.warn("⚠️ Chưa chọn tuần, bỏ qua tải danh sách.");
+      return;
     }
-  };
+
+    // 🔹 Endpoint tuần
+    const endpoint = `/api/class-attendance-summaries/by-week`;
+
+    // 🔹 Tham số
+    const params: any = { weekNumber: viewWeek };
+    if (className) params.className = className; // tuỳ chọn, nếu có chọn lớp
+
+    console.log("📦 Gửi params:", params);
+
+    const res = await api.get(endpoint, { params });
+    const data = res.data.records || res.data || [];
+    setRecords(Array.isArray(data) ? data : []);
+  } catch (err) {
+    console.error("❌ Lỗi tải danh sách:", err);
+    setRecords([]);
+  }
+};
+
+// --- Gọi lại khi chọn tuần ---
+useEffect(() => {
+  if (viewWeek) fetchRecords();
+}, [viewWeek, className]);
 
   // --- Gọi lại khi bộ lọc thay đổi
   useEffect(() => {
