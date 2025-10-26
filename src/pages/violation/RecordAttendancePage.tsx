@@ -91,13 +91,11 @@ export default function RecordAttendancePage() {
         : `/api/class-attendance-summaries/by-date`;
 
     // ✅ Tham số gửi đi
-    const params: any = {};
-    if (className) {
-      params.className = className;
-    }
-
-    // ✅ Thêm ngày
-    params.date = dayjs(viewDate).format("YYYY-MM-DD");
+    const params: any = {
+      className, // 🔥 gửi đúng tên lớp đang chọn
+      date: dayjs(viewDate).format("YYYY-MM-DD"),
+    };
+    
     // Nếu xem theo ngày → gửi ngày cụ thể
     if (viewMode === "day") {
       params.date = dayjs(viewDate).format("YYYY-MM-DD");
