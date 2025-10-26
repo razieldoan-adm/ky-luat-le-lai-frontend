@@ -94,24 +94,40 @@ export default function RecordAttendancePage() {
     // ✅ Tham số gửi đi
     const params: any = {};
 
-    // Nếu xem theo ngày → gửi ngày cụ thể
-    if (viewMode === "day") {
-      params.date = dayjs(viewDate).format("YYYY-MM-DD");
+    // 🟢 Bổ sung className (bắt buộc theo backend)
+    // Giả sử bạn có biến selectedClass chứa thông tin lớp hiện tại
+    if (selectedClass?.name) {
+      params.className = selectedClass.name;
+    } else {
+      console.warn("⚠️ Thiếu className khi tải danh sách!");
+      return;
     }
 
-    // Nếu xem theo tuần → vẫn phải gửi 1 ngày bất kỳ trong tuần (ví dụ hôm nay)
-    if (viewMode === "week") {
-      params.date = dayjs(viewDate).format("YYYY-MM-DD"); // 👉 gửi cùng ngày đang chọn
+    // 🟡 Nếu có khối lớp (grade) thì gửi kèm
+    if (selectedClass?.grade) {
+      params.grade = selectedClass.grade;
     }
 
+    // 📅 Gửi ngày đang chọn (bắt buộc)
+    params.date = dayjs(viewDate).format("YYYY-MM-DD");
+
+    // 🗓️ Nếu đang xem theo tuần → có thể kèm weekNumber nếu backend cần
+    if (viewMode === "week" && viewWeek) {
+      params.weekNumber = viewWeek;
+    }
+
+    // 🔍 Gọi API
     const res = await api.get(endpoint, { params });
     const data = res.data.records || res.data || [];
+
+    // 🧩 Gán kết quả
     setRecords(Array.isArray(data) ? data : []);
   } catch (err) {
     console.error("❌ Lỗi tải danh sách:", err);
     setRecords([]);
   }
 };
+
 
 
   // --- Gọi lại khi bộ lọc thay đổi
