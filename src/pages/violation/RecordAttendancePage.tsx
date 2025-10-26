@@ -42,6 +42,8 @@ export default function RecordAttendancePage() {
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [viewDate, setViewDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [viewWeek, setViewWeek] = useState<number | null>(null);
+  const [selectedClassView, setSelectedClassView] = useState<string | null>(null);
+
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: any }>({
     open: false,
     message: "",
@@ -83,45 +85,30 @@ export default function RecordAttendancePage() {
   }, [studentInput, className]);
 
   // --- Lấy danh sách nghỉ học (toàn bộ, không theo lớp)
-   const fetchRecords = async () => {
-  try {
-    const endpoint =
-      viewMode === "week"
-        ? `/api/class-attendance-summaries/by-week`
-        : `/api/class-attendance-summaries/by-date`;
+  const fetchRecords = async () => {
+    try {
+      const endpoint =
+        viewMode === "week"
+          ? `/api/class-attendance-summaries/by-week`
+          : `/api/class-attendance-summaries/by-date`;
 
-    // ✅ Tham số gửi đi
-    const params: any = {
-      className, // 🔥 gửi đúng tên lớp đang chọn
-      date: dayjs(viewDate).format("YYYY-MM-DD"),
-    };
-    
-    // Nếu xem theo ngày → gửi ngày cụ thể
-    if (viewMode === "day") {
-      params.date = dayjs(viewDate).format("YYYY-MM-DD");
+      const params: any = {
+        date: dayjs(viewDate).format("YYYY-MM-DD"),
+      };
+
+      const res = await api.get(endpoint, { params });
+      const data = res.data.records || res.data || [];
+      setRecords(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("❌ Lỗi tải danh sách:", err);
+      setRecords([]);
     }
-
-    // Nếu xem theo tuần → vẫn phải gửi 1 ngày bất kỳ trong tuần (ví dụ hôm nay)
-    if (viewMode === "week") {
-      params.date = dayjs(viewDate).format("YYYY-MM-DD"); // 👉 gửi cùng ngày đang chọn
-    }
-
-    const res = await api.get(endpoint, { params });
-    const data = res.data.records || res.data || [];
-    setRecords(Array.isArray(data) ? data : []);
-  } catch (err) {
-    console.error("❌ Lỗi tải danh sách:", err);
-    setRecords([]);
-  }
-};
-
+  };
 
   // --- Gọi lại khi bộ lọc thay đổi
   useEffect(() => {
-  if (viewMode === "day" && viewDate) fetchRecords();
-  if (viewMode === "week" && viewDate) fetchRecords(); // ✅ đổi viewWeek → viewDate
-}, [viewMode, viewDate]);
-
+    if (viewDate) fetchRecords();
+  }, [viewMode, viewDate]);
 
   // --- Ghi nhận nghỉ học
   const handleRecord = async () => {
@@ -203,6 +190,13 @@ export default function RecordAttendancePage() {
       });
     }
   };
+
+  // --- Gom nhóm bản ghi theo lớp
+  const groupedByClass = records.reduce((acc: any, rec: any) => {
+    if (!acc[rec.className]) acc[rec.className] = [];
+    acc[rec.className].push(rec);
+    return acc;
+  }, {});
 
   return (
     <Box p={3}>
@@ -292,7 +286,6 @@ export default function RecordAttendancePage() {
           </ToggleButtonGroup>
         </Stack>
 
-        {/* Nếu chọn xem theo ngày */}
         {viewMode === "day" && (
           <TextField
             label="Chọn ngày xem"
@@ -304,7 +297,6 @@ export default function RecordAttendancePage() {
           />
         )}
 
-        {/* Nếu chọn xem theo tuần */}
         {viewMode === "week" && (
           <TextField
             label="Chọn tuần"
@@ -323,62 +315,80 @@ export default function RecordAttendancePage() {
         )}
       </Stack>
 
-      {/* --- Danh sách nghỉ học --- */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>STT</TableCell>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Họ tên</TableCell>
-              <TableCell>Buổi</TableCell>
-              <TableCell>Ngày</TableCell>
-              <TableCell>Phép</TableCell>
-              <TableCell>Hành động</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {records.length > 0 ? (
-              records.map((r, i) => (
-                <TableRow key={r._id || i}>
-                  <TableCell>{i + 1}</TableCell>
-                  <TableCell>{r.className}</TableCell>
-                  <TableCell>{r.studentName}</TableCell>
-                  <TableCell>{r.session}</TableCell>
-                  <TableCell>{r.date}</TableCell>
-                  <TableCell>
-                    {r.permission ? (
-                      <Typography color="green">Có phép</Typography>
-                    ) : (
-                      <Typography color="error">Không phép</Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Stack direction="row" spacing={1}>
-                      {!r.permission && (
-                        <IconButton color="success" onClick={() => handleExcuse(r._id)}>
-                          <Check />
-                        </IconButton>
-                      )}
-                      <IconButton color="error" onClick={() => handleDelete(r._id)}>
-                        <Delete />
-                      </IconButton>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  <Typography color="gray">
-                    Không có học sinh nghỉ học trong thời gian này.
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {/* --- Hiển thị danh sách nghỉ học theo lớp --- */}
+      {Object.keys(groupedByClass).length === 0 ? (
+        <Typography color="gray" mt={2}>
+          Không có học sinh nghỉ học trong thời gian này.
+        </Typography>
+      ) : (
+        <Box>
+          <Typography fontWeight="bold" mb={1}>
+            Các lớp có học sinh nghỉ học:
+          </Typography>
+          <Stack direction="row" flexWrap="wrap" gap={1} mb={2}>
+            {Object.keys(groupedByClass).map((cls) => (
+              <Button
+                key={cls}
+                variant={selectedClassView === cls ? "contained" : "outlined"}
+                onClick={() => setSelectedClassView(cls)}
+              >
+                {cls} ({groupedByClass[cls].length})
+              </Button>
+            ))}
+          </Stack>
+
+          {selectedClassView && (
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6" fontWeight="bold" mb={1}>
+                Danh sách nghỉ học - {selectedClassView}
+              </Typography>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>STT</TableCell>
+                      <TableCell>Họ tên</TableCell>
+                      <TableCell>Buổi</TableCell>
+                      <TableCell>Ngày</TableCell>
+                      <TableCell>Phép</TableCell>
+                      <TableCell>Hành động</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {groupedByClass[selectedClassView].map((r: any, i: number) => (
+                      <TableRow key={r._id || i}>
+                        <TableCell>{i + 1}</TableCell>
+                        <TableCell>{r.studentName}</TableCell>
+                        <TableCell>{r.session}</TableCell>
+                        <TableCell>{r.date}</TableCell>
+                        <TableCell>
+                          {r.permission ? (
+                            <Typography color="green">Có phép</Typography>
+                          ) : (
+                            <Typography color="error">Không phép</Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={1}>
+                            {!r.permission && (
+                              <IconButton color="success" onClick={() => handleExcuse(r._id)}>
+                                <Check />
+                              </IconButton>
+                            )}
+                            <IconButton color="error" onClick={() => handleDelete(r._id)}>
+                              <Delete />
+                            </IconButton>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          )}
+        </Box>
+      )}
 
       {/* --- Thông báo --- */}
       <Snackbar
