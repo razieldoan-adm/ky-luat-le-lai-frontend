@@ -42,8 +42,7 @@ export default function RecordAttendancePage() {
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [viewDate, setViewDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [viewWeek, setViewWeek] = useState<number | null>(null);
-  const [searchParams] = useSearchParams();
-  const className = searchParams.get("className");
+ 
   
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: any }>({
     open: false,
