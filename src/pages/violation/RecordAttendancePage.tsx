@@ -92,9 +92,16 @@ export default function RecordAttendancePage() {
           ? `/api/class-attendance-summaries/by-week`
           : `/api/class-attendance-summaries/by-date`;
 
-      const params: any = {
-        date: dayjs(viewDate).format("YYYY-MM-DD"),
-      };
+      // ✅ Tham số gửi đi
+    const params: any = {
+      className, // 👈 Gửi lớp đang chọn
+      date: dayjs(viewDate).format("YYYY-MM-DD"), // 👈 Gửi ngày đang chọn
+    };
+
+    // Nếu xem theo tuần → thêm cả số tuần nếu API yêu cầu
+    if (viewMode === "week" && viewWeek) {
+      params.weekNumber = viewWeek;
+    }
 
       const res = await api.get(endpoint, { params });
       const data = res.data.records || res.data || [];
