@@ -99,38 +99,26 @@ export default function RecordAttendancePage() {
     const params: any = {};
 
     // 🟢 Bổ sung className (bắt buộc theo backend)
-    // Giả sử bạn có biến selectedClass chứa thông tin lớp hiện tại
-    if (selectedClass?.name) {
-      params.className = selectedClass.name;
-    } else {
-      console.warn("⚠️ Thiếu className khi tải danh sách!");
-      return;
-    }
+    // 👉 Nếu bạn có biến className trong component
+    params.className = className; // ví dụ: "10A1"
 
-    // 🟡 Nếu có khối lớp (grade) thì gửi kèm
-    if (selectedClass?.grade) {
-      params.grade = selectedClass.grade;
-    }
-
-    // 📅 Gửi ngày đang chọn (bắt buộc)
+    // 📅 Ngày cần xem
     params.date = dayjs(viewDate).format("YYYY-MM-DD");
 
-    // 🗓️ Nếu đang xem theo tuần → có thể kèm weekNumber nếu backend cần
+    // 🗓️ Nếu xem theo tuần → có thể thêm weekNumber
     if (viewMode === "week" && viewWeek) {
       params.weekNumber = viewWeek;
     }
 
-    // 🔍 Gọi API
     const res = await api.get(endpoint, { params });
     const data = res.data.records || res.data || [];
-
-    // 🧩 Gán kết quả
     setRecords(Array.isArray(data) ? data : []);
   } catch (err) {
     console.error("❌ Lỗi tải danh sách:", err);
     setRecords([]);
   }
 };
+
 
   // --- Gọi lại khi bộ lọc thay đổi
   useEffect(() => {
