@@ -81,19 +81,45 @@ export default function ViewViolationListPage() {
   }, [selectedClass, selectedWeek, selectedDate, viewMode]);
 
   useEffect(() => {
-    if (allViolations.length > 0) {
-      const grouped = allViolations.reduce((acc: Record<string, number>, v) => {
-        if (!v.className) return acc;
-        acc[v.className] = (acc[v.className] || 0) + 1;
-        return acc;
-      }, {});
-      const result = Object.entries(grouped).map(([className, count]) => ({
-        className,
-        count,
-      }));
-      setClassViolations(result);
+  if (allViolations.length === 0) return;
+
+  let filtered = [...allViolations];
+
+  // 🔹 Lọc theo tuần (nếu chế độ tuần)
+  if (viewMode === "week" && selectedWeek) {
+    const selectedWeekData = weeks.find((w: any) => w.weekNumber === selectedWeek);
+    if (selectedWeekData) {
+      filtered = filtered.filter((v) => {
+        const date = dayjs(v.time);
+        return (
+          date.isSameOrAfter(dayjs(selectedWeekData.startDate), "day") &&
+          date.isSameOrBefore(dayjs(selectedWeekData.endDate), "day")
+        );
+      });
     }
-  }, [allViolations]);
+  }
+
+  // 🔹 Lọc theo ngày (nếu chế độ ngày)
+  if (viewMode === "day") {
+    filtered = filtered.filter((v) =>
+      dayjs(v.time).isSame(dayjs(selectedDate), "day")
+    );
+  }
+
+  // 🔹 Gom nhóm theo lớp trong phạm vi đã lọc
+  const grouped = filtered.reduce((acc: Record<string, number>, v) => {
+    if (!v.className) return acc;
+    acc[v.className] = (acc[v.className] || 0) + 1;
+    return acc;
+  }, {});
+
+  const result = Object.entries(grouped).map(([className, count]) => ({
+    className,
+    count,
+  }));
+
+  setClassViolations(result);
+}, [allViolations, selectedWeek, selectedDate, viewMode, weeks]);
 
   const fetchSetting = async () => {
     try {
