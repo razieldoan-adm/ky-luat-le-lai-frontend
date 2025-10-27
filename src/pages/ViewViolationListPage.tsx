@@ -183,24 +183,34 @@ export default function ViewViolationListPage() {
   return (
     <Box sx={{ maxWidth: "100%", mx: "auto", py: 4 }}>
       <Typography variant="h5" fontWeight="bold" align="center" gutterBottom>
-        Quản lý xử lý vi phạm học sinh
+        QUẢN LÝ VI PHẠM CỦA HỌC SINH
       </Typography>
 
-      <Typography align="center" sx={{ color: "gray", mb: 2 }}>
-        Nếu GVCN đã xử lý vi phạm của học sinh vui lòng check vào nút{" "}
-        <b>"GVCN tiếp nhận"</b>. Xin cám ơn.
-      </Typography>
-      <Alert 
-        severity="warning" 
-        variant="outlined" 
-        sx={{ mt: 2, textAlign: "left", whiteSpace: "pre-line", fontSize: "0.9rem" }}
-      >
-        {`* GVCN vui lòng chú ý :
-      - Phần duyệt học sinh vi phạm, mỗi học sinh chỉ được duyệt 1 lần, từ lần thứ 2 trở đi bắt buộc bị trừ điểm thi đua của lớp.
-      - Về phần mỗi lớp, sau khi có 5 học sinh được GVCN tiếp nhận xử lý thì lần vi phạm thứ 6 của lớp sẽ bắt buộc trừ điểm thi đua lớp.
-      Các phần duyệt xử lý trên đã được BGH thông qua và PGT sẽ áp dụng để tính điểm thi đua.
-        Xin cám ơn!`}
-      </Alert>
+      <Box sx={{ mb: 3 }}>
+  <Typography variant="body2" color="textSecondary">
+    Nếu GVCN đã xử lý vi phạm của học sinh vui lòng check vào nút 
+    <strong> "GVCN tiếp nhận"</strong>. Xin cám ơn.
+  </Typography>
+
+  <Alert 
+    severity="warning" 
+    variant="outlined" 
+    sx={{ 
+      mt: 2, 
+      textAlign: "left", 
+      whiteSpace: "pre-line", 
+      fontSize: "0.9rem",
+      borderColor: "#ffb300",
+      backgroundColor: "#fff8e1",
+    }}
+  >
+    <strong style={{ color: "#e65100" }}>* GVCN vui lòng chú ý :</strong>
+    {`\n- Phần duyệt học sinh vi phạm, mỗi học sinh chỉ được duyệt 1 lần, từ lần thứ 2 trở đi bắt buộc bị trừ điểm thi đua của lớp.
+- Về phần mỗi lớp, sau khi có 5 học sinh được GVCN tiếp nhận xử lý thì lần vi phạm thứ 6 của lớp sẽ bắt buộc trừ điểm thi đua lớp.
+Các phần duyệt xử lý trên đã được BGH thông qua và PGT sẽ áp dụng để tính điểm thi đua.
+Xin cám ơn!`}
+  </Alert>
+</Box>
       
       {/* --- Bộ lọc --- */}
       <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
