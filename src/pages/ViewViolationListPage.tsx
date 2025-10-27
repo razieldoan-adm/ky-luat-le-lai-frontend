@@ -55,7 +55,7 @@ export default function ViewViolationListPage() {
   const [viewMode, setViewMode] = useState<"week" | "day">("week");
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
   const { weeks, selectedWeek, setSelectedWeek} = useAcademicWeeks();
-
+  const [buttonClass, setButtonClass] = useState(""); // lớp được chọn bằng button
   // ✅ Cài đặt giới hạn GVCN
   const [limitGVCN, setLimitGVCN] = useState(false);
   const [classViolationLimit, setClassViolationLimit] = useState<number>(0);
@@ -98,7 +98,6 @@ export default function ViewViolationListPage() {
       });
     }
   }
-
   // 🔹 Lọc theo ngày (nếu chế độ ngày)
   if (viewMode === "day") {
     filtered = filtered.filter((v) =>
@@ -201,10 +200,8 @@ export default function ViewViolationListPage() {
     if (selectedClassFilter) {
       data = data.filter((v) => v.className === selectedClassFilter);
     }
-
     setFilteredViolations(data);
   };
-
   const handleProcessViolation = async (id: string, by: "GVCN" | "PGT") => {
     try {
       await api.patch(`/api/violations/${id}/handle`, {
@@ -217,9 +214,7 @@ export default function ViewViolationListPage() {
       console.error("Lỗi khi xử lý vi phạm:", err);
     }
   };
-
   const renderTime = (date: Date) => dayjs(date).format("DD/MM/YYYY");
-
   // ✅ Tổng điểm trừ (chỉ tính PGT xử lý)
   const classTotals: Record<string, number> = {};
   filteredViolations.forEach((v) => {
@@ -336,21 +331,17 @@ export default function ViewViolationListPage() {
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
             {classViolations.map((cls) => (
               <Button
-                key={cls.className}
-                size="small"
-                variant={selectedClassFilter === cls.className ? "contained" : "outlined"}
-                color={
-                  cls.count >= 5 ? "error" : cls.count >= 3 ? "warning" : "primary"
-                }
-                onClick={() => {
-                  setSelectedClassFilter(
-                    selectedClassFilter === cls.className ? null : cls.className
-                  );
-                  setTimeout(() => applyFilters(), 0);
-                }}
-              >
-                {`${cls.className} (${cls.count})`}
-              </Button>
+          key={cls.className}
+          variant={buttonClass === cls.className ? "contained" : "outlined"}
+          color="error"
+          size="small"
+          onClick={() => {
+            setButtonClass(cls.className);
+            fetchViolations(selectedWeek, cls.className); // tự động tải
+          }}
+        >
+          {cls.className} ({cls.count})
+        </Button>
             ))}
           </Box>
         </Box>
