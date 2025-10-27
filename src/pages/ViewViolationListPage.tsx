@@ -1,4 +1,4 @@
-xem ky doan code va xử ly theo yeu cầu la click vao cac button lop co hs vi pham th i tự hien thi dnah sach k cần bam ap dung còn ap dung chi danh cho cac combobox 
+
 // ✅ src/pages/ViewViolationListPage.tsx
 import { useState, useEffect } from "react";
 import {
