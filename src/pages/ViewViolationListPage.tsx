@@ -65,6 +65,10 @@ export default function ViewViolationListPage() {
     severity: "info" as "info" | "warning" | "error" | "success",
   });
 
+  // ✅ Thêm state cho danh sách lớp có vi phạm
+  const [classViolations, setClassViolations] = useState<{ className: string; count: number }[]>([]);
+  const [selectedClassFilter, setSelectedClassFilter] = useState<string | null>(null);
+
   useEffect(() => {
     fetchSetting();
     fetchClasses();
@@ -76,11 +80,26 @@ export default function ViewViolationListPage() {
     applyFilters(allViolations);
   }, [selectedClass, selectedWeek, selectedDate, viewMode]);
 
+  useEffect(() => {
+    if (allViolations.length > 0) {
+      const grouped = allViolations.reduce((acc: Record<string, number>, v) => {
+        if (!v.className) return acc;
+        acc[v.className] = (acc[v.className] || 0) + 1;
+        return acc;
+      }, {});
+      const result = Object.entries(grouped).map(([className, count]) => ({
+        className,
+        count,
+      }));
+      setClassViolations(result);
+    }
+  }, [allViolations]);
+
   const fetchSetting = async () => {
     try {
       const res = await api.get("/api/settings");
       setLimitGVCN(res.data?.limitGVCNHandling ?? false);
-      setClassViolationLimit(res.data?.classViolationLimit ?? 0); // ✅ thêm dòng này
+      setClassViolationLimit(res.data?.classViolationLimit ?? 0);
     } catch (err) {
       console.error("Lỗi khi lấy setting:", err);
     }
@@ -152,6 +171,11 @@ export default function ViewViolationListPage() {
       );
     }
 
+    // ✅ Lọc theo lớp khi click button trong danh sách lớp
+    if (selectedClassFilter) {
+      data = data.filter((v) => v.className === selectedClassFilter);
+    }
+
     setFilteredViolations(data);
   };
 
@@ -187,33 +211,29 @@ export default function ViewViolationListPage() {
       </Typography>
 
       <Box sx={{ mb: 3 }}>
-  <Typography variant="body2" color="textSecondary">
-    Nếu GVCN đã xử lý vi phạm của học sinh vui lòng check vào nút 
-    <strong> "GVCN tiếp nhận"</strong>. Xin cám ơn.
-  </Typography>
-
-  <Alert 
-    severity="warning" 
-    variant="outlined" 
-    sx={{ 
-      mt: 2, 
-      textAlign: "left", 
-      whiteSpace: "pre-line", 
-      fontSize: "0.9rem",
-      borderColor: "#ffb300",
-      backgroundColor: "#fff8e1",
-    }}
-  >
-    <strong style={{ color: "#e65100" }}>* Thầy/cô GVCN vui lòng chú ý :</strong>
-    {`\n
-    - Nếu thầy/cô GVCN đã xử lý vi phạm của học sinh vui lòng check vào nút "GVCN tiếp nhận".
-    - Phần duyệt học sinh vi phạm, mỗi học sinh chỉ được duyệt 1 lần, từ lần thứ 2 trở đi bắt buộc bị trừ điểm thi đua của lớp.
-    - Về phần mỗi lớp, sau khi có 5 học sinh được GVCN tiếp nhận xử lý thì lần vi phạm thứ 6 của lớp sẽ bắt buộc trừ điểm thi đua lớp.
-    * Các phần duyệt xử lý trên đã được BGH thông qua và PGT sẽ áp dụng để tính điểm thi đua.
-    Cách tính điểm trên để công bằng hơn trong việc tính điểm thi đua cho các lớp ít vi phạm và nhiều vi phạm. 
-      Xin cám ơn thầy/cô GVCN!`}
-  </Alert>
-</Box>
+        
+        <Alert 
+          severity="warning" 
+          variant="outlined" 
+          sx={{ 
+            mt: 2, 
+            textAlign: "left", 
+            whiteSpace: "pre-line", 
+            fontSize: "0.9rem",
+            borderColor: "#ffb300",
+            backgroundColor: "#fff8e1",
+          }}
+        >
+          <strong style={{ color: "#e65100" }}>* Thầy/cô GVCN vui lòng chú ý :</strong>
+          {`\n
+          - Nếu thầy/cô GVCN đã xử lý vi phạm của học sinh vui lòng check vào nút "GVCN tiếp nhận".
+          - Phần duyệt học sinh vi phạm, mỗi học sinh chỉ được duyệt 1 lần, từ lần thứ 2 trở đi bắt buộc bị trừ điểm thi đua của lớp.
+          - Về phần mỗi lớp, sau khi có 5 học sinh được GVCN tiếp nhận xử lý thì lần vi phạm thứ 6 của lớp sẽ bắt buộc trừ điểm thi đua lớp.
+          * Các phần duyệt xử lý trên đã được BGH thông qua và PGT sẽ áp dụng để tính điểm thi đua.
+          Cách tính điểm trên để công bằng hơn trong việc tính điểm thi đua cho các lớp ít vi phạm và nhiều vi phạm. 
+            Xin cám ơn thầy/cô GVCN!`}
+        </Alert>
+      </Box>
       
       {/* --- Bộ lọc --- */}
       <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
@@ -255,7 +275,7 @@ export default function ViewViolationListPage() {
             >
               {weeks.map((w: any) => (
                 <MenuItem key={w.weekNumber} value={w.weekNumber}>
-                  Tuần {w.weekNumber} (Tuần hiện tại) ({dayjs(w.startDate).format("DD/MM")} -{" "}
+                  Tuần {w.weekNumber} ({dayjs(w.startDate).format("DD/MM")} -{" "}
                   {dayjs(w.endDate).format("DD/MM")})
                 </MenuItem>
               ))}
@@ -277,6 +297,41 @@ export default function ViewViolationListPage() {
           Áp dụng
         </Button>
       </Stack>
+
+      {/* ✅ DANH SÁCH LỚP CÓ HỌC SINH VI PHẠM */}
+      {classViolations.length > 0 && (
+        <Box sx={{ mt: 3, mb: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{ mb: 1, fontWeight: 600, color: "#1565c0" }}
+          >
+            Các lớp có học sinh vi phạm:
+          </Typography>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+            {classViolations.map((cls) => (
+              <Button
+                key={cls.className}
+                size="small"
+                variant={selectedClassFilter === cls.className ? "contained" : "outlined"}
+                color={
+                  cls.count >= 5 ? "error" : cls.count >= 3 ? "warning" : "primary"
+                }
+                onClick={() => {
+                  setSelectedClassFilter(
+                    selectedClassFilter === cls.className ? null : cls.className
+                  );
+                  setTimeout(() => applyFilters(), 0);
+                }}
+              >
+                {`${cls.className} (${cls.count})`}
+              </Button>
+            ))}
+          </Box>
+        </Box>
+      )}
+
+      {/* --- Bảng dữ liệu --- */}
+
 
       {/* --- Bảng dữ liệu --- */}
       <Paper elevation={3} sx={{ width: "100%", overflowX: "auto" }}>
