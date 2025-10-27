@@ -190,7 +190,13 @@ export default function ViewViolationListPage() {
         Nếu GVCN đã xử lý vi phạm của học sinh vui lòng check vào nút{" "}
         <b>"GVCN tiếp nhận"</b>. Xin cám ơn.
       </Typography>
-
+      <Typography variant="body2" color="textSecondary" sx={{ mt: 1, whiteSpace: "pre-line", textAlign: "left" }}>
+  {`* GVCN vui lòng chú ý :
+- Phần duyệt học sinh vi phạm, mỗi học sinh chỉ được duyệt 1 lần, từ lần thứ 2 trở đi bắt buộc bị trừ điểm thi đua của lớp.
+- Về phần mỗi lớp, sau khi có 5 học sinh được GVCN tiếp nhận xử lý thì lần vi phạm thứ 6 của lớp sẽ bắt buộc trừ điểm thi đua lớp.
+Các phần duyệt xử lý trên đã được BGH thông qua và PGT sẽ áp dụng để tính điểm thi đua.
+  Xin cám ơn!`}
+</Typography>
       {/* --- Bộ lọc --- */}
       <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
         <TextField
