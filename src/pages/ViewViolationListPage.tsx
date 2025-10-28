@@ -318,10 +318,6 @@ export default function ViewViolationListPage() {
             sx={{ minWidth: 180 }}
           />
         )}
-
-        <Button variant="contained" onClick={() => applyFilters()}>
-          Áp dụng
-        </Button>
       </Stack>
 
       {/* --- Bảng dữ liệu --- */}
