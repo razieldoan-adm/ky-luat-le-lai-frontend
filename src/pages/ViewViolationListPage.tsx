@@ -60,7 +60,7 @@ export default function ViewViolationListPage() {
   // ✅ Cài đặt giới hạn GVCN
   const [limitGVCN, setLimitGVCN] = useState(false);
   const [classViolationLimit, setClassViolationLimit] = useState<number>(0);
-  const [classViolations, setClassViolations] = useState<{ className: string; count: number }[]>([]);
+  const [setClassViolations] = useState<{ className: string; count: number }[]>([]);
   
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -69,7 +69,7 @@ export default function ViewViolationListPage() {
   });
 
   // ✅ Thêm state cho danh sách lớp có vi phạm
-  const [selectedClassFilter, setSelectedClassFilter] = useState<string | null>(null);
+  const [selectedClassFilter] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSetting();
