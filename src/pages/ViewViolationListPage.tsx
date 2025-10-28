@@ -67,7 +67,7 @@ export default function ViewViolationListPage() {
   });
 
   // ✅ Thêm state cho danh sách lớp có vi phạm
-  
+  const [selectedClassFilter, setSelectedClassFilter] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSetting();
