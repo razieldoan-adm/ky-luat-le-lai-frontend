@@ -107,21 +107,8 @@ export default function ViewViolationListPage() {
     );
   }
 
-  // 🔹 Gom nhóm theo lớp trong phạm vi đã lọc
-  const grouped = filtered.reduce((acc: Record<string, number>, v) => {
-    if (!v.className) return acc;
-    acc[v.className] = (acc[v.className] || 0) + 1;
-    return acc;
-  }, {});
 
-  const result = Object.entries(grouped).map(([className, count]) => ({
-    className,
-    count,
-  }));
-
-  setClassViolations(result);
-}, [allViolations, selectedWeek, selectedDate, viewMode, weeks]);
-
+ 
   const fetchSetting = async () => {
     try {
       const res = await api.get("/api/settings");
