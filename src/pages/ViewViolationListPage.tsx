@@ -67,8 +67,7 @@ export default function ViewViolationListPage() {
   });
 
   // ✅ Thêm state cho danh sách lớp có vi phạm
-  const [classViolations, setClassViolations] = useState<{ className: string; count: number }[]>([]);
-  const [selectedClassFilter, setSelectedClassFilter] = useState<string | null>(null);
+  
 
   useEffect(() => {
     fetchSetting();
@@ -324,41 +323,6 @@ export default function ViewViolationListPage() {
           Áp dụng
         </Button>
       </Stack>
-
-      {/* ✅ DANH SÁCH LỚP CÓ HỌC SINH VI PHẠM */}
-      {classViolations.length > 0 && (
-        <Box sx={{ mt: 3, mb: 2 }}>
-          <Typography
-            variant="body2"
-            sx={{ mb: 1, fontWeight: 600, color: "#1565c0" }}
-          >
-            Các lớp có học sinh vi phạm:
-          </Typography>
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-            {classViolations.map((cls) => (
-              <Button
-                key={cls.className}
-                size="small"
-                variant={selectedClassFilter === cls.className ? "contained" : "outlined"}
-                color={
-                  cls.count >= 5 ? "error" : cls.count >= 3 ? "warning" : "primary"
-                }
-                onClick={() => {
-                  setSelectedClassFilter(
-                    selectedClassFilter === cls.className ? null : cls.className
-                  );
-                  setTimeout(() => applyFilters(), 0);
-                }}
-              >
-                {`${cls.className} (${cls.count})`}
-              </Button>
-            ))}
-          </Box>
-        </Box>
-      )}
-
-      {/* --- Bảng dữ liệu --- */}
-
 
       {/* --- Bảng dữ liệu --- */}
       <Paper elevation={3} sx={{ width: "100%", overflowX: "auto" }}>
