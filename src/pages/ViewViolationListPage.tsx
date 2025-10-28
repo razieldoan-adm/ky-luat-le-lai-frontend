@@ -60,6 +60,8 @@ export default function ViewViolationListPage() {
   // ✅ Cài đặt giới hạn GVCN
   const [limitGVCN, setLimitGVCN] = useState(false);
   const [classViolationLimit, setClassViolationLimit] = useState<number>(0);
+  const [classViolations, setClassViolations] = useState<{ className: string; count: number }[]>([]);
+  
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
