@@ -106,7 +106,7 @@ export default function ViewViolationListPage() {
       dayjs(v.time).isSame(dayjs(selectedDate), "day")
     );
   }
-
+}, [allViolations, selectedWeek, selectedDate, viewMode, weeks]); // ✅ Thêm dòng này
 
  
   const fetchSetting = async () => {
