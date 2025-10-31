@@ -66,61 +66,41 @@ export default function ClassAttendanceSummaryPage() {
 
   // 🔹 Hàm load dữ liệu chuyên cần
   const handleLoadData = async () => {
-    try {
-      if (!selectedWeek) {
-        setSnackbar({ open: true, message: "Vui lòng chọn tuần!", severity: "error" });
-        return;
-      }
-
-      const week = weeks.find((w) => w._id === selectedWeek);
-      if (!week) {
-        setSnackbar({ open: true, message: "Không tìm thấy tuần!", severity: "error" });
-        return;
-      }
-
-      // 1️⃣ Lấy toàn bộ lớp
-      const classRes = await api.get("/api/classes");
-      const allClasses = classRes.data?.classes || classRes.data || [];
-
-      // 2️⃣ Lấy danh sách nghỉ học trong tuần
-      const res = await api.get("/api/class-attendance-summaries/weekly-summary", {
-        params: { weekNumber: week.weekNumber },
-      });
-      const records = res.data?.records || [];
-
-      // 3️⃣ Gom nhóm số lần nghỉ học không phép theo lớp
-      const grouped: Record<string, number> = {};
-
-      records.forEach((r: AttendanceRecord) => {
-        const cls = r.className?.trim();
-        if (!cls) return;
-
-        // chỉ tính nghỉ không phép
-        if (!r.present && !r.permission) {
-          grouped[cls] = (grouped[cls] || 0) + 1;
-        }
-      });
-
-      // 4️⃣ Tạo bảng tổng hợp: mỗi lớp = số lần nghỉ * hệ số (âm)
-      const formatted = allClasses.map((cls: any, index: number) => {
-        const className = cls.name || cls.className || `Lớp ${index + 1}`;
-        const absentCount = grouped[className] || 0;
-
-        return {
-          id: index + 1,
-          className,
-          absentCount,
-          total: absentCount * multiplier, // ✅ điểm trừ
-        };
-      });
-
-      setSummaries(formatted);
-      setSnackbar({ open: true, message: "✅ Đã tải dữ liệu chuyên cần.", severity: "success" });
-    } catch (err) {
-      console.error("❌ Lỗi load dữ liệu chuyên cần:", err);
-      setSnackbar({ open: true, message: "Không thể tải dữ liệu chuyên cần của tuần!", severity: "error" });
+  try {
+    if (!selectedWeek) {
+      setSnackbar({ open: true, message: "Vui lòng chọn tuần!", severity: "error" });
+      return;
     }
-  };
+
+    const week = weeks.find((w) => w._id === selectedWeek);
+    if (!week) {
+      setSnackbar({ open: true, message: "Không tìm thấy tuần!", severity: "error" });
+      return;
+    }
+
+    // 2️⃣ Gọi API tổng hợp nghỉ học trong tuần (đã gom nhóm sẵn)
+    const res = await api.get("/api/class-attendance-summaries/weekly-summary", {
+      params: { weekNumber: week.weekNumber },
+    });
+
+    const results = res.data?.results || [];
+
+    // 3️⃣ Tạo bảng tổng hợp: mỗi lớp = số lần nghỉ * hệ số
+    const formatted = results.map((cls: any, index: number) => ({
+      id: index + 1,
+      className: cls.className,
+      absentCount: cls.absences || 0,
+      total: (cls.absences || 0) * multiplier,
+    }));
+
+    setSummaries(formatted);
+    setSnackbar({ open: true, message: "✅ Đã tải dữ liệu chuyên cần.", severity: "success" });
+  } catch (err) {
+    console.error("❌ Lỗi load dữ liệu chuyên cần:", err);
+    setSnackbar({ open: true, message: "Không thể tải dữ liệu chuyên cần của tuần!", severity: "error" });
+  }
+};
+
 
   // 🔹 Lưu điểm vào ClassWeeklyScore
   const handleSave = async () => {
