@@ -70,7 +70,7 @@ const WeeklyScoresPage: React.FC = () => {
       data = data.map((item) => {
         const discipline =
           settings.maxDiscipline -
-          ((item.attendanceScore ?? 0) * 5 +
+          ((item.attendanceScore ?? 0) +
             (item.violationScore ?? 0) +
             (item.hygieneScore ?? 0) +
             (item.lineUpScore ?? 0));
