@@ -110,7 +110,7 @@ export default function ClassAttendanceSummaryPage() {
           id: index + 1,
           className,
           absentCount,
-          total: absentCount * multiplier * -1, // ✅ điểm trừ
+          total: absentCount * multiplier, // ✅ điểm trừ
         };
       });
 
