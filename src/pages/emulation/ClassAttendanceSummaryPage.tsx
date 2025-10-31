@@ -31,14 +31,6 @@ interface SummaryRow {
   total: number;
 }
 
-interface AttendanceRecord {
-  className: string;
-  present: boolean;
-  excuse: boolean;
-  date: string;
-  permission?: boolean; // ✅ thêm dòng này
-}
-
 export default function ClassAttendanceSummaryPage() {
   const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<string>("");
