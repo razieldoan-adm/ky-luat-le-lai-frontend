@@ -83,7 +83,7 @@ export default function ClassAttendanceSummaryPage() {
       const allClasses = classRes.data?.classes || classRes.data || [];
 
       // 2️⃣ Lấy danh sách nghỉ học trong tuần
-      const res = await api.get("/api/class-attendance-summaries/by-week", {
+      const res = await api.get("/api/class-attendance-summaries/weekly-summary", {
         params: { weekNumber: week.weekNumber },
       });
       const records = res.data?.records || [];
