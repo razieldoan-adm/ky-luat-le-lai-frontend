@@ -4,10 +4,8 @@ import {
   Typography,
   TextField,
   Button,
-
   Table,
   TableHead,
-
   TableRow,
   TableCell,
   TableBody,
@@ -174,7 +172,6 @@ export default function ClassAttendanceSummaryPage() {
           {weeks.map((w) => (
             <MenuItem key={w._id} value={w._id}>
               Tuần {w.weekNumber}
-
             </MenuItem>
           ))}
         </TextField>
@@ -197,7 +194,8 @@ export default function ClassAttendanceSummaryPage() {
       </Box>
 
       <Paper>
-@@ -199,35 +84,20 @@ export default function ClassAttendanceSummaryPage() {
+        <Table>
+          <TableHead>
             <TableRow>
               <TableCell>STT</TableCell>
               <TableCell>Lớp</TableCell>
