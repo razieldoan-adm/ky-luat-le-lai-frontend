@@ -69,9 +69,13 @@ export default function ViewHygieneDisciplinePage() {
 useEffect(() => {
   loadWeeks();
   loadClasses();
-  loadRecords();
-  loadAbsences();
 }, []);
+  useEffect(() => {
+  if (selectedWeek) {
+    loadRecords(selectedWeek, selectedClass || undefined);
+    loadAbsences(selectedWeek, selectedClass || undefined);
+  }
+}, [selectedWeek, selectedClass]);
 
   // --- Load tuần học + tuần hiện tại
   const loadWeeks = async () => {
