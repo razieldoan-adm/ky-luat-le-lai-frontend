@@ -3,10 +3,6 @@ import {
   Box,
   Typography,
   Paper,
-
-
-
-
   Table,
   TableHead,
   TableRow,
@@ -59,18 +55,11 @@ export default function ViewHygieneDisciplinePage() {
   const [absences, setAbsences] = useState<Absence[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingAbsence, setLoadingAbsence] = useState(false);
-
   const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
   const [currentWeek, setCurrentWeek] = useState<number | null>(null);
-
   const [classes, setClasses] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("");
-
-
-
-
-
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -87,28 +76,6 @@ export default function ViewHygieneDisciplinePage() {
       console.error("Lỗi khi tải danh sách tuần:", err);
       setWeeks([]);
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     try {
       const cur = await api.get("/api/academic-weeks/current");
       const wk = cur.data?.weekNumber ?? null;
@@ -169,24 +136,32 @@ export default function ViewHygieneDisciplinePage() {
 
 
   // --- Load danh sách nghỉ học không phép
-  const loadAbsences = async (weekNumber?: number, className?: string) => {
-    setLoadingAbsence(true);
-    try {
-      const params: any = {};
-      if (weekNumber) params.weekNumber = weekNumber;
-      if (className) params.className = className;
-      params.permission = false; // thay cho params.excused
-      const res = await api.get("/api/class-attendance-summaries/unexcused", { params });
-      setAbsences(res.data || []);
-    } catch (err) {
-      console.error("Lỗi khi tải danh sách nghỉ học:", err);
-      setAbsences([]);
-    } finally {
-      setLoadingAbsence(false);
+const loadAbsences = async (weekNumber?: number, className?: string) => {
+  setLoadingAbsence(true);
+  try {
+    const params: any = { permission: false };
+
+    // Tìm tuần tương ứng trong danh sách
+    if (weekNumber) {
+      const week = weeks.find((w) => w.weekNumber === weekNumber);
+      if (week) {
+        params.startDate = dayjs(week.startDate).format("YYYY-MM-DD");
+        params.endDate = dayjs(week.endDate).format("YYYY-MM-DD");
+      }
+      params.weekNumber = weekNumber;
     }
-  };
 
+    if (className) params.className = className;
 
+    const res = await api.get("/api/class-attendance-summaries/unexcused", { params });
+    setAbsences(res.data || []);
+  } catch (err) {
+    console.error("Lỗi khi tải danh sách nghỉ học:", err);
+    setAbsences([]);
+  } finally {
+    setLoadingAbsence(false);
+  }
+};
   useEffect(() => {
     loadWeeks();
     loadClasses();
@@ -247,10 +222,6 @@ export default function ViewHygieneDisciplinePage() {
             label="Chọn tuần"
             value={selectedWeek}
             onChange={handleWeekChange}
-
-
-
-
           >
             <MenuItem value="">
               {currentWeek
@@ -273,21 +244,8 @@ export default function ViewHygieneDisciplinePage() {
           <Select
             labelId="class-select-label"
             label="Chọn lớp"
-
-
-
-
-
-
-
-
-
             value={selectedClass}
             onChange={handleClassChange}
-
-
-
-
           >
             <MenuItem value="">Tất cả lớp</MenuItem>
             {classes.map((cls) => (
