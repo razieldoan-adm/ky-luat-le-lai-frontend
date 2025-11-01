@@ -70,12 +70,15 @@ useEffect(() => {
   loadWeeks();
   loadClasses();
 }, []);
-  useEffect(() => {
-  if (selectedWeek) {
-    loadRecords(selectedWeek, selectedClass || undefined);
-    loadAbsences(selectedWeek, selectedClass || undefined);
+
+// 🔹 Khi đã xác định được tuần hiện tại hoặc khi user đổi tuần/lớp → load dữ liệu
+useEffect(() => {
+  const week = selectedWeek || currentWeek;
+  if (week) {
+    loadRecords(week, selectedClass || undefined);
+    loadAbsences(week, selectedClass || undefined);
   }
-}, [selectedWeek, selectedClass]);
+}, [currentWeek, selectedWeek, selectedClass]);
 
   // --- Load tuần học + tuần hiện tại
   const loadWeeks = async () => {
@@ -91,8 +94,7 @@ useEffect(() => {
       const wk = cur.data?.weekNumber ?? null;
       setCurrentWeek(wk);
       setSelectedWeek(wk ?? "");
-      await loadRecords(wk ?? undefined, selectedClass || undefined);
-      await loadAbsences(wk ?? undefined, selectedClass || undefined);
+
     } catch (err) {
       console.error("Lỗi khi tải tuần hiện tại:", err);
       setCurrentWeek(null);
