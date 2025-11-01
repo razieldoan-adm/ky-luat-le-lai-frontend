@@ -66,6 +66,12 @@ export default function ViewHygieneDisciplinePage() {
     severity: "info" as "info" | "success" | "error" | "warning",
   });
 
+  useEffect(() => {
+  // nếu selectedWeek đã có giá trị (ví dụ tuần hiện tại), gọi luôn API
+  if (selectedWeek) {
+    fetchUnexcusedList();
+  }
+}, []); // <-- chỉ chạy 1 lần khi trang load
 
   // --- Load tuần học + tuần hiện tại
   const loadWeeks = async () => {
