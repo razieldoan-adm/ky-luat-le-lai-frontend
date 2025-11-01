@@ -435,35 +435,62 @@ export default function AllViolationStudentPage() {
                   <TableCell>{v.description}</TableCell>
                   <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
                   <TableCell>{v.handlingMethod || '—'}</TableCell>
-                  <TableCell>{v.handled ? 'Đã xử lý' : 'Chưa xử lý'}</TableCell>
+                  <TableCell>
+  {v.handled
+    ? v.handledBy === "PGT"
+      ? "PGT đã xử lý"
+      : "GVCN đã xử lý"
+    : "Chưa xử lý"}
+</TableCell>
                   <TableCell>{v.handledBy || ''}</TableCell>
                   <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
                   <TableCell>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button variant="outlined" color="error" size="small" onClick={() => handleDeleteViolation(v._id)}>
-                        Xoá
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="secondary"
-                        size="small"
-                        onClick={() => {
-                          setViolationBeingEdited(v);
-                          setEditDialogOpen(true);
-                        }}
-                      >
-                        Sửa
-                      </Button>
-                      <Button
-                        variant={v.handledBy === 'PGT' ? 'contained' : 'outlined'}
-                        color="success"
-                        size="small"
-                        onClick={() => handleProcessViolation(v._id, 'PGT')}
-                      >
-                        PGT
-                      </Button>
-                    </Box>
-                  </TableCell>
+  <Box sx={{ display: "flex", gap: 1 }}>
+    {/* Nút xoá */}
+    <Button
+      variant="outlined"
+      color="error"
+      size="small"
+      onClick={() => handleDeleteViolation(v._id)}
+    >
+      Xoá
+    </Button>
+
+    {/* Nút sửa */}
+    <Button
+      variant="outlined"
+      color="secondary"
+      size="small"
+      onClick={() => {
+        setViolationBeingEdited(v);
+        setEditDialogOpen(true);
+      }}
+    >
+      Sửa
+    </Button>
+
+    {/* Nút GVCN xử lý */}
+    <Button
+      variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
+      color="info"
+      size="small"
+      onClick={() => handleProcessViolation(v._id, "GVCN")}
+    >
+      GVCN
+    </Button>
+
+    {/* Nút PGT xử lý */}
+    <Button
+      variant={v.handledBy === "PGT" ? "contained" : "outlined"}
+      color="success"
+      size="small"
+      onClick={() => handleProcessViolation(v._id, "PGT")}
+    >
+      PGT
+    </Button>
+  </Box>
+</TableCell>
+
                 </TableRow>
               ))
             ) : (
