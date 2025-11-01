@@ -69,6 +69,8 @@ export default function ViewHygieneDisciplinePage() {
 useEffect(() => {
   loadWeeks();
   loadClasses();
+  loadRecords();
+  loadAbsences();
 }, []);
 
   // --- Load tuần học + tuần hiện tại
