@@ -141,7 +141,7 @@ const loadAbsences = async (weekNumber?: number, className?: string) => {
   try {
     const params: any = { permission: false };
 
-    // Tìm tuần tương ứng trong danh sách
+    // 🔹 Tìm tuần đang chọn để lọc theo ngày
     if (weekNumber) {
       const week = weeks.find((w) => w.weekNumber === weekNumber);
       if (week) {
@@ -151,6 +151,7 @@ const loadAbsences = async (weekNumber?: number, className?: string) => {
       params.weekNumber = weekNumber;
     }
 
+    // 🔹 Nếu có chọn lớp, thêm className vào params
     if (className) params.className = className;
 
     const res = await api.get("/api/class-attendance-summaries/unexcused", { params });
@@ -162,6 +163,7 @@ const loadAbsences = async (weekNumber?: number, className?: string) => {
     setLoadingAbsence(false);
   }
 };
+
   useEffect(() => {
     loadWeeks();
     loadClasses();
