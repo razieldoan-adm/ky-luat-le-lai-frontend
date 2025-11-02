@@ -266,19 +266,8 @@ useEffect(() => {
 
       {/* --- Chế độ xem --- */}
       <Stack direction="column" spacing={2} mb={2}>
-        <Stack direction="row" alignItems="center" spacing={2}>
-          <Typography fontWeight="bold">Xem danh sách:</Typography>
-                <ToggleButtonGroup
-                  size="small"
-                  color="primary"
-                  value={viewMode}
-                  exclusive
-                  onChange={(_e, v) => v && setViewMode(v)}
-                >
-                  <ToggleButton value="week">Theo tuần</ToggleButton>
-                </ToggleButtonGroup>
-              </Stack>
-        {viewMode === "week" && (
+      
+       
           <TextField
             label="Chọn tuần"
             select
@@ -293,7 +282,7 @@ useEffect(() => {
               </MenuItem>
             ))}
           </TextField>
-        )}
+       
       </Stack>
 
       {/* --- Hiển thị danh sách nghỉ học theo lớp --- */}
