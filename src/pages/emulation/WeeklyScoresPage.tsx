@@ -113,27 +113,31 @@ const WeeklyScoresPage: React.FC = () => {
   };
 
   // --- Lưu toàn bộ điểm
-  const handleSave = async () => {
-    try {
-      for (const s of scores) {
-        const payload = {
-          _id: s._id,
-          className: s.className,
-          grade: s.grade,
-          weekNumber: s.weekNumber,
-          academicScore: s.academicScore ?? 0,
-          rewardScore: s.rewardScore ?? 0,
-          hygieneScore: s.hygieneScore ?? 0, // thêm dòng này
-        };
-        await api.post("/api/class-weekly-scores/update", payload);
-      }
-      alert("✅ Đã lưu toàn bộ điểm tuần!");
-      loadScores(Number(selectedWeek));
-    } catch (err) {
-      console.error("Lỗi khi lưu:", err);
-      alert("❌ Lỗi khi lưu dữ liệu");
-    }
-  };
+  const handleSaveAll = async () => {
+  try {
+    const payload = {
+      records: scores.map((s) => ({
+        className: s.className,
+        grade: s.grade,
+        weekNumber: selectedWeek,
+        academicScore: s.academicScore ?? 0,
+        rewardScore: s.rewardScore ?? 0,
+        hygieneScore: s.hygieneScore ?? 0,
+        lineupScore: s.lineupScore ?? 0,
+        attendanceScore: s.attendanceScore ?? 0,
+        violationScore: s.violationScore ?? 0,
+      })),
+    };
+
+    const res = await api.post("/api/class-weekly-scores/save-manual", payload);
+    alert(res.data.message);
+    loadScores(selectedWeek);
+  } catch (err) {
+    console.error("❌ Lỗi lưu điểm:", err);
+    alert("❌ Không thể lưu điểm tuần!");
+  }
+};
+
 
   // --- Khi sửa điểm học tập hoặc thưởng
   const handleChangeScore = (
