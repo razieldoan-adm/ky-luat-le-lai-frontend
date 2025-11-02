@@ -267,19 +267,28 @@ useEffect(() => {
       
        
           <TextField
-            label="Chọn tuần"
-            select
-            size="small"
-            value={viewWeek || ""}
-            onChange={(e) => setViewWeek(Number(e.target.value))}
-            sx={{ width: 200 }}
-          >
-            {[...Array(20)].map((_, i) => (
-              <MenuItem key={i + 1} value={i + 1}>
-                Tuần {i + 1}
-              </MenuItem>
-            ))}
-          </TextField>
+  label="Chọn tuần"
+  select
+  size="small"
+  value={viewWeek || ""}
+  onChange={(e) => {
+    const raw = String(e.target.value ?? "");
+    // nếu value có dạng "8:1" thì lấy phần trước dấu ':'; else parseInt
+    const sanitized = raw.includes(":") ? raw.split(":")[0] : raw;
+    const num = parseInt(sanitized.replace(/\D/g, ""), 10);
+    console.log("DEBUG: raw week value:", raw, "=> sanitized:", sanitized, "=> num:", num);
+    if (!isNaN(num)) setViewWeek(num);
+    else setViewWeek(null);
+  }}
+  sx={{ width: 200 }}
+>
+  {[...Array(20)].map((_, i) => (
+    <MenuItem key={i + 1} value={i + 1}>
+      Tuần {i + 1}
+    </MenuItem>
+  ))}
+</TextField>
+
        
       </Stack>
 
