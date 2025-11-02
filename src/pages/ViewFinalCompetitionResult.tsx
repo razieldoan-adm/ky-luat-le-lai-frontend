@@ -27,20 +27,21 @@ interface Week {
 }
 
 interface ScoreRow {
+  _id: string;
   className: string;
   grade: string;
   weekNumber: number;
   academicScore: number;
-  bonusScore: number;          // ✅ tên đúng từ backend
-  violationScore: number;
+  bonusScore: number;        // ✅ Thay cho rewardScore
+  violationScore: number;    // ✅ Thay cho disciplineScore
   hygieneScore: number;
   attendanceScore: number;
-  lineUpScore: number;
+  lineUpScore: number;       // ✅ Thay cho lineupScore
   totalViolation: number;
   totalScore: number;
-  rank: number;
+  rank: number;              // ✅ Thay cho ranking
+  lastUpdated?: string;
 }
-
 
 export default function ViewFinalCompetitionResult() {
   const [weeks, setWeeks] = useState<Week[]>([]);
