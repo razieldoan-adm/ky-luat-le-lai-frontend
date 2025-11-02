@@ -311,7 +311,7 @@ const WeeklyScoresPage: React.FC = () => {
           ))}
         </TextField>
 
-        <Button variant="contained" color="primary" onClick={handleSave}>
+        <Button variant="contained" color="primary" onClick={handleSave}>{loading ? "Đang lưu..." : "💾 Lưu điểm"}
           💾 Lưu điểm
         </Button>
 
@@ -320,7 +320,7 @@ const WeeklyScoresPage: React.FC = () => {
           color="secondary"
           onClick={handleRecalculateRanks}
           disabled={!hasChanges}
-        >
+        >{loading ? "Đang lưu..." : "💾 Đang xếp lại hạng"}
           📊 Xếp hạng
         </Button>
 
