@@ -42,6 +42,20 @@ interface ScoreRow {
   rank: number;              // ✅ Thay cho ranking
   lastUpdated?: string;
 }
+interface ScoreRow {
+  className: string;
+  grade: string;
+  weekNumber: number;
+  academicScore: number;
+  bonusScore: number;  
+  hygieneScore: number;
+  lineupScore: number;
+  attendanceScore: number;
+  violationScore: number;
+  disciplineScore: number;
+  totalScore: number;
+  ranking: number;
+}
 
 export default function ViewFinalCompetitionResult() {
   const [weeks, setWeeks] = useState<Week[]>([]);
