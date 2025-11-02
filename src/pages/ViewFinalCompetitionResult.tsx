@@ -38,7 +38,7 @@ interface ScoreRow {
   violationScore: number;
   disciplineScore: number;
   totalScore: number;
-  ranking: number;
+  rank: number;
 }
 
 export default function ViewFinalCompetitionResult() {
@@ -221,7 +221,7 @@ const fetchScores = async (weekNumber: number) => {
                           <TableCell>{r.violationScore}</TableCell>
                           <TableCell>{r.disciplineScore}</TableCell>
                           <TableCell>{r.totalScore}</TableCell>
-                          <TableCell>{r.ranking || "-"}</TableCell>
+                          <TableCell>{r.rank || "-"}</TableCell>
                         </TableRow>
                       );
                     })}
