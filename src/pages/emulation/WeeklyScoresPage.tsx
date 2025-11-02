@@ -123,6 +123,7 @@ const WeeklyScoresPage: React.FC = () => {
           weekNumber: s.weekNumber,
           academicScore: s.academicScore ?? 0,
           rewardScore: s.rewardScore ?? 0,
+          hygieneScore: s.hygieneScore ?? 0, // thêm dòng này
         };
         await api.post("/api/class-weekly-scores/update", payload);
       }
@@ -215,10 +216,11 @@ const WeeklyScoresPage: React.FC = () => {
             <TableHead>
               <TableRow>
                 <TableCell>Lớp</TableCell>
-                <TableCell align="center">Vệ sinh</TableCell>
+               
                 <TableCell align="center">Xếp hàng</TableCell>
                 <TableCell align="center">Vi phạm</TableCell>
                 <TableCell align="center">Chuyên cần</TableCell>
+                 <TableCell align="center">Vệ sinh</TableCell>
                 <TableCell align="center">Học tập</TableCell>
                 <TableCell align="center">Thưởng</TableCell>
                 <TableCell align="center">Kỷ luật</TableCell>
@@ -230,10 +232,20 @@ const WeeklyScoresPage: React.FC = () => {
               {list.map((row) => (
                 <TableRow key={row.className}>
                   <TableCell>{row.className}</TableCell>
-                  <TableCell align="center">{row.hygieneScore}</TableCell>
                   <TableCell align="center">{row.lineUpScore}</TableCell>
                   <TableCell align="center">{row.violationScore}</TableCell>
                   <TableCell align="center">{row.attendanceScore}</TableCell>
+                  <TableCell align="center">
+                    <TextField
+                      type="number"
+                      value={row.hygieneScore ?? 0}
+                      size="small"
+                      onChange={(e) =>
+                        handleChangeScore(row.className, "hygieneScore", Number(e.target.value))
+                      }
+                      sx={{ width: 80 }}
+                    />
+                  </TableCell>
                   <TableCell align="center">
                     <TextField
                       type="number"
