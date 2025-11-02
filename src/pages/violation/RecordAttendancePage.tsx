@@ -88,8 +88,9 @@ export default function RecordAttendancePage() {
   // --- Lấy danh sách nghỉ học (toàn bộ, không theo lớp)
   const fetchRecords = async () => {
   try {
+    const today = new Date().toISOString().split("T")[0];
     const res = await api.get("/api/class-attendance-summaries/by-week", {
-      params: { week: viewWeek },
+      params: { week: viewWeek, date: today },
     });
     const data = res.data.records || res.data || [];
     setRecords(Array.isArray(data) ? data : []);
@@ -98,6 +99,7 @@ export default function RecordAttendancePage() {
     setRecords([]);
   }
 };
+
 
 // --- Gọi lại khi bộ lọc thay đổi
 useEffect(() => {
