@@ -28,6 +28,7 @@ const WeeklyScoresPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<{ maxDiscipline: number }>({ maxDiscipline: 100 });
   const [hasChanges, setHasChanges] = useState(false);
+  const [loadingRank, setLoadingRank] = useState(false);
 
   // --- Load danh sách tuần & tuần hiện tại
   useEffect(() => {
@@ -180,8 +181,10 @@ const WeeklyScoresPage: React.FC = () => {
 
   // --- Cập nhật lại thứ hạng (đồng hạng) ---
   const handleRecalculateRanks = () => {
-    if (!scores.length) return;
+  if (!scores.length) return;
+  setLoadingRank(true);
 
+  setTimeout(() => {
     const grades = ["6", "7", "8", "9"];
     const updated = [...scores];
 
@@ -192,7 +195,7 @@ const WeeklyScoresPage: React.FC = () => {
       let currentRank = 1;
       filtered.forEach((d, i) => {
         if (i > 0 && d.totalScore === filtered[i - 1].totalScore) {
-          d.rank = filtered[i - 1].rank; // đồng hạng với lớp trước
+          d.rank = filtered[i - 1].rank;
         } else {
           d.rank = currentRank;
         }
@@ -311,18 +314,19 @@ const WeeklyScoresPage: React.FC = () => {
           ))}
         </TextField>
 
-        <Button variant="contained" color="primary" onClick={handleSave}>{loading ? "Đang lưu..." : "💾 Lưu điểm"}
+        <Button variant="contained" color="primary" onClick={handleSave}>
           💾 Lưu điểm
         </Button>
 
         <Button
-          variant="outlined"
-          color="secondary"
-          onClick={handleRecalculateRanks}
-          disabled={!hasChanges}
-        >{loading ? "Đang lưu..." : "💾 Đang xếp lại hạng"}
-          📊 Xếp hạng
-        </Button>
+  variant="outlined"
+  color="secondary"
+  onClick={handleRecalculateRanks}
+  disabled={!hasChanges || loadingRank}
+>
+  {loadingRank ? "⏳ Đang xếp hạng..." : "📊 Xếp hạng"}
+</Button>
+
 
         <Button variant="outlined" color="success" onClick={handleExport}>
           📤 Xuất Excel
