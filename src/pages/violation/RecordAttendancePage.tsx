@@ -19,6 +19,8 @@ import {
   Alert,
   IconButton,
   Autocomplete,
+  ToggleButtonGroup,
+  ToggleButton,
 } from "@mui/material";
 import { Check, Delete } from "@mui/icons-material";
 import dayjs from "dayjs";
@@ -38,7 +40,8 @@ export default function RecordAttendancePage() {
 
   // 🔹 Dữ liệu xem danh sách
   const [records, setRecords] = useState<any[]>([]);
-
+  const [viewMode, setViewMode] = useState<"day" | "week">("day");
+  const [viewDate, setViewDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [viewWeek, setViewWeek] = useState<number | null>(null);
   const [selectedClassView, setSelectedClassView] = useState<string | null>(null);
 
@@ -83,33 +86,30 @@ export default function RecordAttendancePage() {
   }, [studentInput, className]);
 
   // --- Lấy danh sách nghỉ học (toàn bộ, không theo lớp)
-const fetchRecords = async () => {
-  try {
-    // bảo vệ: nếu viewWeek không phải số dương thì không gửi request
-    const weekNum = Number(viewWeek);
-    if (!weekNum || isNaN(weekNum) || weekNum <= 0) {
-      console.warn("fetchRecords: invalid viewWeek, skip fetch:", viewWeek);
+  const fetchRecords = async () => {
+    try {
+      const endpoint =
+        viewMode === "week"
+          ? `/api/class-attendance-summaries/by-week`
+          : `/api/class-attendance-summaries/by-date`;
+
+      const params: any = {
+        date: dayjs(viewDate).format("YYYY-MM-DD"),
+      };
+
+      const res = await api.get(endpoint, { params });
+      const data = res.data.records || res.data || [];
+      setRecords(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("❌ Lỗi tải danh sách:", err);
       setRecords([]);
-      return;
     }
-
-    const endpoint = `/api/class-attendance-summaries/by-week`;
-    const params: any = { week: weekNum };
-
-    const res = await api.get(endpoint, { params });
-    const data = res.data.records || res.data || [];
-    setRecords(Array.isArray(data) ? data : []);
-  } catch (err) {
-    console.error("❌ Lỗi tải danh sách:", err);
-    setRecords([]);
-  }
-};
-
+  };
 
   // --- Gọi lại khi bộ lọc thay đổi
-useEffect(() => {
-  if (viewWeek) fetchRecords();
-}, [viewWeek]);
+  useEffect(() => {
+    if (viewDate) fetchRecords();
+  }, [viewMode, viewDate]);
 
   // --- Ghi nhận nghỉ học
   const handleRecord = async () => {
@@ -273,32 +273,46 @@ useEffect(() => {
 
       {/* --- Chế độ xem --- */}
       <Stack direction="column" spacing={2} mb={2}>
-      
-       
-          <TextField
-  label="Chọn tuần"
-  select
-  size="small"
-  value={viewWeek || ""}
-  onChange={(e) => {
-    const raw = String(e.target.value ?? "");
-    // nếu value có dạng "8:1" thì lấy phần trước dấu ':'; else parseInt
-    const sanitized = raw.includes(":") ? raw.split(":")[0] : raw;
-    const num = parseInt(sanitized.replace(/\D/g, ""), 10);
-    console.log("DEBUG: raw week value:", raw, "=> sanitized:", sanitized, "=> num:", num);
-    if (!isNaN(num)) setViewWeek(num);
-    else setViewWeek(null);
-  }}
-  sx={{ width: 200 }}
->
-  {[...Array(20)].map((_, i) => (
-    <MenuItem key={i + 1} value={i + 1}>
-      Tuần {i + 1}
-    </MenuItem>
-  ))}
-</TextField>
+        <Stack direction="row" alignItems="center" spacing={2}>
+          <Typography fontWeight="bold">Xem danh sách:</Typography>
+          <ToggleButtonGroup
+            size="small"
+            color="primary"
+            value={viewMode}
+            exclusive
+            onChange={(_e, v) => v && setViewMode(v)}
+          >
+            <ToggleButton value="week">Theo tuần</ToggleButton>
+          </ToggleButtonGroup>
+        </Stack>
 
-       
+        {viewMode === "day" && (
+          <TextField
+            label="Chọn ngày xem"
+            type="date"
+            size="small"
+            value={viewDate}
+            onChange={(e) => setViewDate(e.target.value)}
+            sx={{ width: 200 }}
+          />
+        )}
+
+        {viewMode === "week" && (
+          <TextField
+            label="Chọn tuần"
+            select
+            size="small"
+            value={viewWeek || ""}
+            onChange={(e) => setViewWeek(Number(e.target.value))}
+            sx={{ width: 200 }}
+          >
+            {[...Array(20)].map((_, i) => (
+              <MenuItem key={i + 1} value={i + 1}>
+                Tuần {i + 1}
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
       </Stack>
 
       {/* --- Hiển thị danh sách nghỉ học theo lớp --- */}
