@@ -18,6 +18,8 @@ import {
   Alert,
   IconButton,
   Autocomplete,
+  ToggleButtonGroup,
+  ToggleButton,
 } from "@mui/material";
 import { Check, Delete } from "@mui/icons-material";
 import dayjs from "dayjs";
@@ -37,7 +39,9 @@ export default function RecordAttendancePage() {
 
   // 🔹 Dữ liệu xem danh sách
   const [records, setRecords] = useState<any[]>([]);
-  const [viewWeek, setViewWeek] = useState<number>(1);
+  const [viewMode, setViewMode] = useState<"day" | "week">("day");
+  const [viewDate, setViewDate] = useState(dayjs().format("YYYY-MM-DD"));
+  const [viewWeek, setViewWeek] = useState<number | null>(null);
   const [selectedClassView, setSelectedClassView] = useState<string | null>(null);
 
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: any }>({
@@ -46,7 +50,7 @@ export default function RecordAttendancePage() {
     severity: "success",
   });
 
-  // --- Load danh sách lớp
+  // --- Load danh sách lớp (chỉ phục vụ ghi nhận)
   useEffect(() => {
     const loadClasses = async () => {
       try {
@@ -80,12 +84,19 @@ export default function RecordAttendancePage() {
     return () => clearTimeout(t);
   }, [studentInput, className]);
 
-  // --- Lấy danh sách nghỉ học theo tuần
+  // --- Lấy danh sách nghỉ học (toàn bộ, không theo lớp)
   const fetchRecords = async () => {
     try {
-      const res = await api.get("/api/class-attendance-summaries/by-week", {
-        params: { weekNumber: viewWeek },
-      });
+      const endpoint =
+        viewMode === "week"
+          ? `/api/class-attendance-summaries/by-week`
+          : `/api/class-attendance-summaries/by-date`;
+
+      const params: any = {
+        date: dayjs(viewDate).format("YYYY-MM-DD"),
+      };
+
+      const res = await api.get(endpoint, { params });
       const data = res.data.records || res.data || [];
       setRecords(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -94,10 +105,10 @@ export default function RecordAttendancePage() {
     }
   };
 
-  // --- Gọi lại khi tuần thay đổi
+  // --- Gọi lại khi bộ lọc thay đổi
   useEffect(() => {
-    if (viewWeek) fetchRecords();
-  }, [viewWeek]);
+    if (viewDate) fetchRecords();
+  }, [viewMode, viewDate]);
 
   // --- Ghi nhận nghỉ học
   const handleRecord = async () => {
@@ -259,28 +270,54 @@ export default function RecordAttendancePage() {
         </Stack>
       </Paper>
 
-      {/* --- Xem danh sách theo tuần --- */}
-      <Stack direction="row" alignItems="center" spacing={2} mb={2}>
-        <Typography fontWeight="bold">Chọn tuần xem:</Typography>
-        <TextField
-          select
-          size="small"
-          value={viewWeek}
-          onChange={(e) => setViewWeek(Number(e.target.value))}
-          sx={{ width: 200 }}
-        >
-          {[...Array(20)].map((_, i) => (
-            <MenuItem key={i + 1} value={i + 1}>
-              Tuần {i + 1}
-            </MenuItem>
-          ))}
-        </TextField>
+      {/* --- Chế độ xem --- */}
+      <Stack direction="column" spacing={2} mb={2}>
+        <Stack direction="row" alignItems="center" spacing={2}>
+          <Typography fontWeight="bold">Xem danh sách:</Typography>
+          <ToggleButtonGroup
+            size="small"
+            color="primary"
+            value={viewMode}
+            exclusive
+            onChange={(_e, v) => v && setViewMode(v)}
+          >
+            <ToggleButton value="week">Theo tuần</ToggleButton>
+          </ToggleButtonGroup>
+        </Stack>
+
+        {viewMode === "day" && (
+          <TextField
+            label="Chọn ngày xem"
+            type="date"
+            size="small"
+            value={viewDate}
+            onChange={(e) => setViewDate(e.target.value)}
+            sx={{ width: 200 }}
+          />
+        )}
+
+        {viewMode === "week" && (
+          <TextField
+            label="Chọn tuần"
+            select
+            size="small"
+            value={viewWeek || ""}
+            onChange={(e) => setViewWeek(Number(e.target.value))}
+            sx={{ width: 200 }}
+          >
+            {[...Array(20)].map((_, i) => (
+              <MenuItem key={i + 1} value={i + 1}>
+                Tuần {i + 1}
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
       </Stack>
 
-      {/* --- Hiển thị danh sách nghỉ học --- */}
+      {/* --- Hiển thị danh sách nghỉ học theo lớp --- */}
       {Object.keys(groupedByClass).length === 0 ? (
         <Typography color="gray" mt={2}>
-          Không có học sinh nghỉ học trong tuần này.
+          Không có học sinh nghỉ học trong thời gian này.
         </Typography>
       ) : (
         <Box>
@@ -352,7 +389,7 @@ export default function RecordAttendancePage() {
         </Box>
       )}
 
-      {/* --- Snackbar --- */}
+      {/* --- Thông báo --- */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
