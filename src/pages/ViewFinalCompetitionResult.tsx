@@ -85,21 +85,39 @@ export default function ViewFinalCompetitionResult() {
   };
 
   // ✅ Gọi API mới /api/class-weekly-scores/full/:weekNumber
-  const fetchScores = async (weekNumber: number) => {
-    try {
-      const res = await api.get(`/api/class-weekly-scores/full/${weekNumber}`);
-      setScores(res.data.data || []);
-    } catch (err: any) {
-      console.error("Lỗi lấy dữ liệu:", err);
-      setSnackbar({
-        open: true,
-        message:
-          err?.response?.data?.message || "Không có dữ liệu cho tuần này",
-        severity: "info",
-      });
-      setScores([]);
-    }
-  };
+const fetchScores = async (weekNumber: number) => {
+  try {
+    const res = await api.get(`/api/class-weekly-scores/full/${weekNumber}`);
+    const raw = res.data.data || [];
+
+    const normalized = raw.map((r: any) => ({
+      className: r.className || "",
+      grade: r.grade || "",
+      weekNumber: r.weekNumber || 0,
+      academicScore: r.academicScore ?? r.studyScore ?? 0,
+      rewardScore: r.rewardScore ?? r.bonusScore ?? 0,
+      hygieneScore: r.hygieneScore ?? r.cleanScore ?? 0,
+      lineupScore: r.lineupScore ?? r.lineScore ?? 0,
+      attendanceScore: r.attendanceScore ?? r.presenceScore ?? 0,
+      violationScore: r.violationScore ?? r.violation ?? 0,
+      disciplineScore: r.disciplineScore ?? r.neNepScore ?? 0,
+      totalScore: r.totalScore ?? r.sum ?? 0,
+      ranking: r.ranking ?? r.rank ?? "-",
+    }));
+
+    setScores(normalized);
+  } catch (err: any) {
+    console.error("Lỗi lấy dữ liệu:", err);
+    setSnackbar({
+      open: true,
+      message:
+        err?.response?.data?.message || "Không có dữ liệu cho tuần này",
+      severity: "info",
+    });
+    setScores([]);
+  }
+};
+
 
   // ✅ Gom theo khối
   const groupedByGrade: Record<string, ScoreRow[]> = {};
