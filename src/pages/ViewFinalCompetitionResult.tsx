@@ -27,18 +27,20 @@ interface Week {
 }
 
 interface ScoreRow {
+  _id?: string;
   className: string;
   grade: string;
   weekNumber: number;
   academicScore: number;
-  bonusScore: number;  
+  bonusScore: number;
   hygieneScore: number;
-  lineupScore: number;
+  lineUpScore: number;
   attendanceScore: number;
   violationScore: number;
-  disciplineScore: number;
+  totalViolation: number;
   totalScore: number;
   rank: number;
+  lastUpdated?: string;
 }
 
 export default function ViewFinalCompetitionResult() {
@@ -61,6 +63,7 @@ export default function ViewFinalCompetitionResult() {
     return `${dd}/${mm}`;
   };
 
+  // 📆 Lấy danh sách tuần và tự chọn tuần hiện tại
   useEffect(() => {
     fetchWeeks();
   }, []);
@@ -73,51 +76,62 @@ export default function ViewFinalCompetitionResult() {
     try {
       const res = await api.get("/api/academic-weeks/study-weeks");
       const normalized: Week[] = (res.data || []).map((w: any, idx: number) => ({
-        _id: w._id || w.id || String(idx),
-        weekNumber: Number(w.weekNumber ?? w.week ?? idx + 1),
+        _id: w._id || String(idx),
+        weekNumber: Number(w.weekNumber ?? idx + 1),
         startDate: w.startDate || "",
         endDate: w.endDate || "",
       }));
+
       setWeeks(normalized);
+
+      // 🕒 Tự động chọn tuần hiện tại
+      const today = new Date();
+      const current = normalized.find((w) => {
+        const s = w.startDate ? new Date(w.startDate) : null;
+        const e = w.endDate ? new Date(w.endDate) : null;
+        return s && e && today >= s && today <= e;
+      });
+
+      setSelectedWeek(current || normalized[normalized.length - 1] || null);
     } catch (err) {
       console.error("Lỗi lấy tuần:", err);
     }
   };
 
-  // ✅ Gọi API mới /api/class-weekly-scores/full/:weekNumber
-const fetchScores = async (weekNumber: number) => {
-  try {
-    const res = await api.get(`/api/class-weekly-scores/full/${weekNumber}`);
-    const raw = res.data.data || [];
+  // ✅ Gọi API lấy dữ liệu tuần
+  const fetchScores = async (weekNumber: number) => {
+    try {
+      const res = await api.get(`/api/class-weekly-scores/full/${weekNumber}`);
+      const raw = res.data.data || res.data || [];
 
-    const normalized = raw.map((r: any) => ({
-      className: r.className || "",
-      grade: r.grade || "",
-      weekNumber: r.weekNumber || 0,
-      academicScore: r.academicScore ?? r.studyScore ?? 0,
-      rewardScore: r.rewardScore ?? r.bonusScore ?? 0,
-      hygieneScore: r.hygieneScore ?? r.cleanScore ?? 0,
-      lineupScore: r.lineupScore ?? r.lineScore ?? 0,
-      attendanceScore: r.attendanceScore ?? r.presenceScore ?? 0,
-      violationScore: r.violationScore ?? r.violation ?? 0,
-      disciplineScore: r.disciplineScore ?? r.neNepScore ?? 0,
-      totalScore: r.totalScore ?? r.sum ?? 0,
-      ranking: r.ranking ?? r.rank ?? "-",
-    }));
+      const normalized: ScoreRow[] = raw.map((r: any) => ({
+        _id: r._id,
+        className: r.className || "",
+        grade: r.grade || "",
+        weekNumber: r.weekNumber || 0,
+        academicScore: r.academicScore ?? 0,
+        bonusScore: r.bonusScore ?? 0,
+        hygieneScore: r.hygieneScore ?? 0,
+        lineUpScore: r.lineUpScore ?? 0,
+        attendanceScore: r.attendanceScore ?? 0,
+        violationScore: r.violationScore ?? 0,
+        totalViolation: r.totalViolation ?? 0,
+        totalScore: r.totalScore ?? 0,
+        rank: r.rank ?? 0,
+        lastUpdated: r.updatedAt,
+      }));
 
-    setScores(normalized);
-  } catch (err: any) {
-    console.error("Lỗi lấy dữ liệu:", err);
-    setSnackbar({
-      open: true,
-      message:
-        err?.response?.data?.message || "Không có dữ liệu cho tuần này",
-      severity: "info",
-    });
-    setScores([]);
-  }
-};
-
+      setScores(normalized);
+    } catch (err: any) {
+      console.error("Lỗi lấy dữ liệu:", err);
+      setSnackbar({
+        open: true,
+        message: err?.response?.data?.message || "Không có dữ liệu cho tuần này",
+        severity: "info",
+      });
+      setScores([]);
+    }
+  };
 
   // ✅ Gom theo khối
   const groupedByGrade: Record<string, ScoreRow[]> = {};
@@ -195,7 +209,6 @@ const fetchScores = async (weekNumber: number) => {
                       <TableCell>Xếp hàng</TableCell>
                       <TableCell>Chuyên cần</TableCell>
                       <TableCell>Vi phạm</TableCell>
-                      <TableCell>Tổng nề nếp</TableCell>
                       <TableCell>Tổng</TableCell>
                       <TableCell>Hạng</TableCell>
                     </TableRow>
@@ -203,23 +216,22 @@ const fetchScores = async (weekNumber: number) => {
                   <TableBody>
                     {rows.map((r) => {
                       let bg = {};
-                      if (r.ranking === 1)
+                      if (r.rank === 1)
                         bg = { backgroundColor: "rgba(255,215,0,0.25)" }; // vàng
-                      else if (r.ranking === 2)
+                      else if (r.rank === 2)
                         bg = { backgroundColor: "rgba(192,192,192,0.25)" }; // bạc
-                      else if (r.ranking === 3)
+                      else if (r.rank === 3)
                         bg = { backgroundColor: "rgba(205,127,50,0.25)" }; // đồng
 
                       return (
-                        <TableRow key={r.className} sx={bg}>
+                        <TableRow key={r._id || r.className} sx={bg}>
                           <TableCell>{r.className}</TableCell>
                           <TableCell>{r.academicScore}</TableCell>
                           <TableCell>{r.bonusScore}</TableCell>
                           <TableCell>{r.hygieneScore}</TableCell>
-                          <TableCell>{r.lineupScore}</TableCell>
+                          <TableCell>{r.lineUpScore}</TableCell>
                           <TableCell>{r.attendanceScore}</TableCell>
                           <TableCell>{r.violationScore}</TableCell>
-                          <TableCell>{r.disciplineScore}</TableCell>
                           <TableCell>{r.totalScore}</TableCell>
                           <TableCell>{r.rank || "-"}</TableCell>
                         </TableRow>
