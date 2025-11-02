@@ -31,14 +31,14 @@ interface ScoreRow {
   grade: string;
   weekNumber: number;
   academicScore: number;
-  bonusScore: number;
-  violationScore: number;
+  rewardScore: number;
   hygieneScore: number;
+  lineupScore: number;
   attendanceScore: number;
-  lineUpScore: number;
-  totalViolation: number;
+  violationScore: number;
+  disciplineScore: number;
   totalScore: number;
-  rank: number;
+  ranking: number;
 }
 
 export default function ViewFinalCompetitionResult() {
@@ -84,24 +84,32 @@ export default function ViewFinalCompetitionResult() {
     }
   };
 
+  // ✅ Gọi API mới /api/class-weekly-scores/full/:weekNumber
   const fetchScores = async (weekNumber: number) => {
     try {
-      const res = await api.get("/api/class-weekly-scores", { params: { weekNumber } });
-      setScores(res.data || []);
-    } catch (err) {
+      const res = await api.get(`/api/class-weekly-scores/full/${weekNumber}`);
+      setScores(res.data.data || []);
+    } catch (err: any) {
       console.error("Lỗi lấy dữ liệu:", err);
-      setSnackbar({ open: true, message: "Không có dữ liệu cho tuần này", severity: "info" });
+      setSnackbar({
+        open: true,
+        message:
+          err?.response?.data?.message || "Không có dữ liệu cho tuần này",
+        severity: "info",
+      });
       setScores([]);
     }
   };
 
-  // group by grade
+  // ✅ Gom theo khối
   const groupedByGrade: Record<string, ScoreRow[]> = {};
   scores.forEach((s) => {
     if (!groupedByGrade[s.grade]) groupedByGrade[s.grade] = [];
     groupedByGrade[s.grade].push(s);
   });
-  const gradeKeys = Object.keys(groupedByGrade).sort((a, b) => Number(a) - Number(b));
+  const gradeKeys = Object.keys(groupedByGrade).sort(
+    (a, b) => Number(a) - Number(b)
+  );
 
   return (
     <Box p={3}>
@@ -122,7 +130,8 @@ export default function ViewFinalCompetitionResult() {
         >
           {weeks.map((w) => (
             <MenuItem key={w._id} value={w._id}>
-              Tuần {w.weekNumber} ({formatDateShort(w.startDate)} → {formatDateShort(w.endDate)})
+              Tuần {w.weekNumber} ({formatDateShort(w.startDate)} →{" "}
+              {formatDateShort(w.endDate)})
             </MenuItem>
           ))}
         </TextField>
@@ -152,8 +161,10 @@ export default function ViewFinalCompetitionResult() {
           return (
             <Box key={grade} mb={4}>
               <Typography variant="h6" gutterBottom>
-                {grade === "undefined" ? `Khối chưa xác định` : `Khối ${grade}`} (
-                {rows.length} lớp)
+                {grade === "undefined"
+                  ? `Khối chưa xác định`
+                  : `Khối ${grade}`}{" "}
+                ({rows.length} lớp)
               </Typography>
               <Paper>
                 <Table size="small">
@@ -162,10 +173,10 @@ export default function ViewFinalCompetitionResult() {
                       <TableCell>Lớp</TableCell>
                       <TableCell>Học tập</TableCell>
                       <TableCell>Thưởng</TableCell>
-                      <TableCell>Vi phạm</TableCell>
                       <TableCell>Vệ sinh</TableCell>
-                      <TableCell>Chuyên cần</TableCell>
                       <TableCell>Xếp hàng</TableCell>
+                      <TableCell>Chuyên cần</TableCell>
+                      <TableCell>Vi phạm</TableCell>
                       <TableCell>Tổng nề nếp</TableCell>
                       <TableCell>Tổng</TableCell>
                       <TableCell>Hạng</TableCell>
@@ -174,22 +185,25 @@ export default function ViewFinalCompetitionResult() {
                   <TableBody>
                     {rows.map((r) => {
                       let bg = {};
-                      if (r.rank === 1) bg = { backgroundColor: "rgba(255,215,0,0.25)" }; // vàng
-                      else if (r.rank === 2) bg = { backgroundColor: "rgba(192,192,192,0.25)" }; // bạc
-                      else if (r.rank === 3) bg = { backgroundColor: "rgba(205,127,50,0.25)" }; // đồng
+                      if (r.ranking === 1)
+                        bg = { backgroundColor: "rgba(255,215,0,0.25)" }; // vàng
+                      else if (r.ranking === 2)
+                        bg = { backgroundColor: "rgba(192,192,192,0.25)" }; // bạc
+                      else if (r.ranking === 3)
+                        bg = { backgroundColor: "rgba(205,127,50,0.25)" }; // đồng
 
                       return (
                         <TableRow key={r.className} sx={bg}>
                           <TableCell>{r.className}</TableCell>
                           <TableCell>{r.academicScore}</TableCell>
-                          <TableCell>{r.bonusScore}</TableCell>
-                          <TableCell>{r.violationScore}</TableCell>
+                          <TableCell>{r.rewardScore}</TableCell>
                           <TableCell>{r.hygieneScore}</TableCell>
+                          <TableCell>{r.lineupScore}</TableCell>
                           <TableCell>{r.attendanceScore}</TableCell>
-                          <TableCell>{r.lineUpScore}</TableCell>
-                          <TableCell>{r.totalViolation}</TableCell>
+                          <TableCell>{r.violationScore}</TableCell>
+                          <TableCell>{r.disciplineScore}</TableCell>
                           <TableCell>{r.totalScore}</TableCell>
-                          <TableCell>{r.rank || "-"}</TableCell>
+                          <TableCell>{r.ranking || "-"}</TableCell>
                         </TableRow>
                       );
                     })}
