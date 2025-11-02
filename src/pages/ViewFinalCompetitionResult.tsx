@@ -31,15 +31,16 @@ interface ScoreRow {
   grade: string;
   weekNumber: number;
   academicScore: number;
-  rewardScore: number;
-  hygieneScore: number;
-  lineupScore: number;
-  attendanceScore: number;
+  bonusScore: number;          // ✅ tên đúng từ backend
   violationScore: number;
-  disciplineScore: number;
+  hygieneScore: number;
+  attendanceScore: number;
+  lineUpScore: number;
+  totalViolation: number;
   totalScore: number;
-  ranking: number;
+  rank: number;
 }
+
 
 export default function ViewFinalCompetitionResult() {
   const [weeks, setWeeks] = useState<Week[]>([]);
@@ -214,7 +215,7 @@ const fetchScores = async (weekNumber: number) => {
                         <TableRow key={r.className} sx={bg}>
                           <TableCell>{r.className}</TableCell>
                           <TableCell>{r.academicScore}</TableCell>
-                          <TableCell>{r.rewardScore}</TableCell>
+                          <TableCell>{r.bonusScore}</TableCell>
                           <TableCell>{r.hygieneScore}</TableCell>
                           <TableCell>{r.lineupScore}</TableCell>
                           <TableCell>{r.attendanceScore}</TableCell>
