@@ -181,31 +181,32 @@ const WeeklyScoresPage: React.FC = () => {
 
   // --- Cập nhật lại thứ hạng (đồng hạng) ---
   const handleRecalculateRanks = () => {
-  if (!scores.length) return;
-  setLoadingRank(true);
+    if (!scores.length) return;
+    setLoadingRank(true);
 
-  setTimeout(() => {
-    const grades = ["6", "7", "8", "9"];
-    const updated = [...scores];
+    setTimeout(() => {
+      const grades = ["6", "7", "8", "9"];
+      const updated = [...scores];
 
-    grades.forEach((g) => {
-      const filtered = updated.filter((d) => d.grade === g);
-      filtered.sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
+      grades.forEach((g) => {
+        const filtered = updated.filter((d) => d.grade === g);
+        filtered.sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
 
-      let currentRank = 1;
-      filtered.forEach((d, i) => {
-        if (i > 0 && d.totalScore === filtered[i - 1].totalScore) {
-          d.rank = filtered[i - 1].rank;
-        } else {
-          d.rank = currentRank;
-        }
-        currentRank++;
+        let currentRank = 1;
+        filtered.forEach((d, i) => {
+          if (i > 0 && d.totalScore === filtered[i - 1].totalScore) {
+            d.rank = filtered[i - 1].rank;
+          } else {
+            d.rank = currentRank;
+          }
+          currentRank++;
+        });
       });
-    });
 
-    setScores(updated);
-    setHasChanges(false);
-    alert("✅ Đã cập nhật lại xếp hạng!");
+      setScores(updated);
+      setHasChanges(true);
+      setLoadingRank(false);
+    }, 0);
   };
 
   // --- Xuất Excel
