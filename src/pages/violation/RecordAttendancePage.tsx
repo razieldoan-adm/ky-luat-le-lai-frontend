@@ -107,9 +107,15 @@ export default function RecordAttendancePage() {
   };
 
   // --- Gọi lại khi bộ lọc thay đổi
-  useEffect(() => {
-    if (viewDate) fetchRecords();
-  }, [viewMode, viewDate]);
+// --- Gọi lại khi bộ lọc thay đổi
+useEffect(() => {
+  if (viewMode === "day" && viewDate) {
+    fetchRecords();
+  } else if (viewMode === "week" && viewWeek) {
+    fetchRecords();
+  }
+}, [viewMode, viewDate, viewWeek]);
+
 
   // --- Ghi nhận nghỉ học
   const handleRecord = async () => {
