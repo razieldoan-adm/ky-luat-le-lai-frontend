@@ -40,7 +40,7 @@ export default function RecordAttendancePage() {
 
   // 🔹 Dữ liệu xem danh sách
   const [records, setRecords] = useState<any[]>([]);
-  const [viewMode, setViewMode] = useState<"day" | "week">("day");
+  const [viewMode, setViewMode] = useState<"day" | "week">("week");
   const [viewDate, setViewDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [viewWeek, setViewWeek] = useState<number | null>(null);
   const [selectedClassView, setSelectedClassView] = useState<string | null>(null);
