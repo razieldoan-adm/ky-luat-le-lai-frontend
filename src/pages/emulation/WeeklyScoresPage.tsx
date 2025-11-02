@@ -113,31 +113,37 @@ const WeeklyScoresPage: React.FC = () => {
   };
 
   // --- Lưu toàn bộ điểm
-  const handleSaveAll = async () => {
+  const handleSave = async () => {
   try {
+    if (!scores.length || !selectedWeek) {
+      alert("❌ Không có dữ liệu để lưu.");
+      return;
+    }
+
     const payload = {
       records: scores.map((s) => ({
         className: s.className,
         grade: s.grade,
-        weekNumber: selectedWeek,
+        weekNumber: s.weekNumber || selectedWeek,
         academicScore: s.academicScore ?? 0,
         rewardScore: s.rewardScore ?? 0,
         hygieneScore: s.hygieneScore ?? 0,
-        lineupScore: s.lineupScore ?? 0,
+        lineupScore: s.lineUpScore ?? 0,
         attendanceScore: s.attendanceScore ?? 0,
         violationScore: s.violationScore ?? 0,
       })),
     };
 
+    // 🔹 Gọi API mới để lưu toàn bộ điểm tuần
     const res = await api.post("/api/class-weekly-scores/save-manual", payload);
-    alert(res.data.message);
-    loadScores(selectedWeek);
+
+    alert("✅ " + (res.data?.message || "Đã lưu toàn bộ điểm tuần!"));
+    loadScores(Number(selectedWeek));
   } catch (err) {
-    console.error("❌ Lỗi lưu điểm:", err);
-    alert("❌ Không thể lưu điểm tuần!");
+    console.error("❌ Lỗi khi lưu:", err);
+    alert("❌ Không thể lưu dữ liệu điểm tuần!");
   }
 };
-
 
   // --- Khi sửa điểm học tập hoặc thưởng
   const handleChangeScore = (
