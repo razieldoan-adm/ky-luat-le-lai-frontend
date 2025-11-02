@@ -87,35 +87,24 @@ export default function RecordAttendancePage() {
 
   // --- Lấy danh sách nghỉ học (toàn bộ, không theo lớp)
   const fetchRecords = async () => {
-    try {
-      const endpoint =
-        viewMode === "week"
-          ? `/api/class-attendance-summaries/by-week`
-          : `/api/class-attendance-summaries/by-date`;
+  try {
+    const res = await api.get("/api/class-attendance-summaries/by-week", {
+      params: { week: viewWeek },
+    });
+    const data = res.data.records || res.data || [];
+    setRecords(Array.isArray(data) ? data : []);
+  } catch (err) {
+    console.error("❌ Lỗi tải danh sách:", err);
+    setRecords([]);
+  }
+};
 
-      const params: any = {
-        date: dayjs(viewDate).format("YYYY-MM-DD"),
-      };
-
-      const res = await api.get(endpoint, { params });
-      const data = res.data.records || res.data || [];
-      setRecords(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("❌ Lỗi tải danh sách:", err);
-      setRecords([]);
-    }
-  };
-
-  // --- Gọi lại khi bộ lọc thay đổi
 // --- Gọi lại khi bộ lọc thay đổi
 useEffect(() => {
-  if (viewMode === "day" && viewDate) {
-    fetchRecords();
-  } else if (viewMode === "week" && viewWeek) {
+ if (viewMode === "week" && viewWeek) {
     fetchRecords();
   }
-}, [viewMode, viewDate, viewWeek]);
-
+}, [viewMode, viewWeek]);
 
   // --- Ghi nhận nghỉ học
   const handleRecord = async () => {
