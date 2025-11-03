@@ -98,7 +98,10 @@ const handleSave = async () => {
       // ✅ Tách khối lớp (vd "7A1" -> "7")
       const gradeMatch = s.className.match(/^(\d+)/);
       const grade = gradeMatch ? gradeMatch[1] : "Khác";
-
+      if (!grade) {
+          console.warn("⚠️ Không tìm thấy grade cho lớp:", s.className);
+          continue;
+        }
       // ✅ Gửi lên backend
       const payload = {
         className: s.className,
