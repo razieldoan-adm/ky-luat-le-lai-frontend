@@ -76,39 +76,49 @@ useEffect(() => {
   }
 };
 
-
   // 🔹 Lưu điểm vào ClassWeeklyScore
-  const handleSave = async () => {
-    try {
-      if (!selectedWeek) {
-        setSnackbar({ open: true, message: "Vui lòng chọn tuần trước khi lưu!", severity: "error" });
-        return;
-      }
-      const week = weeks.find((w) => String(w.weekNumber) === String(selectedWeek));
-      //const week = weeks.find((w) => w._id === selectedWeek);
-      if (!week) {
-        setSnackbar({ open: true, message: "Không tìm thấy tuần!", severity: "error" });
-        return;
-      }
-
-      for (const s of summaries) {
-        const gradeMatch = s.className.match(/^(\d+)/);
-        const grade = gradeMatch ? gradeMatch[1] : "Khác";
-
-        await api.post("/api/class-weekly-scores/update", {
-          className: s.className,
-          grade,
-          weekNumber: week.weekNumber,
-          attendanceScore: s.total, // ✅ lưu đúng trường chuyên cần
-        });
-      }
-
-      setSnackbar({ open: true, message: "✅ Đã lưu điểm chuyên cần của tất cả lớp!", severity: "success" });
-    } catch (err) {
-      console.error("Lỗi khi lưu điểm chuyên cần:", err);
-      setSnackbar({ open: true, message: "❌ Lưu thất bại!", severity: "error" });
+const handleSave = async () => {
+  try {
+    if (!selectedWeek) {
+      setSnackbar({ open: true, message: "Vui lòng chọn tuần trước khi lưu!", severity: "error" });
+      return;
     }
-  };
+
+    // ✅ Tìm tuần theo weekNumber
+    const week = weeks.find((w) => String(w.weekNumber) === String(selectedWeek));
+    if (!week) {
+      setSnackbar({ open: true, message: "Không tìm thấy tuần!", severity: "error" });
+      return;
+    }
+
+    // ✅ Log tạm để xem dữ liệu trước khi gửi (xóa sau khi test)
+    console.log("📦 Dữ liệu sẽ gửi:", summaries, week.weekNumber);
+
+    for (const s of summaries) {
+      // ✅ Tách khối lớp (vd "7A1" -> "7")
+      const gradeMatch = s.className.match(/^(\d+)/);
+      const grade = gradeMatch ? gradeMatch[1] : "Khác";
+
+      // ✅ Gửi lên backend
+      const payload = {
+        className: s.className,
+        grade,
+        weekNumber: Number(week.weekNumber),
+        attendanceScore: s.total,
+      };
+
+      console.log("➡️ POST /update payload:", payload);
+
+      await api.post("/api/class-weekly-scores/update", payload);
+    }
+
+    setSnackbar({ open: true, message: "✅ Đã lưu điểm chuyên cần của tất cả lớp!", severity: "success" });
+  } catch (err: any) {
+    console.error("❌ Lỗi khi lưu điểm chuyên cần:", err.response?.data || err.message);
+    setSnackbar({ open: true, message: "❌ Lưu thất bại! Kiểm tra console để xem chi tiết.", severity: "error" });
+  }
+};
+
 
   return (
     <Box p={3}>
