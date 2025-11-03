@@ -129,7 +129,7 @@ const WeeklyScoresPage: React.FC = () => {
         academicScore: s.academicScore ?? 0,
         rewardScore: s.rewardScore ?? 0,
         hygieneScore: s.hygieneScore ?? 0,
-        lineupScore: s.lineUpScore ?? 0,
+        lineUpScore: s.lineUpScore ?? 0,
         attendanceScore: s.attendanceScore ?? 0,
         violationScore: s.violationScore ?? 0,
       })),
