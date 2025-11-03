@@ -16,12 +16,6 @@ import {
 } from "@mui/material";
 import api from "../../api/api";
 import useAcademicWeeks from "../../types/useAcademicWeeks";
-interface AcademicWeek {
-  _id: string;
-  weekNumber: number;
-  startDate?: string;
-  endDate?: string;
-}
 
 interface SummaryRow {
   id: number;
