@@ -41,6 +41,7 @@ export default function ClassAttendanceSummaryPage() {
     message: "",
     severity: "info",
   });
+  console.log("🔥 Component ClassAttendanceSummaryPage mounted");
 
   // 🔹 Load danh sách tuần
   useEffect(() => {
