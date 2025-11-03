@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState} from "react";
 import {
   Box,
   Typography,
@@ -39,9 +39,6 @@ export default function ClassAttendanceSummaryPage() {
     message: "",
     severity: "info",
   });
-  console.log("🔥 Component ClassAttendanceSummaryPage mounted");
-
-  // 🔹 Load danh sách tuần
 
 
   // 🔹 Hàm load dữ liệu chuyên cần
