@@ -125,8 +125,9 @@ export default function ClassLineUpSummaryPage() {
         >
           {weeks.map((w) => (
             <MenuItem key={w.weekNumber} value={w.weekNumber}>
-              Tuần {w.weekNumber} (Tuần hiện tại) ({dayjs(w.startDate).format("DD/MM")} -{" "}
-              {dayjs(w.endDate).format("DD/MM")})
+              Tuần {w.weekNumber}
+              {w.weekNumber === currentWeek ? " (Tuần hiện tại)" : ""}{" "}
+              ({dayjs(w.startDate).format("DD/MM")} - {dayjs(w.endDate).format("DD/MM")})
             </MenuItem>
           ))}
         </TextField>
