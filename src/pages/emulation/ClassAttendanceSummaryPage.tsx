@@ -25,7 +25,7 @@ interface SummaryRow {
 }
 
 export default function ClassAttendanceSummaryPage() {
-  const { weeks, selectedWeek, setSelectedWeek } = useAcademicWeeks();
+  const { weeks, selectedWeek, setSelectedWeek,currentWeek } = useAcademicWeeks();
   const [multiplier, setMultiplier] = useState<number>(5); // ✅ hệ số mặc định = 5
   const [summaries, setSummaries] = useState<SummaryRow[]>([]);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" | "info" }>({
