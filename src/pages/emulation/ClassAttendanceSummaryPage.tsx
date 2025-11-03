@@ -85,8 +85,8 @@ export default function ClassAttendanceSummaryPage() {
         setSnackbar({ open: true, message: "Vui lòng chọn tuần trước khi lưu!", severity: "error" });
         return;
       }
-
-      const week = weeks.find((w) => w._id === selectedWeek);
+      const week = weeks.find((w) => String(w._id) === String(selectedWeek));
+      //const week = weeks.find((w) => w._id === selectedWeek);
       if (!week) {
         setSnackbar({ open: true, message: "Không tìm thấy tuần!", severity: "error" });
         return;
