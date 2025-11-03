@@ -47,7 +47,7 @@ useEffect(() => {
       return;
     }
 
-    const weekObj = weeks.find((w) => String(w.weekNumber) === String(selectedWeek));
+    const week = weeks.find((w) => String(w.weekNumber) === String(selectedWeek));
     if (!week) {
       setSnackbar({ open: true, message: "Không tìm thấy tuần!", severity: "error" });
       return;
@@ -84,7 +84,7 @@ useEffect(() => {
         setSnackbar({ open: true, message: "Vui lòng chọn tuần trước khi lưu!", severity: "error" });
         return;
       }
-      const weekObj = weeks.find((w) => String(w.weekNumber) === String(selectedWeek));
+      const week = weeks.find((w) => String(w.weekNumber) === String(selectedWeek));
       //const week = weeks.find((w) => w._id === selectedWeek);
       if (!week) {
         setSnackbar({ open: true, message: "Không tìm thấy tuần!", severity: "error" });
