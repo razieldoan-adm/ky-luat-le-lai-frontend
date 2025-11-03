@@ -46,6 +46,7 @@ export default function ClassAttendanceSummaryPage() {
   useEffect(() => {
     const initWeeks = async () => {
       const { weeks: weekNumbers, currentWeek } = await getWeeksAndCurrentWeek();
+      console.log("✅ Weeks from helper:", weekNumbers, "Current:", currentWeek);
       const formatted: AcademicWeek[] = weekNumbers.map((num) => ({
         _id: String(num),
         weekNumber: num,
