@@ -1,4 +1,4 @@
-import { useState} from "react";
+import { useState, useEffect} from "react";
 import {
   Box,
   Typography,
@@ -34,7 +34,12 @@ export default function ClassAttendanceSummaryPage() {
     severity: "info",
   });
 
-
+  useEffect(() => {
+  if (currentWeek) {
+    setSelectedWeek(String(currentWeek));
+    console.log("✅ Auto chọn tuần hiện tại:", currentWeek);
+  }
+}, [currentWeek]);
   // 🔹 Hàm load dữ liệu chuyên cần
   const handleLoadData = async () => {
   try {
@@ -114,18 +119,20 @@ export default function ClassAttendanceSummaryPage() {
 
       <Box display="flex" alignItems="center" gap={2} mb={2}>
         <TextField
-          select
-          label="Tuần"
-          value={selectedWeek}
-          onChange={(e) => setSelectedWeek(e.target.value)}
-          sx={{ minWidth: 150 }}
-        >
-          {weeks.map((w) => (
-            <MenuItem key={w._id} value={w._id}>
-              Tuần {w.weekNumber}
-            </MenuItem>
-          ))}
-        </TextField>
+  select
+  label="Chọn tuần"
+  value={selectedWeek}
+  onChange={(e) => setSelectedWeek(e.target.value)}
+  sx={{ minWidth: 220, mr: 2 }}
+>
+  {weeks.map((w) => (
+    <MenuItem key={w._id} value={String(w.weekNumber)}>
+      {`Tuần ${w.weekNumber}${
+        w.weekNumber === currentWeek ? " (Tuần hiện tại)" : ""
+      }`}
+    </MenuItem>
+  ))}
+</TextField>
 
         <TextField
           label="Hệ số điểm"
