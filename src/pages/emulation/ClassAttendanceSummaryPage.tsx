@@ -15,8 +15,7 @@ import {
   Alert,
 } from "@mui/material";
 import api from "../../api/api";
-import { getWeeksAndCurrentWeek } from "../../types/weekHelper";
-
+import useAcademicWeeks from "../../types/useAcademicWeeks";
 interface AcademicWeek {
   _id: string;
   weekNumber: number;
@@ -32,8 +31,7 @@ interface SummaryRow {
 }
 
 export default function ClassAttendanceSummaryPage() {
-  const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<string>("");
+  const { weeks, selectedWeek, setSelectedWeek } = useAcademicWeeks();
   const [multiplier, setMultiplier] = useState<number>(5); // ✅ hệ số mặc định = 5
   const [summaries, setSummaries] = useState<SummaryRow[]>([]);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" | "info" }>({
@@ -44,19 +42,7 @@ export default function ClassAttendanceSummaryPage() {
   console.log("🔥 Component ClassAttendanceSummaryPage mounted");
 
   // 🔹 Load danh sách tuần
-  useEffect(() => {
-    const initWeeks = async () => {
-      const { weeks: weekNumbers, currentWeek } = await getWeeksAndCurrentWeek();
-      console.log("✅ Weeks from helper:", weekNumbers, "Current:", currentWeek);
-      const formatted: AcademicWeek[] = weekNumbers.map((num) => ({
-        _id: String(num),
-        weekNumber: num,
-      }));
-      setWeeks(formatted);
-      if (currentWeek) setSelectedWeek(String(currentWeek));
-    };
-    initWeeks();
-  }, []);
+
 
   // 🔹 Hàm load dữ liệu chuyên cần
   const handleLoadData = async () => {
