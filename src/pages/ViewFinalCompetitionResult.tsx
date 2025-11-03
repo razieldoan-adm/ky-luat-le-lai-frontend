@@ -37,7 +37,7 @@ interface ScoreRow {
   lineUpScore: number;
   attendanceScore: number;
   violationScore: number;
-  totalViolation: number;
+  disciplineScore: number;
   totalScore: number;
   rank: number;
   lastUpdated?: string;
@@ -63,7 +63,7 @@ export default function ViewFinalCompetitionResult() {
     return `${dd}/${mm}`;
   };
 
-  // 📆 Lấy danh sách tuần và tự chọn tuần hiện tại
+  // 📆 Lấy danh sách tuần
   useEffect(() => {
     fetchWeeks();
   }, []);
@@ -115,7 +115,7 @@ export default function ViewFinalCompetitionResult() {
         lineUpScore: r.lineUpScore ?? 0,
         attendanceScore: r.attendanceScore ?? 0,
         violationScore: r.violationScore ?? 0,
-        totalViolation: r.totalViolation ?? 0,
+        disciplineScore: r.disciplineScore ?? 0,
         totalScore: r.totalScore ?? 0,
         rank: r.rank ?? 0,
         lastUpdated: r.updatedAt,
@@ -203,14 +203,15 @@ export default function ViewFinalCompetitionResult() {
                   <TableHead>
                     <TableRow>
                       <TableCell>Lớp</TableCell>
+                      <TableCell>Xếp hàng</TableCell>
+                      <TableCell>Vi phạm</TableCell>
+                      <TableCell>Chuyên cần</TableCell>
+                      <TableCell>Vệ sinh</TableCell>
                       <TableCell>Học tập</TableCell>
                       <TableCell>Thưởng</TableCell>
-                      <TableCell>Vệ sinh</TableCell>
-                      <TableCell>Xếp hàng</TableCell>
-                      <TableCell>Chuyên cần</TableCell>
-                      <TableCell>Vi phạm</TableCell>
-                      <TableCell>Tổng</TableCell>
-                      <TableCell>Hạng</TableCell>
+                      <TableCell>Kỷ luật</TableCell>
+                      <TableCell>Tổng thi đua</TableCell>
+                      <TableCell>Xếp hạng</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -226,12 +227,13 @@ export default function ViewFinalCompetitionResult() {
                       return (
                         <TableRow key={r._id || r.className} sx={bg}>
                           <TableCell>{r.className}</TableCell>
+                          <TableCell>{r.lineUpScore}</TableCell>
+                          <TableCell>{r.violationScore}</TableCell>
+                          <TableCell>{r.attendanceScore}</TableCell>
+                          <TableCell>{r.hygieneScore}</TableCell>
                           <TableCell>{r.academicScore}</TableCell>
                           <TableCell>{r.bonusScore}</TableCell>
-                          <TableCell>{r.hygieneScore}</TableCell>
-                          <TableCell>{r.lineUpScore}</TableCell>
-                          <TableCell>{r.attendanceScore}</TableCell>
-                          <TableCell>{r.violationScore}</TableCell>
+                          <TableCell>{r.disciplineScore}</TableCell>
                           <TableCell>{r.totalScore}</TableCell>
                           <TableCell>{r.rank || "-"}</TableCell>
                         </TableRow>
