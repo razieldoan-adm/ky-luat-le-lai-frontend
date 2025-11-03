@@ -34,12 +34,12 @@ export default function ClassAttendanceSummaryPage() {
     severity: "info",
   });
 
-  useEffect(() => {
-  if (currentWeek) {
+ useEffect(() => {
+  if (currentWeek && !selectedWeek) {
     setSelectedWeek(String(currentWeek));
     console.log("✅ Auto chọn tuần hiện tại:", currentWeek);
   }
-}, [currentWeek]);
+}, [currentWeek, selectedWeek]);
   // 🔹 Hàm load dữ liệu chuyên cần
   const handleLoadData = async () => {
   try {
@@ -48,7 +48,10 @@ export default function ClassAttendanceSummaryPage() {
       return;
     }
 
-    const week = weeks.find((w) => w._id === selectedWeek);
+    const week = weeks.find(
+  (w) => String(w._id) === String(selectedWeek) || String(w.weekNumber) === String(selectedWeek)
+);
+
     if (!week) {
       setSnackbar({ open: true, message: "Không tìm thấy tuần!", severity: "error" });
       return;
