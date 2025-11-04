@@ -37,7 +37,7 @@ interface ScoreRow {
   lineUpScore: number;
   attendanceScore: number;
   violationScore: number;
-  disciplineScore: number;
+  totalViolation: number;
   totalScore: number;
   rank: number;
   lastUpdated?: string;
@@ -115,7 +115,7 @@ export default function ViewFinalCompetitionResult() {
         lineUpScore: r.lineUpScore ?? 0,
         attendanceScore: r.attendanceScore ?? 0,
         violationScore: r.violationScore ?? 0,
-        disciplineScore: r.disciplineScore ?? 0,
+        totalViolation: r.totalViolation ?? 0,
         totalScore: r.totalScore ?? 0,
         rank: r.rank ?? 0,
         lastUpdated: r.updatedAt,
@@ -233,7 +233,7 @@ export default function ViewFinalCompetitionResult() {
                           <TableCell>{r.hygieneScore}</TableCell>
                           <TableCell>{r.academicScore}</TableCell>
                           <TableCell>{r.bonusScore}</TableCell>
-                          <TableCell>{r.disciplineScore}</TableCell>
+                          <TableCell>{r.totalViolation}</TableCell>
                           <TableCell>{r.totalScore}</TableCell>
                           <TableCell>{r.rank || "-"}</TableCell>
                         </TableRow>
