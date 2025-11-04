@@ -45,7 +45,8 @@ interface ScoreRow {
 
 export default function ViewFinalCompetitionResult() {
   const [weeks, setWeeks] = useState<Week[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
+  const [currentWeek, setCurrentWeek] = useState<number | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState<number | string>("");
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [snackbar, setSnackbar] = useState<{
@@ -53,6 +54,7 @@ export default function ViewFinalCompetitionResult() {
     message: string;
     severity: "success" | "error" | "info";
   }>({ open: false, message: "", severity: "info" });
+
 
   const formatDateShort = (d?: string) => {
     if (!d) return "";
@@ -64,39 +66,47 @@ export default function ViewFinalCompetitionResult() {
   };
 
   // 📆 Lấy danh sách tuần
-  useEffect(() => {
-    fetchWeeks();
-  }, []);
+useEffect(() => {
+  loadWeeks(); // gọi hàm tải tuần học khi vào trang
+}, []);
 
-  useEffect(() => {
-    if (selectedWeek) fetchScores(selectedWeek.weekNumber);
-  }, [selectedWeek]);
+useEffect(() => {
+  if (selectedWeek) {
+    fetchScores(selectedWeek.weekNumber);
+  }
+}, [selectedWeek]);
 
-  const fetchWeeks = async () => {
-    try {
-      const res = await api.get("/api/academic-weeks/study-weeks");
-      const normalized: Week[] = (res.data || []).map((w: any, idx: number) => ({
-        _id: w._id || String(idx),
-        weekNumber: Number(w.weekNumber ?? idx + 1),
-        startDate: w.startDate || "",
-        endDate: w.endDate || "",
-      }));
+// ✅ Hàm tải danh sách tuần + tuần hiện tại
+const loadWeeks = async () => {
+  try {
+    // --- Gọi API lấy danh sách tuần học ---
+    const res = await api.get("/api/academic-weeks/study-weeks");
+    const normalized: Week[] = (res.data || []).map((w: any, idx: number) => ({
+      _id: w._id || String(idx),
+      weekNumber: Number(w.weekNumber ?? idx + 1),
+      startDate: w.startDate || "",
+      endDate: w.endDate || "",
+    }));
 
-      setWeeks(normalized);
+    setWeeks(normalized);
 
-      // 🕒 Tự động chọn tuần hiện tại
-      const today = new Date();
-      const current = normalized.find((w) => {
-        const s = w.startDate ? new Date(w.startDate) : null;
-        const e = w.endDate ? new Date(w.endDate) : null;
-        return s && e && today >= s && today <= e;
-      });
+    // --- Gọi API lấy tuần hiện tại ---
+    const cur = await api.get("/api/academic-weeks/current");
+    const wk = cur.data?.weekNumber ?? null;
 
-      setSelectedWeek(current || normalized[normalized.length - 1] || null);
-    } catch (err) {
-      console.error("Lỗi lấy tuần:", err);
-    }
-  };
+    // --- Nếu có tuần hiện tại thì chọn, nếu không thì chọn tuần cuối ---
+    const foundWeek =
+      normalized.find((w) => w.weekNumber === wk) ||
+      normalized[normalized.length - 1] ||
+      null;
+
+    setSelectedWeek(foundWeek);
+  } catch (err) {
+    console.error("Lỗi khi tải danh sách tuần:", err);
+    setWeeks([]);
+    setSelectedWeek(null);
+  }
+};
 
   // ✅ Gọi API lấy dữ liệu tuần
   const fetchScores = async (weekNumber: number) => {
