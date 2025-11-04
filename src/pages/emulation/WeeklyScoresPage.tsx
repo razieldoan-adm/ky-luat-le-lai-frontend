@@ -128,7 +128,7 @@ const WeeklyScoresPage: React.FC = () => {
         grade: s.grade,
         weekNumber: s.weekNumber || selectedWeek,
         academicScore: s.academicScore ?? 0,
-        bonusScore: s.bonusScore ?? s.rewardScore ?? 0, // ✅ đổi rewardScore → bonusScore
+        bonusScore: s.bonusScore ?? , // ✅ đổi rewardScore → bonusScore
         hygieneScore: s.hygieneScore ?? 0,
         lineUpScore: s.lineUpScore ?? 0, // ✅ đổi lineUpScore → lineupScore
         attendanceScore: s.attendanceScore ?? 0,
@@ -281,7 +281,7 @@ const WeeklyScoresPage: React.FC = () => {
                       value={row.bonusScore ?? 0}
                       size="small"
                       onChange={(e) =>
-                        handleChangeScore(row.className, "rewardScore", Number(e.target.value))
+                        handleChangeScore(row.className, "bonusScore", Number(e.target.value))
                       }
                       sx={{ width: 80 }}
                     />
