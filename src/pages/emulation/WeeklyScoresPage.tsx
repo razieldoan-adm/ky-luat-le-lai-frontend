@@ -128,7 +128,7 @@ const WeeklyScoresPage: React.FC = () => {
         grade: s.grade,
         weekNumber: s.weekNumber || selectedWeek,
         academicScore: s.academicScore ?? 0,
-        bonusScore: s.bonusScore ?? , // ✅ đổi rewardScore → bonusScore
+        bonusScore: s.bonusScore ?? 0, // ✅ đổi rewardScore → bonusScore
         hygieneScore: s.hygieneScore ?? 0,
         lineUpScore: s.lineUpScore ?? 0, // ✅ đổi lineUpScore → lineupScore
         attendanceScore: s.attendanceScore ?? 0,
