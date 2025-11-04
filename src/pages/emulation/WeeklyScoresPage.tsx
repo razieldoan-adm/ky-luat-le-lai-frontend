@@ -16,7 +16,6 @@ interface ClassWeeklyScore {
   attendanceScore: number;
   academicScore: number;
   bonusScore: number;         // ✅ đổi rewardScore → bonusScore
-  disciplineScore?: number;
   totalViolation?: number;    // ✅ thêm nếu backend có
   totalScore?: number;
   rank?: number;
@@ -77,7 +76,7 @@ const WeeklyScoresPage: React.FC = () => {
             (item.hygieneScore ?? 0) +
             (item.lineUpScore ?? 0));
         const total = discipline + (item.bonusScore ?? 0) + (item.academicScore ?? 0);
-        return { ...item, disciplineScore: discipline, totalScore: total };
+        return { ...item, totalViolation: discipline, totalScore: total };
       });
 
       // --- Xếp hạng riêng theo khối, có đồng hạng ---
@@ -176,7 +175,7 @@ const WeeklyScoresPage: React.FC = () => {
 
         return {
           ...updated,
-          disciplineScore: discipline,
+          totalViolation: discipline,
           totalScore: total,
         };
       })
@@ -286,7 +285,7 @@ const WeeklyScoresPage: React.FC = () => {
                       sx={{ width: 80 }}
                     />
                   </TableCell>
-                  <TableCell align="center">{row.disciplineScore?.toFixed(1)}</TableCell>
+                  <TableCell align="center">{row.totalViolation?.toFixed(1)}</TableCell>
                   <TableCell align="center">{row.totalScore?.toFixed(1)}</TableCell>
                   <TableCell align="center">{row.rank}</TableCell>
                 </TableRow>
