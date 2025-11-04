@@ -53,18 +53,31 @@ export default function ClassLineUpSummaryPage() {
         return;
       }
 
-      // 🔹 2. Lấy dữ liệu lineup trong tuần
-      const res = await api.get("/api/class-lineup-summaries/weekly", {
-        params: { weekNumber: weekObj.weekNumber },
-      });
-      const data = res.data?.records || [];
-
+      // 🔹 2. Lấy dữ liệu lineup trong tuần (an toàn hơn)
+        const res = await api.get("/api/class-lineup-summaries/weekly", {
+          params: { weekNumber: weekObj.weekNumber },
+        });
+        
+        const data = Array.isArray(res.data?.records)
+          ? res.data.records
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        
+        console.log("📊 Dữ liệu lineup tuần:", data);
+        
+        // ⚠️ Nếu không có dữ liệu, log cảnh báo nhưng vẫn tiếp tục
+        if (data.length === 0) {
+          console.warn(`⚠️ Không có dữ liệu lineup cho tuần ${weekObj.weekNumber}`);
+        }
       // 🔹 3. Gom nhóm số lần vi phạm theo lớp
       const grouped: Record<string, number> = {};
-      data.forEach((item: any) => {
-        if (!grouped[item.className]) grouped[item.className] = 0;
-        grouped[item.className]++;
-      });
+      if (Array.isArray(data) && data.length > 0) {
+        data.forEach((item: any) => {
+          if (!grouped[item.className]) grouped[item.className] = 0;
+          grouped[item.className]++;
+        });
+      }
 
       // 🔹 4. Kết hợp toàn bộ lớp — lớp nào không vi phạm → count = 0
       const formatted = allClasses.map((cls: any, index: number) => {
