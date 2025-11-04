@@ -11,7 +11,7 @@ interface ClassWeeklyScore {
   grade: string;
   weekNumber: number;
   hygieneScore: number;
-  lineupScore: number;       // ✅ đổi chữ “U” → thường
+  lineUpScore: number;       // ✅ đổi chữ “U” → thường
   violationScore: number;
   attendanceScore: number;
   academicScore: number;
@@ -76,7 +76,7 @@ const WeeklyScoresPage: React.FC = () => {
             (item.violationScore ?? 0) +
             (item.hygieneScore ?? 0) +
             (item.lineUpScore ?? 0));
-        const total = discipline + (item.rewardScore ?? 0) + (item.academicScore ?? 0);
+        const total = discipline + (item.bonusScore ?? 0) + (item.academicScore ?? 0);
         return { ...item, disciplineScore: discipline, totalScore: total };
       });
 
@@ -130,7 +130,7 @@ const WeeklyScoresPage: React.FC = () => {
         academicScore: s.academicScore ?? 0,
         bonusScore: s.bonusScore ?? s.rewardScore ?? 0, // ✅ đổi rewardScore → bonusScore
         hygieneScore: s.hygieneScore ?? 0,
-        lineupScore: s.lineUpScore ?? 0, // ✅ đổi lineUpScore → lineupScore
+        lineUpScore: s.lineUpScore ?? 0, // ✅ đổi lineUpScore → lineupScore
         attendanceScore: s.attendanceScore ?? 0,
         violationScore: s.violationScore ?? 0,
         totalViolation: s.totalViolation ?? 0, // ✅ thêm mới nếu có
@@ -172,7 +172,7 @@ const WeeklyScoresPage: React.FC = () => {
             (updated.hygieneScore ?? 0) +
             (updated.lineUpScore ?? 0));
 
-        const total = discipline + (updated.rewardScore ?? 0) + (updated.academicScore ?? 0);
+        const total = discipline + (updated.bonusScore ?? 0) + (updated.academicScore ?? 0);
 
         return {
           ...updated,
@@ -278,7 +278,7 @@ const WeeklyScoresPage: React.FC = () => {
                   <TableCell align="center">
                     <TextField
                       type="number"
-                      value={row.rewardScore ?? 0}
+                      value={row.bonusScore ?? 0}
                       size="small"
                       onChange={(e) =>
                         handleChangeScore(row.className, "rewardScore", Number(e.target.value))
