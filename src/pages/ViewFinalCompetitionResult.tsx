@@ -2,11 +2,6 @@ import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
   TextField,
   MenuItem,
   Paper,
@@ -16,18 +11,21 @@ import {
   InputLabel,
   Snackbar,
   Alert,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
 } from "@mui/material";
 import api from "../api/api";
 
 interface Week {
-  _id: string;
   weekNumber: number;
   startDate?: string;
   endDate?: string;
 }
 
 interface ScoreRow {
-  _id?: string;
   className: string;
   grade: string;
   weekNumber: number;
@@ -46,15 +44,14 @@ interface ScoreRow {
 export default function ViewFinalCompetitionResult() {
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [currentWeek, setCurrentWeek] = useState<number | null>(null);
-  const [selectedWeek, setSelectedWeek] = useState<number | string>("");
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [gradeFilter, setGradeFilter] = useState<string>("all");
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: "success" | "error" | "info";
-  }>({ open: false, message: "", severity: "info" });
-
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info" as "success" | "error" | "info",
+  });
 
   const formatDateShort = (d?: string) => {
     if (!d) return "";
@@ -65,57 +62,46 @@ export default function ViewFinalCompetitionResult() {
     return `${dd}/${mm}`;
   };
 
-  // 📆 Lấy danh sách tuần
-useEffect(() => {
-  loadWeeks(); // gọi hàm tải tuần học khi vào trang
-}, []);
+  // --- Load danh sách tuần + tuần hiện tại ---
+  const loadWeeks = async () => {
+    try {
+      const res = await api.get("/api/academic-weeks/study-weeks");
+      const list: Week[] = (res.data || []).map((w: any, idx: number) => ({
+        weekNumber: Number(w.weekNumber ?? idx + 1),
+        startDate: w.startDate,
+        endDate: w.endDate,
+      }));
+      setWeeks(list);
 
-useEffect(() => {
-  if (selectedWeek) {
-    fetchScores(selectedWeek.weekNumber);
-  }
-}, [selectedWeek]);
+      const cur = await api.get("/api/academic-weeks/current");
+      const currentNum = cur.data?.weekNumber ?? null;
+      setCurrentWeek(currentNum);
+      setSelectedWeek(currentNum);
+    } catch (err) {
+      console.error("Lỗi khi tải tuần:", err);
+      setWeeks([]);
+      setCurrentWeek(null);
+      setSelectedWeek(null);
+    }
+  };
 
-// ✅ Hàm tải danh sách tuần + tuần hiện tại
-const loadWeeks = async () => {
-  try {
-    // --- Gọi API lấy danh sách tuần học ---
-    const res = await api.get("/api/academic-weeks/study-weeks");
-    const normalized: Week[] = (res.data || []).map((w: any, idx: number) => ({
-      _id: w._id || String(idx),
-      weekNumber: Number(w.weekNumber ?? idx + 1),
-      startDate: w.startDate || "",
-      endDate: w.endDate || "",
-    }));
+  useEffect(() => {
+    loadWeeks();
+  }, []);
 
-    setWeeks(normalized);
+  // --- Khi đổi tuần hoặc tuần hiện tại ---
+  useEffect(() => {
+    const week = selectedWeek ?? currentWeek;
+    if (week) fetchScores(week);
+  }, [currentWeek, selectedWeek]);
 
-    // --- Gọi API lấy tuần hiện tại ---
-    const cur = await api.get("/api/academic-weeks/current");
-    const wk = cur.data?.weekNumber ?? null;
-
-    // --- Nếu có tuần hiện tại thì chọn, nếu không thì chọn tuần cuối ---
-    const foundWeek =
-      normalized.find((w) => w.weekNumber === wk) ||
-      normalized[normalized.length - 1] ||
-      null;
-
-    setSelectedWeek(foundWeek);
-  } catch (err) {
-    console.error("Lỗi khi tải danh sách tuần:", err);
-    setWeeks([]);
-    setSelectedWeek(null);
-  }
-};
-
-  // ✅ Gọi API lấy dữ liệu tuần
+  // --- Gọi API lấy điểm ---
   const fetchScores = async (weekNumber: number) => {
     try {
       const res = await api.get(`/api/class-weekly-scores/full/${weekNumber}`);
       const raw = res.data.data || res.data || [];
 
       const normalized: ScoreRow[] = raw.map((r: any) => ({
-        _id: r._id,
         className: r.className || "",
         grade: r.grade || "",
         weekNumber: r.weekNumber || 0,
@@ -143,7 +129,7 @@ const loadWeeks = async () => {
     }
   };
 
-  // ✅ Gom theo khối
+  // --- Gom nhóm theo khối ---
   const groupedByGrade: Record<string, ScoreRow[]> = {};
   scores.forEach((s) => {
     if (!groupedByGrade[s.grade]) groupedByGrade[s.grade] = [];
@@ -159,19 +145,18 @@ const loadWeeks = async () => {
         Kết quả thi đua tuần
       </Typography>
 
+      {/* --- Chọn tuần và khối --- */}
       <Box display="flex" gap={2} mb={2} alignItems="center">
         <TextField
           select
           label="Chọn tuần"
-          value={selectedWeek?._id || ""}
-          onChange={(e) =>
-            setSelectedWeek(weeks.find((w) => w._id === e.target.value) || null)
-          }
+          value={selectedWeek ?? ""}
+          onChange={(e) => setSelectedWeek(Number(e.target.value))}
           sx={{ minWidth: 260 }}
           size="small"
         >
           {weeks.map((w) => (
-            <MenuItem key={w._id} value={w._id}>
+            <MenuItem key={w.weekNumber} value={w.weekNumber}>
               Tuần {w.weekNumber} ({formatDateShort(w.startDate)} →{" "}
               {formatDateShort(w.endDate)})
             </MenuItem>
@@ -194,6 +179,7 @@ const loadWeeks = async () => {
         </FormControl>
       </Box>
 
+      {/* --- Bảng điểm --- */}
       {gradeKeys
         .filter((g) => gradeFilter === "all" || g === gradeFilter)
         .map((grade) => {
@@ -228,14 +214,14 @@ const loadWeeks = async () => {
                     {rows.map((r) => {
                       let bg = {};
                       if (r.rank === 1)
-                        bg = { backgroundColor: "rgba(255,215,0,0.25)" }; // vàng
+                        bg = { backgroundColor: "rgba(255,215,0,0.25)" };
                       else if (r.rank === 2)
-                        bg = { backgroundColor: "rgba(192,192,192,0.25)" }; // bạc
+                        bg = { backgroundColor: "rgba(192,192,192,0.25)" };
                       else if (r.rank === 3)
-                        bg = { backgroundColor: "rgba(205,127,50,0.25)" }; // đồng
+                        bg = { backgroundColor: "rgba(205,127,50,0.25)" };
 
                       return (
-                        <TableRow key={r._id || r.className} sx={bg}>
+                        <TableRow key={r.className} sx={bg}>
                           <TableCell>{r.className}</TableCell>
                           <TableCell>{r.lineUpScore}</TableCell>
                           <TableCell>{r.violationScore}</TableCell>
