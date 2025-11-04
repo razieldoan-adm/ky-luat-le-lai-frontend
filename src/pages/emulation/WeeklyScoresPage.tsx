@@ -11,12 +11,13 @@ interface ClassWeeklyScore {
   grade: string;
   weekNumber: number;
   hygieneScore: number;
-  lineUpScore: number;
+  lineupScore: number;       // ✅ đổi chữ “U” → thường
   violationScore: number;
   attendanceScore: number;
   academicScore: number;
-  rewardScore: number;
+  bonusScore: number;         // ✅ đổi rewardScore → bonusScore
   disciplineScore?: number;
+  totalViolation?: number;    // ✅ thêm nếu backend có
   totalScore?: number;
   rank?: number;
 }
@@ -127,11 +128,14 @@ const WeeklyScoresPage: React.FC = () => {
         grade: s.grade,
         weekNumber: s.weekNumber || selectedWeek,
         academicScore: s.academicScore ?? 0,
-        rewardScore: s.rewardScore ?? 0,
+        bonusScore: s.bonusScore ?? s.rewardScore ?? 0, // ✅ đổi rewardScore → bonusScore
         hygieneScore: s.hygieneScore ?? 0,
-        lineUpScore: s.lineUpScore ?? 0,
+        lineupScore: s.lineUpScore ?? 0, // ✅ đổi lineUpScore → lineupScore
         attendanceScore: s.attendanceScore ?? 0,
         violationScore: s.violationScore ?? 0,
+        totalViolation: s.totalViolation ?? 0, // ✅ thêm mới nếu có
+        totalScore: s.totalScore ?? 0,
+        rank: s.rank ?? 0,
       })),
     };
 
