@@ -254,8 +254,8 @@ useEffect(() => {
             if (!value) return; // tránh lỗi khi chưa có dữ liệu
             setSelectedClass(value);
           }}
-          sx={{ minWidth: 220 }}
-          size="small"
+          sx={{ minWidth: 150 }}
+          
         >
           <MenuItem value="">-- Tất cả lớp --</MenuItem>
           {Array.isArray(classList) &&
