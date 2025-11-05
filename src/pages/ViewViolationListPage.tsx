@@ -1,173 +1,75 @@
-
-// ✅ src/pages/ViewViolationListPage.tsx
-import { useState, useEffect } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Box,
   Typography,
-  TextField,
-  MenuItem,
-  Button,
+  Paper,
   Table,
   TableHead,
-  TableBody,
   TableRow,
   TableCell,
-  Paper,
-  Stack,
+  TableBody,
+  TableContainer,
   FormControl,
   InputLabel,
+  MenuItem,
   Select,
+  Stack,
+  Button,
   Snackbar,
   Alert,
+  TextField,
 } from "@mui/material";
 import api from "../api/api";
 import dayjs from "dayjs";
-import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
-import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
-import useAcademicWeeks from "../types/useAcademicWeeks";
-
-dayjs.extend(isSameOrAfter);
-dayjs.extend(isSameOrBefore);
-
-interface Violation {
-  _id: string;
-  name: string;
-  className: string;
-  description: string;
-  time: Date;
-  weekNumber?: number;
-  handled?: boolean;
-  handledBy?: string;
-  studentId?: string;
-}
-
-interface Rule {
-  _id: string;
-  title: string;
-  point: number;
-}
 
 export default function ViewViolationListPage() {
-  const [allViolations, setAllViolations] = useState<Violation[]>([]);
-  const [filteredViolations, setFilteredViolations] = useState<Violation[]>([]);
+  const [allViolations, setAllViolations] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
-  const [classList, setClassList] = useState<string[]>([]);
-  const [rules, setRules] = useState<Rule[]>([]);
-  const [viewMode, setViewMode] = useState<"week" | "day">("week");
-  const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
-  const { weeks, selectedWeek, setSelectedWeek} = useAcademicWeeks();
+  const [selectedWeek, setSelectedWeek] = useState("");
+  const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [viewMode, setViewMode] = useState("week");
+  const [weeks, setWeeks] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
 
-  // ✅ Cài đặt giới hạn GVCN
-  const [limitGVCN, setLimitGVCN] = useState(false);
-  const [classViolationLimit, setClassViolationLimit] = useState<number>(0);
-  
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "info" as "info" | "warning" | "error" | "success",
-  });
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
-  // ✅ Thêm state cho danh sách lớp có vi phạm
-  const [selectedClassFilter] = useState<string | null>(null);
-
+  // 🔹 Lấy dữ liệu ban đầu
   useEffect(() => {
-    fetchSetting();
-    fetchClasses();
-    fetchRules();
-    fetchViolations();
+    const fetchData = async () => {
+      try {
+        const [violationRes, classRes, weekRes] = await Promise.all([
+          api.get("/api/violations"),
+          api.get("/api/classes"),
+          api.get("/api/weeks"),
+        ]);
+        setAllViolations(violationRes.data);
+        setClasses(classRes.data);
+        setWeeks(weekRes.data);
+      } catch (error) {
+        console.error("Lỗi khi tải dữ liệu:", error);
+        setSnackbar({ open: true, message: "Không thể tải dữ liệu!", severity: "error" });
+      }
+    };
+    fetchData();
   }, []);
 
-  useEffect(() => {
-    applyFilters(allViolations);
-  }, [selectedClass, selectedWeek, selectedDate, viewMode]);
-
-  useEffect(() => {
-  if (allViolations.length === 0) return;
-
-  let filtered = [...allViolations];
-
-  // 🔹 Lọc theo tuần (nếu chế độ tuần)
-  if (viewMode === "week" && selectedWeek) {
-    const selectedWeekData = weeks.find((w: any) => w.weekNumber === selectedWeek);
-    if (selectedWeekData) {
-      filtered = filtered.filter((v) => {
-        const date = dayjs(v.time);
-        return (
-          date.isSameOrAfter(dayjs(selectedWeekData.startDate), "day") &&
-          date.isSameOrBefore(dayjs(selectedWeekData.endDate), "day")
-        );
-      });
-    }
-  }
-
-  // 🔹 Lọc theo ngày (nếu chế độ ngày)
-  if (viewMode === "day") {
-    filtered = filtered.filter((v) =>
-      dayjs(v.time).isSame(dayjs(selectedDate), "day")
-    );
-  }
-}, [allViolations, selectedWeek, selectedDate, viewMode, weeks]); // ✅ Thêm dòng này
-
- 
-  const fetchSetting = async () => {
-    try {
-      const res = await api.get("/api/settings");
-      setLimitGVCN(res.data?.limitGVCNHandling ?? false);
-      setClassViolationLimit(res.data?.classViolationLimit ?? 0);
-    } catch (err) {
-      console.error("Lỗi khi lấy setting:", err);
-    }
-  };
-
-  const fetchClasses = async () => {
-    try {
-      const res = await api.get("/api/classes");
-      const validClasses = res.data
-        .filter((cls: any) => cls.teacher)
-        .map((cls: any) => cls.className);
-      setClassList(validClasses);
-    } catch (err) {
-      console.error("Lỗi khi lấy danh sách lớp:", err);
-    }
-  };
-
-  const fetchRules = async () => {
-    try {
-      const res = await api.get("/api/rules");
-      setRules(res.data);
-    } catch (err) {
-      console.error("Lỗi khi lấy rules:", err);
-    }
-  };
-
-  const fetchViolations = async () => {
-    try {
-      const res = await api.get("/api/violations/all/all-student");
-      const data = res.data.map((v: any) => ({
-        ...v,
-        handledBy: v.handledBy || "",
-        handled: v.handled || false,
-      }));
-      setAllViolations(data);
-      applyFilters(data);
-    } catch (err) {
-      console.error("Lỗi khi lấy dữ liệu vi phạm:", err);
-    }
-  };
-
-  const applyFilters = (sourceData = allViolations) => {
-    let data = [...sourceData];
+  // 🔹 Lọc dữ liệu bằng useMemo (tự động cập nhật khi các filter thay đổi)
+  const filteredViolations = useMemo(() => {
+    let data = [...allViolations];
 
     if (selectedClass) {
       data = data.filter(
         (v) =>
-          v.className.trim().toLowerCase() ===
+          v.className?.trim().toLowerCase() ===
           selectedClass.trim().toLowerCase()
       );
     }
 
     if (viewMode === "week" && selectedWeek) {
-      const selectedWeekData = weeks.find((w: any) => w.weekNumber === selectedWeek);
+      const selectedWeekData = weeks.find(
+        (w: any) => w.weekNumber === selectedWeek
+      );
       if (selectedWeekData) {
         data = data.filter((v) => {
           const date = dayjs(v.time);
@@ -180,351 +82,110 @@ export default function ViewViolationListPage() {
     }
 
     if (viewMode === "day") {
-      data = data.filter((v) =>
-        dayjs(v.time).isSame(dayjs(selectedDate), "day")
-      );
+      data = data.filter((v) => dayjs(v.time).isSame(dayjs(selectedDate), "day"));
     }
 
-    // ✅ Lọc theo lớp khi click button trong danh sách lớp
-    if (selectedClassFilter) {
-      data = data.filter((v) => v.className === selectedClassFilter);
-    }
+    return data;
+  }, [allViolations, selectedClass, selectedWeek, selectedDate, viewMode, weeks]);
 
-    setFilteredViolations(data);
-  };
-
-  const handleProcessViolation = async (id: string, by: "GVCN" | "PGT") => {
-    try {
-      await api.patch(`/api/violations/${id}/handle`, {
-        handled: true,
-        handledBy: by,
-        handlingMethod: `${by} xử lý`,
-      });
-      await fetchViolations();
-    } catch (err) {
-      console.error("Lỗi khi xử lý vi phạm:", err);
-    }
-  };
-
-  const renderTime = (date: Date) => dayjs(date).format("DD/MM/YYYY");
-
-  // ✅ Tổng điểm trừ (chỉ tính PGT xử lý)
-  const classTotals: Record<string, number> = {};
-  filteredViolations.forEach((v) => {
-    const matchedRule = rules.find((r) => r.title === v.description);
-    const point = matchedRule?.point || 0;
-    if (v.handledBy === "PGT") {
-      classTotals[v.className] = (classTotals[v.className] || 0) + point;
-    }
-  });
-
+  // 🔹 Hiển thị bảng
   return (
-    <Box sx={{ maxWidth: "100%", mx: "auto", py: 4 }}>
-      <Typography variant="h5" fontWeight="bold" align="center" gutterBottom>
+    <Box>
+      <Typography variant="h6" sx={{ mb: 2 }}>
         QUẢN LÝ VI PHẠM CỦA HỌC SINH
       </Typography>
 
-      <Box sx={{ mb: 3 }}>
-        
-        <Alert 
-          severity="warning" 
-          variant="outlined" 
-          sx={{ 
-            mt: 2, 
-            textAlign: "left", 
-            whiteSpace: "pre-line", 
-            fontSize: "0.9rem",
-            borderColor: "#ffb300",
-            backgroundColor: "#fff8e1",
-          }}
-        >
-          <strong style={{ color: "#e65100" }}>* Thầy/cô GVCN vui lòng chú ý :</strong>
-          {`\n
-          - Nếu thầy/cô GVCN đã xử lý vi phạm của học sinh vui lòng check vào nút "GVCN tiếp nhận".
-          - Phần duyệt học sinh vi phạm, mỗi học sinh chỉ được duyệt 1 lần, từ lần thứ 2 trở đi bắt buộc bị trừ điểm thi đua của lớp.
-          - Về phần mỗi lớp, sau khi có 5 học sinh được GVCN tiếp nhận xử lý thì lần vi phạm thứ 6 của lớp sẽ bắt buộc trừ điểm thi đua lớp.
-          * Các phần duyệt xử lý trên đã được BGH thông qua và PGT sẽ áp dụng để tính điểm thi đua.
-          Cách tính điểm trên để công bằng hơn trong việc tính điểm thi đua cho các lớp ít vi phạm và nhiều vi phạm. 
-            Xin cám ơn thầy/cô GVCN!`}
-        </Alert>
-      </Box>
-      
-      {/* --- Bộ lọc --- */}
-      <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
+      {/* Bộ lọc */}
+      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
         <TextField
-          label="Chọn lớp"
           select
+          label="Chọn lớp"
           value={selectedClass}
           onChange={(e) => setSelectedClass(e.target.value)}
+          size="small"
           sx={{ minWidth: 150 }}
         >
-          <MenuItem value="">-- Tất cả lớp --</MenuItem>
-          {classList.map((cls) => (
-            <MenuItem key={cls} value={cls}>
-              {cls}
+          {classes.map((cls) => (
+            <MenuItem key={cls._id} value={cls.className}>
+              {cls.className}
             </MenuItem>
           ))}
         </TextField>
 
-        <FormControl sx={{ minWidth: 150 }}>
-          <InputLabel>Chế độ xem</InputLabel>
-          <Select
-            value={viewMode}
-            label="Chế độ xem"
-            onChange={(e) => setViewMode(e.target.value as "week" | "day")}
-          >
-            <MenuItem value="week">Theo tuần</MenuItem>
-            <MenuItem value="day">Theo ngày</MenuItem>
-          </Select>
-        </FormControl>
+        <TextField
+          select
+          label="Chế độ xem"
+          value={viewMode}
+          onChange={(e) => setViewMode(e.target.value)}
+          size="small"
+          sx={{ minWidth: 150 }}
+        >
+          <MenuItem value="week">Theo tuần</MenuItem>
+          <MenuItem value="day">Theo ngày</MenuItem>
+        </TextField>
 
         {viewMode === "week" && (
-          <>
-            <TextField
-              select
-              label="Chọn tuần"
-              value={selectedWeek}
-              onChange={(e) => setSelectedWeek(Number(e.target.value))}
-              sx={{ minWidth: 150 }}
-            >
-              {weeks.map((w: any) => (
-                <MenuItem key={w.weekNumber} value={w.weekNumber}>
-                  Tuần {w.weekNumber} ({dayjs(w.startDate).format("DD/MM")} -{" "}
-                  {dayjs(w.endDate).format("DD/MM")})
-                </MenuItem>
-              ))}
-            </TextField>
-          </>
-        )}
-
-        {viewMode === "day" && (
           <TextField
-            label="Chọn ngày"
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            sx={{ minWidth: 180 }}
-          />
+            select
+            label="Chọn tuần"
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(e.target.value)}
+            size="small"
+            sx={{ minWidth: 200 }}
+          >
+            {weeks.map((w) => (
+              <MenuItem key={w.weekNumber} value={w.weekNumber}>
+                Tuần {w.weekNumber} ({dayjs(w.startDate).format("DD/MM")} -{" "}
+                {dayjs(w.endDate).format("DD/MM")})
+              </MenuItem>
+            ))}
+          </TextField>
         )}
       </Stack>
 
-      {/* --- Bảng dữ liệu --- */}
-      <Paper elevation={3} sx={{ width: "100%", overflowX: "auto" }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ backgroundColor: "#87cafe" }}>
-              <TableCell>STT</TableCell>
-              <TableCell>Họ tên</TableCell>
-              <TableCell>Lớp</TableCell>
-              <TableCell>Lỗi vi phạm</TableCell>
-              <TableCell>Điểm trừ</TableCell>
-              <TableCell>Ngày</TableCell>
-              <TableCell>Trạng thái</TableCell>
-              <TableCell>Tiếp nhận xử lý</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredViolations.map((v, idx) => {
-              const matchedRule = rules.find((r) => r.title === v.description);
-              return (
+      {/* Bảng dữ liệu */}
+      <Paper>
+        <TableContainer sx={{ maxHeight: 550 }}>
+          <Table stickyHeader size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>STT</TableCell>
+                <TableCell>Họ tên</TableCell>
+                <TableCell>Lớp</TableCell>
+                <TableCell>Lỗi vi phạm</TableCell>
+                <TableCell>Điểm trừ</TableCell>
+                <TableCell>Ngày</TableCell>
+                <TableCell>Trạng thái</TableCell>
+                <TableCell>Tiếp nhận xử lý</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredViolations.map((v, i) => (
                 <TableRow key={v._id}>
-                  <TableCell>{idx + 1}</TableCell>
-                  <TableCell>{v.name}</TableCell>
+                  <TableCell>{i + 1}</TableCell>
+                  <TableCell>{v.studentName}</TableCell>
                   <TableCell>{v.className}</TableCell>
-                  <TableCell>{v.description}</TableCell>
-                  <TableCell>{matchedRule?.point || 0}</TableCell>
-                  <TableCell>{renderTime(v.time)}</TableCell>
-                  <TableCell>
-                    {v.handled ? (
-                      <Box
-                        sx={{
-                          backgroundColor: "green",
-                          color: "white",
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 1,
-                          textAlign: "center",
-                        }}
-                      >
-                        Đã xử lý
-                      </Box>
-                    ) : (
-                      <Box
-                        sx={{
-                          backgroundColor: "#ffcccc",
-                          color: "red",
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 1,
-                          textAlign: "center",
-                        }}
-                      >
-                        Chưa xử lý
-                      </Box>
-                    )}
-                  </TableCell>
-
-                  {/* ✅ Button xử lý có giới hạn GVCN */}
-                  <TableCell> {v.handledBy === "PGT" ? ( 
-                    <Typography color="gray" fontStyle="italic"> 
-                      PGT đã xử lý 
-                    </Typography> 
-                  ) : !v.handled ? (
-        <Button
-        variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
-        color="primary"
-        size="small"
-        disabled={(() => {
-          const currentWeek = weeks.find(
-            (w: any) =>
-              dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
-              dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
-          );
-          if (!currentWeek) return false;
-      
-          // ✅ Lọc ra tất cả lỗi của cùng học sinh trong cùng tuần
-          const sameStudentThisWeek = allViolations.filter(
-            (item) =>
-              item._id !== v._id &&
-              item.name?.trim().toLowerCase() === v.name?.trim().toLowerCase() &&
-              item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
-              dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-              dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
-          );
-      
-          // 🔹 Kiểm tra học sinh này đã có lỗi được GVCN xử lý chưa
-          const hasHandledByGVCN = sameStudentThisWeek.some(
-            (item) => item.handledBy === "GVCN"
-          );
-      
-          // 🔹 Nếu đã có GVCN xử lý ít nhất 1 lỗi → khóa lại
-          if (limitGVCN && hasHandledByGVCN) return true;
-
-          // ✅ THÊM: kiểm tra tổng số lỗi GVCN đã xử lý của lớp trong tuần
-          const classHandledThisWeek = allViolations.filter(
-            (item) =>
-              item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
-              item.handledBy === "GVCN" &&
-              dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-              dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
-          ).length;
-          
-          if (classViolationLimit > 0 && classHandledThisWeek >= classViolationLimit) return true;
-          
-          return false;
-        })()}
-onClick={async () => {
-  const currentWeek = weeks.find(
-    (w: any) =>
-      dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
-      dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
-  );
-  if (!currentWeek) {
-    await handleProcessViolation(v._id, "GVCN");
-    return;
-  }
-
-  const sameStudentThisWeek = allViolations.filter(
-    (item) =>
-      item._id !== v._id &&
-      item.name?.trim().toLowerCase() === v.name?.trim().toLowerCase() &&
-      item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
-      dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-      dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
-  );
-
-  // 🔹 Kiểm tra học sinh này đã có lỗi được GVCN xử lý chưa
-  const hasHandledByGVCN = sameStudentThisWeek.some(
-    (item) => item.handledBy === "GVCN"
-  );
-
-  if (limitGVCN && hasHandledByGVCN) {
-    setSnackbar({
-      open: true,
-      message:
-        "⚠️ Học sinh này đã có vi phạm được GVCN xử lý trong tuần. Không thể xử lý thêm.",
-      severity: "warning",
-    });
-    return;
-  }
-
-  // ✅ THÊM: kiểm tra tổng số lỗi GVCN đã xử lý của lớp trong tuần
-  const classHandledThisWeek = allViolations.filter(
-    (item) =>
-      item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
-      item.handledBy === "GVCN" &&
-      dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-      dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
-  ).length;
-
-  if (classViolationLimit > 0 && classHandledThisWeek >= classViolationLimit) {
-    setSnackbar({
-      open: true,
-      message:
-        "⚠️ Lớp này đã đạt giới hạn số lần xử lý vi phạm trong tuần. Không thể tiếp nhận thêm.",
-      severity: "warning",
-    });
-    return;
-  }
-
-  // ✅ Nếu vượt qua tất cả điều kiện → xử lý
-  await handleProcessViolation(v._id, "GVCN");
-}}
-
->
-  GVCN tiếp nhận
-</Button>
-
-                  ) : (
-                    <Typography color="green" fontWeight="bold"> 
-                      ✓ GVCN đã xử lý 
-                    </Typography> )} 
-                  </TableCell>
+                  <TableCell>{v.violationName}</TableCell>
+                  <TableCell>{v.point}</TableCell>
+                  <TableCell>{dayjs(v.time).format("DD/MM/YYYY")}</TableCell>
+                  <TableCell>{v.status}</TableCell>
+                  <TableCell>{v.handlingMethod || "-"}</TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Paper>
 
-      {/* ✅ Snackbar hiển thị cảnh báo */}
+      {/* Snackbar thông báo */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4000}
+        autoHideDuration={3000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-        >
-          {snackbar.message}
-        </Alert>
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
-
-      {/* --- Tổng điểm trừ --- */}
-      <Box mt={4}>
-        <Typography variant="h6" fontWeight="bold" gutterBottom>
-          Tổng điểm trừ:
-        </Typography>
-        <Table size="small" sx={{ maxWidth: 500 }}>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: "#f0f0f0" }}>
-              <TableCell>Lớp</TableCell>
-              <TableCell align="right">Tổng điểm</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {Object.entries(classTotals).map(([cls, total]) => (
-              <TableRow key={cls}>
-                <TableCell>{cls}</TableCell>
-                <TableCell align="right">{total}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Box>
     </Box>
   );
 }
