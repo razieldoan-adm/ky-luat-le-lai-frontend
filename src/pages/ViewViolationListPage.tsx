@@ -66,16 +66,46 @@ export default function ViewViolationListPage() {
     severity: "info" as "info" | "warning" | "error" | "success",
   });
 
-  // ✅ Thêm state cho danh sách lớp có vi phạm
-  const [selectedClassFilter] = useState<string | null>(null);
-
   useEffect(() => {
     fetchSetting();
     fetchClasses();
     fetchRules();
     fetchViolations();
   }, []);
-
+      const applyFilters = useCallback((sourceData = allViolations) => {
+        let data = [...sourceData];
+      
+        if (selectedClass) {
+          data = data.filter(
+            (v) =>
+              v.className.trim().toLowerCase() ===
+              selectedClass.trim().toLowerCase()
+          );
+        }
+      
+        if (viewMode === "week" && selectedWeek) {
+          const selectedWeekData = weeks.find(
+            (w: any) => w.weekNumber === selectedWeek
+          );
+          if (selectedWeekData) {
+            data = data.filter((v) => {
+              const date = dayjs(v.time);
+              return (
+                date.isSameOrAfter(dayjs(selectedWeekData.startDate), "day") &&
+                date.isSameOrBefore(dayjs(selectedWeekData.endDate), "day")
+              );
+            });
+          }
+        }
+      
+        if (viewMode === "day") {
+          data = data.filter((v) =>
+            dayjs(v.time).isSame(dayjs(selectedDate), "day")
+          );
+        }
+      
+        setFilteredViolations(data);
+      }, [selectedClass, selectedWeek, selectedDate, viewMode, weeks, allViolations]);
 useEffect(() => {
   if (allViolations.length > 0) {
     applyFilters(allViolations);
@@ -156,42 +186,6 @@ useEffect(() => {
       console.error("Lỗi khi lấy dữ liệu vi phạm:", err);
     }
   };
-
-      const applyFilters = useCallback((sourceData = allViolations) => {
-        let data = [...sourceData];
-      
-        if (selectedClass) {
-          data = data.filter(
-            (v) =>
-              v.className.trim().toLowerCase() ===
-              selectedClass.trim().toLowerCase()
-          );
-        }
-      
-        if (viewMode === "week" && selectedWeek) {
-          const selectedWeekData = weeks.find(
-            (w: any) => w.weekNumber === selectedWeek
-          );
-          if (selectedWeekData) {
-            data = data.filter((v) => {
-              const date = dayjs(v.time);
-              return (
-                date.isSameOrAfter(dayjs(selectedWeekData.startDate), "day") &&
-                date.isSameOrBefore(dayjs(selectedWeekData.endDate), "day")
-              );
-            });
-          }
-        }
-      
-        if (viewMode === "day") {
-          data = data.filter((v) =>
-            dayjs(v.time).isSame(dayjs(selectedDate), "day")
-          );
-        }
-      
-        setFilteredViolations(data);
-      }, [selectedClass, selectedWeek, selectedDate, viewMode, weeks, allViolations]);
-
 
   const handleProcessViolation = async (id: string, by: "GVCN" | "PGT") => {
     try {
