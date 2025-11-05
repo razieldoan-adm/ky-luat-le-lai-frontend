@@ -251,18 +251,24 @@ export default function ViewViolationListPage() {
       {/* --- Bộ lọc --- */}
       <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
         <TextField
-          label="Chọn lớp"
           select
-          value={selectedClass}
-          onChange={(e) => setSelectedClass(e.target.value)}
+          label="Chọn lớp"
+          value={selectedClass || ""}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (!value) return; // tránh lỗi khi chưa có dữ liệu
+            setSelectedClass(value);
+          }}
           sx={{ minWidth: 150 }}
+          size="small"
         >
           <MenuItem value="">-- Tất cả lớp --</MenuItem>
-          {classList.map((cls) => (
-            <MenuItem key={cls} value={cls}>
-              {cls}
-            </MenuItem>
-          ))}
+          {Array.isArray(classList) &&
+            classList.map((cls) => (
+              <MenuItem key={cls} value={cls}>
+                {cls}
+              </MenuItem>
+            ))}
         </TextField>
 
         <FormControl sx={{ minWidth: 150 }}>
