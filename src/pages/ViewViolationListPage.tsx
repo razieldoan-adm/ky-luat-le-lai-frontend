@@ -1,5 +1,5 @@
 // ✅ src/pages/ViewViolationListPage.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -76,9 +76,12 @@ export default function ViewViolationListPage() {
     fetchViolations();
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
+  if (allViolations.length > 0) {
     applyFilters(allViolations);
-  }, [selectedClass, selectedWeek, selectedDate, viewMode]);
+  }
+}, [selectedClass, selectedWeek, selectedDate, viewMode, allViolations, applyFilters]);
+
 
   useEffect(() => {
   if (allViolations.length === 0) return;
@@ -154,43 +157,41 @@ export default function ViewViolationListPage() {
     }
   };
 
-  const applyFilters = (sourceData = allViolations) => {
-    let data = [...sourceData];
-
-    if (selectedClass) {
-      data = data.filter(
-        (v) =>
-          v.className.trim().toLowerCase() ===
-          selectedClass.trim().toLowerCase()
-      );
-    }
-
-    if (viewMode === "week" && selectedWeek) {
-      const selectedWeekData = weeks.find((w: any) => w.weekNumber === selectedWeek);
-      if (selectedWeekData) {
-        data = data.filter((v) => {
-          const date = dayjs(v.time);
-          return (
-            date.isSameOrAfter(dayjs(selectedWeekData.startDate), "day") &&
-            date.isSameOrBefore(dayjs(selectedWeekData.endDate), "day")
+      const applyFilters = useCallback((sourceData = allViolations) => {
+        let data = [...sourceData];
+      
+        if (selectedClass) {
+          data = data.filter(
+            (v) =>
+              v.className.trim().toLowerCase() ===
+              selectedClass.trim().toLowerCase()
           );
-        });
-      }
-    }
+        }
+      
+        if (viewMode === "week" && selectedWeek) {
+          const selectedWeekData = weeks.find(
+            (w: any) => w.weekNumber === selectedWeek
+          );
+          if (selectedWeekData) {
+            data = data.filter((v) => {
+              const date = dayjs(v.time);
+              return (
+                date.isSameOrAfter(dayjs(selectedWeekData.startDate), "day") &&
+                date.isSameOrBefore(dayjs(selectedWeekData.endDate), "day")
+              );
+            });
+          }
+        }
+      
+        if (viewMode === "day") {
+          data = data.filter((v) =>
+            dayjs(v.time).isSame(dayjs(selectedDate), "day")
+          );
+        }
+      
+        setFilteredViolations(data);
+      }, [selectedClass, selectedWeek, selectedDate, viewMode, weeks, allViolations]);
 
-    if (viewMode === "day") {
-      data = data.filter((v) =>
-        dayjs(v.time).isSame(dayjs(selectedDate), "day")
-      );
-    }
-
-    // ✅ Lọc theo lớp khi click button trong danh sách lớp
-    if (selectedClassFilter) {
-      data = data.filter((v) => v.className === selectedClassFilter);
-    }
-
-    setFilteredViolations(data);
-  };
 
   const handleProcessViolation = async (id: string, by: "GVCN" | "PGT") => {
     try {
