@@ -55,7 +55,7 @@ export default function ViewViolationListPage() {
   const [viewMode, setViewMode] = useState<"week" | "day">("week");
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
   const { weeks, selectedWeek, setSelectedWeek} = useAcademicWeeks();
-  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   // ✅ Cài đặt giới hạn GVCN
   const [limitGVCN, setLimitGVCN] = useState(false);
   const [classViolationLimit, setClassViolationLimit] = useState<number>(0);
@@ -374,43 +374,44 @@ useEffect(() => {
                   variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
                   color="primary"
                   size="small"
-                  disabled={
-                    processingId === v._id || // đang xử lý → khóa nút
-                    (() => {
-                      const currentWeek = weeks.find(
-                        (w: any) =>
-                          dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
-                          dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
-                      );
-                      if (!currentWeek) return false;
-                
-                      const sameStudentThisWeek = allViolations.filter(
-                        (item) =>
-                          item._id !== v._id &&
-                          item.name?.trim().toLowerCase() === v.name?.trim().toLowerCase() &&
-                          item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
-                          dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-                          dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
-                      );
-                
-                      const hasHandledByGVCN = sameStudentThisWeek.some(
-                        (item) => item.handledBy === "GVCN"
-                      );
-                      if (limitGVCN && hasHandledByGVCN) return true;
-                
-                      const classHandledThisWeek = allViolations.filter(
-                        (item) =>
-                          item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
-                          item.handledBy === "GVCN" &&
-                          dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-                          dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
-                      ).length;
-                
-                      return classViolationLimit > 0 && classHandledThisWeek >= classViolationLimit;
-                    })()
-                  }
+disabled={
+  isProcessing || // ✅ khóa toàn bộ khi đang xử lý
+  (() => {
+    const currentWeek = weeks.find(
+      (w: any) =>
+        dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
+        dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
+    );
+    if (!currentWeek) return false;
+
+    const sameStudentThisWeek = allViolations.filter(
+      (item) =>
+        item._id !== v._id &&
+        item.name?.trim().toLowerCase() === v.name?.trim().toLowerCase() &&
+        item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
+        dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
+        dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
+    );
+
+    const hasHandledByGVCN = sameStudentThisWeek.some(
+      (item) => item.handledBy === "GVCN"
+    );
+    if (limitGVCN && hasHandledByGVCN) return true;
+
+    const classHandledThisWeek = allViolations.filter(
+      (item) =>
+        item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
+        item.handledBy === "GVCN" &&
+        dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
+        dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
+    ).length;
+
+    return classViolationLimit > 0 && classHandledThisWeek >= classViolationLimit;
+  })()
+}
+
                   onClick={async () => {
-                    setProcessingId(v._id); // ✅ chống click nhanh
+                    setIsProcessing(true); // ✅ chống click nhanh
                     try {
                       const currentWeek = weeks.find(
                         (w: any) =>
@@ -457,11 +458,11 @@ useEffect(() => {
                 
                       await handleProcessViolation(v._id, "GVCN");
                     } finally {
-                      setProcessingId(null);
+                      setIsProcessing(false);
                     }
                   }}
                 >
-                  {processingId === v._id ? (
+                  {isProcessing ? (
                     <CircularProgress size={20} color="inherit" />
                   ) : (
                     "GVCN tiếp nhận"
