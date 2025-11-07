@@ -36,7 +36,6 @@ import AdminRulesPage from './pages/admin/AdminRulesPage';
 import EmulationLayout from './layouts/EmulationLayout';
 import EnterExamScoresPage from './pages/emulation/ClassAcademicScoresPage';
 import EnterViolationScoresPage from './pages/emulation/ClassViolationScoresPage';
-import EnterClassHygieneScorePage from './pages/emulation/ClassHygieneScorePage';
 import EnterClassAttendanceSummaryPage from './pages/emulation/ClassAttendanceSummaryPage';
 import EnterClassLineUpSummaryPage from './pages/emulation/ClassLineUpSummaryPage';
 import WeeklyScoresPage from './pages/emulation/WeeklyScoresPage';
@@ -77,7 +76,7 @@ function AppContent() {
         >
           <Route path="class-academic-scores" element={<EnterExamScoresPage />} />
           <Route path="class-violation-scores" element={<EnterViolationScoresPage />} />
-          <Route path="class-hygiene-score" element={<EnterClassHygieneScorePage />} />
+       
           <Route path="class-attendance-summaries" element={<EnterClassAttendanceSummaryPage />} />
           <Route path="class-lineup-summaries" element={<EnterClassLineUpSummaryPage />} />
           <Route path="weekly-scores" element={<WeeklyScoresPage />} />
