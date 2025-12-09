@@ -69,25 +69,22 @@ export default function RecordViolationPage() {
   }, [name, className]);
 
   const startVoice = () => {
-  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    alert("Trình duyệt không hỗ trợ nhận dạng giọng nói!");
-    return;
-  }
-
-  const recognition = new SpeechRecognition();
-  recognition.lang = "vi-VN";
-  recognition.continuous = false;
-  recognition.interimResults = false;
+  if (!recognition) return;
 
   setIsListening(true);
   recognition.start();
 
   recognition.onresult = (event: any) => {
-    const text = event.results[0][0].transcript;
-    console.log("Voice result:", text);
-    setName(text); // 🔥 điền vào ô nhập tên
-    setIsListening(false);
+    const text = Array.from(event.results)
+      .map((r: any) => r[0].transcript)
+      .join("");
+
+    // cập nhật ngay vào ô tên
+    setName(text);
+
+    // nếu im lặng > 200ms → stop
+    clearTimeout(stopTimer);
+    stopTimer = setTimeout(() => recognition.stop(), 200);
   };
 
   recognition.onerror = () => {
@@ -98,6 +95,7 @@ export default function RecordViolationPage() {
     setIsListening(false);
   };
 };
+
   
   // 📌 Lấy danh sách lớp có GVCN
   useEffect(() => {
