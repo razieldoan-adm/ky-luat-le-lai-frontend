@@ -287,6 +287,9 @@ const totalPenalty = violations.reduce(
             <Button variant="contained" onClick={handleAddViolation}>
               Ghi nhận
             </Button>
+            <Button variant="outlined" sx={{ mt: 3 }} onClick={() => navigate("/violation/")}>
+                 Nhập tên vi phạm mới
+            </Button>
           </Stack>
         </CardContent>
       </Card>
@@ -384,9 +387,7 @@ const totalPenalty = violations.reduce(
         </Alert>
       </Snackbar>
 
-      <Button variant="outlined" sx={{ mt: 3 }} onClick={() => navigate("/violation/")}>
-        Quay lại
-      </Button>
+     
     </Box>
   );
 };
