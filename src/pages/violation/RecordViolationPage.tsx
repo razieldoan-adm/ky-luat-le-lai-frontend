@@ -63,28 +63,56 @@ export default function RecordViolationPage() {
   }, []);
 
   // 🎤 Bấm nút ghi âm
-  const startVoice = () => {
-    if (!recognition) return;
+  // 🎤 Bấm nút ghi âm
+const startVoice = () => {
+  if (!recognition) return;
 
-    setIsListening(true);
-    recognition.start();
+  setIsListening(true);
+  recognition.start();
 
-    // có chữ là cập nhật liên tục
-    recognition.onresult = (event: any) => {
-      const text = Array.from(event.results)
-        .map((r: any) => r[0].transcript)
-        .join("");
+  // lắng nghe kết quả
+  recognition.onresult = async (event: any) => {
+    let interimText = "";
+    let finalText = "";
 
-      setName(text);
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalText += transcript;
+      } else {
+        interimText += transcript;
+      }
+    }
 
-      // ⛔ dừng khi im lặng 200ms → nhanh hơn nhiều
-      clearTimeout(stopTimer);
-      stopTimer = setTimeout(() => recognition.stop(), 200);
-    };
+    // Hiện realtime khi đang nói
+    if (interimText) setName(interimText);
 
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
+    // Khi có kết quả cuối cùng
+    if (finalText) {
+      setName(finalText);
+      setSuggestions([]); // clear danh sách cũ
+
+      try {
+        const params = new URLSearchParams();
+        params.append("name", finalText.trim());
+        params.append("normalizedName", removeVietnameseTones(finalText.trim()));
+        if (className.trim()) params.append("className", className.trim());
+
+        const res = await api.get(`/api/students/search?${params.toString()}`);
+        setSuggestions(res.data);
+      } catch {
+        setSuggestions([]);
+      }
+    }
+
+    // Auto stop khi im lặng 200ms
+    clearTimeout(stopTimer);
+    stopTimer = setTimeout(() => recognition.stop(), 200);
   };
+
+  recognition.onerror = () => setIsListening(false);
+  recognition.onend = () => setIsListening(false);
+};
 
   // 🔎 Gợi ý học sinh từ DB
   useEffect(() => {
