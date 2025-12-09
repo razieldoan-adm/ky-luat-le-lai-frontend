@@ -212,6 +212,11 @@ export default function RecordViolationPage() {
                     primary={`Tên: ${s.name}`}
                     secondary={`Lớp: ${s.className}`}
                   />
+                </ListItemButton>
+                  <ListItemText
+                    primary={`Tên: ${s.name}`}
+                    secondary={`Lớp: ${s.className}`}
+                  />
                 </ListItemText>
               ))}
             </List>
