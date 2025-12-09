@@ -39,7 +39,8 @@ export default function RecordViolationPage() {
   const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const navigate = useNavigate();
-
+  const [isListening, setIsListening] = useState(false);
+  
   // 🔎 Gợi ý học sinh từ DB (theo tên hoặc lớp hoặc cả hai)
   useEffect(() => {
     if (!name.trim() && !className.trim()) {
@@ -67,6 +68,37 @@ export default function RecordViolationPage() {
     return () => clearTimeout(timeout);
   }, [name, className]);
 
+  const startVoice = () => {
+  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert("Trình duyệt không hỗ trợ nhận dạng giọng nói!");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "vi-VN";
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  setIsListening(true);
+  recognition.start();
+
+  recognition.onresult = (event: any) => {
+    const text = event.results[0][0].transcript;
+    console.log("Voice result:", text);
+    setName(text); // 🔥 điền vào ô nhập tên
+    setIsListening(false);
+  };
+
+  recognition.onerror = () => {
+    setIsListening(false);
+  };
+
+  recognition.onend = () => {
+    setIsListening(false);
+  };
+};
+  
   // 📌 Lấy danh sách lớp có GVCN
   useEffect(() => {
     const fetchClasses = async () => {
@@ -111,7 +143,13 @@ export default function RecordViolationPage() {
             onChange={(e) => setName(e.target.value)}
             fullWidth
           />
-
+          <Button
+            variant="outlined"
+            color={isListening ? "error" : "secondary"}
+            onClick={startVoice}
+          >
+            {isListening ? "Đang nghe..." : "🎤 Nói"}
+          </Button>
           <TextField
             label="Chọn lớp"
             select
