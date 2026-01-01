@@ -74,6 +74,9 @@ export default function RecordClassLineUpSummaryPage() {
     'Không dọn vệ sinh vị trí xếp hàng',
     'Nhiều học sinh ngồi trong lớp giờ chơi, giờ xếp hàng',
     'Mất trật tự trong khi xếp hàng giờ SHDC',
+    'Rượt đuổi nhau gây mất trật tự',
+    'Không tắt đèn, quạt giờ chơi',
+    'Không đóng cửa lớp giờ chơi, giờ thể dục, TH thực hành',
   ];
 
   // --- Load classes
