@@ -63,6 +63,13 @@ const drawerWidth = 240;
         </ListItemButton>
       </List>
 
+      <ListItemButton onClick={() => navigate('/violation/early-leave-student')}>
+          <ListItemIcon><ClassIcon /></ListItemIcon>
+          <ListItemText primary="DS học sinh về sớm" />
+        </ListItemButton>
+      </List>
+      
+
       {/* Spacer đẩy nút quay về xuống cuối */}
       <Box sx={{ flexGrow: 1 }} />
 
