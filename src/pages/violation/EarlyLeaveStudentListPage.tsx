@@ -218,6 +218,11 @@ export default function EarlyLeaveStudentListPage() {
           onChange={(e) => setName(e.target.value)}
           fullWidth
         />
+        {errorMsg && (
+          <Typography color="error" fontWeight="bold">
+            {errorMsg}
+          </Typography>
+        )}
 
         <Button
           variant={isListening ? "contained" : "outlined"}
