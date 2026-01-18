@@ -24,6 +24,7 @@ import AllStudentPage from './pages/violation/AllViolationStudentPage';
 import StudentListPage from './pages/violation/StudentListPage.tsx';
 import RecordClassLineUpSummaryPage from './pages/violation/RecordClassLineUpSummaryPage.tsx';
 import RecordAttendancePage from './pages/violation/RecordAttendancePage.tsx';
+import EarlyLeaveStudentListPage from './pages/violation/EarlyLeaveStudentListPage.tsx';
 // Admin
 import AdminLayout from './layouts/AdminLayout';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
@@ -97,6 +98,7 @@ function AppContent() {
                       <Route path="student-list" element={<StudentListPage />} />
                       <Route path="class-lineup-list" element={<RecordClassLineUpSummaryPage />} />
                       <Route path="class-attendance-list" element={<RecordAttendancePage />} />
+                      <Route path="early-leave-student" element={<EarlyLeaveStudentListPage />} />
                     </Route>
         {/* General app routes (with global header/sidebar) */}
         <Route element={<MainLayout />}>
