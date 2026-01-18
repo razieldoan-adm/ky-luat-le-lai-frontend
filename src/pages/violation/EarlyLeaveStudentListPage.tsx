@@ -54,7 +54,7 @@ export default function EarlyLeaveStudentListPage() {
   const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
   const [students, setStudents] = useState<EarlyLeaveStudent[]>([]);
 
-  const [filterClass, setFilterClass] = useState("ALL");
+  const [filterClass, setFilterClass] = useState("");
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const [isListening, setIsListening] = useState(false);
 
@@ -158,17 +158,18 @@ export default function EarlyLeaveStudentListPage() {
 
   /* ================= LOAD STUDENTS ================= */
   const loadStudents = () => {
-    const url =
-      filterClass === "ALL"
-        ? "/api/early-leave/students"
-        : `/api/early-leave//students/by-class?className=${filterClass}`;
+  if (!filterClass) {
+    setStudents([]); // ❗ chưa chọn lớp → KHÔNG load
+    return;
+  }
 
-    api.get(url).then((res) => setStudents(res.data));
-  };
-
-  useEffect(() => {
-    loadStudents();
-  }, [filterClass]);
+  api
+    .get("/api/early-leave/students/by-class", {
+      params: { className: filterClass },
+    })
+    .then((res) => setStudents(res.data))
+    .catch(() => setStudents([]));
+};
 
   /* ================= ADD STUDENT ================= */
   const handleAddStudent = async (s: StudentSuggestion) => {
@@ -246,7 +247,12 @@ export default function EarlyLeaveStudentListPage() {
           value={filterClass}
           onChange={(e) => setFilterClass(e.target.value)}
         >
-          <MenuItem value="ALL">Tất cả</MenuItem>
+          {!filterClass && (
+            <Typography color="text.secondary">
+              Vui lòng chọn lớp để xem danh sách học sinh
+            </Typography>
+          )}
+          <MenuItem value="ALL">Chọn lớp</MenuItem>
           {classOptions.map((cls) => (
             <MenuItem key={cls._id} value={cls.className}>
               {cls.className} — {cls.teacher}
@@ -259,29 +265,32 @@ export default function EarlyLeaveStudentListPage() {
           Danh sách học sinh
         </Typography>
 
-        <Paper>
-          <List>
-            {students.map((s, i) => (
-              <ListItem
-                key={s._id}
-                secondaryAction={
-                  <IconButton
-                    edge="end"
-                    color="error"
-                    onClick={() => handleDelete(s._id)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                }
-              >
-                <ListItemText
-                  primary={`${i + 1}. ${s.name}`}
-                  secondary={`Lớp: ${s.className}`}
-                />
-              </ListItem>
-            ))}
-          </List>
-        </Paper>
+        {filterClass && (
+  <Paper>
+    <List>
+      {students.map((s, i) => (
+        <ListItem
+          key={s._id}
+          secondaryAction={
+            <IconButton
+              edge="end"
+              color="error"
+              onClick={() => handleDelete(s._id)}
+            >
+              <DeleteIcon />
+            </IconButton>
+          }
+        >
+          <ListItemText
+            primary={`${i + 1}. ${s.name}`}
+            secondary={`Lớp: ${s.className}`}
+          />
+        </ListItem>
+      ))}
+    </List>
+  </Paper>
+)}
+
       </Stack>
     </Box>
   );
