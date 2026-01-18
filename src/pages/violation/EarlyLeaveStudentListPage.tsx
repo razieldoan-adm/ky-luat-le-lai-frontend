@@ -6,12 +6,15 @@ import {
   Button,
   Paper,
   List,
+  ListItem,
   ListItemButton,
   ListItemText,
+  IconButton,
   Stack,
   MenuItem,
   Divider,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import api from "../../api/api";
 
 /* ================= INTERFACE ================= */
@@ -48,10 +51,10 @@ let stopTimer: any = null;
 
 export default function EarlyLeaveStudentListPage() {
   const [name, setName] = useState("");
-  const [className, setClassName] = useState("");
-
   const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
   const [students, setStudents] = useState<EarlyLeaveStudent[]>([]);
+
+  const [filterClass, setFilterClass] = useState("ALL");
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const [isListening, setIsListening] = useState(false);
 
@@ -95,17 +98,15 @@ export default function EarlyLeaveStudentListPage() {
 
       if (finalText) {
         setName(finalText);
-        setSuggestions([]);
+
+        const params = new URLSearchParams();
+        params.append("name", finalText.trim());
+        params.append(
+          "normalizedName",
+          removeVietnameseTones(finalText.trim())
+        );
 
         try {
-          const params = new URLSearchParams();
-          params.append("name", finalText.trim());
-          params.append(
-            "normalizedName",
-            removeVietnameseTones(finalText.trim())
-          );
-          if (className) params.append("className", className);
-
           const res = await api.get(
             `/api/students/search?${params.toString()}`
           );
@@ -123,18 +124,20 @@ export default function EarlyLeaveStudentListPage() {
     recognition.onend = () => setIsListening(false);
   };
 
-  /* ================= SEARCH BY TEXT ================= */
+  /* ================= SEARCH TEXT ================= */
   useEffect(() => {
     if (!name.trim()) {
       setSuggestions([]);
       return;
     }
 
-    const timeout = setTimeout(() => {
+    const t = setTimeout(() => {
       const params = new URLSearchParams();
       params.append("name", name.trim());
-      params.append("normalizedName", removeVietnameseTones(name.trim()));
-      if (className) params.append("className", className);
+      params.append(
+        "normalizedName",
+        removeVietnameseTones(name.trim())
+      );
 
       api
         .get(`/api/students/search?${params.toString()}`)
@@ -142,10 +145,10 @@ export default function EarlyLeaveStudentListPage() {
         .catch(() => setSuggestions([]));
     }, 300);
 
-    return () => clearTimeout(timeout);
-  }, [name, className]);
+    return () => clearTimeout(t);
+  }, [name]);
 
-  /* ================= LOAD CLASS ================= */
+  /* ================= LOAD CLASSES ================= */
   useEffect(() => {
     api
       .get("/api/classes/with-teacher")
@@ -153,39 +156,42 @@ export default function EarlyLeaveStudentListPage() {
       .catch(console.error);
   }, []);
 
-  /* ================= LOAD LIST BY CLASS ================= */
+  /* ================= LOAD STUDENTS ================= */
+  const loadStudents = () => {
+    const url =
+      filterClass === "ALL"
+        ? "/api/early-leave"
+        : `/api/early-leave/by-class?className=${filterClass}`;
+
+    api.get(url).then((res) => setStudents(res.data));
+  };
+
   useEffect(() => {
-    if (!className) {
-      setStudents([]);
-      return;
-    }
+    loadStudents();
+  }, [filterClass]);
 
-    api
-      .get(`/api/early-leave/by-class?className=${className}`)
-      .then((res) => setStudents(res.data))
-      .catch(console.error);
-  }, [className]);
-
-  /* ================= SAVE ================= */
-  const handleSave = async (studentName: string) => {
-    if (!className) return;
-
+  /* ================= ADD STUDENT ================= */
+  const handleAddStudent = async (s: StudentSuggestion) => {
     await api.post("/api/early-leave", {
-      name: studentName,
-      className,
+      name: s.name,
+      className: s.className,
     });
 
     setName("");
     setSuggestions([]);
-
-    const res = await api.get(
-      `/api/early-leave/by-class?className=${className}`
-    );
-    setStudents(res.data);
+    loadStudents();
 
     setTimeout(() => {
       listRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 200);
+  };
+
+  /* ================= DELETE ================= */
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Xóa học sinh này khỏi danh sách?")) return;
+
+    await api.delete(`/api/early-leave/${id}`);
+    loadStudents();
   };
 
   /* ================= UI ================= */
@@ -196,8 +202,9 @@ export default function EarlyLeaveStudentListPage() {
       </Typography>
 
       <Stack spacing={2}>
+        {/* 🎤 VOICE INPUT */}
         <TextField
-          label="Tên học sinh"
+          label="Nói hoặc nhập tên học sinh"
           value={name}
           onChange={(e) => setName(e.target.value)}
           fullWidth
@@ -211,27 +218,14 @@ export default function EarlyLeaveStudentListPage() {
           {isListening ? "🎙️ Đang nghe..." : "🎤 Nói tên học sinh"}
         </Button>
 
-        <TextField
-          label="Chọn lớp"
-          select
-          value={className}
-          onChange={(e) => setClassName(e.target.value)}
-          fullWidth
-        >
-          {classOptions.map((cls) => (
-            <MenuItem key={cls._id} value={cls.className}>
-              {cls.className} — {cls.teacher}
-            </MenuItem>
-          ))}
-        </TextField>
-
+        {/* 🔍 SUGGESTIONS */}
         {suggestions.length > 0 && (
           <Paper>
             <List>
               {suggestions.map((s) => (
                 <ListItemButton
                   key={s._id}
-                  onClick={() => handleSave(s.name)}
+                  onClick={() => handleAddStudent(s)}
                 >
                   <ListItemText
                     primary={s.name}
@@ -245,24 +239,49 @@ export default function EarlyLeaveStudentListPage() {
 
         <Divider />
 
+        {/* 🔽 FILTER */}
+        <TextField
+          select
+          label="Xem danh sách theo lớp"
+          value={filterClass}
+          onChange={(e) => setFilterClass(e.target.value)}
+        >
+          <MenuItem value="ALL">Tất cả</MenuItem>
+          {classOptions.map((cls) => (
+            <MenuItem key={cls._id} value={cls.className}>
+              {cls.className} — {cls.teacher}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        {/* 📋 LIST */}
         <Typography variant="h6" ref={listRef}>
-          Danh sách học sinh theo lớp
+          Danh sách học sinh
         </Typography>
 
-        {students.length > 0 && (
-          <Paper>
-            <List>
-              {students.map((s, i) => (
+        <Paper>
+          <List>
+            {students.map((s, i) => (
+              <ListItem
+                key={s._id}
+                secondaryAction={
+                  <IconButton
+                    edge="end"
+                    color="error"
+                    onClick={() => handleDelete(s._id)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                }
+              >
                 <ListItemText
-                  key={s._id}
                   primary={`${i + 1}. ${s.name}`}
                   secondary={`Lớp: ${s.className}`}
-                  sx={{ px: 2, py: 1 }}
                 />
-              ))}
-            </List>
-          </Paper>
-        )}
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
       </Stack>
     </Box>
   );
