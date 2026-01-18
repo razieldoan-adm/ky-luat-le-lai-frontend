@@ -160,8 +160,8 @@ export default function EarlyLeaveStudentListPage() {
   const loadStudents = () => {
     const url =
       filterClass === "ALL"
-        ? "/api/early-leave"
-        : `/api/early-leave/by-class?className=${filterClass}`;
+        ? "/api/early-leave/students"
+        : `/api/early-leave//students/by-class?className=${filterClass}`;
 
     api.get(url).then((res) => setStudents(res.data));
   };
@@ -172,7 +172,7 @@ export default function EarlyLeaveStudentListPage() {
 
   /* ================= ADD STUDENT ================= */
   const handleAddStudent = async (s: StudentSuggestion) => {
-    await api.post("/api/early-leave", {
+    await api.post("/api/early-leave/students", {
       name: s.name,
       className: s.className,
     });
@@ -190,7 +190,7 @@ export default function EarlyLeaveStudentListPage() {
   const handleDelete = async (id: string) => {
     if (!window.confirm("Xóa học sinh này khỏi danh sách?")) return;
 
-    await api.delete(`/api/early-leave/${id}`);
+    await api.delete(`/api/early-leave/students/${id}`);
     loadStudents();
   };
 
