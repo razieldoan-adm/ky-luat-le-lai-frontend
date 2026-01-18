@@ -171,22 +171,30 @@ export default function EarlyLeaveStudentListPage() {
 
   /* ================= ADD STUDENT ================= */
   const handleAddStudent = async (s: StudentSuggestion) => {
+  setErrorMsg("");
+
+  try {
     await api.post("/api/early-leave/students", {
       name: s.name,
       className: s.className,
+      normalizedName: removeVietnameseTones(s.name),
     });
 
     setName("");
     setSuggestions([]);
-
-    if (s.className === filterClass) {
-      loadStudents();
-    }
+    loadStudents();
 
     setTimeout(() => {
       listRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 200);
-  };
+  } catch (err: any) {
+    if (err.response?.status === 409) {
+      setErrorMsg("⚠️ Học sinh đã có trong danh sách lớp này");
+    } else {
+      setErrorMsg("❌ Lỗi khi thêm học sinh");
+    }
+  }
+};
 
   /* ================= DELETE ================= */
   const handleDelete = async (id: string) => {
