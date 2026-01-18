@@ -57,7 +57,7 @@ export default function EarlyLeaveStudentListPage() {
   const [filterClass, setFilterClass] = useState(""); // ❗ rỗng = chưa chọn lớp
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const [isListening, setIsListening] = useState(false);
-
+  const [errorMsg, setErrorMsg] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
   /* ================= INIT VOICE ================= */
