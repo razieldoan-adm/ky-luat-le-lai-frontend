@@ -37,13 +37,14 @@ interface ClassOption {
 }
 
 /* ================= UTILS ================= */
-function removeVietnameseTones(str: string): string {
-  return str
+const normalize = (text: string) =>
+  text
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/đ/g, "d")
-    .replace(/Đ/g, "D");
-}
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .trim();
 
 /* ================= VOICE ================= */
 let recognition: any = null;
@@ -53,11 +54,13 @@ export default function EarlyLeaveStudentListPage() {
   const [name, setName] = useState("");
   const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
   const [students, setStudents] = useState<EarlyLeaveStudent[]>([]);
+  const [tempStudents, setTempStudents] = useState<EarlyLeaveStudent[]>([]);
 
-  const [filterClass, setFilterClass] = useState(""); // ❗ rỗng = chưa chọn lớp
+  const [filterClass, setFilterClass] = useState(""); // chưa chọn lớp
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
   const listRef = useRef<HTMLDivElement>(null);
 
   /* ================= INIT VOICE ================= */
@@ -96,10 +99,7 @@ export default function EarlyLeaveStudentListPage() {
 
       const params = new URLSearchParams();
       params.append("name", finalText.trim());
-      params.append(
-        "normalizedName",
-        removeVietnameseTones(finalText.trim())
-      );
+      params.append("normalizedName", normalize(finalText));
 
       try {
         const res = await api.get(
@@ -128,10 +128,7 @@ export default function EarlyLeaveStudentListPage() {
     const t = setTimeout(() => {
       const params = new URLSearchParams();
       params.append("name", name.trim());
-      params.append(
-        "normalizedName",
-        removeVietnameseTones(name.trim())
-      );
+      params.append("normalizedName", normalize(name));
 
       api
         .get(`/api/students/search?${params.toString()}`)
@@ -150,12 +147,12 @@ export default function EarlyLeaveStudentListPage() {
       .catch(console.error);
   }, []);
 
-  /* ================= LOAD STUDENTS (THEO LỚP) ================= */
-  const loadStudents = () => {
-    if (!filterClass) {
-      setStudents([]);
-      return;
-    }
+  /* ================= LOAD STUDENTS BY CLASS ================= */
+  useEffect(() => {
+    if (!filterClass) return;
+
+    // ❗ chọn lớp → xoá danh sách tạm
+    setTempStudents([]);
 
     api
       .get("/api/early-leave/students/by-class", {
@@ -163,48 +160,82 @@ export default function EarlyLeaveStudentListPage() {
       })
       .then((res) => setStudents(res.data))
       .catch(() => setStudents([]));
-  };
-
-  useEffect(() => {
-    loadStudents();
   }, [filterClass]);
 
   /* ================= ADD STUDENT ================= */
   const handleAddStudent = async (s: StudentSuggestion) => {
-  setErrorMsg("");
+    const nName = normalize(s.name);
 
-  try {
-    await api.post("/api/early-leave/students", {
-      name: s.name,
-      className: s.className,
-      normalizedName: removeVietnameseTones(s.name),
-    });
+    const isDuplicate =
+      tempStudents.some(
+        (st) =>
+          normalize(st.name) === nName &&
+          st.className === s.className
+      ) ||
+      students.some(
+        (st) =>
+          normalize(st.name) === nName &&
+          st.className === s.className
+      );
 
-    setName("");
-    setSuggestions([]);
-    loadStudents();
-
-    setTimeout(() => {
-      listRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 200);
-  } catch (err: any) {
-    if (err.response?.status === 409) {
-      setErrorMsg("⚠️ Học sinh đã có trong danh sách lớp này");
-    } else {
-      setErrorMsg("❌ Lỗi khi thêm học sinh");
+    if (isDuplicate) {
+      setErrorMsg("❌ Học sinh này đã có trong danh sách");
+      return;
     }
-  }
-};
+
+    try {
+      const res = await api.post("/api/early-leave/students", {
+        name: s.name,
+        className: s.className,
+      });
+
+      // 👉 chỉ hiển thị TẠM
+      setTempStudents((prev) => [...prev, res.data]);
+
+      setName("");
+      setSuggestions([]);
+      setErrorMsg("");
+
+      setTimeout(() => {
+        listRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    } catch (err: any) {
+      if (err.response?.status === 409) {
+        setErrorMsg("❌ Học sinh đã tồn tại trong CSDL");
+      }
+    }
+  };
+
+  /* ================= AUTO CLEAR TEMP (30s) ================= */
+  useEffect(() => {
+    if (tempStudents.length === 0) return;
+
+    const timer = setTimeout(() => {
+      setTempStudents([]);
+    }, 30000);
+
+    return () => clearTimeout(timer);
+  }, [tempStudents]);
 
   /* ================= DELETE ================= */
   const handleDelete = async (id: string) => {
     if (!window.confirm("Xóa học sinh này khỏi danh sách?")) return;
 
     await api.delete(`/api/early-leave/students/${id}`);
-    loadStudents();
+
+    if (filterClass) {
+      const res = await api.get(
+        "/api/early-leave/students/by-class",
+        { params: { className: filterClass } }
+      );
+      setStudents(res.data);
+    }
   };
 
-  /* ================= UI ================= */
+  /* ================= DISPLAY ================= */
+  const displayStudents =
+    tempStudents.length > 0 ? tempStudents : students;
+
   return (
     <Box sx={{ width: "75vw", py: 5 }}>
       <Typography variant="h4" align="center" gutterBottom>
@@ -218,6 +249,7 @@ export default function EarlyLeaveStudentListPage() {
           onChange={(e) => setName(e.target.value)}
           fullWidth
         />
+
         {errorMsg && (
           <Typography color="error" fontWeight="bold">
             {errorMsg}
@@ -270,33 +302,63 @@ export default function EarlyLeaveStudentListPage() {
           Danh sách học sinh
         </Typography>
 
-        {filterClass ? (
+        {displayStudents.length > 0 ? (
           <Paper>
             <List>
-              {students.map((s, i) => (
-                <ListItem
-                  key={s._id}
-                  secondaryAction={
-                    <IconButton
-                      edge="end"
-                      color="error"
-                      onClick={() => handleDelete(s._id)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  }
-                >
-                  <ListItemText
-                    primary={`${i + 1}. ${s.name}`}
-                    secondary={`Lớp: ${s.className}`}
-                  />
-                </ListItem>
-              ))}
+              {displayStudents.map((s, i) => {
+                const isTemp = tempStudents.some(
+                  (t) => t._id === s._id
+                );
+
+                return (
+                  <ListItem
+                    key={s._id}
+                    sx={{
+                      backgroundColor: isTemp ? "#e3f2fd" : "transparent",
+                      borderLeft: isTemp
+                        ? "5px solid #1976d2"
+                        : "none",
+                    }}
+                    secondaryAction={
+                      filterClass && (
+                        <IconButton
+                          edge="end"
+                          color="error"
+                          onClick={() => handleDelete(s._id)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      )
+                    }
+                  >
+                    <ListItemText
+                      primary={
+                        <>
+                          {i + 1}. {s.name}
+                          {isTemp && (
+                            <Typography
+                              component="span"
+                              sx={{
+                                ml: 1,
+                                color: "primary.main",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              (Vừa thêm)
+                            </Typography>
+                          )}
+                        </>
+                      }
+                      secondary={`Lớp: ${s.className}`}
+                    />
+                  </ListItem>
+                );
+              })}
             </List>
           </Paper>
         ) : (
           <Typography color="text.secondary">
-            Vui lòng chọn lớp để xem danh sách
+            Chưa có học sinh để hiển thị
           </Typography>
         )}
       </Stack>
