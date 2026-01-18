@@ -61,8 +61,7 @@ const drawerWidth = 240;
           <ListItemIcon><ClassIcon /></ListItemIcon>
           <ListItemText primary="Danh sách học sinh" />
         </ListItemButton>
-      </List>
-
+   
       <ListItemButton onClick={() => navigate('/violation/early-leave-student')}>
           <ListItemIcon><ClassIcon /></ListItemIcon>
           <ListItemText primary="DS học sinh về sớm" />
