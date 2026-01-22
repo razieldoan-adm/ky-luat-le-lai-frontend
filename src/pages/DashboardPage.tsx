@@ -27,7 +27,9 @@ const DashboardPage = () => {
 
   const tetDate = new Date("2026-02-17T00:00:00");
   const nghiTet = new Date("2026-02-10T00:00:00");
+
   const [isMobile, setIsMobile] = useState(false);
+  const [showCountdown, setShowCountdown] = useState(true);
 
   const [tet, setTet] = useState<TimeLeft>(getTimeLeft(tetDate));
   const [nghi, setNghi] = useState<TimeLeft>(getTimeLeft(nghiTet));
@@ -39,11 +41,11 @@ const DashboardPage = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-    useEffect(() => {
+
+  useEffect(() => {
     const checkScreen = () => {
       setIsMobile(window.innerWidth <= 768);
     };
-
     checkScreen();
     window.addEventListener("resize", checkScreen);
     return () => window.removeEventListener("resize", checkScreen);
@@ -55,10 +57,16 @@ const DashboardPage = () => {
       <div className="countdown">
         {Object.entries(time).map(([key, value]) => (
           <div key={key} className="timeBox">
-            <span>{Number(value)}</span>
-            <p>{key === "days" ? "Ngày" :
-                key === "hours" ? "Giờ" :
-                key === "minutes" ? "Phút" : "Giây"}</p>
+            <span>{value}</span>
+            <p>
+              {key === "days"
+                ? "Ngày"
+                : key === "hours"
+                ? "Giờ"
+                : key === "minutes"
+                ? "Phút"
+                : "Giây"}
+            </p>
           </div>
         ))}
       </div>
@@ -67,69 +75,65 @@ const DashboardPage = () => {
 
   return (
     <div
-    className="container"
-    style={{
-      backgroundImage: `url(${isMobile ? tetMobile : tetPC})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
-      minHeight: "100vh"
-    }}
-  >
-      <div className="content">
+      className="container"
+      style={{
+        backgroundImage: `url(${isMobile ? tetMobile : tetPC})`,
+      }}
+    >
+      <button
+        className="toggleBtn"
+        onClick={() => setShowCountdown(!showCountdown)}
+      >
+        {showCountdown ? "👁 Ẩn" : "🎆 Hiện"}
+      </button>
 
-  <div className="countdownWrapper">
-    {renderBox("🎓 Nghỉ Tết (23/12 AL)", nghi)}
-    {renderBox("🧧 Mùng 1 Tết", tet)}
-  </div>
-</div>
-
-      <div className="liXi"></div>
+      {showCountdown && (
+        <div className="content">
+          <div className="countdownWrapper">
+            {renderBox("🎓 Nghỉ Tết (23/12 AL)", nghi)}
+            {renderBox("🧧 Mùng 1 Tết", tet)}
+          </div>
+        </div>
+      )}
 
       <style>{`
         .container {
-          background: url('/tet-2026.jpg') no-repeat center center;
-          background-size: cover;
           min-height: 100vh;
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
           position: relative;
           overflow: hidden;
         }
 
         .content {
-          text-align: center;
-          padding-top: 40px;
-          animation: fadeIn 2s ease;
+          padding-top: 60px;
+          display: flex;
+          justify-content: center;
+          animation: fadeIn 1s ease;
         }
 
-        .title {
-          font-size: 30px;
-          font-weight: bold;
-          background: linear-gradient(90deg, gold, orange, yellow);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          text-shadow: 0 0 15px gold;
-          margin-bottom: 20px;
+        .countdownWrapper {
+          display: flex;
+          gap: 40px;
+          flex-wrap: wrap;
+          justify-content: center;
         }
 
         .card {
-  margin: 15px auto;
-  padding: 25px;
-  width: 90%;
-  max-width: 400px;
-  border-radius: 20px;
+          padding: 25px;
+          width: 320px;
+          border-radius: 20px;
 
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+          background: rgba(255,255,255,0.04);
+          backdrop-filter: blur(2px);
+          -webkit-backdrop-filter: blur(2px);
 
-  border: 1px solid rgba(255, 255, 255, 0.2);
+          border: 1px solid rgba(255,255,255,0.15);
 
-  box-shadow: none;
-
-  color: white;
-  animation: float 3s ease-in-out infinite;
-}
-
+          color: white;
+          text-align: center;
+        }
 
         .card h2 {
           margin-bottom: 15px;
@@ -142,31 +146,28 @@ const DashboardPage = () => {
         }
 
         .timeBox span {
-          font-size: 26px;
+          font-size: 28px;
           font-weight: bold;
-          display: block;
-          animation: flip 0.6s ease;
           color: gold;
-          text-shadow: 0 0 10px orange;
+          text-shadow: 0 0 8px orange;
         }
 
-      
         .timeBox p {
           font-size: 12px;
         }
 
-        .liXi::before {
-          content: "🧧 🧧 🧧 🧧 🧧";
+        .toggleBtn {
           position: absolute;
-          width: 100%;
-          top: -50px;
-          font-size: 28px;
-          animation: fall 6s linear infinite;
-        }
-
-        @keyframes fall {
-          0% { transform: translateY(0); }
-          100% { transform: translateY(120vh); }
+          top: 20px;
+          right: 20px;
+          padding: 8px 16px;
+          border-radius: 30px;
+          border: none;
+          cursor: pointer;
+          background: rgba(0,0,0,0.3);
+          color: white;
+          font-weight: bold;
+          backdrop-filter: blur(5px);
         }
 
         @keyframes fadeIn {
@@ -174,41 +175,16 @@ const DashboardPage = () => {
           to { opacity: 1; transform: translateY(0); }
         }
 
-        @keyframes float {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-5px); }
-          100% { transform: translateY(0px); }
-        }
-
-        @keyframes flip {
-          from { transform: rotateX(90deg); opacity: 0; }
-          to { transform: rotateX(0); opacity: 1; }
-        }
-
-        @media (min-width: 768px) {
-          .title { font-size: 40px; }
-          .timeBox span { font-size: 36px; }
-        }
-        @media (max-width: 768px) {
-        .card {
-          background: rgba(255,255,255,0.05);
-          backdrop-filter: blur(2px);
-        }
-        .countdownWrapper {
-          display: flex;
-          justify-content: center;
-          gap: 40px;
-          flex-wrap: wrap;
-        }
         @media (max-width: 768px) {
           .countdownWrapper {
             flex-direction: column;
-            align-items: center;
             gap: 20px;
           }
-        }
-    }
 
+          .card {
+            width: 85%;
+          }
+        }
       `}</style>
     </div>
   );
