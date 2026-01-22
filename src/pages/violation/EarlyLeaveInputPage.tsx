@@ -37,36 +37,46 @@ export default function EarlyLeaveInputPage() {
 
   /* INIT VOICE */
   useEffect(() => {
-    const SR =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+  const SR =
+    (window as any).SpeechRecognition ||
+    (window as any).webkitSpeechRecognition;
 
-    if (!SR) return;
+  if (!SR) return;
 
-    const recognition = new SR();
-    recognition.lang = "vi-VN";
-    recognition.interimResults = false;
-    recognition.continuous = false;
+  const recognition = new SR();
+  recognition.lang = "vi-VN";
+  recognition.continuous = true;
+  recognition.interimResults = true;
 
-    recognitionRef.current = recognition;
+  recognitionRef.current = recognition;
 
-    recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => setIsListening(false);
-  }, []);
+  recognition.onresult = (event: any) => {
+    let transcript = "";
+
+    for (let i = 0; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript;
+    }
+
+    setName(transcript.trim());
+  };
+
+  recognition.onend = () => setIsListening(false);
+  recognition.onerror = () => setIsListening(false);
+}, []);
+
 
   const startVoice = () => {
-    const recognition = recognitionRef.current;
-    if (!recognition) return;
+  const recognition = recognitionRef.current;
+  if (!recognition) return;
 
-    setIsListening(true);
+  setIsListening(true);
+  recognition.start();
 
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setName(transcript.trim());
-    };
+  setTimeout(() => {
+    recognition.stop();
+  }, 1200); // 1.2 giây là tối ưu mobile
+};
 
-    recognition.start();
-  };
 
   /* SEARCH */
   useEffect(() => {
