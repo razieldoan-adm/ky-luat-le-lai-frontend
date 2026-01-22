@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-
+import tetMobile from "../assets/tet-mobile.jpg";
+import tetPC from "../assets/tet-pc.jpg";
 const DashboardPage = () => {
   const getTimeLeft = (targetDate: Date) => {
     const now = new Date().getTime();
@@ -18,6 +19,7 @@ const DashboardPage = () => {
 
   const tetDate = new Date("2026-02-17T00:00:00");
   const nghiTet = new Date("2026-02-10T00:00:00");
+  const [isMobile, setIsMobile] = useState(false);
 
   const [tet, setTet] = useState(getTimeLeft(tetDate));
   const [nghi, setNghi] = useState(getTimeLeft(nghiTet));
@@ -28,6 +30,15 @@ const DashboardPage = () => {
       setNghi(getTimeLeft(nghiTet));
     }, 1000);
     return () => clearInterval(timer);
+  }, []);
+    useEffect(() => {
+    const checkScreen = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkScreen();
+    window.addEventListener("resize", checkScreen);
+    return () => window.removeEventListener("resize", checkScreen);
   }, []);
 
   const renderBox = (title: string, time: any) => (
@@ -47,7 +58,16 @@ const DashboardPage = () => {
   );
 
   return (
-    <div className="container">
+    <div
+    className="container"
+    style={{
+      backgroundImage: `url(${isMobile ? tetMobile : tetPC})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+      minHeight: "100vh"
+    }}
+  >
       <div className="content">
         <h1 className="title">🎆 ĐẾM NGƯỢC TẾT 2026 🎆</h1>
 
