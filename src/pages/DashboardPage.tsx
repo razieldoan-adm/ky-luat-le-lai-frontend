@@ -77,7 +77,6 @@ const DashboardPage = () => {
     }}
   >
       <div className="content">
-        <h1 className="title">🎆 ĐẾM NGƯỢC TẾT 2026 🎆</h1>
 
         {renderBox("🎓 Nghỉ Tết (23/12 AL)", nghi)}
         {renderBox("🧧 Mùng 1 Tết", tet)}
