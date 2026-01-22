@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 const DashboardPage = () => {
   const getTimeLeft = (targetDate: Date) => {
     const now = new Date().getTime();
     const distance = targetDate.getTime() - now;
 
-    if (distance <= 0) {
+    if (distance <= 0)
       return { days: 0, hours: 0, minutes: 0, seconds: 0 };
-    }
 
     return {
       days: Math.floor(distance / (1000 * 60 * 60 * 24)),
@@ -17,117 +16,138 @@ const DashboardPage = () => {
     };
   };
 
-  // ⚠️ ĐỔI LẠI đúng ngày Tết 2026 nếu cần
   const tetDate = new Date("2026-02-17T00:00:00");
-  const nghiTet = new Date("2026-02-10T00:00:00"); // 23/12 AL
+  const nghiTet = new Date("2026-02-10T00:00:00");
 
-  const [timeTet, setTimeTet] = useState(getTimeLeft(tetDate));
-  const [timeNghi, setTimeNghi] = useState(getTimeLeft(nghiTet));
+  const [tet, setTet] = useState(getTimeLeft(tetDate));
+  const [nghi, setNghi] = useState(getTimeLeft(nghiTet));
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeTet(getTimeLeft(tetDate));
-      setTimeNghi(getTimeLeft(nghiTet));
+      setTet(getTimeLeft(tetDate));
+      setNghi(getTimeLeft(nghiTet));
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
 
-  const renderBox = (label: string, time: any) => (
+  const renderBox = (title: string, time: any) => (
     <div className="card">
-      <h2>{label}</h2>
+      <h2>{title}</h2>
       <div className="countdown">
-        <div><span>{time.days}</span><p>Ngày</p></div>
-        <div><span>{time.hours}</span><p>Giờ</p></div>
-        <div><span>{time.minutes}</span><p>Phút</p></div>
-        <div><span>{time.seconds}</span><p>Giây</p></div>
+        {Object.entries(time).map(([key, value]) => (
+          <div key={key} className="timeBox">
+            <span>{value}</span>
+            <p>{key === "days" ? "Ngày" :
+                key === "hours" ? "Giờ" :
+                key === "minutes" ? "Phút" : "Giây"}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
 
   return (
-    <div className="tet-container">
-      <div className="overlay">
+    <div className="container">
+      <div className="content">
         <h1 className="title">🎆 ĐẾM NGƯỢC TẾT 2026 🎆</h1>
 
-        {renderBox("🎓 Nghỉ Tết (23/12 AL)", timeNghi)}
-        {renderBox("🧧 Mùng 1 Tết", timeTet)}
+        {renderBox("🎓 Nghỉ Tết (23/12 AL)", nghi)}
+        {renderBox("🧧 Mùng 1 Tết", tet)}
       </div>
 
+      <div className="liXi"></div>
+
       <style>{`
-        .tet-container {
-          background-image: url('/tet-bg.png');
+        .container {
+          background: url('/tet-2026.jpg') no-repeat center center;
           background-size: cover;
-          background-position: center;
           min-height: 100vh;
           position: relative;
           overflow: hidden;
         }
 
-        .overlay {
+        .content {
           text-align: center;
-          padding-top: 80px;
+          padding-top: 40px;
           animation: fadeIn 2s ease;
         }
 
         .title {
-          font-size: 48px;
+          font-size: 30px;
           font-weight: bold;
           background: linear-gradient(90deg, gold, orange, yellow);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
-          text-shadow: 2px 2px 10px black;
-          margin-bottom: 40px;
-          animation: glow 2s infinite alternate;
+          text-shadow: 0 0 15px gold;
+          margin-bottom: 20px;
         }
 
         .card {
-          margin: 20px auto;
-          padding: 25px;
-          width: 85%;
-          max-width: 600px;
+          margin: 15px auto;
+          padding: 20px;
+          width: 90%;
+          max-width: 400px;
           border-radius: 20px;
-          background: rgba(0, 0, 0, 0.5);
-          backdrop-filter: blur(8px);
+          background: rgba(0,0,0,0.45);
+          backdrop-filter: blur(10px);
           color: white;
           animation: float 3s ease-in-out infinite;
         }
 
         .card h2 {
-          margin-bottom: 20px;
-          font-size: 26px;
+          margin-bottom: 15px;
+          font-size: 18px;
         }
 
         .countdown {
           display: flex;
-          justify-content: space-around;
+          justify-content: space-between;
         }
 
-        .countdown div span {
-          font-size: 40px;
+        .timeBox span {
+          font-size: 26px;
           font-weight: bold;
           display: block;
+          animation: flip 0.6s ease;
         }
 
-        .countdown div p {
-          margin-top: 5px;
-          font-size: 14px;
+        .timeBox p {
+          font-size: 12px;
+        }
+
+        .liXi::before {
+          content: "🧧 🧧 🧧 🧧 🧧";
+          position: absolute;
+          width: 100%;
+          top: -50px;
+          font-size: 28px;
+          animation: fall 6s linear infinite;
+        }
+
+        @keyframes fall {
+          0% { transform: translateY(0); }
+          100% { transform: translateY(120vh); }
         }
 
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(30px); }
+          from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes glow {
-          from { text-shadow: 0 0 10px gold; }
-          to { text-shadow: 0 0 25px orange; }
         }
 
         @keyframes float {
           0% { transform: translateY(0px); }
-          50% { transform: translateY(-8px); }
+          50% { transform: translateY(-5px); }
           100% { transform: translateY(0px); }
+        }
+
+        @keyframes flip {
+          from { transform: rotateX(90deg); opacity: 0; }
+          to { transform: rotateX(0); opacity: 1; }
+        }
+
+        @media (min-width: 768px) {
+          .title { font-size: 40px; }
+          .timeBox span { font-size: 36px; }
         }
       `}</style>
     </div>
