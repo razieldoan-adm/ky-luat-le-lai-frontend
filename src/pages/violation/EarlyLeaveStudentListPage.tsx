@@ -46,76 +46,52 @@ const normalize = (text: string) =>
     .toLowerCase()
     .trim();
 
-/* ================= VOICE ================= */
-let recognition: any = null;
-let stopTimer: any = null;
-
 export default function EarlyLeaveStudentListPage() {
   const [name, setName] = useState("");
   const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
   const [students, setStudents] = useState<EarlyLeaveStudent[]>([]);
   const [tempStudents, setTempStudents] = useState<EarlyLeaveStudent[]>([]);
-
-  const [filterClass, setFilterClass] = useState(""); // chưa chọn lớp
+  const [filterClass, setFilterClass] = useState("");
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   const listRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   /* ================= INIT VOICE ================= */
   useEffect(() => {
     const SR =
-      (window as any).webkitSpeechRecognition ||
-      (window as any).SpeechRecognition;
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
 
     if (!SR) return;
 
-    recognition = new SR();
+    const recognition = new SR();
     recognition.lang = "vi-VN";
     recognition.continuous = false;
-    recognition.interimResults = true;
+    recognition.interimResults = false; // 🔥 không bắn chữ liên tục
+    recognition.maxAlternatives = 1;
+
+    recognitionRef.current = recognition;
+
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
   }, []);
 
   /* ================= START VOICE ================= */
   const startVoice = () => {
+    const recognition = recognitionRef.current;
     if (!recognition) return;
 
     setIsListening(true);
-    recognition.start();
 
-    recognition.onresult = async (event: any) => {
-      let finalText = "";
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          finalText += event.results[i][0].transcript;
-        }
-      }
-
-      if (!finalText) return;
-
-      setName(finalText);
-
-      const params = new URLSearchParams();
-      params.append("name", finalText.trim());
-      params.append("normalizedName", normalize(finalText));
-
-      try {
-        const res = await api.get(
-          `/api/students/search?${params.toString()}`
-        );
-        setSuggestions(res.data);
-      } catch {
-        setSuggestions([]);
-      }
-
-      clearTimeout(stopTimer);
-      stopTimer = setTimeout(() => recognition.stop(), 200);
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setName(transcript.trim()); // 🔥 chỉ setName
     };
 
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
+    recognition.start();
   };
 
   /* ================= SEARCH TEXT ================= */
@@ -134,7 +110,7 @@ export default function EarlyLeaveStudentListPage() {
         .get(`/api/students/search?${params.toString()}`)
         .then((res) => setSuggestions(res.data))
         .catch(() => setSuggestions([]));
-    }, 300);
+    }, 200); // giảm debounce cho nhanh hơn
 
     return () => clearTimeout(t);
   }, [name]);
@@ -151,7 +127,6 @@ export default function EarlyLeaveStudentListPage() {
   useEffect(() => {
     if (!filterClass) return;
 
-    // ❗ chọn lớp → xoá danh sách tạm
     setTempStudents([]);
 
     api
@@ -189,9 +164,7 @@ export default function EarlyLeaveStudentListPage() {
         className: s.className,
       });
 
-      // 👉 chỉ hiển thị TẠM
       setTempStudents((prev) => [...prev, res.data]);
-
       setName("");
       setSuggestions([]);
       setErrorMsg("");
@@ -206,7 +179,7 @@ export default function EarlyLeaveStudentListPage() {
     }
   };
 
-  /* ================= AUTO CLEAR TEMP (30s) ================= */
+  /* ================= AUTO CLEAR TEMP ================= */
   useEffect(() => {
     if (tempStudents.length === 0) return;
 
@@ -232,10 +205,10 @@ export default function EarlyLeaveStudentListPage() {
     }
   };
 
-  /* ================= DISPLAY ================= */
   const displayStudents =
     tempStudents.length > 0 ? tempStudents : students;
 
+  /* ================= UI ================= */
   return (
     <Box sx={{ width: "75vw", py: 5 }}>
       <Typography variant="h4" align="center" gutterBottom>
