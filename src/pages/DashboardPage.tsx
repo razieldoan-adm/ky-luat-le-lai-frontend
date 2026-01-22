@@ -112,12 +112,18 @@ const DashboardPage = () => {
 
         .card {
           margin: 15px auto;
-          padding: 20px;
+          padding: 25px;
           width: 90%;
           max-width: 400px;
           border-radius: 20px;
-          background: rgba(0,0,0,0.45);
-          backdrop-filter: blur(10px);
+        
+          background: rgba(255, 215, 0, 0.15);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+        
+          border: 1px solid rgba(255,215,0,0.5);
+          box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+        
           color: white;
           animation: float 3s ease-in-out infinite;
         }
@@ -137,7 +143,10 @@ const DashboardPage = () => {
           font-weight: bold;
           display: block;
           animation: flip 0.6s ease;
+          color: gold;
+          text-shadow: 0 0 10px orange;
         }
+
 
         .timeBox p {
           font-size: 12px;
