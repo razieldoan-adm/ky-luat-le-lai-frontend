@@ -71,3 +71,76 @@ html, body, #root {
   margin: 0;
   padding: 0;
 }
+.title {
+  font-size: 32px;
+  font-weight: bold;
+  text-shadow: 3px 3px 10px black;
+  animation: zoomIn 1s ease;
+}
+
+.card {
+  backdrop-filter: blur(12px);
+  background: rgba(255,255,255,0.1);
+  padding: 20px;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 400px;
+  color: white;
+  transition: transform 0.3s;
+}
+
+.card:hover {
+  transform: scale(1.05);
+}
+
+.timebox .number {
+  font-size: 28px;
+  font-weight: bold;
+  animation: fadeUp 0.5s ease;
+}
+
+.celebrate {
+  font-size: 40px;
+  font-weight: bold;
+  color: yellow;
+  text-shadow: 0 0 20px red;
+  animation: pulse 1s infinite;
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+@keyframes fadeUp {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* Hoa rơi */
+.flowers span {
+  position: absolute;
+  top: -50px;
+  font-size: 20px;
+  animation: fall linear infinite;
+}
+
+.flowers span:nth-child(odd) {
+  animation-duration: 10s;
+}
+
+.flowers span:nth-child(even) {
+  animation-duration: 15s;
+}
+
+@keyframes fall {
+  to {
+    transform: translateY(110vh);
+  }
+}
