@@ -78,9 +78,11 @@ const DashboardPage = () => {
   >
       <div className="content">
 
-        {renderBox("🎓 Nghỉ Tết (23/12 AL)", nghi)}
-        {renderBox("🧧 Mùng 1 Tết", tet)}
-      </div>
+  <div className="countdownWrapper">
+    {renderBox("🎓 Nghỉ Tết (23/12 AL)", nghi)}
+    {renderBox("🧧 Mùng 1 Tết", tet)}
+  </div>
+</div>
 
       <div className="liXi"></div>
 
@@ -148,7 +150,7 @@ const DashboardPage = () => {
           text-shadow: 0 0 10px orange;
         }
 
-
+      
         .timeBox p {
           font-size: 12px;
         }
@@ -192,7 +194,20 @@ const DashboardPage = () => {
           background: rgba(255,255,255,0.05);
           backdrop-filter: blur(2px);
         }
-}
+        .countdownWrapper {
+          display: flex;
+          justify-content: center;
+          gap: 40px;
+          flex-wrap: wrap;
+        }
+        @media (max-width: 768px) {
+          .countdownWrapper {
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+          }
+        }
+    }
 
       `}</style>
     </div>
