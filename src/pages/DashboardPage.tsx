@@ -1,207 +1,120 @@
-import { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, Stack, List, ListItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
-import api from '../api/api';
-
-
-import SchoolIcon from '@mui/icons-material/School';
-import ReportProblemIcon from '@mui/icons-material/ReportProblem';
-import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import WarningIcon from '@mui/icons-material/Warning';
-import StarIcon from '@mui/icons-material/Star';
-
-interface ClassRank {
-  className: string;
-  rank: number;
-  grade?: string; // thêm grade cho top1 mỗi khối
-}
+import { useEffect, useState } from "react";
+import { Box, Typography, Button, Stack } from "@mui/material";
 
 export default function Dashboard() {
-  const [classCount, setClassCount] = useState(0);
-  const [multipleViolationCount, setMultipleViolationCount] = useState(0);
-  const [violationCount, setViolationCount] = useState(0);
-  const [unhandledCount, setUnhandledCount] = useState(0);
+  // 👉 Bạn có thể đổi ngày Tết tại đây
+  const targetDate = new Date("2026-02-17T00:00:00");
 
-  const [topClasses, setTopClasses] = useState<ClassRank[]>([]);
-  const [bottomClasses, setBottomClasses] = useState<ClassRank[]>([]);
-  const [top1EachGrade, setTop1EachGrade] = useState<ClassRank[]>([]);
-  const fixedGrades = ['6', '7', '8', '9'];
+  const [timeLeft, setTimeLeft] = useState(getTimeRemaining());
+  const [themeColor, setThemeColor] = useState("#d32f2f"); // màu chủ đạo
+
+  function getTimeRemaining() {
+    const total = targetDate.getTime() - new Date().getTime();
+    const seconds = Math.floor((total / 1000) % 60);
+    const minutes = Math.floor((total / 1000 / 60) % 60);
+    const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
+    const days = Math.floor(total / (1000 * 60 * 60 * 24));
+    return { total, days, hours, minutes, seconds };
+  }
+
   useEffect(() => {
-    fetchCounts();
-    fetchClassRanks();
-    fetchTop1EachGrade();
+    const timer = setInterval(() => {
+      setTimeLeft(getTimeRemaining());
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
-  const fetchCounts = async () => {
-    try {
-      const [clsRes, multiRes, vioRes, unhandledRes] = await Promise.all([
-        api.get('/api/classes/count'),
-        api.get('/api/violations/students/multiple-violations/count'),
-        api.get('/api/violations/count'),
-        api.get('/api/violations/unhandled/count'),
-      ]);
-
-      setClassCount(clsRes.data.count);
-      setMultipleViolationCount(multiRes.data.count);
-      setViolationCount(vioRes.data.count);
-      setUnhandledCount(unhandledRes.data.count);
-    } catch (err) {
-      console.error('Lỗi khi lấy dữ liệu:', err);
-    }
-  };
-
-  const fetchClassRanks = async () => {
-    try {
-      const [topRes, bottomRes] = await Promise.all([
-        api.get('/api/class-rank/weekscores/top-continuous'),
-        api.get('/api/class-rank/weekscores/bottom-continuous'),
-   
-
-      ]);
-
-      setTopClasses(topRes.data);
-      setBottomClasses(bottomRes.data);
-    } catch (err) {
-      console.error('Lỗi khi lấy danh sách lớp xếp hạng:', err);
-    }
-  };
-
-  const fetchTop1EachGrade = async () => {
-    try {
-      const res = await api.get('/api/class-rank/weekscores/top1-current-week');
-
-      setTop1EachGrade(res.data);
-    } catch (err) {
-      console.error('Lỗi khi lấy top1 mỗi khối:', err);
-    }
-  };
-
-  const cards = [
-    {
-      title: 'Tổng số lớp',
-      value: classCount,
-      icon: <SchoolIcon sx={{ fontSize: 50, color: '#1976d2' }} />,
-    },
-    {
-      title: 'HS vi phạm nhiều lần',
-      value: multipleViolationCount,
-      icon: <NotificationsActiveIcon sx={{ fontSize: 50, color: '#f9a825' }} />,
-    },
-    {
-      title: 'Tổng số vi phạm',
-      value: violationCount,
-      icon: <ReportProblemIcon sx={{ fontSize: 50, color: '#d32f2f' }} />,
-    },
-    {
-      title: 'HS chưa xử lý',
-      value: unhandledCount,
-      icon: <NotificationsActiveIcon sx={{ fontSize: 50, color: '#f9a825' }} />,
-    },
-  ];
-
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Dashboard
-      </Typography>
+    <Box
+      sx={{
+        height: "100vh",
+        background: "linear-gradient(to bottom, #b71c1c, #ffcc80)",
+        color: "white",
+        textAlign: "center",
+        overflow: "hidden",
+        position: "relative",
+      }}
+    >
+      {/* 🎇 Hoa rơi */}
+      {Array.from({ length: 30 }).map((_, i) => (
+        <Box
+          key={i}
+          sx={{
+            position: "absolute",
+            top: "-10px",
+            left: `${Math.random() * 100}%`,
+            fontSize: "20px",
+            animation: `fall ${5 + Math.random() * 5}s linear infinite`,
+          }}
+        >
+          🌸
+        </Box>
+      ))}
 
-      <Stack direction="row" spacing={2} flexWrap="wrap" justifyContent="flex-start" mb={4}>
-        {cards.map((card, index) => (
-          <Box
-            key={index}
-            sx={{
-              flex: '1 1 200px',
-              minWidth: '200px',
-              maxWidth: '250px',
-              m: 1,
-            }}
+      {/* Nội dung chính */}
+      <Box sx={{ pt: 10 }}>
+        <Typography variant="h3" fontWeight="bold" gutterBottom>
+          🎆 ĐẾM NGƯỢC TỚI TẾT 2026 🎆
+        </Typography>
+
+        <Stack direction="row" spacing={4} justifyContent="center" mt={5}>
+          <TimeBox label="Ngày" value={timeLeft.days} color={themeColor} />
+          <TimeBox label="Giờ" value={timeLeft.hours} color={themeColor} />
+          <TimeBox label="Phút" value={timeLeft.minutes} color={themeColor} />
+          <TimeBox label="Giây" value={timeLeft.seconds} color={themeColor} />
+        </Stack>
+
+        {/* Nút đổi màu */}
+        <Stack direction="row" spacing={2} justifyContent="center" mt={5}>
+          <Button
+            variant="contained"
+            onClick={() => setThemeColor("#d32f2f")}
           >
-            <Card sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 3 }}>
-              {card.icon}
-              <CardContent>
-                <Typography variant="subtitle1" fontWeight="bold">
-                  {card.title}
-                </Typography>
-                <Typography variant="h5" fontWeight="bold">
-                  {card.value}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Box>
-        ))}
-
-        {/* Card top 1 mỗi khối */}
-        {/* Card top 1 mỗi khối */}
-<Box
-  sx={{
-    flex: '1 1 200px',
-    minWidth: '200px',
-    maxWidth: '250px',
-    m: 1,
-  }}
->
-  <Card sx={{ p: 2, borderRadius: 3 }}>
-    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-      🏆 Top 1 từng khối (tuần hiện tại)
-    </Typography>
-
-    <List dense>
-      {fixedGrades.map((grade) => {
-        const cls = top1EachGrade.find(c => c.grade === grade);
-        return (
-          <ListItem key={grade}>
-            <ListItemIcon>
-              <StarIcon sx={{ color: '#f9a825' }} />
-            </ListItemIcon>
-            <ListItemText
-              primary={
-                cls
-                  ? `Khối ${grade} - ${cls.className} - Hạng ${cls.rank}`
-                  : `Khối ${grade} - Chưa có dữ liệu`
-              }
-            />
-          </ListItem>
-        );
-      })}
-    </List>
-  </Card>
-</Box>
-
-      </Stack>
-
-      <Divider sx={{ my: 3 }} />
-
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-        <Card sx={{ flex: '1 1 300px', p: 2 }}>
-          <Typography variant="h6" fontWeight="bold" gutterBottom>
-            🏆 Lớp đạt top 2 tuần liên tiếp
-          </Typography>
-          <List dense>
-            {topClasses.length === 0 && <ListItem><ListItemText primary="Không có dữ liệu" /></ListItem>}
-            {topClasses.map((cls, idx) => (
-              <ListItem key={idx}>
-                <ListItemIcon><EmojiEventsIcon sx={{ color: '#1976d2' }} /></ListItemIcon>
-                <ListItemText primary={`${cls.className} - Hạng ${cls.rank}`} />
-              </ListItem>
-            ))}
-          </List>
-        </Card>
-
-        <Card sx={{ flex: '1 1 300px', p: 2 }}>
-          <Typography variant="h6" fontWeight="bold" gutterBottom>
-            ⚠️ Lớp hạng thấp 2 tuần liên tiếp
-          </Typography>
-          <List dense>
-            {bottomClasses.length === 0 && <ListItem><ListItemText primary="Không có dữ liệu" /></ListItem>}
-            {bottomClasses.map((cls, idx) => (
-              <ListItem key={idx}>
-                <ListItemIcon><WarningIcon sx={{ color: '#d32f2f' }} /></ListItemIcon>
-                <ListItemText primary={`${cls.className} - Hạng ${cls.rank}`} />
-              </ListItem>
-            ))}
-          </List>
-        </Card>
+            Đỏ
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => setThemeColor("#2e7d32")}
+          >
+            Xanh
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => setThemeColor("#f9a825")}
+          >
+            Vàng
+          </Button>
+        </Stack>
       </Box>
+
+      {/* CSS animation */}
+      <style>
+        {`
+          @keyframes fall {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(110vh); }
+          }
+        `}
+      </style>
+    </Box>
+  );
+}
+
+function TimeBox({ label, value, color }: any) {
+  return (
+    <Box
+      sx={{
+        backgroundColor: color,
+        padding: 4,
+        borderRadius: 3,
+        minWidth: 100,
+      }}
+    >
+      <Typography variant="h4" fontWeight="bold">
+        {value}
+      </Typography>
+      <Typography>{label}</Typography>
     </Box>
   );
 }
