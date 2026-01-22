@@ -51,14 +51,11 @@ export default function EarlyLeaveInputPage() {
   recognitionRef.current = recognition;
 
   recognition.onresult = (event: any) => {
-    let transcript = "";
+  const result = event.results[event.results.length - 1];
+  const transcript = result[0].transcript;
 
-    for (let i = 0; i < event.results.length; i++) {
-      transcript += event.results[i][0].transcript;
-    }
-
-    setName(transcript.trim());
-  };
+  setName(transcript.trim());
+};
 
   recognition.onend = () => setIsListening(false);
   recognition.onerror = () => setIsListening(false);
