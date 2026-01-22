@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
 import tetMobile from "../assets/tet-mobile.jpg";
 import tetPC from "../assets/tet-pc.jpg";
+
+type TimeLeft = {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+};
+
 const DashboardPage = () => {
-  const getTimeLeft = (targetDate: Date) => {
+  const getTimeLeft = (targetDate: Date): TimeLeft => {
     const now = new Date().getTime();
     const distance = targetDate.getTime() - now;
 
@@ -21,8 +29,8 @@ const DashboardPage = () => {
   const nghiTet = new Date("2026-02-10T00:00:00");
   const [isMobile, setIsMobile] = useState(false);
 
-  const [tet, setTet] = useState(getTimeLeft(tetDate));
-  const [nghi, setNghi] = useState(getTimeLeft(nghiTet));
+  const [tet, setTet] = useState<TimeLeft>(getTimeLeft(tetDate));
+  const [nghi, setNghi] = useState<TimeLeft>(getTimeLeft(nghiTet));
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -41,13 +49,13 @@ const DashboardPage = () => {
     return () => window.removeEventListener("resize", checkScreen);
   }, []);
 
-  const renderBox = (title: string, time: any) => (
+  const renderBox = (title: string, time: TimeLeft) => (
     <div className="card">
       <h2>{title}</h2>
       <div className="countdown">
         {Object.entries(time).map(([key, value]) => (
           <div key={key} className="timeBox">
-            <span>{value}</span>
+            <span>{Number(value)}</span>
             <p>{key === "days" ? "Ngày" :
                 key === "hours" ? "Giờ" :
                 key === "minutes" ? "Phút" : "Giây"}</p>
