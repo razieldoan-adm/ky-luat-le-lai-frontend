@@ -111,22 +111,24 @@ const DashboardPage = () => {
         }
 
         .card {
-          margin: 15px auto;
-          padding: 25px;
-          width: 90%;
-          max-width: 400px;
-          border-radius: 20px;
-        
-          background: rgba(255, 215, 0, 0.15);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-        
-          border: 1px solid rgba(255,215,0,0.5);
-          box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-        
-          color: white;
-          animation: float 3s ease-in-out infinite;
-        }
+  margin: 15px auto;
+  padding: 25px;
+  width: 90%;
+  max-width: 400px;
+  border-radius: 20px;
+
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  box-shadow: none;
+
+  color: white;
+  animation: float 3s ease-in-out infinite;
+}
+
 
         .card h2 {
           margin-bottom: 15px;
@@ -186,6 +188,13 @@ const DashboardPage = () => {
           .title { font-size: 40px; }
           .timeBox span { font-size: 36px; }
         }
+        @media (max-width: 768px) {
+        .card {
+          background: rgba(255,255,255,0.05);
+          backdrop-filter: blur(2px);
+        }
+}
+
       `}</style>
     </div>
   );
