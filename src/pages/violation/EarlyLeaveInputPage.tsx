@@ -74,7 +74,7 @@ export default function EarlyLeaveInputPage() {
 
   setTimeout(() => {
     recognition.stop();
-  }, 2000); // 1.2 giây là tối ưu mobile
+  }, 2500); // 2.5 giây là tối ưu mobile
 };
 
 
