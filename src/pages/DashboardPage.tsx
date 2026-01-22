@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
-import { Box, Typography, Button, Stack } from "@mui/material";
+import { Box, Typography, Stack, Card } from "@mui/material";
+import tetBg from "../assets/tet-bg.png";
 
 export default function Dashboard() {
-  // 👉 Bạn có thể đổi ngày Tết tại đây
-  const targetDate = new Date("2026-02-17T00:00:00");
+  // 🎯 ĐỔI 2 MỐC THỜI GIAN Ở ĐÂY
+  const holidayDate = new Date("2026-02-10T00:00:00"); // 23/12 AL (ví dụ)
+  const tetDate = new Date("2026-02-17T00:00:00"); // Mùng 1 Tết 2026
 
-  const [timeLeft, setTimeLeft] = useState(getTimeRemaining());
-  const [themeColor, setThemeColor] = useState("#d32f2f"); // màu chủ đạo
+  const [holidayLeft, setHolidayLeft] = useState(getTimeRemaining(holidayDate));
+  const [tetLeft, setTetLeft] = useState(getTimeRemaining(tetDate));
 
-  function getTimeRemaining() {
-    const total = targetDate.getTime() - new Date().getTime();
+  function getTimeRemaining(target: Date) {
+    const total = target.getTime() - new Date().getTime();
     const seconds = Math.floor((total / 1000) % 60);
     const minutes = Math.floor((total / 1000 / 60) % 60);
     const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
@@ -19,7 +21,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft(getTimeRemaining());
+      setHolidayLeft(getTimeRemaining(holidayDate));
+      setTetLeft(getTimeRemaining(tetDate));
     }, 1000);
 
     return () => clearInterval(timer);
@@ -29,92 +32,71 @@ export default function Dashboard() {
     <Box
       sx={{
         height: "100vh",
-        background: "linear-gradient(to bottom, #b71c1c, #ffcc80)",
-        color: "white",
-        textAlign: "center",
-        overflow: "hidden",
-        position: "relative",
+        backgroundImage: `url(${tetBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        flexDirection: "column",
+        backdropFilter: "brightness(0.9)",
       }}
     >
-      {/* 🎇 Hoa rơi */}
-      {Array.from({ length: 30 }).map((_, i) => (
-        <Box
-          key={i}
-          sx={{
-            position: "absolute",
-            top: "-10px",
-            left: `${Math.random() * 100}%`,
-            fontSize: "20px",
-            animation: `fall ${5 + Math.random() * 5}s linear infinite`,
-          }}
-        >
-          🌸
-        </Box>
-      ))}
+      <Typography
+        variant="h3"
+        fontWeight="bold"
+        sx={{ color: "white", textShadow: "2px 2px 10px black", mb: 5 }}
+      >
+        🎆 ĐẾM NGƯỢC TẾT 2026 🎆
+      </Typography>
 
-      {/* Nội dung chính */}
-      <Box sx={{ pt: 10 }}>
-        <Typography variant="h3" fontWeight="bold" gutterBottom>
-          🎆 ĐẾM NGƯỢC TỚI TẾT 2026 🎆
-        </Typography>
-
-        <Stack direction="row" spacing={4} justifyContent="center" mt={5}>
-          <TimeBox label="Ngày" value={timeLeft.days} color={themeColor} />
-          <TimeBox label="Giờ" value={timeLeft.hours} color={themeColor} />
-          <TimeBox label="Phút" value={timeLeft.minutes} color={themeColor} />
-          <TimeBox label="Giây" value={timeLeft.seconds} color={themeColor} />
-        </Stack>
-
-        {/* Nút đổi màu */}
-        <Stack direction="row" spacing={2} justifyContent="center" mt={5}>
-          <Button
-            variant="contained"
-            onClick={() => setThemeColor("#d32f2f")}
-          >
-            Đỏ
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => setThemeColor("#2e7d32")}
-          >
-            Xanh
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => setThemeColor("#f9a825")}
-          >
-            Vàng
-          </Button>
-        </Stack>
-      </Box>
-
-      {/* CSS animation */}
-      <style>
-        {`
-          @keyframes fall {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(110vh); }
-          }
-        `}
-      </style>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={5}>
+        <CountdownCard
+          title="🎓 Nghỉ Tết (23/12 AL)"
+          time={holidayLeft}
+        />
+        <CountdownCard
+          title="🧧 Mùng 1 Tết"
+          time={tetLeft}
+        />
+      </Stack>
     </Box>
   );
 }
 
-function TimeBox({ label, value, color }: any) {
+function CountdownCard({ title, time }: any) {
   return (
-    <Box
+    <Card
       sx={{
-        backgroundColor: color,
-        padding: 4,
-        borderRadius: 3,
-        minWidth: 100,
+        p: 4,
+        background: "rgba(0,0,0,0.6)",
+        color: "white",
+        borderRadius: 4,
+        minWidth: 280,
+        textAlign: "center",
       }}
     >
+      <Typography variant="h6" gutterBottom>
+        {title}
+      </Typography>
+
+      <Stack direction="row" spacing={3} justifyContent="center">
+        <TimeBox label="Ngày" value={time.days} />
+        <TimeBox label="Giờ" value={time.hours} />
+        <TimeBox label="Phút" value={time.minutes} />
+        <TimeBox label="Giây" value={time.seconds} />
+      </Stack>
+    </Card>
+  );
+}
+
+function TimeBox({ label, value }: any) {
+  return (
+    <Box>
       <Typography variant="h4" fontWeight="bold">
         {value}
       </Typography>
-      <Typography>{label}</Typography>
+      <Typography variant="caption">{label}</Typography>
     </Box>
   );
 }
