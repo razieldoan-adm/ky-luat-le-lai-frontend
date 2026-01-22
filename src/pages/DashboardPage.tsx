@@ -1,28 +1,35 @@
 import { useEffect, useState } from "react";
-import { Box, Typography, Stack, Card } from "@mui/material";
+import { Box, Typography, Stack } from "@mui/material";
 import tetBg from "../assets/tet-bg.png";
 
-export default function Dashboard() {
-  // 🎯 ĐỔI 2 MỐC THỜI GIAN Ở ĐÂY
-  const holidayDate = new Date("2026-02-10T00:00:00"); // 23/12 AL (ví dụ)
-  const tetDate = new Date("2026-02-17T00:00:00"); // Mùng 1 Tết 2026
+export default function DashboardPage() {
+  const holidayDate = new Date("2026-02-10T00:00:00");
+  const tetDate = new Date("2026-02-17T00:00:00");
 
   const [holidayLeft, setHolidayLeft] = useState(getTimeRemaining(holidayDate));
   const [tetLeft, setTetLeft] = useState(getTimeRemaining(tetDate));
+  const [celebrate, setCelebrate] = useState(false);
 
   function getTimeRemaining(target: Date) {
     const total = target.getTime() - new Date().getTime();
-    const seconds = Math.floor((total / 1000) % 60);
-    const minutes = Math.floor((total / 1000 / 60) % 60);
-    const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
-    const days = Math.floor(total / (1000 * 60 * 60 * 24));
-    return { total, days, hours, minutes, seconds };
+    return {
+      total,
+      days: Math.max(0, Math.floor(total / (1000 * 60 * 60 * 24))),
+      hours: Math.max(0, Math.floor((total / (1000 * 60 * 60)) % 24)),
+      minutes: Math.max(0, Math.floor((total / (1000 * 60)) % 60)),
+      seconds: Math.max(0, Math.floor((total / 1000) % 60)),
+    };
   }
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setHolidayLeft(getTimeRemaining(holidayDate));
-      setTetLeft(getTimeRemaining(tetDate));
+      const holiday = getTimeRemaining(holidayDate);
+      const tet = getTimeRemaining(tetDate);
+
+      setHolidayLeft(holiday);
+      setTetLeft(tet);
+
+      if (tet.total <= 0) setCelebrate(true);
     }, 1000);
 
     return () => clearInterval(timer);
@@ -31,34 +38,61 @@ export default function Dashboard() {
   return (
     <Box
       sx={{
-        height: "100vh",
+        minHeight: "100vh",
         backgroundImage: `url(${tetBg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        flexDirection: "column",
-        backdropFilter: "brightness(0.9)",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <Typography
-        variant="h3"
-        fontWeight="bold"
-        sx={{ color: "white", textShadow: "2px 2px 10px black", mb: 5 }}
-      >
-        🎆 ĐẾM NGƯỢC TẾT 2026 🎆
-      </Typography>
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.7))",
+        }}
+      />
 
-      <Stack direction={{ xs: "column", md: "row" }} spacing={5}>
+      <div className="flowers">
+        {Array.from({ length: 20 }).map((_, i) => (
+          <span key={i}>🌸</span>
+        ))}
+      </div>
+
+      <Stack
+        spacing={4}
+        sx={{
+          position: "relative",
+          zIndex: 2,
+          height: "100vh",
+          justifyContent: "center",
+          alignItems: "center",
+          textAlign: "center",
+          color: "white",
+          px: 2,
+        }}
+      >
+        <Typography className="title">
+          🎆 ĐẾM NGƯỢC TẾT 2026 🎆
+        </Typography>
+
         <CountdownCard
-          title="🎓 Nghỉ Tết (23/12 AL)"
+          title="🎓 Nghỉ Tết"
           time={holidayLeft}
         />
+
         <CountdownCard
           title="🧧 Mùng 1 Tết"
           time={tetLeft}
         />
+
+        {celebrate && (
+          <Typography className="celebrate">
+            🎉 CHÚC MỪNG NĂM MỚI 🎉
+          </Typography>
+        )}
       </Stack>
     </Box>
   );
@@ -66,37 +100,26 @@ export default function Dashboard() {
 
 function CountdownCard({ title, time }: any) {
   return (
-    <Card
-      sx={{
-        p: 4,
-        background: "rgba(0,0,0,0.6)",
-        color: "white",
-        borderRadius: 4,
-        minWidth: 280,
-        textAlign: "center",
-      }}
-    >
-      <Typography variant="h6" gutterBottom>
+    <Box className="card">
+      <Typography fontWeight="bold" mb={2}>
         {title}
       </Typography>
 
-      <Stack direction="row" spacing={3} justifyContent="center">
+      <Stack direction="row" justifyContent="space-between">
         <TimeBox label="Ngày" value={time.days} />
         <TimeBox label="Giờ" value={time.hours} />
         <TimeBox label="Phút" value={time.minutes} />
         <TimeBox label="Giây" value={time.seconds} />
       </Stack>
-    </Card>
+    </Box>
   );
 }
 
 function TimeBox({ label, value }: any) {
   return (
-    <Box>
-      <Typography variant="h4" fontWeight="bold">
-        {value}
-      </Typography>
-      <Typography variant="caption">{label}</Typography>
+    <Box className="timebox">
+      <Typography className="number">{value}</Typography>
+      <Typography fontSize={12}>{label}</Typography>
     </Box>
   );
 }
