@@ -229,12 +229,12 @@ const applyFilters = () => {
   }
 
   // lọc tuần (cho phép record chưa có weekNumber vẫn hiển thị)
-  if (selectedWeek) {
-    data = data.filter(
-      (v) =>
-        !v.weekNumber || String(v.weekNumber) === selectedWeek
-    );
-  }
+  // lọc tuần (chỉ lấy record có weekNumber đúng)
+if (selectedWeek) {
+  data = data.filter(
+    (v) => String(v.weekNumber) === selectedWeek
+  );
+}
 
   // lọc trạng thái xử lý
   if (handledStatus) {
