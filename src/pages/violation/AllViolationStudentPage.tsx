@@ -183,7 +183,7 @@ export default function AllViolationStudentPage() {
       const weekList: Week[] = weeksRes.data;
       setWeeks(weekList);
       if (currentRes.data?.weekNumber) {
-        setSelectedWeek(String(currentRes.data.weekNumber));
+        setSelectedWeek('');
       }
     } catch (err) {
       console.error('Lỗi khi lấy danh sách tuần học:', err);
@@ -258,8 +258,9 @@ const applyFilters = () => {
   };
 
   useEffect(() => {
-    applyFilters();
-  }, [selectedWeek, selectedClass, handledStatus, violations]);
+  if (!violations.length) return;
+  applyFilters();
+}, [selectedWeek, selectedClass, handledStatus, violations]);
 
   const handleDeleteViolation = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn xoá vi phạm này không?')) return;
