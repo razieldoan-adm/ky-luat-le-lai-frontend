@@ -1,3 +1,4 @@
+trang duyet vi pham hien tai cua t
 import { useState, useEffect } from 'react';
 import {
   Box,
@@ -183,7 +184,7 @@ export default function AllViolationStudentPage() {
       const weekList: Week[] = weeksRes.data;
       setWeeks(weekList);
       if (currentRes.data?.weekNumber) {
-        setSelectedWeek('');
+        setSelectedWeek(String(currentRes.data.weekNumber));
       }
     } catch (err) {
       console.error('Lỗi khi lấy danh sách tuần học:', err);
@@ -193,7 +194,6 @@ export default function AllViolationStudentPage() {
   const fetchViolations = async () => {
     try {
       const res = await api.get('/api/violations/all/all-student');
-      console.log("API COUNT:", res.data.length);
       setViolations(res.data);
       setFiltered(res.data);
     } catch (err) {
@@ -220,35 +220,16 @@ export default function AllViolationStudentPage() {
     }
   };
 
-const applyFilters = () => {
-  let data: Violation[] = [...violations];
-
-  // lọc lớp
-  if (selectedClass) {
-    data = data.filter((v) => v.className === selectedClass);
-  }
-
-  // lọc tuần (cho phép record chưa có weekNumber vẫn hiển thị)
-  // lọc tuần (chỉ lấy record có weekNumber đúng)
-if (selectedWeek) {
-  data = data.filter(
-    (v) => String(v.weekNumber) === selectedWeek
-  );
-}
-
-  // lọc trạng thái xử lý
-  if (handledStatus) {
-    if (handledStatus === 'unhandled') {
-      data = data.filter((v) => !v.handled);
-    } else {
-      data = data.filter(
-        (v) => v.handled && v.handledBy === handledStatus
-      );
+  const applyFilters = () => {
+    let data: Violation[] = [...violations];
+    if (selectedClass) data = data.filter((v) => v.className === selectedClass);
+    if (selectedWeek) data = data.filter((v) => String(v.weekNumber) === selectedWeek);
+    if (handledStatus) {
+      if (handledStatus === 'unhandled') data = data.filter((v) => !v.handled);
+      else data = data.filter((v) => v.handledBy === handledStatus);
     }
-  }
-
-  setFiltered(data);
-};
+    setFiltered(data);
+  };
 
   const clearFilters = () => {
     setSelectedClass('');
@@ -258,9 +239,8 @@ if (selectedWeek) {
   };
 
   useEffect(() => {
-  if (!violations.length) return;
-  applyFilters();
-}, [selectedWeek, selectedClass, handledStatus, violations]);
+    applyFilters();
+  }, [selectedWeek, selectedClass, handledStatus, violations]);
 
   const handleDeleteViolation = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn xoá vi phạm này không?')) return;
