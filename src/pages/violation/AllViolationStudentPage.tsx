@@ -193,6 +193,7 @@ export default function AllViolationStudentPage() {
   const fetchViolations = async () => {
     try {
       const res = await api.get('/api/violations/all/all-student');
+      console.log("API COUNT:", res.data.length);
       setViolations(res.data);
       setFiltered(res.data);
     } catch (err) {
