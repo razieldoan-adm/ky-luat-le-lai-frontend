@@ -220,16 +220,35 @@ export default function AllViolationStudentPage() {
     }
   };
 
-  const applyFilters = () => {
-    let data: Violation[] = [...violations];
-    if (selectedClass) data = data.filter((v) => v.className === selectedClass);
-    if (selectedWeek) data = data.filter((v) => String(v.weekNumber) === selectedWeek);
-    if (handledStatus) {
-      if (handledStatus === 'unhandled') data = data.filter((v) => !v.handled);
-      else data = data.filter((v) => v.handledBy === handledStatus);
+const applyFilters = () => {
+  let data: Violation[] = [...violations];
+
+  // lọc lớp
+  if (selectedClass) {
+    data = data.filter((v) => v.className === selectedClass);
+  }
+
+  // lọc tuần (cho phép record chưa có weekNumber vẫn hiển thị)
+  if (selectedWeek) {
+    data = data.filter(
+      (v) =>
+        !v.weekNumber || String(v.weekNumber) === selectedWeek
+    );
+  }
+
+  // lọc trạng thái xử lý
+  if (handledStatus) {
+    if (handledStatus === 'unhandled') {
+      data = data.filter((v) => !v.handled);
+    } else {
+      data = data.filter(
+        (v) => v.handled && v.handledBy === handledStatus
+      );
     }
-    setFiltered(data);
-  };
+  }
+
+  setFiltered(data);
+};
 
   const clearFilters = () => {
     setSelectedClass('');
