@@ -193,7 +193,7 @@ export default function AllViolationStudentPage() {
 
   const fetchViolations = async () => {
     try {
-      const res = await api.get('/api/violations/all/all-student?weekNumber=${selectedWeek}');
+      const res = await api.get('/api/violations/all/all-student');
       setViolations(res.data);
       setFiltered(res.data);
     } catch (err) {
