@@ -24,9 +24,13 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Chip,
+  Divider,
 } from "@mui/material";
+
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/api";
+
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -35,6 +39,10 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.tz.setDefault("Asia/Ho_Chi_Minh");
 
+// ============================================================
+// INTERFACE
+// ============================================================
+
 interface Violation {
   _id: string;
   description: string;
@@ -42,352 +50,1429 @@ interface Violation {
   handled: boolean;
   handlingMethod: string;
   handledBy?: string;
+  handlingNote?: string;
   weekNumber?: number;
+  penalty?: number;
 }
 
 interface Rule {
   _id: string;
   title: string;
   point: number;
+  groupCode?: string;
+  groupName?: string;
+  content?: string;
+  active?: boolean;
 }
+
+interface StudentConductScore {
+  _id?: string;
+
+  name: string;
+  className: string;
+  weekNumber: number;
+
+  score: number;
+
+  N1: number;
+  N2: number;
+  N3: number;
+  N4: number;
+  N5: number;
+
+  seriousViolation: boolean;
+}
+
+// ============================================================
+// COMPONENT
+// ============================================================
 
 const ViolationDetailPage = () => {
   const { name } = useParams<{ name: string }>();
+
   const navigate = useNavigate();
   const location = useLocation();
-  const className = new URLSearchParams(location.search).get("className") || "";
+
+  const className =
+    new URLSearchParams(location.search).get("className") || "";
+
+  // ==========================================================
+  // STATE
+  // ==========================================================
 
   const [violations, setViolations] = useState<Violation[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
+
   const [selectedRuleId, setSelectedRuleId] = useState("");
+
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
-  const [maxConductScore, setMaxConductScore] = useState(100);
+
+  const [snackbarSeverity, setSnackbarSeverity] = useState<
+    "success" | "error"
+  >("success");
+
+  // ==========================================================
+  // TUẦN HIỆN TẠI
+  // ==========================================================
+
+  const [currentWeek, setCurrentWeek] = useState<number | null>(null);
+
+  // ==========================================================
+  // ĐIỂM HẠNH KIỂM
+  // ==========================================================
+
+  const [conductScore, setConductScore] =
+    useState<StudentConductScore | null>(null);
+
+  const [maxConductScore, setMaxConductScore] =
+    useState(100);
+
+  // ==========================================================
+  // NGÀY NHẬP LỖI
+  // ==========================================================
+
   const [dayInput, setDayInput] = useState("");
   const [monthInput, setMonthInput] = useState("");
 
-  // 🔧 Dialog chỉnh sửa lỗi
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editItem, setEditItem] = useState<Violation | null>(null);
-  const [editDescription, setEditDescription] = useState("");
-  const [editDate, setEditDate] = useState("");
+  // ==========================================================
+  // DIALOG SỬA
+  // ==========================================================
+
+  const [editDialogOpen, setEditDialogOpen] =
+    useState(false);
+
+  const [editItem, setEditItem] =
+    useState<Violation | null>(null);
+
+  const [editDescription, setEditDescription] =
+    useState("");
+
+  const [editDate, setEditDate] =
+    useState("");
+
+  // ==========================================================
+  // LOAD DATA
+  // ==========================================================
 
   useEffect(() => {
+    if (!name || !className) return;
+
     fetchViolations();
     fetchRules();
     fetchSettings();
+    fetchCurrentWeek();
   }, [name, className]);
+
+  // ==========================================================
+  // LẤY SETTINGS
+  // ==========================================================
 
   const fetchSettings = async () => {
     try {
       const res = await api.get("/api/settings");
-      if (res.data?.maxConductScore) {
-        setMaxConductScore(res.data.maxConductScore);
+
+      if (
+        res.data?.maxConductScore !== undefined
+      ) {
+        setMaxConductScore(
+          Number(res.data.maxConductScore)
+        );
       }
     } catch (err) {
-      console.error("Lỗi khi lấy settings:", err);
+      console.error(
+        "Lỗi khi lấy settings:",
+        err
+      );
     }
   };
+
+  // ==========================================================
+  // LẤY VI PHẠM
+  // ==========================================================
 
   const fetchViolations = async () => {
     try {
       const res = await api.get(
-        `/api/violations/${encodeURIComponent(name || "")}?className=${encodeURIComponent(className)}`
+        `/api/violations/${encodeURIComponent(
+          name || ""
+        )}?className=${encodeURIComponent(
+          className
+        )}`
       );
+
       setViolations(res.data || []);
     } catch (err) {
-      console.error("Error fetching violations:", err);
+      console.error(
+        "Lỗi lấy vi phạm:",
+        err
+      );
+
       setViolations([]);
     }
   };
 
+  // ==========================================================
+  // LẤY RULE
+  // ==========================================================
+
   const fetchRules = async () => {
     try {
-      const res = await api.get("/api/rules");
+      const res =
+        await api.get("/api/rules");
+
       setRules(res.data || []);
     } catch (err) {
-      console.error("Lỗi khi lấy rules:", err);
+      console.error(
+        "Lỗi khi lấy rules:",
+        err
+      );
     }
   };
+
+  // ==========================================================
+  // LẤY TUẦN HIỆN TẠI
+  // ==========================================================
+
+  const fetchCurrentWeek = async () => {
+    try {
+      const res = await api.get(
+        "/api/academic-weeks/study-weeks"
+      );
+
+      const weeks = res.data || [];
+
+      const now = new Date();
+
+      const currentWeekFound =
+        weeks.find((w: any) => {
+          const start =
+            new Date(w.startDate);
+
+          const end =
+            new Date(w.endDate);
+
+          return (
+            now >= start &&
+            now <= end
+          );
+        });
+
+      if (currentWeekFound) {
+        const week =
+          Number(
+            currentWeekFound.weekNumber
+          );
+
+        setCurrentWeek(week);
+
+        fetchConductScore(week);
+      }
+    } catch (err) {
+      console.error(
+        "Lỗi khi lấy tuần hiện tại:",
+        err
+      );
+    }
+  };
+
+  // ==========================================================
+  // LẤY ĐIỂM HẠNH KIỂM
+  // ==========================================================
+
+  const fetchConductScore = async (
+    weekNumber: number
+  ) => {
+    if (!name || !className) return;
+
+    try {
+      const res =
+        await api.get(
+          "/api/student-conduct-scores/student",
+          {
+            params: {
+              name,
+              className,
+              weekNumber,
+            },
+          }
+        );
+
+      if (res.data) {
+        setConductScore(res.data);
+      } else {
+        setConductScore(null);
+      }
+    } catch (err) {
+      console.error(
+        "Lỗi khi lấy điểm hạnh kiểm:",
+        err
+      );
+
+      setConductScore(null);
+    }
+  };
+
+  // ==========================================================
+  // SAU KHI GHI / XÓA / SỬA → LOAD LẠI HK
+  // ==========================================================
+
+  const refreshConductScore = async () => {
+    if (currentWeek !== null) {
+      await fetchConductScore(
+        currentWeek
+      );
+    }
+  };
+
+  // ==========================================================
+  // NGÀY VI PHẠM
+  // ==========================================================
 
   const getViolationDate = (): Date => {
     const now = new Date();
-    const year = now.getFullYear();
-    if (dayInput && monthInput) {
-      const dd = parseInt(dayInput, 10);
-      const mm = parseInt(monthInput, 10) - 1;
-      if (!isNaN(dd) && !isNaN(mm) && dd > 0 && dd <= 31 && mm >= 0 && mm < 12) {
-        const customDate = new Date(year, mm, dd, 12, 0, 0, 0);
-        if (!isNaN(customDate.getTime())) return customDate;
+
+    const year =
+      now.getFullYear();
+
+    if (
+      dayInput &&
+      monthInput
+    ) {
+      const dd =
+        parseInt(
+          dayInput,
+          10
+        );
+
+      const mm =
+        parseInt(
+          monthInput,
+          10
+        ) - 1;
+
+      if (
+        !isNaN(dd) &&
+        !isNaN(mm) &&
+        dd > 0 &&
+        dd <= 31 &&
+        mm >= 0 &&
+        mm < 12
+      ) {
+        const customDate =
+          new Date(
+            year,
+            mm,
+            dd,
+            12,
+            0,
+            0,
+            0
+          );
+
+        if (
+          !isNaN(
+            customDate.getTime()
+          )
+        ) {
+          return customDate;
+        }
       }
     }
+
     return new Date();
   };
 
-  const renderTime = (time?: string) => {
+  // ==========================================================
+  // HIỂN THỊ NGÀY
+  // ==========================================================
+
+  const renderTime = (
+    time?: string
+  ) => {
     if (!time) return "N/A";
-    const parsed = new Date(time);
-    if (!isNaN(parsed.getTime())) return parsed.toLocaleDateString("vi-VN");
+
+    const parsed =
+      new Date(time);
+
+    if (
+      !isNaN(
+        parsed.getTime()
+      )
+    ) {
+      return parsed.toLocaleDateString(
+        "vi-VN"
+      );
+    }
+
     return time;
   };
-  
-  // ➕ Ghi nhận lỗi mới
-  const handleAddViolation = async () => {
-    const selectedRule = rules.find((r) => r._id === selectedRuleId);
-    if (!selectedRule || !name || !className) {
-      setSnackbarMessage("Vui lòng chọn lỗi vi phạm và đảm bảo có tên/lớp.");
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
-      return;
-    }
 
-    try {
-      const weeksRes = await api.get("/api/academic-weeks/study-weeks");
-      const weeks = weeksRes.data || [];
-      const now = new Date();
-      const currentWeekFound = weeks.find((w: any) => {
-        const start = new Date(w.startDate);
-        const end = new Date(w.endDate);
-        return now >= start && now <= end;
-      });
-      const weekNumber = currentWeekFound ? currentWeekFound.weekNumber : null;
+  // ==========================================================
+  // TÌM RULE CỦA LỖI
+  // ==========================================================
 
-      const violationDate = getViolationDate();
-
-      await api.post("/api/violations", {
-        name,
-        className,
-        description: selectedRule.title,
-        handlingMethod: "",
-        weekNumber,
-        time: violationDate.toISOString(),
-        handled: false,
-        handledBy: "",
-      });
-
-      setSelectedRuleId("");
-      setDayInput("");
-      setMonthInput("");
-      setSnackbarMessage(`Đã ghi nhận lỗi: ${selectedRule.title}`);
-      setSnackbarSeverity("success");
-      setSnackbarOpen(true);
-      fetchViolations();
-    } catch (err) {
-      console.error("Lỗi khi ghi nhận vi phạm:", err);
-      setSnackbarMessage("Lỗi khi ghi nhận vi phạm.");
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
-    }
+  const getRuleForViolation = (
+    violation: Violation
+  ) => {
+    return rules.find(
+      (r) =>
+        r.title ===
+        violation.description
+    );
   };
 
-  // ❌ Xoá vi phạm
-  const handleDeleteViolation = async (id: string) => {
-    try {
-      await api.delete(`/api/violations/${id}`);
-      setViolations((prev) => prev.filter((v) => v._id !== id));
-      setSnackbarMessage("Xoá vi phạm thành công!");
-      setSnackbarSeverity("success");
-    } catch (err) {
-      console.error("Lỗi xoá vi phạm:", err);
-      setSnackbarMessage("Lỗi xoá vi phạm.");
-      setSnackbarSeverity("error");
-    } finally {
-      setSnackbarOpen(true);
-    }
-  };
+  // ==========================================================
+  // ➕ GHI NHẬN LỖI
+  // ==========================================================
 
-  // ✏️ Mở dialog sửa
-  const openEditDialog = (v: Violation) => {
+  const handleAddViolation =
+    async () => {
+      const selectedRule =
+        rules.find(
+          (r) =>
+            r._id ===
+            selectedRuleId
+        );
+
+      if (
+        !selectedRule ||
+        !name ||
+        !className
+      ) {
+        setSnackbarMessage(
+          "Vui lòng chọn lỗi vi phạm và đảm bảo có tên/lớp."
+        );
+
+        setSnackbarSeverity(
+          "error"
+        );
+
+        setSnackbarOpen(true);
+
+        return;
+      }
+
+      try {
+        const weeksRes =
+          await api.get(
+            "/api/academic-weeks/study-weeks"
+          );
+
+        const weeks =
+          weeksRes.data || [];
+
+        const now =
+          new Date();
+
+        const currentWeekFound =
+          weeks.find(
+            (w: any) => {
+              const start =
+                new Date(
+                  w.startDate
+                );
+
+              const end =
+                new Date(
+                  w.endDate
+                );
+
+              return (
+                now >= start &&
+                now <= end
+              );
+            }
+          );
+
+        const weekNumber =
+          currentWeekFound
+            ? Number(
+                currentWeekFound.weekNumber
+              )
+            : null;
+
+        if (
+          weekNumber === null
+        ) {
+          setSnackbarMessage(
+            "Không xác định được tuần học hiện tại."
+          );
+
+          setSnackbarSeverity(
+            "error"
+          );
+
+          setSnackbarOpen(true);
+
+          return;
+        }
+
+        const violationDate =
+          getViolationDate();
+
+        await api.post(
+          "/api/violations",
+          {
+            name,
+            className,
+
+            description:
+              selectedRule.title,
+
+            handlingMethod: "",
+
+            weekNumber,
+
+            time:
+              violationDate.toISOString(),
+
+            handled: false,
+
+            handledBy: "",
+          }
+        );
+
+        setSelectedRuleId("");
+
+        setDayInput("");
+
+        setMonthInput("");
+
+        setSnackbarMessage(
+          `Đã ghi nhận lỗi: ${selectedRule.title}`
+        );
+
+        setSnackbarSeverity(
+          "success"
+        );
+
+        setSnackbarOpen(true);
+
+        await fetchViolations();
+
+        await fetchConductScore(
+          weekNumber
+        );
+      } catch (err) {
+        console.error(
+          "Lỗi khi ghi nhận vi phạm:",
+          err
+        );
+
+        setSnackbarMessage(
+          "Lỗi khi ghi nhận vi phạm."
+        );
+
+        setSnackbarSeverity(
+          "error"
+        );
+
+        setSnackbarOpen(true);
+      }
+    };
+
+  // ==========================================================
+  // ❌ XÓA VI PHẠM
+  // ==========================================================
+
+  const handleDeleteViolation =
+    async (id: string) => {
+      try {
+        await api.delete(
+          `/api/violations/${id}`
+        );
+
+        setSnackbarMessage(
+          "Xoá vi phạm thành công!"
+        );
+
+        setSnackbarSeverity(
+          "success"
+        );
+
+        setSnackbarOpen(true);
+
+        await fetchViolations();
+
+        await refreshConductScore();
+      } catch (err) {
+        console.error(
+          "Lỗi xoá vi phạm:",
+          err
+        );
+
+        setSnackbarMessage(
+          "Lỗi xoá vi phạm."
+        );
+
+        setSnackbarSeverity(
+          "error"
+        );
+
+        setSnackbarOpen(true);
+      }
+    };
+
+  // ==========================================================
+  // ✏️ MỞ DIALOG SỬA
+  // ==========================================================
+
+  const openEditDialog = (
+    v: Violation
+  ) => {
     setEditItem(v);
-    setEditDescription(v.description);
-    setEditDate(renderTime(v.time));
-    setEditDialogOpen(true);
+
+    setEditDescription(
+      v.description
+    );
+
+    setEditDate(
+      renderTime(v.time)
+    );
+
+    setEditDialogOpen(
+      true
+    );
   };
 
-  // 💾 Lưu sửa
-  const handleSaveEdit = async () => {
-    if (!editItem) return;
-    try {
-     
-      const formattedDate = dayjs(editDate, "DD/MM/YYYY").isValid()
-        ? dayjs(editDate, "DD/MM/YYYY").toDate()
-        : new Date();
+  // ==========================================================
+  // 💾 LƯU SỬA
+  // ==========================================================
 
-      await api.put(`/api/violations/${editItem._id}`, {
-        description: editDescription,
-        time: formattedDate,
-      });
+  const handleSaveEdit =
+    async () => {
+      if (!editItem) return;
 
-      setSnackbarMessage("Đã cập nhật lỗi vi phạm!");
-      setSnackbarSeverity("success");
-      setSnackbarOpen(true);
-      setEditDialogOpen(false);
-      fetchViolations();
-    } catch (err) {
-      console.error("Lỗi khi cập nhật vi phạm:", err);
-      setSnackbarMessage("Không thể cập nhật vi phạm.");
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
-    }
-  };
+      try {
+        const parsedDate =
+          dayjs(
+            editDate,
+            "DD/MM/YYYY"
+          );
 
-const totalPenalty = violations.reduce(
-  (sum, v) => sum + ((rules.find((r) => r.title === v.description)?.point) || 0),
-  0
-);
+        const formattedDate =
+          parsedDate.isValid()
+            ? parsedDate.toDate()
+            : new Date();
 
+        await api.put(
+          `/api/violations/${editItem._id}`,
+          {
+            description:
+              editDescription,
 
-  const finalScore = Math.max(maxConductScore - totalPenalty, 0);
-  const isBelowThreshold = finalScore < maxConductScore * 0.5;
+            time:
+              formattedDate,
+          }
+        );
+
+        setSnackbarMessage(
+          "Đã cập nhật lỗi vi phạm!"
+        );
+
+        setSnackbarSeverity(
+          "success"
+        );
+
+        setSnackbarOpen(true);
+
+        setEditDialogOpen(
+          false
+        );
+
+        await fetchViolations();
+
+        await refreshConductScore();
+      } catch (err) {
+        console.error(
+          "Lỗi khi cập nhật vi phạm:",
+          err
+        );
+
+        setSnackbarMessage(
+          "Không thể cập nhật vi phạm."
+        );
+
+        setSnackbarSeverity(
+          "error"
+        );
+
+        setSnackbarOpen(true);
+      }
+    };
+
+  // ==========================================================
+  // ĐIỂM HIỆN TẠI
+  // ==========================================================
+
+  const currentScore =
+    conductScore?.score ??
+    maxConductScore;
+
+  const seriousViolation =
+    conductScore?.seriousViolation ??
+    false;
+
+  const totalConductViolations =
+    (conductScore?.N1 || 0) +
+    (conductScore?.N2 || 0) +
+    (conductScore?.N3 || 0) +
+    (conductScore?.N4 || 0) +
+    (conductScore?.N5 || 0);
+
+  const isBelowThreshold =
+    currentScore <
+    maxConductScore * 0.5;
+
+  // ==========================================================
+  // RENDER
+  // ==========================================================
 
   return (
-    <Box sx={{ width: "80vw", py: 6, mx: "auto" }}>
-      <Typography variant="h4" fontWeight="bold" align="center">
+    <Box
+      sx={{
+        width: "80vw",
+        maxWidth: 1500,
+        py: 5,
+        mx: "auto",
+      }}
+    >
+      {/* ======================================================
+          TIÊU ĐỀ
+      ====================================================== */}
+
+      <Typography
+        variant="h4"
+        fontWeight="bold"
+        align="center"
+        mb={1}
+      >
         Chi tiết vi phạm
       </Typography>
-      <Typography variant="h6">
-        Học sinh: {name} - Lớp: {className}
-      </Typography>
-      <Typography color={isBelowThreshold ? "error" : "green"}>
-        Điểm hạnh kiểm: {finalScore}/{maxConductScore}
+
+      <Typography
+        variant="h6"
+        align="center"
+        mb={3}
+      >
+        Học sinh:{" "}
+        <strong>{name}</strong>
+        {" - "}
+        Lớp:{" "}
+        <strong>{className}</strong>
       </Typography>
 
-      {/* Form thêm lỗi */}
-      <Card sx={{ my: 3 }}>
+      {/* ======================================================
+          THÔNG TIN HẠNH KIỂM
+      ====================================================== */}
+
+      <Card
+        sx={{
+          mb: 3,
+          borderRadius: 3,
+          boxShadow: 3,
+        }}
+      >
         <CardContent>
-          <Typography variant="h6">Ghi nhận lỗi mới</Typography>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mt={2}>
+          <Stack
+            direction={{
+              xs: "column",
+              md: "row",
+            }}
+            spacing={3}
+            alignItems={{
+              xs: "stretch",
+              md: "center",
+            }}
+            justifyContent="space-between"
+          >
+            <Box>
+              <Typography
+                variant="subtitle1"
+                color="text.secondary"
+              >
+                Hạnh kiểm tuần{" "}
+                {currentWeek ??
+                  "—"}
+              </Typography>
+
+              <Typography
+                variant="h3"
+                fontWeight="bold"
+                color={
+                  isBelowThreshold
+                    ? "error.main"
+                    : "success.main"
+                }
+              >
+                {currentScore}
+                <Typography
+                  component="span"
+                  variant="h6"
+                  color="text.secondary"
+                >
+                  {" "}
+                  /{" "}
+                  {maxConductScore}
+                </Typography>
+              </Typography>
+            </Box>
+
+            <Stack
+              direction="row"
+              spacing={1}
+              flexWrap="wrap"
+            >
+              <Chip
+                label={`Tổng lỗi HK: ${totalConductViolations}`}
+                color={
+                  totalConductViolations >
+                  0
+                    ? "warning"
+                    : "success"
+                }
+              />
+
+              {seriousViolation && (
+                <Chip
+                  label="⚠ Lỗi đặc biệt nghiêm trọng"
+                  color="error"
+                  sx={{
+                    fontWeight:
+                      "bold",
+                  }}
+                />
+              )}
+            </Stack>
+          </Stack>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            mb={1}
+          >
+            Chi tiết số lần bị trừ điểm
+            hạnh kiểm trong tuần:
+          </Typography>
+
+          <Stack
+            direction="row"
+            spacing={1}
+            flexWrap="wrap"
+          >
+            <Chip
+              size="small"
+              label={`N1: ${
+                conductScore?.N1 || 0
+              } lần`}
+            />
+
+            <Chip
+              size="small"
+              label={`N2: ${
+                conductScore?.N2 || 0
+              } lần`}
+            />
+
+            <Chip
+              size="small"
+              label={`N3: ${
+                conductScore?.N3 || 0
+              } lần`}
+            />
+
+            <Chip
+              size="small"
+              label={`N4: ${
+                conductScore?.N4 || 0
+              } lần`}
+            />
+
+            <Chip
+              size="small"
+              label={`N5: ${
+                conductScore?.N5 || 0
+              } lần`}
+            />
+          </Stack>
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display="block"
+            mt={2}
+          >
+            Mỗi lỗi thuộc nhóm N1–N5 bị
+            trừ 1 điểm hạnh kiểm. Điểm
+            `point` của nội quy không dùng
+            để tính điểm hạnh kiểm.
+          </Typography>
+        </CardContent>
+      </Card>
+
+      {/* ======================================================
+          GHI NHẬN LỖI
+      ====================================================== */}
+
+      <Card
+        sx={{
+          my: 3,
+          borderRadius: 3,
+          boxShadow: 2,
+        }}
+      >
+        <CardContent>
+          <Typography
+            variant="h6"
+            fontWeight="bold"
+          >
+            Ghi nhận lỗi mới
+          </Typography>
+
+          <Stack
+            direction={{
+              xs: "column",
+              sm: "row",
+            }}
+            spacing={2}
+            mt={2}
+            alignItems="center"
+          >
             <FormControl fullWidth>
-              <InputLabel>Lỗi vi phạm</InputLabel>
-              <Select value={selectedRuleId} label="Lỗi vi phạm" onChange={(e) => setSelectedRuleId(e.target.value)}>
-                {rules.map((rule) => (
-                  <MenuItem key={rule._id} value={rule._id}>
-                    {rule.title} ({rule.point} điểm)
-                  </MenuItem>
-                ))}
+              <InputLabel>
+                Lỗi vi phạm
+              </InputLabel>
+
+              <Select
+                value={
+                  selectedRuleId
+                }
+                label="Lỗi vi phạm"
+                onChange={(e) =>
+                  setSelectedRuleId(
+                    e.target.value
+                  )
+                }
+              >
+                {rules
+                  .filter(
+                    (rule) =>
+                      rule.active !==
+                      false
+                  )
+                  .map((rule) => (
+                    <MenuItem
+                      key={
+                        rule._id
+                      }
+                      value={
+                        rule._id
+                      }
+                    >
+                      {rule.title}
+
+                      {rule.groupCode && (
+                        <>
+                          {" "}
+                          —{" "}
+                          {rule.groupCode}
+                        </>
+                      )}
+
+                      {" "}
+                      (
+                      {rule.point}
+                      {" "}
+                      điểm lớp)
+                    </MenuItem>
+                  ))}
               </Select>
             </FormControl>
 
             <TextField
-              label="Ngày (dd)"
+              label="Ngày"
               value={dayInput}
-              onChange={(e) => setDayInput(e.target.value.replace(/\D/g, ""))}
-              inputProps={{ maxLength: 2 }}
-              sx={{ width: 100 }}
-            />
-            <TextField
-              label="Tháng (MM)"
-              value={monthInput}
-              onChange={(e) => setMonthInput(e.target.value.replace(/\D/g, ""))}
-              inputProps={{ maxLength: 2 }}
-              sx={{ width: 100 }}
+              onChange={(e) =>
+                setDayInput(
+                  e.target.value.replace(
+                    /\D/g,
+                    ""
+                  )
+                )
+              }
+              inputProps={{
+                maxLength: 2,
+              }}
+              sx={{
+                width: {
+                  xs: "100%",
+                  sm: 100,
+                },
+              }}
             />
 
-            <Button variant="contained" onClick={handleAddViolation}>
+            <TextField
+              label="Tháng"
+              value={monthInput}
+              onChange={(e) =>
+                setMonthInput(
+                  e.target.value.replace(
+                    /\D/g,
+                    ""
+                  )
+                )
+              }
+              inputProps={{
+                maxLength: 2,
+              }}
+              sx={{
+                width: {
+                  xs: "100%",
+                  sm: 110,
+                },
+              }}
+            />
+
+            <Button
+              variant="contained"
+              onClick={
+                handleAddViolation
+              }
+              sx={{
+                minWidth: 110,
+              }}
+            >
               Ghi nhận
             </Button>
-            <Button variant="outlined" sx={{ mt: 3 }} onClick={() => navigate("/violation/")}>
-                 Nhập tên vi phạm mới
-            </Button>
           </Stack>
+
+          <Button
+            variant="outlined"
+            sx={{ mt: 2 }}
+            onClick={() =>
+              navigate(
+                "/violation/"
+              )
+            }
+          >
+            Nhập tên học sinh mới
+          </Button>
         </CardContent>
       </Card>
 
-      {/* Bảng hiển thị */}
-      <TableContainer component={Paper}>
+      {/* ======================================================
+          DANH SÁCH VI PHẠM
+      ====================================================== */}
+
+      <TableContainer
+        component={Paper}
+        sx={{
+          borderRadius: 2,
+          overflowX: "auto",
+        }}
+      >
         <Table>
           <TableHead>
-            <TableRow sx={{ backgroundColor: "#87cafe" }}>
-              <TableCell>STT</TableCell>
-              <TableCell>Lỗi vi phạm</TableCell>
-              <TableCell>Thời gian</TableCell>
-              <TableCell>Hình thức xử lý</TableCell>
-              <TableCell>Trạng thái</TableCell>
-              <TableCell>Điểm trừ</TableCell>
-              <TableCell>Tuần</TableCell>
-              <TableCell>Thao tác</TableCell>
+            <TableRow
+              sx={{
+                backgroundColor:
+                  "#87cafe",
+              }}
+            >
+              <TableCell>
+                <strong>
+                  STT
+                </strong>
+              </TableCell>
+
+              <TableCell>
+                <strong>
+                  Lỗi vi phạm
+                </strong>
+              </TableCell>
+
+              <TableCell>
+                <strong>
+                  Nhóm
+                </strong>
+              </TableCell>
+
+              <TableCell>
+                <strong>
+                  Thời gian
+                </strong>
+              </TableCell>
+
+              <TableCell>
+                <strong>
+                  Hình thức xử lý
+                </strong>
+              </TableCell>
+
+              <TableCell>
+                <strong>
+                  Trạng thái
+                </strong>
+              </TableCell>
+
+              <TableCell>
+                <strong>
+                  Điểm lớp
+                </strong>
+              </TableCell>
+
+              <TableCell>
+                <strong>
+                  HK
+                </strong>
+              </TableCell>
+
+              <TableCell>
+                <strong>
+                  Tuần
+                </strong>
+              </TableCell>
+
+              <TableCell>
+                <strong>
+                  Thao tác
+                </strong>
+              </TableCell>
             </TableRow>
           </TableHead>
+
           <TableBody>
-            {violations.map((v, idx) => {
-              const matchedRule = rules.find((r) => r.title === v.description);
-              return (
-                <TableRow key={v._id}>
-                  <TableCell>{idx + 1}</TableCell>
-                  <TableCell>{v.description}</TableCell>
-                  <TableCell>{renderTime(v.time)}</TableCell>
-                  <TableCell>{v.handlingMethod || "—"}</TableCell>
-                  <TableCell>
-                    {v.handled ? (
-                      <Box sx={{ backgroundColor: "green", color: "white", px: 1, py: 0.5, borderRadius: 1, textAlign: "center" }}>
-                        Đã xử lý
-                      </Box>
-                    ) : (
-                      <Box sx={{ backgroundColor: "#ffcccc", color: "red", px: 1, py: 0.5, borderRadius: 1, textAlign: "center" }}>
-                        Chưa xử lý
-                      </Box>
-                    )}
-                  </TableCell>
-                  <TableCell>{matchedRule?.point || 0}</TableCell>
-                  <TableCell>{v.weekNumber ?? "N/A"}</TableCell>
-                  <TableCell>
-                    <Button size="small" onClick={() => openEditDialog(v)}>
-                      Sửa
-                    </Button>
-                    <Button size="small" color="error" onClick={() => handleDeleteViolation(v._id)}>
-                      Xoá
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {violations.map(
+              (v, idx) => {
+                const matchedRule =
+                  getRuleForViolation(
+                    v
+                  );
+
+                const groupCode =
+                  matchedRule?.groupCode?.toUpperCase();
+
+                const affectsConduct =
+                  [
+                    "N1",
+                    "N2",
+                    "N3",
+                    "N4",
+                    "N5",
+                  ].includes(
+                    groupCode || ""
+                  );
+
+                const isSerious =
+                  groupCode ===
+                  "S1";
+
+                return (
+                  <TableRow
+                    key={v._id}
+                  >
+                    <TableCell>
+                      {idx + 1}
+                    </TableCell>
+
+                    <TableCell>
+                      <Typography
+                        fontWeight={
+                          isSerious
+                            ? "bold"
+                            : "normal"
+                        }
+                        color={
+                          isSerious
+                            ? "error"
+                            : "inherit"
+                        }
+                      >
+                        {v.description}
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell>
+                      {groupCode ? (
+                        <Chip
+                          size="small"
+                          label={
+                            groupCode
+                          }
+                          color={
+                            isSerious
+                              ? "error"
+                              : affectsConduct
+                              ? "warning"
+                              : "default"
+                          }
+                        />
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+
+                    <TableCell>
+                      {renderTime(
+                        v.time
+                      )}
+                    </TableCell>
+
+                    <TableCell>
+                      {v.handlingMethod ||
+                        "—"}
+                    </TableCell>
+
+                    <TableCell>
+                      {v.handled ? (
+                        <Box
+                          sx={{
+                            backgroundColor:
+                              "green",
+                            color:
+                              "white",
+                            px: 1,
+                            py: 0.5,
+                            borderRadius: 1,
+                            textAlign:
+                              "center",
+                          }}
+                        >
+                          Đã xử lý
+                        </Box>
+                      ) : (
+                        <Box
+                          sx={{
+                            backgroundColor:
+                              "#ffcccc",
+                            color:
+                              "red",
+                            px: 1,
+                            py: 0.5,
+                            borderRadius: 1,
+                            textAlign:
+                              "center",
+                          }}
+                        >
+                          Chưa xử lý
+                        </Box>
+                      )}
+                    </TableCell>
+
+                    <TableCell>
+                      {matchedRule?.point ??
+                        0}
+                    </TableCell>
+
+                    <TableCell>
+                      {affectsConduct ? (
+                        <Chip
+                          size="small"
+                          label="-1 HK"
+                          color="warning"
+                        />
+                      ) : isSerious ? (
+                        <Chip
+                          size="small"
+                          label="Không trừ"
+                          color="error"
+                        />
+                      ) : (
+                        <Chip
+                          size="small"
+                          label="Không trừ"
+                          variant="outlined"
+                        />
+                      )}
+                    </TableCell>
+
+                    <TableCell>
+                      {v.weekNumber ??
+                        "N/A"}
+                    </TableCell>
+
+                    <TableCell>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                      >
+                        <Button
+                          size="small"
+                          onClick={() =>
+                            openEditDialog(
+                              v
+                            )
+                          }
+                        >
+                          Sửa
+                        </Button>
+
+                        <Button
+                          size="small"
+                          color="error"
+                          onClick={() =>
+                            handleDeleteViolation(
+                              v._id
+                            )
+                          }
+                        >
+                          Xoá
+                        </Button>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                );
+              }
+            )}
+
+            {violations.length ===
+              0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={10}
+                  align="center"
+                >
+                  Chưa có vi phạm
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
 
-      {/* Dialog sửa lỗi */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
-        <DialogTitle>Sửa lỗi vi phạm</DialogTitle>
+      {/* ======================================================
+          DIALOG SỬA
+      ====================================================== */}
+
+      <Dialog
+        open={editDialogOpen}
+        onClose={() =>
+          setEditDialogOpen(false)
+        }
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          Sửa lỗi vi phạm
+        </DialogTitle>
+
         <DialogContent>
-          <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel>Lỗi vi phạm</InputLabel>
-            <Select value={editDescription} label="Lỗi vi phạm" onChange={(e) => setEditDescription(e.target.value)}>
-              {rules.map((rule) => (
-                <MenuItem key={rule._id} value={rule.title}>
-                  {rule.title} ({rule.point} điểm)
-                </MenuItem>
-              ))}
+          <FormControl
+            fullWidth
+            sx={{ mt: 2 }}
+          >
+            <InputLabel>
+              Lỗi vi phạm
+            </InputLabel>
+
+            <Select
+              value={
+                editDescription
+              }
+              label="Lỗi vi phạm"
+              onChange={(e) =>
+                setEditDescription(
+                  e.target.value
+                )
+              }
+            >
+              {rules
+                .filter(
+                  (rule) =>
+                    rule.active !==
+                    false
+                )
+                .map((rule) => (
+                  <MenuItem
+                    key={
+                      rule._id
+                    }
+                    value={
+                      rule.title
+                    }
+                  >
+                    {rule.title}
+
+                    {rule.groupCode &&
+                      ` — ${rule.groupCode}`}
+
+                    {" "}
+                    (
+                    {rule.point}
+                    {" "}
+                    điểm lớp)
+                  </MenuItem>
+                ))}
             </Select>
           </FormControl>
+
           <TextField
             fullWidth
             sx={{ mt: 2 }}
             label="Ngày vi phạm (dd/mm/yyyy)"
             value={editDate}
-            onChange={(e) => setEditDate(e.target.value)}
+            onChange={(e) =>
+              setEditDate(
+                e.target.value
+              )
+            }
           />
         </DialogContent>
+
         <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Hủy</Button>
-          <Button variant="contained" onClick={handleSaveEdit}>
+          <Button
+            onClick={() =>
+              setEditDialogOpen(
+                false
+              )
+            }
+          >
+            Hủy
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={
+              handleSaveEdit
+            }
+          >
             Lưu
           </Button>
         </DialogActions>
       </Dialog>
 
+      {/* ======================================================
+          SNACKBAR
+      ====================================================== */}
+
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={3000}
-        onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        onClose={() =>
+          setSnackbarOpen(false)
+        }
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "center",
+        }}
       >
-        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: "100%" }}>
+        <Alert
+          onClose={() =>
+            setSnackbarOpen(false)
+          }
+          severity={
+            snackbarSeverity
+          }
+          sx={{
+            width: "100%",
+          }}
+        >
           {snackbarMessage}
         </Alert>
       </Snackbar>
-
-     
     </Box>
   );
 };
