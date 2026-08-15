@@ -14,7 +14,7 @@ import ViewAllStudentPage from './pages/ViewViolationListPage';
 import ViewHygieneDiscipline from './pages/ViewHygieneDiscipline';
 import DashboardPage from './pages/DashboardPage';
 import ViewFinalCompetitionResult from './pages/ViewFinalCompetitionResult';
-
+import ViewStudentConductPage from './pages/ViewStudentConductPage';
 // Violation
 import ViolationLayout from './layouts/ViolationLayout';
 import RecordViolationPage from './pages/violation/RecordViolationPage';
@@ -110,6 +110,8 @@ function AppContent() {
           <Route path="/view-all-violations" element={<ViewAllStudentPage />} />
           <Route path="/view-hygiene-discipline" element={<ViewHygieneDiscipline />} />
           <Route path="/view-final-competition-result" element={<ViewFinalCompetitionResult />} />
+          ViewStudentConductPage
+          <Route path="/view-student-conduct-page" element={<ViewStudentConductPage />} />
         </Route>
       </Routes>
     </Router>
