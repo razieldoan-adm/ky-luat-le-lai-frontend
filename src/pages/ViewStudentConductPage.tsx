@@ -689,28 +689,53 @@ export default function ViewStudentConductPage() {
   </TextField>
 
   {/* Chú thích N1 - N5 */}
-  <Typography
-    variant="caption"
-    color="text.secondary"
-    sx={{
-      display: "block",
-      mt: 0.8,
-      lineHeight: 1.4,
-    }}
-  >
-    {["N1", "N2", "N3", "N4", "N5"]
-      .map((code) => {
-        const rule = rules.find(
-          (r) =>
-            r.groupCode?.trim().toUpperCase() === code
-        );
+{/* Chú thích N1 - N5 */}
+<Box
+  sx={{
+    mt: 1,
+    pl: 0.5,
+  }}
+>
+  {["N1", "N2", "N3", "N4", "N5"].map((code) => {
+    const rule = rules.find(
+      (r) =>
+        r.groupCode?.trim().toUpperCase() === code
+    );
 
-        return `${code} – ${
-          rule?.groupName || "Chưa thiết lập"
-        }`;
-      })
-      .join(" | ")}
-  </Typography>
+    return (
+      <Box
+        key={code}
+        sx={{
+          display: "flex",
+          alignItems: "flex-start",
+          fontSize: "0.75rem",
+          lineHeight: 1.5,
+        }}
+      >
+        <Typography
+          component="span"
+          variant="caption"
+          sx={{
+            width: 28,
+            minWidth: 28,
+            fontWeight: "bold",
+            color: "text.primary",
+          }}
+        >
+          {code}
+        </Typography>
+
+        <Typography
+          component="span"
+          variant="caption"
+          color="text.secondary"
+        >
+          - {rule?.groupName || "Chưa thiết lập"}
+        </Typography>
+      </Box>
+    );
+  })}
+</Box>
 </Box>
 
           {/* LỚP */}
