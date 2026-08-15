@@ -77,8 +77,8 @@ interface ConductRow {
   classification: string;
 }
 
-const normalizeName = (name: string) =>
-  name
+const normalizeName = (name: string | null | undefined) =>
+  String(name ?? "")
     .trim()
     .toLowerCase()
     .normalize("NFD")
@@ -271,13 +271,15 @@ export default function ViewStudentConductPage() {
         `/api/students/search?${params.toString()}`
       );
 
-      const data: Student[] = (res.data || []).map(
-        (student: any) => ({
+      const data: Student[] = (res.data || [])
+        .filter((student: any) => student?.name)
+        .map((student: any) => ({
           _id: student._id,
-          name: student.name,
-          className: student.className,
-        })
-      );
+          name: String(student.name).trim(),
+          className: String(
+            student.className || selectedClass
+          ).trim(),
+        }));
 
       // Chống trùng học sinh nếu API trả về bản ghi trùng
       const unique = new Map<string, Student>();
