@@ -649,41 +649,69 @@ export default function ViewStudentConductPage() {
         >
           {/* TUẦN */}
 
-          <TextField
-            select
-            label="Chọn tuần"
-            value={selectedWeek}
-            onChange={(e) =>
-              setSelectedWeek(
-                e.target.value
-                  ? Number(e.target.value)
-                  : ""
-              )
-            }
-            size="small"
-            sx={{
-              minWidth: {
-                xs: "100%",
-                sm: 260,
-              },
-            }}
-          >
-            {weeks.map((week) => (
-              <MenuItem
-                key={week.weekNumber}
-                value={week.weekNumber}
-              >
-                Tuần {week.weekNumber}
-                {week.startDate && week.endDate
-                  ? ` (${dayjs(
-                      week.startDate
-                    ).format("DD/MM")} - ${dayjs(
-                      week.endDate
-                    ).format("DD/MM")})`
-                  : ""}
-              </MenuItem>
-            ))}
-          </TextField>
+<Box
+  sx={{
+    minWidth: {
+      xs: "100%",
+      sm: 320,
+    },
+  }}
+>
+  <TextField
+    select
+    label="Chọn tuần"
+    value={selectedWeek}
+    onChange={(e) =>
+      setSelectedWeek(
+        e.target.value
+          ? Number(e.target.value)
+          : ""
+      )
+    }
+    size="small"
+    fullWidth
+  >
+    {weeks.map((week) => (
+      <MenuItem
+        key={week.weekNumber}
+        value={week.weekNumber}
+      >
+        Tuần {week.weekNumber}
+        {week.startDate && week.endDate
+          ? ` (${dayjs(week.startDate).format(
+              "DD/MM"
+            )} - ${dayjs(week.endDate).format(
+              "DD/MM"
+            )})`
+          : ""}
+      </MenuItem>
+    ))}
+  </TextField>
+
+  {/* Chú thích N1 - N5 */}
+  <Typography
+    variant="caption"
+    color="text.secondary"
+    sx={{
+      display: "block",
+      mt: 0.8,
+      lineHeight: 1.4,
+    }}
+  >
+    {["N1", "N2", "N3", "N4", "N5"]
+      .map((code) => {
+        const rule = rules.find(
+          (r) =>
+            r.groupCode?.trim().toUpperCase() === code
+        );
+
+        return `${code} – ${
+          rule?.groupName || "Chưa thiết lập"
+        }`;
+      })
+      .join(" | ")}
+  </Typography>
+</Box>
 
           {/* LỚP */}
 
