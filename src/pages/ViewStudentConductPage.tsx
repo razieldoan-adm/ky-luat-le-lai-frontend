@@ -694,150 +694,349 @@ export default function ViewStudentConductPage() {
       ===================================================== */}
 
       <Paper
-        elevation={1}
+  elevation={1}
+  sx={{
+    p: 2,
+    mb: 3,
+    borderRadius: 2,
+  }}
+>
+  {/* =====================================================
+      HÀNG 1: CHỌN TUẦN - CHỌN LỚP - NÚT XEM
+  ===================================================== */}
+  <Box
+    sx={{
+      display: "grid",
+      gridTemplateColumns: {
+        xs: "1fr",
+        sm: "1fr 1fr",
+        md: "minmax(300px, 1fr) minmax(300px, 1fr) auto",
+      },
+      gap: 1.5,
+      alignItems: "center",
+    }}
+  >
+    {/* CHỌN TUẦN */}
+    <TextField
+      select
+      label="Chọn tuần"
+      value={selectedWeek}
+      onChange={(e) =>
+        setSelectedWeek(
+          e.target.value ? Number(e.target.value) : ""
+        )
+      }
+      size="small"
+      fullWidth
+    >
+      {weeks.map((week) => (
+        <MenuItem
+          key={week.weekNumber}
+          value={week.weekNumber}
+        >
+          Tuần {week.weekNumber}
+          {week.startDate && week.endDate
+            ? ` (${dayjs(week.startDate).format(
+                "DD/MM"
+              )} - ${dayjs(week.endDate).format(
+                "DD/MM"
+              )})`
+            : ""}
+        </MenuItem>
+      ))}
+    </TextField>
+
+    {/* CHỌN LỚP */}
+    <TextField
+      select
+      label="Chọn lớp"
+      value={selectedClass}
+      onChange={(e) =>
+        setSelectedClass(e.target.value)
+      }
+      size="small"
+      fullWidth
+    >
+      {classes.map((cls) => (
+        <MenuItem
+          key={cls._id}
+          value={cls.className}
+        >
+          {cls.className}
+        </MenuItem>
+      ))}
+    </TextField>
+
+    {/* NÚT XEM */}
+    <Button
+      variant="contained"
+      onClick={handleView}
+      sx={{
+        height: 40,
+        minWidth: 145,
+        px: 3,
+        fontWeight: 600,
+        whiteSpace: "nowrap",
+      }}
+    >
+      XEM DỮ LIỆU
+    </Button>
+  </Box>
+
+  {/* =====================================================
+      HÀNG 2: CHÚ THÍCH N1 - N5
+      N1 N3 N5
+      N2 N4
+  ===================================================== */}
+  <Box
+    sx={{
+      mt: 1.5,
+      pt: 1,
+      borderTop: "1px solid",
+      borderColor: "divider",
+
+      display: "grid",
+      gridTemplateColumns: {
+        xs: "1fr",
+        sm: "1fr 1fr",
+        md: "1fr 1fr 1fr",
+      },
+
+      columnGap: {
+        xs: 1,
+        sm: 3,
+        md: 5,
+      },
+
+      rowGap: 0.4,
+    }}
+  >
+    {/* N1 */}
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "flex-start",
+        minWidth: 0,
+      }}
+    >
+      <Typography
         sx={{
-          p: 2,
-          mb: 3,
-          borderRadius: 2,
+          width: 34,
+          minWidth: 34,
+          fontSize: "14px",
+          fontWeight: 700,
+          lineHeight: 1.5,
         }}
       >
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "2fr 1.3fr 150px",
-            },
-            gap: 2,
-            alignItems: "start",
-          }}
-        >
-          {/* =================================================
-              CHỌN TUẦN + CHÚ THÍCH
-          ================================================= */}
+        N1
+      </Typography>
 
-          <Box>
-            <TextField
-              select
-              label="Chọn tuần"
-              value={selectedWeek}
-              onChange={(e) =>
-                setSelectedWeek(
-                  e.target.value
-                    ? Number(e.target.value)
-                    : ""
-                )
-              }
-              size="small"
-              fullWidth
-            >
-              {weeks.map((week) => (
-                <MenuItem
-                  key={week.weekNumber}
-                  value={week.weekNumber}
-                >
-                  Tuần {week.weekNumber}
-                  {week.startDate &&
-                  week.endDate
-                    ? ` (${dayjs(
-                        week.startDate
-                      ).format(
-                        "DD/MM"
-                      )} - ${dayjs(
-                        week.endDate
-                      ).format(
-                        "DD/MM"
-                      )})`
-                    : ""}
-                </MenuItem>
-              ))}
-            </TextField>
+      <Typography
+        sx={{
+          width: 14,
+          minWidth: 14,
+          fontSize: "14px",
+          lineHeight: 1.5,
+        }}
+      >
+        -
+      </Typography>
 
-            {/* =================================================
-                CHÚ THÍCH N1 - N5
-                N1/N2 | N3/N4 | N5
-            ================================================= */}
+      <Typography
+        color="text.secondary"
+        sx={{
+          fontSize: "14px",
+          lineHeight: 1.5,
+        }}
+      >
+        {rules.find(
+          (r) =>
+            r.groupCode?.trim().toUpperCase() === "N1"
+        )?.groupName || "Chưa thiết lập"}
+      </Typography>
+    </Box>
 
-            <Box
-              sx={{
-                mt: 1.2,
-                display: "grid",
-                gridTemplateColumns: {
-                  xs: "1fr",
-                  sm: "1fr 1fr 1fr",
-                },
-                columnGap: {
-                  xs: 1,
-                  sm: 4,
-                  md: 6,
-                },
-                rowGap: 0.3,
-              }}
-            >
-              {/* CỘT 1 */}
-              <Box>
-                {renderRuleGroup("N1")}
-                {renderRuleGroup("N2")}
-              </Box>
+    {/* N3 */}
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "flex-start",
+        minWidth: 0,
+      }}
+    >
+      <Typography
+        sx={{
+          width: 34,
+          minWidth: 34,
+          fontSize: "14px",
+          fontWeight: 700,
+          lineHeight: 1.5,
+        }}
+      >
+        N3
+      </Typography>
 
-              {/* CỘT 2 */}
-              <Box>
-                {renderRuleGroup("N3")}
-                {renderRuleGroup("N4")}
-              </Box>
+      <Typography
+        sx={{
+          width: 14,
+          minWidth: 14,
+          fontSize: "14px",
+          lineHeight: 1.5,
+        }}
+      >
+        -
+      </Typography>
 
-              {/* CỘT 3 */}
-              <Box>
-                {renderRuleGroup("N5")}
-              </Box>
-            </Box>
-          </Box>
+      <Typography
+        color="text.secondary"
+        sx={{
+          fontSize: "14px",
+          lineHeight: 1.5,
+        }}
+      >
+        {rules.find(
+          (r) =>
+            r.groupCode?.trim().toUpperCase() === "N3"
+        )?.groupName || "Chưa thiết lập"}
+      </Typography>
+    </Box>
 
-          {/* =================================================
-              CHỌN LỚP
-          ================================================= */}
+    {/* N5 */}
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "flex-start",
+        minWidth: 0,
+      }}
+    >
+      <Typography
+        sx={{
+          width: 34,
+          minWidth: 34,
+          fontSize: "14px",
+          fontWeight: 700,
+          lineHeight: 1.5,
+        }}
+      >
+        N5
+      </Typography>
 
-          <TextField
-            select
-            label="Chọn lớp"
-            value={selectedClass}
-            onChange={(e) =>
-              setSelectedClass(
-                e.target.value
-              )
-            }
-            size="small"
-            fullWidth
-          >
-            {classes.map((cls) => (
-              <MenuItem
-                key={cls._id}
-                value={cls.className}
-              >
-                {cls.className}
-              </MenuItem>
-            ))}
-          </TextField>
+      <Typography
+        sx={{
+          width: 14,
+          minWidth: 14,
+          fontSize: "14px",
+          lineHeight: 1.5,
+        }}
+      >
+        -
+      </Typography>
 
-          {/* =================================================
-              NÚT XEM DỮ LIỆU
-          ================================================= */}
+      <Typography
+        color="text.secondary"
+        sx={{
+          fontSize: "14px",
+          lineHeight: 1.5,
+        }}
+      >
+        {rules.find(
+          (r) =>
+            r.groupCode?.trim().toUpperCase() === "N5"
+        )?.groupName || "Chưa thiết lập"}
+      </Typography>
+    </Box>
 
-          <Button
-            variant="contained"
-            onClick={handleView}
-            sx={{
-              height: 40,
-              minWidth: 150,
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-            }}
-          >
-            XEM DỮ LIỆU
-          </Button>
-        </Box>
-      </Paper>
+    {/* N2 */}
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "flex-start",
+        minWidth: 0,
+      }}
+    >
+      <Typography
+        sx={{
+          width: 34,
+          minWidth: 34,
+          fontSize: "14px",
+          fontWeight: 700,
+          lineHeight: 1.5,
+        }}
+      >
+        N2
+      </Typography>
 
+      <Typography
+        sx={{
+          width: 14,
+          minWidth: 14,
+          fontSize: "14px",
+          lineHeight: 1.5,
+        }}
+      >
+        -
+      </Typography>
+
+      <Typography
+        color="text.secondary"
+        sx={{
+          fontSize: "14px",
+          lineHeight: 1.5,
+        }}
+      >
+        {rules.find(
+          (r) =>
+            r.groupCode?.trim().toUpperCase() === "N2"
+        )?.groupName || "Chưa thiết lập"}
+      </Typography>
+    </Box>
+
+    {/* N4 */}
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "flex-start",
+        minWidth: 0,
+      }}
+    >
+      <Typography
+        sx={{
+          width: 34,
+          minWidth: 34,
+          fontSize: "14px",
+          fontWeight: 700,
+          lineHeight: 1.5,
+        }}
+      >
+        N4
+      </Typography>
+
+      <Typography
+        sx={{
+          width: 14,
+          minWidth: 14,
+          fontSize: "14px",
+          lineHeight: 1.5,
+        }}
+      >
+        -
+      </Typography>
+
+      <Typography
+        color="text.secondary"
+        sx={{
+          fontSize: "14px",
+          lineHeight: 1.5,
+        }}
+      >
+        {rules.find(
+          (r) =>
+            r.groupCode?.trim().toUpperCase() === "N4"
+        )?.groupName || "Chưa thiết lập"}
+      </Typography>
+    </Box>
+  </Box>
+</Paper>
       {/* =====================================================
           THÔNG TIN LỚP
       ===================================================== */}
@@ -875,58 +1074,41 @@ export default function ViewStudentConductPage() {
               THỐNG KÊ
           ================================================= */}
 
-          <Stack
-            direction="row"
-            spacing={3}
-            flexWrap="wrap"
-            sx={{
-              mb: 2,
-              rowGap: 1,
-            }}
-          >
-            <Typography>
-              Sĩ số:{" "}
-              <strong>
-                {rows.length}
-              </strong>
-            </Typography>
+<Stack
+  direction="row"
+  spacing={{ xs: 2, sm: 3 }}
+  flexWrap="wrap"
+  sx={{
+    mb: 2,
+    rowGap: 0.8,
+    alignItems: "center",
+  }}
+>
+  <Typography>
+    Sĩ số: <strong>{rows.length}</strong>
+  </Typography>
 
-            <Typography>
-              Có vi phạm:{" "}
-              <strong>
-                {
-                  rows.filter(
-                    (r) =>
-                      r.totalPenalty > 0
-                  ).length
-                }
-              </strong>
-            </Typography>
+  <Typography>
+    Có vi phạm:{" "}
+    <strong>
+      {rows.filter((r) => r.totalPenalty > 0).length}
+    </strong>
+  </Typography>
 
-            <Typography>
-              Không vi phạm:{" "}
-              <strong>
-                {
-                  rows.filter(
-                    (r) =>
-                      r.totalPenalty === 0
-                  ).length
-                }
-              </strong>
-            </Typography>
+  <Typography>
+    Không vi phạm:{" "}
+    <strong>
+      {rows.filter((r) => r.totalPenalty === 0).length}
+    </strong>
+  </Typography>
 
-            <Typography>
-              Vi phạm đặc biệt:{" "}
-              <strong>
-                {
-                  rows.filter(
-                    (r) =>
-                      r.specialViolation
-                  ).length
-                }
-              </strong>
-            </Typography>
-          </Stack>
+  <Typography>
+    Vi phạm đặc biệt:{" "}
+    <strong>
+      {rows.filter((r) => r.specialViolation).length}
+    </strong>
+  </Typography>
+</Stack>
         </Box>
       )}
 
