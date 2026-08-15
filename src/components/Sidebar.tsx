@@ -55,7 +55,12 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             <ListItemIcon><ReportProblemIcon /></ListItemIcon>
             <ListItemText primary="Tổng hợp vi phạm" />
           </ListItemButton>
-
+          
+            <ListItemButton onClick={() => navigate('/view-student-conduct-page')}>
+            <ListItemIcon><ReportProblemIcon /></ListItemIcon>
+            <ListItemText primary="Tổng hợp hạnh kiểm tuần" />
+          </ListItemButton>
+          
           <ListItemButton onClick={() => navigate('/view-hygiene-discipline')}>
             <ListItemIcon><CleaningServicesIcon /></ListItemIcon>
             <ListItemText primary="Trật tự - Vệ sinh" />
