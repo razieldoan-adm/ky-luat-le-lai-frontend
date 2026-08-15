@@ -642,9 +642,13 @@ export default function ViewStudentConductPage() {
       display: "grid",
       gridTemplateColumns: {
         xs: "1fr",
-        md: "2fr 1.3fr 150px",
+        sm: "1fr 1fr 1fr",
       },
-      gap: 2,
+      columnGap: {
+        xs: 1,
+        sm: 4,
+        md: 6,
+      },
       alignItems: "start",
     }}
   >
@@ -690,7 +694,11 @@ export default function ViewStudentConductPage() {
             xs: "1fr",
             sm: "1fr 1fr 1fr",
           },
-          columnGap: 2,
+          columnGap: {
+            xs: 1,
+            sm: 4,
+            md: 6,
+          },
           rowGap: 0.3,
         }}
       >
@@ -714,10 +722,11 @@ export default function ViewStudentConductPage() {
                 }}
               >
                 <Typography
-                  variant="caption"
+                  variant="body2"
                   sx={{
-                    width: 26,
-                    minWidth: 26,
+                    width: 32,
+                    minWidth: 32,
+                    fontSize: "13px",
                     fontWeight: 700,
                   }}
                 >
@@ -725,18 +734,22 @@ export default function ViewStudentConductPage() {
                 </Typography>
 
                 <Typography
-                  variant="caption"
+                  variant="body2"
                   sx={{
-                    width: 12,
-                    minWidth: 12,
+                    width: 14,
+                    minWidth: 14,
+                    fontSize: "13px",
                   }}
                 >
                   -
                 </Typography>
 
                 <Typography
-                  variant="caption"
                   color="text.secondary"
+                  sx={{
+                    fontSize: "13px",
+                    lineHeight: 1.5,
+                  }}
                 >
                   {rule?.groupName ||
                     "Chưa thiết lập"}
@@ -766,29 +779,34 @@ export default function ViewStudentConductPage() {
                 }}
               >
                 <Typography
-                  variant="caption"
+                  
                   sx={{
-                    width: 26,
-                    minWidth: 26,
-                    fontWeight: 700,
-                  }}
+                      width: 32,
+                      minWidth: 32,
+                      fontSize: "13px",
+                      fontWeight: 700,
+                    }}
                 >
                   {code}
                 </Typography>
 
                 <Typography
-                  variant="caption"
+                  
                   sx={{
-                    width: 12,
-                    minWidth: 12,
+                     width: 14,
+                      minWidth: 14,
+                      fontSize: "13px",
                   }}
                 >
                   -
                 </Typography>
 
                 <Typography
-                  variant="caption"
                   color="text.secondary"
+                  sx={{
+                    fontSize: "13px",
+                    lineHeight: 1.5,
+                  }}
                 >
                   {rule?.groupName ||
                     "Chưa thiết lập"}
@@ -818,29 +836,33 @@ export default function ViewStudentConductPage() {
                 }}
               >
                 <Typography
-                  variant="caption"
+                 
                   sx={{
-                    width: 26,
-                    minWidth: 26,
+                     width: 32,
+                    minWidth: 32,
+                    fontSize: "13px",
                     fontWeight: 700,
-                  }}
                 >
                   {code}
                 </Typography>
 
                 <Typography
-                  variant="caption"
+                  variant="body2"
                   sx={{
-                    width: 12,
-                    minWidth: 12,
+                    width: 14,
+                    minWidth: 14,
+                    fontSize: "13px",
                   }}
                 >
                   -
                 </Typography>
 
                 <Typography
-                  variant="caption"
                   color="text.secondary"
+                  sx={{
+                      fontSize: "13px",
+                      lineHeight: 1.5,
+                    }}
                 >
                   {rule?.groupName ||
                     "Chưa thiết lập"}
