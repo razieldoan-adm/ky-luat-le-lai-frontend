@@ -629,170 +629,167 @@ export default function ViewStudentConductPage() {
           BỘ LỌC
       ===================================================== */}
 
-      <Paper
-        elevation={2}
-        sx={{
-          p: 2,
-          mb: 3,
-        }}
-      >
-        <Stack
-          direction={{
-            xs: "column",
-            sm: "row",
-          }}
-          spacing={2}
-          alignItems={{
-            xs: "stretch",
-            sm: "center",
-          }}
-        >
-          {/* TUẦN */}
-
-<Box
+{/* ================= BỘ LỌC ================= */}
+<Paper
+  elevation={1}
   sx={{
-    minWidth: {
-      xs: "100%",
-      sm: 320,
-    },
+    p: 2,
+    mb: 3,
+    borderRadius: 2,
   }}
 >
-  <TextField
-    select
-    label="Chọn tuần"
-    value={selectedWeek}
-    onChange={(e) =>
-      setSelectedWeek(
-        e.target.value
-          ? Number(e.target.value)
-          : ""
-      )
-    }
-    size="small"
-    fullWidth
+  {/* Hàng chọn tuần - chọn lớp - nút */}
+  <Box
+    sx={{
+      display: "grid",
+      gridTemplateColumns: {
+        xs: "1fr",
+        md: "2fr 1.5fr auto",
+      },
+      gap: 2,
+      alignItems: "center",
+    }}
   >
-    {weeks.map((week) => (
-      <MenuItem
-        key={week.weekNumber}
-        value={week.weekNumber}
-      >
-        Tuần {week.weekNumber}
-        {week.startDate && week.endDate
-          ? ` (${dayjs(week.startDate).format(
-              "DD/MM"
-            )} - ${dayjs(week.endDate).format(
-              "DD/MM"
-            )})`
-          : ""}
-      </MenuItem>
-    ))}
-  </TextField>
-
-  {/* Chú thích N1 - N5 */}
-{/* Chú thích N1 - N5 */}
-<Box
-  sx={{
-    mt: 1,
-    pl: 0.5,
-  }}
->
-  {["N1", "N2", "N3", "N4", "N5"].map((code) => {
-    const rule = rules.find(
-      (r) =>
-        r.groupCode?.trim().toUpperCase() === code
-    );
-
-    return (
-      <Box
-        key={code}
-        sx={{
-          display: "flex",
-          alignItems: "flex-start",
-          fontSize: "0.75rem",
-          lineHeight: 1.5,
-        }}
-      >
-        <Typography
-          component="span"
-          variant="caption"
-          sx={{
-            width: 28,
-            minWidth: 28,
-            fontWeight: "bold",
-            color: "text.primary",
-          }}
+    {/* ================= CHỌN TUẦN ================= */}
+    <TextField
+      select
+      label="Chọn tuần"
+      value={selectedWeek ?? ""}
+      onChange={(e) =>
+        setSelectedWeek(
+          e.target.value ? Number(e.target.value) : null
+        )
+      }
+      size="small"
+      fullWidth
+    >
+      {weeks.map((week) => (
+        <MenuItem
+          key={week.weekNumber}
+          value={week.weekNumber}
         >
-          {code}
-        </Typography>
+          Tuần {week.weekNumber}
+          {week.startDate && week.endDate
+            ? ` (${dayjs(week.startDate).format(
+                "DD/MM/YYYY"
+              )} - ${dayjs(week.endDate).format(
+                "DD/MM/YYYY"
+              )})`
+            : ""}
+        </MenuItem>
+      ))}
+    </TextField>
 
-        <Typography
-          component="span"
-          variant="caption"
-          color="text.secondary"
+    {/* ================= CHỌN LỚP ================= */}
+    <TextField
+      select
+      label="Chọn lớp"
+      value={selectedClass ?? ""}
+      onChange={(e) =>
+        setSelectedClass(e.target.value)
+      }
+      size="small"
+      fullWidth
+    >
+      {classOptions.map((cls) => (
+        <MenuItem
+          key={cls._id}
+          value={cls.className}
         >
-          - {rule?.groupName || "Chưa thiết lập"}
-        </Typography>
-      </Box>
-    );
-  })}
-</Box>
-</Box>
+          {cls.className}
+        </MenuItem>
+      ))}
+    </TextField>
 
-          {/* LỚP */}
+    {/* ================= NÚT XEM ================= */}
+    <Button
+      variant="contained"
+      onClick={handleViewData}
+      sx={{
+        height: 40,
+        minWidth: 150,
+        whiteSpace: "nowrap",
+        fontWeight: 600,
+      }}
+    >
+      XEM DỮ LIỆU
+    </Button>
+  </Box>
 
-          <TextField
-            select
-            label="Chọn lớp"
-            value={selectedClass}
-            onChange={(e) =>
-              setSelectedClass(e.target.value)
-            }
-            size="small"
+  {/* ================= CHÚ THÍCH N1-N5 ================= */}
+  <Box
+    sx={{
+      mt: 1.5,
+      pt: 1.5,
+      borderTop: "1px solid",
+      borderColor: "divider",
+
+      display: "grid",
+      gridTemplateColumns: {
+        xs: "1fr",
+        sm: "1fr 1fr",
+        md: "1fr 1fr 1fr",
+      },
+      columnGap: 4,
+      rowGap: 0.5,
+    }}
+  >
+    {["N1", "N2", "N3", "N4", "N5"].map(
+      (code) => {
+        const rule = rules.find(
+          (r) =>
+            r.groupCode?.trim().toUpperCase() === code
+        );
+
+        return (
+          <Box
+            key={code}
             sx={{
-              minWidth: {
-                xs: "100%",
-                sm: 180,
-              },
+              display: "flex",
+              alignItems: "flex-start",
+              minWidth: 0,
             }}
           >
-            <MenuItem value="">
-              -- Chọn lớp --
-            </MenuItem>
+            {/* Mã N1, N2... */}
+            <Typography
+              variant="caption"
+              sx={{
+                width: 28,
+                minWidth: 28,
+                fontWeight: 700,
+                color: "text.primary",
+              }}
+            >
+              {code}
+            </Typography>
 
-            {classes.map((cls) => (
-              <MenuItem
-                key={cls._id}
-                value={cls.className}
-              >
-                {cls.className}
-              </MenuItem>
-            ))}
-          </TextField>
+            {/* Dấu - */}
+            <Typography
+              variant="caption"
+              sx={{
+                width: 14,
+                minWidth: 14,
+              }}
+            >
+              -
+            </Typography>
 
-          <Button
-            variant="contained"
-            onClick={handleView}
-            disabled={
-              !selectedClass ||
-              !selectedWeek ||
-              loadingStudents
-            }
-            sx={{
-              minWidth: 130,
-              height: 40,
-            }}
-          >
-            {loadingStudents ? (
-              <CircularProgress
-                size={22}
-                color="inherit"
-              />
-            ) : (
-              "Xem dữ liệu"
-            )}
-          </Button>
-        </Stack>
-      </Paper>
+            {/* Tên nhóm lỗi */}
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                lineHeight: 1.5,
+              }}
+            >
+              {rule?.groupName || "Chưa thiết lập"}
+            </Typography>
+          </Box>
+        );
+      }
+    )}
+  </Box>
+</Paper>
 
       {/* =====================================================
           THÔNG TIN LỚP
