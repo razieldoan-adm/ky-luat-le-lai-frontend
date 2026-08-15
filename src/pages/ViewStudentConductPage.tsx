@@ -609,51 +609,6 @@ export default function ViewStudentConductPage() {
 
 
 
-    return (
-      <Box
-        key={code}
-        sx={{
-          display: "flex",
-          alignItems: "flex-start",
-          lineHeight: 1.5,
-          minWidth: 0,
-        }}
-      >
-        <Typography
-          sx={{
-            width: 32,
-            minWidth: 32,
-            fontSize: "13px",
-            fontWeight: 700,
-          }}
-        >
-          {code}
-        </Typography>
-
-        <Typography
-          sx={{
-            width: 14,
-            minWidth: 14,
-            fontSize: "13px",
-          }}
-        >
-          -
-        </Typography>
-
-        <Typography
-          color="text.secondary"
-          sx={{
-            fontSize: "13px",
-            lineHeight: 1.5,
-          }}
-        >
-          {rule?.groupName ||
-            "Chưa thiết lập"}
-        </Typography>
-      </Box>
-    );
-  };
-
   // =========================================================
   // RENDER
   // =========================================================
