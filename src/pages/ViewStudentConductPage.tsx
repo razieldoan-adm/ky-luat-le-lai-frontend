@@ -102,8 +102,8 @@ export default function ViewStudentConductPage() {
 
   const [rows, setRows] = useState<ConductRow[]>([]);
 
-  const [loading, setLoading] = useState(false);
   
+  const [selectedClass, setSelectedClass] = useState("");
 
   const [snackbar, setSnackbar] = useState({
     open: false,
