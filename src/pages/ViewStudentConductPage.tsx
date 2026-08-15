@@ -746,34 +746,80 @@ export default function ViewStudentConductPage() {
       ===================================================== */}
 
       {selectedClass && selectedWeek && (
-        <Box
-          sx={{
-            mb: 2,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 1,
-          }}
-        >
-          <Typography variant="h6" fontWeight="bold">
-            Lớp {selectedClass}
-          </Typography>
+  <Box sx={{ mb: 2 }}>
+    {/* Tên lớp */}
+    <Typography
+      variant="h6"
+      fontWeight="bold"
+      sx={{ mb: 1 }}
+    >
+      Lớp {selectedClass}
+    </Typography>
 
-          <Typography color="text.secondary">
-            Tuần {selectedWeek}
-            {currentWeekData?.startDate &&
-              currentWeekData?.endDate &&
-              ` • ${dayjs(
-                currentWeekData.startDate
-              ).format("DD/MM/YYYY")} - ${dayjs(
-                currentWeekData.endDate
-              ).format("DD/MM/YYYY")}`}
-            {" • "}
-            Sĩ số: <strong>{students.length}</strong>
-          </Typography>
-        </Box>
-      )}
+    {/* Thông tin tuần */}
+    <Typography
+      color="text.secondary"
+      sx={{ mb: 1 }}
+    >
+      Tuần {selectedWeek}
+      {currentWeekData?.startDate &&
+        currentWeekData?.endDate &&
+        ` • ${dayjs(
+          currentWeekData.startDate
+        ).format("DD/MM/YYYY")} - ${dayjs(
+          currentWeekData.endDate
+        ).format("DD/MM/YYYY")}`}
+    </Typography>
+
+    {/* Thống kê */}
+    <Stack
+      direction="row"
+      spacing={3}
+      flexWrap="wrap"
+      sx={{
+        mb: 2,
+        rowGap: 1,
+      }}
+    >
+      <Typography>
+        Sĩ số: <strong>{rows.length}</strong>
+      </Typography>
+
+      <Typography>
+        Có vi phạm:{" "}
+        <strong>
+          {
+            rows.filter(
+              (r) => r.totalPenalty > 0
+            ).length
+          }
+        </strong>
+      </Typography>
+
+      <Typography>
+        Không vi phạm:{" "}
+        <strong>
+          {
+            rows.filter(
+              (r) => r.totalPenalty === 0
+            ).length
+          }
+        </strong>
+      </Typography>
+
+      <Typography>
+        Vi phạm đặc biệt:{" "}
+        <strong>
+          {
+            rows.filter(
+              (r) => r.specialViolation
+            ).length
+          }
+        </strong>
+      </Typography>
+    </Stack>
+  </Box>
+)}
 
       {/* =====================================================
           BẢNG
