@@ -87,7 +87,9 @@ const normalizeName = (name: string | null | undefined) =>
     .replace(/Đ/g, "d");
 
 const normalizeClass = (className: string) =>
-  className.trim().toLowerCase();
+  String(className ?? "")
+    .trim()
+    .toLowerCase();
 
 export default function ViewStudentConductPage() {
   const [weeks, setWeeks] = useState<Week[]>([]);
@@ -101,8 +103,6 @@ export default function ViewStudentConductPage() {
   const [rules, setRules] = useState<Rule[]>([]);
 
   const [rows, setRows] = useState<ConductRow[]>([]);
-
-  
   const [loadingStudents, setLoadingStudents] = useState(false);
 
   const [snackbar, setSnackbar] = useState({
@@ -162,11 +162,17 @@ export default function ViewStudentConductPage() {
     try {
       const res = await api.get("/api/classes");
 
-      const list = (res.data || [])
-        .filter((cls: any) => cls.teacher)
-        .sort((a: any, b: any) =>
-          String(a.className).localeCompare(
-            String(b.className),
+      const list: ClassOption[] = (res.data || [])
+        .filter((cls: any) => cls?.teacher)
+        .map((cls: any) => ({
+          _id: cls._id,
+          className: String(cls.className ?? "").trim(),
+          teacher: cls.teacher,
+        }))
+        .filter((cls: ClassOption) => cls.className)
+        .sort((a: ClassOption, b: ClassOption) =>
+          a.className.localeCompare(
+            b.className,
             undefined,
             { numeric: true }
           )
@@ -191,7 +197,8 @@ export default function ViewStudentConductPage() {
   const loadRules = async () => {
     try {
       const res = await api.get("/api/rules");
-      setRules(res.data || []);
+
+      setRules(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error("Lỗi tải rules:", error);
 
@@ -213,13 +220,15 @@ export default function ViewStudentConductPage() {
         "/api/violations/all/all-student"
       );
 
-      setViolations(
-        (res.data || []).map((v: any) => ({
-          ...v,
-          handled: v.handled ?? false,
-          handledBy: v.handledBy || "",
-        }))
-      );
+      const data: Violation[] = Array.isArray(res.data)
+        ? res.data.map((v: any) => ({
+            ...v,
+            handled: v.handled ?? false,
+            handledBy: v.handledBy || "",
+          }))
+        : [];
+
+      setViolations(data);
     } catch (error) {
       console.error("Lỗi tải vi phạm:", error);
 
@@ -231,6 +240,10 @@ export default function ViewStudentConductPage() {
     }
   };
 
+  // =========================================================
+  // LOAD BAN ĐẦU
+  // =========================================================
+
   useEffect(() => {
     loadWeeks();
     loadClasses();
@@ -239,7 +252,7 @@ export default function ViewStudentConductPage() {
   }, []);
 
   // =========================================================
-  // TÌM TUẦN
+  // TUẦN HIỆN TẠI
   // =========================================================
 
   const currentWeekData = useMemo(() => {
@@ -264,7 +277,6 @@ export default function ViewStudentConductPage() {
 
     try {
       const params = new URLSearchParams();
-
       params.append("className", selectedClass);
 
       const res = await api.get(
@@ -274,14 +286,13 @@ export default function ViewStudentConductPage() {
       const data: Student[] = (res.data || [])
         .filter((student: any) => student?.name)
         .map((student: any) => ({
-          _id: student._id,
+          _id: String(student._id),
           name: String(student.name).trim(),
           className: String(
             student.className || selectedClass
           ).trim(),
         }));
 
-      // Chống trùng học sinh nếu API trả về bản ghi trùng
       const unique = new Map<string, Student>();
 
       data.forEach((student) => {
@@ -318,22 +329,27 @@ export default function ViewStudentConductPage() {
   }, [loadStudents]);
 
   // =========================================================
-  // TÌM RULE THEO NỘI DUNG VI PHẠM
+  // TÌM RULE
   // =========================================================
 
   const findRule = useCallback(
     (description: string) => {
+      const target = String(description ?? "")
+        .trim()
+        .toLowerCase();
+
       return rules.find(
         (rule) =>
-          rule.title?.trim().toLowerCase() ===
-          description?.trim().toLowerCase()
+          String(rule.title ?? "")
+            .trim()
+            .toLowerCase() === target
       );
     },
     [rules]
   );
 
   // =========================================================
-  // KIỂM TRA VI PHẠM ĐẶC BIỆT
+  // VI PHẠM ĐẶC BIỆT
   // =========================================================
 
   const isSpecialViolation = useCallback(
@@ -343,15 +359,13 @@ export default function ViewStudentConductPage() {
       const groupCode =
         rule.groupCode?.trim().toUpperCase() || "";
 
-      /*
-       * Các nhóm N1-N5 là nhóm tính điểm.
-       *
-       * Những Rule không thuộc N1-N5 được xem là
-       * vi phạm đặc biệt theo cấu trúc Rule hiện tại.
-       */
-      return !["N1", "N2", "N3", "N4", "N5"].includes(
-        groupCode
-      );
+      return ![
+        "N1",
+        "N2",
+        "N3",
+        "N4",
+        "N5",
+      ].includes(groupCode);
     },
     []
   );
@@ -361,12 +375,6 @@ export default function ViewStudentConductPage() {
   // =========================================================
 
   const getClassification = (score: number) => {
-    /*
-     * Giữ logic đơn giản ở frontend.
-     * Nếu backend của dự án đã có quy tắc xếp loại riêng,
-     * có thể thay phần này bằng giá trị backend trả về.
-     */
-
     if (score >= 90) return "Tốt";
     if (score >= 70) return "Khá";
     if (score >= 50) return "Đạt";
@@ -402,7 +410,7 @@ export default function ViewStudentConductPage() {
     const end = dayjs(week.endDate).endOf("day");
 
     // -------------------------------------------------------
-    // Chỉ lấy vi phạm của lớp + tuần đang xem
+    // VI PHẠM CỦA LỚP + TUẦN
     // -------------------------------------------------------
 
     const weekViolations = violations.filter((v) => {
@@ -413,30 +421,31 @@ export default function ViewStudentConductPage() {
       const date = dayjs(v.time);
 
       const sameWeek =
-        date.isSameOrAfter(start) &&
-        date.isSameOrBefore(end);
+        (date.isAfter(start) || date.isSame(start)) &&
+        (date.isBefore(end) || date.isSame(end));
 
       return sameClass && sameWeek;
     });
 
     // -------------------------------------------------------
-    // Tạo bảng theo TOÀN BỘ học sinh
+    // TẠO DÒNG CHO TOÀN BỘ HỌC SINH
     // -------------------------------------------------------
 
     const result: ConductRow[] = students.map(
       (student) => {
         const studentViolations =
           weekViolations.filter((v) => {
-            // Ưu tiên studentId nếu dữ liệu có
+            // Ưu tiên studentId
             if (
               student._id &&
               v.studentId &&
-              String(student._id) === String(v.studentId)
+              String(student._id) ===
+                String(v.studentId)
             ) {
               return true;
             }
 
-            // Fallback theo tên + lớp
+            // Fallback tên + lớp
             return (
               normalizeName(v.name) ===
                 normalizeName(student.name) &&
@@ -455,9 +464,13 @@ export default function ViewStudentConductPage() {
         let specialViolation = false;
 
         studentViolations.forEach((violation) => {
-          const rule = findRule(violation.description);
+          const rule = findRule(
+            violation.description
+          );
 
-          const point = Number(rule?.point ?? 0);
+          const point = Number(
+            rule?.point ?? 0
+          );
 
           totalPenalty += point;
 
@@ -495,23 +508,9 @@ export default function ViewStudentConductPage() {
           }
         });
 
-        /*
-         * Điểm khen thưởng.
-         *
-         * Hiện tại dùng field bonusScore nếu dữ liệu học sinh
-         * hoặc API phía backend đã cung cấp.
-         *
-         * Nếu hệ thống hôm qua đã có API riêng cho điểm khen
-         * thưởng thì chỉ cần thay phần lấy bonusScore ở đây.
-         */
+        // Giữ nguyên theo code hiện tại của bạn
         const bonusScore = 0;
 
-        /*
-         * Điểm HK:
-         * 100 - tổng điểm trừ.
-         *
-         * Không để âm.
-         */
         const conductScore = Math.max(
           0,
           100 - totalPenalty
@@ -532,18 +531,21 @@ export default function ViewStudentConductPage() {
           totalPenalty,
           bonusScore,
           conductScore,
+
           classification:
             getClassification(conductScore),
         };
       }
     );
 
-    // Sắp xếp theo tên nếu danh sách backend chưa có thứ tự
+    // Sắp xếp tên học sinh
     result.sort((a, b) =>
       a.name.localeCompare(
         b.name,
         "vi",
-        { sensitivity: "base" }
+        {
+          sensitivity: "base",
+        }
       )
     );
 
@@ -590,7 +592,7 @@ export default function ViewStudentConductPage() {
   };
 
   // =========================================================
-  // FORMAT
+  // FORMAT ĐIỂM
   // =========================================================
 
   const formatPoint = (value: number) => {
@@ -599,6 +601,61 @@ export default function ViewStudentConductPage() {
     return Number.isInteger(value)
       ? String(value)
       : value.toFixed(1);
+  };
+
+  // =========================================================
+  // CHÚ THÍCH NHÓM LỖI
+  // =========================================================
+
+  const renderRuleGroup = (code: string) => {
+    const rule = rules.find(
+      (r) =>
+        r.groupCode?.trim().toUpperCase() === code
+    );
+
+    return (
+      <Box
+        key={code}
+        sx={{
+          display: "flex",
+          alignItems: "flex-start",
+          lineHeight: 1.5,
+          minWidth: 0,
+        }}
+      >
+        <Typography
+          sx={{
+            width: 32,
+            minWidth: 32,
+            fontSize: "13px",
+            fontWeight: 700,
+          }}
+        >
+          {code}
+        </Typography>
+
+        <Typography
+          sx={{
+            width: 14,
+            minWidth: 14,
+            fontSize: "13px",
+          }}
+        >
+          -
+        </Typography>
+
+        <Typography
+          color="text.secondary"
+          sx={{
+            fontSize: "13px",
+            lineHeight: 1.5,
+          }}
+        >
+          {rule?.groupName ||
+            "Chưa thiết lập"}
+        </Typography>
+      </Box>
+    );
   };
 
   // =========================================================
@@ -612,9 +669,16 @@ export default function ViewStudentConductPage() {
         maxWidth: "1600px",
         mx: "auto",
         py: 3,
-        px: { xs: 1, md: 3 },
+        px: {
+          xs: 1,
+          md: 3,
+        },
       }}
     >
+      {/* =====================================================
+          TIÊU ĐỀ
+      ===================================================== */}
+
       <Typography
         variant="h5"
         fontWeight="bold"
@@ -626,373 +690,248 @@ export default function ViewStudentConductPage() {
       </Typography>
 
       {/* =====================================================
-    BỘ LỌC
-===================================================== */}
+          BỘ LỌC
+      ===================================================== */}
 
-<Paper
-  elevation={1}
-  sx={{
-    p: 2,
-    mb: 3,
-    borderRadius: 2,
-  }}
->
-  <Box
-    sx={{
-      display: "grid",
-      gridTemplateColumns: {
-        xs: "1fr",
-        sm: "1fr 1fr 1fr",
-      },
-      columnGap: {
-        xs: 1,
-        sm: 4,
-        md: 6,
-      },
-      alignItems: "start",
-    }}
-  >
-    {/* ================= CHỌN TUẦN ================= */}
-    <Box>
-      <TextField
-        select
-        label="Chọn tuần"
-        value={selectedWeek}
-        onChange={(e) =>
-          setSelectedWeek(
-            e.target.value
-              ? Number(e.target.value)
-              : ""
-          )
-        }
-        size="small"
-        fullWidth
-      >
-        {weeks.map((week) => (
-          <MenuItem
-            key={week.weekNumber}
-            value={week.weekNumber}
-          >
-            Tuần {week.weekNumber}
-            {week.startDate && week.endDate
-              ? ` (${dayjs(week.startDate).format(
-                  "DD/MM"
-                )} - ${dayjs(week.endDate).format(
-                  "DD/MM"
-                )})`
-              : ""}
-          </MenuItem>
-        ))}
-      </TextField>
-
-      {/* ================= CHÚ THÍCH ================= */}
-      <Box
+      <Paper
+        elevation={1}
         sx={{
-          mt: 1,
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            sm: "1fr 1fr 1fr",
-          },
-          columnGap: {
-            xs: 1,
-            sm: 4,
-            md: 6,
-          },
-          rowGap: 0.3,
+          p: 2,
+          mb: 3,
+          borderRadius: 2,
         }}
       >
-        {/* CỘT 1: N1 - N2 */}
-        <Box>
-          {["N1", "N2"].map((code) => {
-            const rule = rules.find(
-              (r) =>
-                r.groupCode
-                  ?.trim()
-                  .toUpperCase() === code
-            );
-
-            return (
-              <Box
-                key={code}
-                sx={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  lineHeight: 1.5,
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    width: 32,
-                    minWidth: 32,
-                    fontSize: "13px",
-                    fontWeight: 700,
-                  }}
-                >
-                  {code}
-                </Typography>
-
-                <Typography
-                  variant="body2"
-                  sx={{
-                    width: 14,
-                    minWidth: 14,
-                    fontSize: "13px",
-                  }}
-                >
-                  -
-                </Typography>
-
-                <Typography
-                  color="text.secondary"
-                  sx={{
-                    fontSize: "13px",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {rule?.groupName ||
-                    "Chưa thiết lập"}
-                </Typography>
-              </Box>
-            );
-          })}
-        </Box>
-
-        {/* CỘT 2: N3 - N4 */}
-        <Box>
-          {["N3", "N4"].map((code) => {
-            const rule = rules.find(
-              (r) =>
-                r.groupCode
-                  ?.trim()
-                  .toUpperCase() === code
-            );
-
-            return (
-              <Box
-                key={code}
-                sx={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  lineHeight: 1.5,
-                }}
-              >
-                <Typography
-                  
-                  sx={{
-                      width: 32,
-                      minWidth: 32,
-                      fontSize: "13px",
-                      fontWeight: 700,
-                    }}
-                >
-                  {code}
-                </Typography>
-
-                <Typography
-                  
-                  sx={{
-                     width: 14,
-                      minWidth: 14,
-                      fontSize: "13px",
-                  }}
-                >
-                  -
-                </Typography>
-
-                <Typography
-                  color="text.secondary"
-                  sx={{
-                    fontSize: "13px",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {rule?.groupName ||
-                    "Chưa thiết lập"}
-                </Typography>
-              </Box>
-            );
-          })}
-        </Box>
-
-        {/* CỘT 3: N5 */}
-        <Box>
-          {["N5"].map((code) => {
-            const rule = rules.find(
-              (r) =>
-                r.groupCode
-                  ?.trim()
-                  .toUpperCase() === code
-            );
-
-            return (
-              <Box
-                key={code}
-                sx={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  lineHeight: 1.5,
-                }}
-              >
-                <Typography
-                 
-                  sx={{
-                     width: 32,
-                    minWidth: 32,
-                    fontSize: "13px",
-                    fontWeight: 700,
-                >
-                  {code}
-                </Typography>
-
-                <Typography
-                  variant="body2"
-                  sx={{
-                    width: 14,
-                    minWidth: 14,
-                    fontSize: "13px",
-                  }}
-                >
-                  -
-                </Typography>
-
-                <Typography
-                  color="text.secondary"
-                  sx={{
-                      fontSize: "13px",
-                      lineHeight: 1.5,
-                    }}
-                >
-                  {rule?.groupName ||
-                    "Chưa thiết lập"}
-                </Typography>
-              </Box>
-            );
-          })}
-        </Box>
-      </Box>
-    </Box>
-
-    {/* ================= CHỌN LỚP ================= */}
-    <TextField
-      select
-      label="Chọn lớp"
-      value={selectedClass}
-      onChange={(e) =>
-        setSelectedClass(e.target.value)
-      }
-      size="small"
-      fullWidth
-    >
-      {classes.map((cls) => (
-        <MenuItem
-          key={cls._id}
-          value={cls.className}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "2fr 1.3fr 150px",
+            },
+            gap: 2,
+            alignItems: "start",
+          }}
         >
-          {cls.className}
-        </MenuItem>
-      ))}
-    </TextField>
+          {/* =================================================
+              CHỌN TUẦN + CHÚ THÍCH
+          ================================================= */}
 
-    {/* ================= NÚT XEM ================= */}
-    <Button
-      variant="contained"
-      onClick={handleView}
-      sx={{
-        height: 40,
-        minWidth: 150,
-        fontWeight: 600,
-        whiteSpace: "nowrap",
-      }}
-    >
-      XEM DỮ LIỆU
-    </Button>
-  </Box>
-</Paper>
+          <Box>
+            <TextField
+              select
+              label="Chọn tuần"
+              value={selectedWeek}
+              onChange={(e) =>
+                setSelectedWeek(
+                  e.target.value
+                    ? Number(e.target.value)
+                    : ""
+                )
+              }
+              size="small"
+              fullWidth
+            >
+              {weeks.map((week) => (
+                <MenuItem
+                  key={week.weekNumber}
+                  value={week.weekNumber}
+                >
+                  Tuần {week.weekNumber}
+                  {week.startDate &&
+                  week.endDate
+                    ? ` (${dayjs(
+                        week.startDate
+                      ).format(
+                        "DD/MM"
+                      )} - ${dayjs(
+                        week.endDate
+                      ).format(
+                        "DD/MM"
+                      )})`
+                    : ""}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            {/* =================================================
+                CHÚ THÍCH N1 - N5
+                N1/N2 | N3/N4 | N5
+            ================================================= */}
+
+            <Box
+              sx={{
+                mt: 1.2,
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "1fr 1fr 1fr",
+                },
+                columnGap: {
+                  xs: 1,
+                  sm: 4,
+                  md: 6,
+                },
+                rowGap: 0.3,
+              }}
+            >
+              {/* CỘT 1 */}
+              <Box>
+                {renderRuleGroup("N1")}
+                {renderRuleGroup("N2")}
+              </Box>
+
+              {/* CỘT 2 */}
+              <Box>
+                {renderRuleGroup("N3")}
+                {renderRuleGroup("N4")}
+              </Box>
+
+              {/* CỘT 3 */}
+              <Box>
+                {renderRuleGroup("N5")}
+              </Box>
+            </Box>
+          </Box>
+
+          {/* =================================================
+              CHỌN LỚP
+          ================================================= */}
+
+          <TextField
+            select
+            label="Chọn lớp"
+            value={selectedClass}
+            onChange={(e) =>
+              setSelectedClass(
+                e.target.value
+              )
+            }
+            size="small"
+            fullWidth
+          >
+            {classes.map((cls) => (
+              <MenuItem
+                key={cls._id}
+                value={cls.className}
+              >
+                {cls.className}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          {/* =================================================
+              NÚT XEM DỮ LIỆU
+          ================================================= */}
+
+          <Button
+            variant="contained"
+            onClick={handleView}
+            sx={{
+              height: 40,
+              minWidth: 150,
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+            }}
+          >
+            XEM DỮ LIỆU
+          </Button>
+        </Box>
+      </Paper>
 
       {/* =====================================================
           THÔNG TIN LỚP
       ===================================================== */}
 
       {selectedClass && selectedWeek && (
-  <Box sx={{ mb: 2 }}>
-    {/* Tên lớp */}
-    <Typography
-      variant="h6"
-      fontWeight="bold"
-      sx={{ mb: 1 }}
-    >
-      Lớp {selectedClass}
-    </Typography>
+        <Box sx={{ mb: 2 }}>
+          <Typography
+            variant="h6"
+            fontWeight="bold"
+            sx={{ mb: 1 }}
+          >
+            Lớp {selectedClass}
+          </Typography>
 
-    {/* Thông tin tuần */}
-    <Typography
-      color="text.secondary"
-      sx={{ mb: 1 }}
-    >
-      Tuần {selectedWeek}
-      {currentWeekData?.startDate &&
-        currentWeekData?.endDate &&
-        ` • ${dayjs(
-          currentWeekData.startDate
-        ).format("DD/MM/YYYY")} - ${dayjs(
-          currentWeekData.endDate
-        ).format("DD/MM/YYYY")}`}
-    </Typography>
+          <Typography
+            color="text.secondary"
+            sx={{ mb: 1 }}
+          >
+            Tuần {selectedWeek}
+            {currentWeekData?.startDate &&
+            currentWeekData?.endDate
+              ? ` • ${dayjs(
+                  currentWeekData.startDate
+                ).format(
+                  "DD/MM/YYYY"
+                )} - ${dayjs(
+                  currentWeekData.endDate
+                ).format(
+                  "DD/MM/YYYY"
+                )}`
+              : ""}
+          </Typography>
 
-    {/* Thống kê */}
-    <Stack
-      direction="row"
-      spacing={3}
-      flexWrap="wrap"
-      sx={{
-        mb: 2,
-        rowGap: 1,
-      }}
-    >
-      <Typography>
-        Sĩ số: <strong>{rows.length}</strong>
-      </Typography>
+          {/* =================================================
+              THỐNG KÊ
+          ================================================= */}
 
-      <Typography>
-        Có vi phạm:{" "}
-        <strong>
-          {
-            rows.filter(
-              (r) => r.totalPenalty > 0
-            ).length
-          }
-        </strong>
-      </Typography>
+          <Stack
+            direction="row"
+            spacing={3}
+            flexWrap="wrap"
+            sx={{
+              mb: 2,
+              rowGap: 1,
+            }}
+          >
+            <Typography>
+              Sĩ số:{" "}
+              <strong>
+                {rows.length}
+              </strong>
+            </Typography>
 
-      <Typography>
-        Không vi phạm:{" "}
-        <strong>
-          {
-            rows.filter(
-              (r) => r.totalPenalty === 0
-            ).length
-          }
-        </strong>
-      </Typography>
+            <Typography>
+              Có vi phạm:{" "}
+              <strong>
+                {
+                  rows.filter(
+                    (r) =>
+                      r.totalPenalty > 0
+                  ).length
+                }
+              </strong>
+            </Typography>
 
-      <Typography>
-        Vi phạm đặc biệt:{" "}
-        <strong>
-          {
-            rows.filter(
-              (r) => r.specialViolation
-            ).length
-          }
-        </strong>
-      </Typography>
-    </Stack>
-  </Box>
-)}
+            <Typography>
+              Không vi phạm:{" "}
+              <strong>
+                {
+                  rows.filter(
+                    (r) =>
+                      r.totalPenalty === 0
+                  ).length
+                }
+              </strong>
+            </Typography>
+
+            <Typography>
+              Vi phạm đặc biệt:{" "}
+              <strong>
+                {
+                  rows.filter(
+                    (r) =>
+                      r.specialViolation
+                  ).length
+                }
+              </strong>
+            </Typography>
+          </Stack>
+        </Box>
+      )}
 
       {/* =====================================================
-          BẢNG
+          BẢNG HỌC SINH
       ===================================================== */}
 
       {selectedClass && selectedWeek ? (
@@ -1020,7 +959,8 @@ export default function ViewStudentConductPage() {
                   align="center"
                   sx={{
                     fontWeight: "bold",
-                    whiteSpace: "nowrap",
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
                   STT
@@ -1029,7 +969,8 @@ export default function ViewStudentConductPage() {
                 <TableCell
                   sx={{
                     fontWeight: "bold",
-                    whiteSpace: "nowrap",
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
                   Họ và tên
@@ -1037,35 +978,45 @@ export default function ViewStudentConductPage() {
 
                 <TableCell
                   align="center"
-                  sx={{ fontWeight: "bold" }}
+                  sx={{
+                    fontWeight: "bold",
+                  }}
                 >
                   N1
                 </TableCell>
 
                 <TableCell
                   align="center"
-                  sx={{ fontWeight: "bold" }}
+                  sx={{
+                    fontWeight: "bold",
+                  }}
                 >
                   N2
                 </TableCell>
 
                 <TableCell
                   align="center"
-                  sx={{ fontWeight: "bold" }}
+                  sx={{
+                    fontWeight: "bold",
+                  }}
                 >
                   N3
                 </TableCell>
 
                 <TableCell
                   align="center"
-                  sx={{ fontWeight: "bold" }}
+                  sx={{
+                    fontWeight: "bold",
+                  }}
                 >
                   N4
                 </TableCell>
 
                 <TableCell
                   align="center"
-                  sx={{ fontWeight: "bold" }}
+                  sx={{
+                    fontWeight: "bold",
+                  }}
                 >
                   N5
                 </TableCell>
@@ -1074,7 +1025,8 @@ export default function ViewStudentConductPage() {
                   align="center"
                   sx={{
                     fontWeight: "bold",
-                    whiteSpace: "nowrap",
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
                   Vi phạm đặc biệt
@@ -1084,7 +1036,8 @@ export default function ViewStudentConductPage() {
                   align="center"
                   sx={{
                     fontWeight: "bold",
-                    whiteSpace: "nowrap",
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
                   Tổng lỗi trừ
@@ -1094,7 +1047,8 @@ export default function ViewStudentConductPage() {
                   align="center"
                   sx={{
                     fontWeight: "bold",
-                    whiteSpace: "nowrap",
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
                   Điểm khen thưởng
@@ -1104,7 +1058,8 @@ export default function ViewStudentConductPage() {
                   align="center"
                   sx={{
                     fontWeight: "bold",
-                    whiteSpace: "nowrap",
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
                   Điểm HK
@@ -1114,7 +1069,8 @@ export default function ViewStudentConductPage() {
                   align="center"
                   sx={{
                     fontWeight: "bold",
-                    whiteSpace: "nowrap",
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
                   Xếp loại
@@ -1144,125 +1100,152 @@ export default function ViewStudentConductPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                rows.map((row, index) => (
-                  <TableRow
-                    key={row.studentId || index}
-                    hover
-                    sx={{
-                      backgroundColor:
-                        row.specialViolation
-                          ? "rgba(255, 193, 7, 0.12)"
-                          : undefined,
-                    }}
-                  >
-                    <TableCell align="center">
-                      {index + 1}
-                    </TableCell>
-
-                    <TableCell
+                rows.map(
+                  (row, index) => (
+                    <TableRow
+                      key={
+                        row.studentId ||
+                        index
+                      }
+                      hover
                       sx={{
-                        fontWeight:
-                          row.totalPenalty > 0
-                            ? "bold"
-                            : "normal",
-                        whiteSpace: "nowrap",
+                        backgroundColor:
+                          row.specialViolation
+                            ? "rgba(255, 193, 7, 0.12)"
+                            : undefined,
                       }}
                     >
-                      {row.name}
-                    </TableCell>
+                      <TableCell align="center">
+                        {index + 1}
+                      </TableCell>
 
-                    <TableCell align="center">
-                      {formatPoint(row.n1)}
-                    </TableCell>
+                      <TableCell
+                        sx={{
+                          fontWeight:
+                            row.totalPenalty >
+                            0
+                              ? "bold"
+                              : "normal",
+                          whiteSpace:
+                            "nowrap",
+                        }}
+                      >
+                        {row.name}
+                      </TableCell>
 
-                    <TableCell align="center">
-                      {formatPoint(row.n2)}
-                    </TableCell>
+                      <TableCell align="center">
+                        {formatPoint(
+                          row.n1
+                        )}
+                      </TableCell>
 
-                    <TableCell align="center">
-                      {formatPoint(row.n3)}
-                    </TableCell>
+                      <TableCell align="center">
+                        {formatPoint(
+                          row.n2
+                        )}
+                      </TableCell>
 
-                    <TableCell align="center">
-                      {formatPoint(row.n4)}
-                    </TableCell>
+                      <TableCell align="center">
+                        {formatPoint(
+                          row.n3
+                        )}
+                      </TableCell>
 
-                    <TableCell align="center">
-                      {formatPoint(row.n5)}
-                    </TableCell>
+                      <TableCell align="center">
+                        {formatPoint(
+                          row.n4
+                        )}
+                      </TableCell>
 
-                    <TableCell align="center">
-                      {row.specialViolation ? (
-                        <Box
-                          component="span"
-                          sx={{
-                            display: "inline-block",
-                            px: 1,
-                            py: 0.4,
-                            borderRadius: 1,
-                            backgroundColor:
-                              "#ffcc80",
-                            color: "#e65100",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          Có
-                        </Box>
-                      ) : (
-                        "Không"
-                      )}
-                    </TableCell>
+                      <TableCell align="center">
+                        {formatPoint(
+                          row.n5
+                        )}
+                      </TableCell>
 
-                    <TableCell
-                      align="center"
-                      sx={{
-                        fontWeight:
-                          row.totalPenalty > 0
-                            ? "bold"
-                            : "normal",
-                      }}
-                    >
-                      {formatPoint(
-                        row.totalPenalty
-                      )}
-                    </TableCell>
+                      <TableCell align="center">
+                        {row.specialViolation ? (
+                          <Box
+                            component="span"
+                            sx={{
+                              display:
+                                "inline-block",
+                              px: 1,
+                              py: 0.4,
+                              borderRadius: 1,
+                              backgroundColor:
+                                "#ffcc80",
+                              color:
+                                "#e65100",
+                              fontWeight:
+                                "bold",
+                            }}
+                          >
+                            Có
+                          </Box>
+                        ) : (
+                          "Không"
+                        )}
+                      </TableCell>
 
-                    <TableCell
-                      align="center"
-                      sx={{
-                        fontWeight:
-                          row.bonusScore > 0
-                            ? "bold"
-                            : "normal",
-                      }}
-                    >
-                      {formatPoint(
-                        row.bonusScore
-                      )}
-                    </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{
+                          fontWeight:
+                            row.totalPenalty >
+                            0
+                              ? "bold"
+                              : "normal",
+                        }}
+                      >
+                        {formatPoint(
+                          row.totalPenalty
+                        )}
+                      </TableCell>
 
-                    <TableCell
-                      align="center"
-                      sx={{
-                        fontWeight: "bold",
-                      }}
-                    >
-                      {formatPoint(
-                        row.conductScore
-                      )}
-                    </TableCell>
+                      <TableCell
+                        align="center"
+                        sx={{
+                          fontWeight:
+                            row.bonusScore >
+                            0
+                              ? "bold"
+                              : "normal",
+                        }}
+                      >
+                        {formatPoint(
+                          row.bonusScore
+                        )}
+                      </TableCell>
 
-                    <TableCell
-                      align="center"
-                      sx={{
-                        fontWeight: "bold",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {row.classification}
-                    </TableCell>
-                  </TableRow>
-                ))
+                      <TableCell
+                        align="center"
+                        sx={{
+                          fontWeight:
+                            "bold",
+                        }}
+                      >
+                        {formatPoint(
+                          row.conductScore
+                        )}
+                      </TableCell>
+
+                      <TableCell
+                        align="center"
+                        sx={{
+                          fontWeight:
+                            "bold",
+                          whiteSpace:
+                            "nowrap",
+                        }}
+                      >
+                        {
+                          row.classification
+                        }
+                      </TableCell>
+                    </TableRow>
+                  )
+                )
               )}
             </TableBody>
           </Table>
@@ -1275,14 +1258,15 @@ export default function ViewStudentConductPage() {
           }}
         >
           <Typography color="text.secondary">
-            Vui lòng chọn tuần và lớp để xem danh sách
-            học sinh.
+            Vui lòng chọn tuần và lớp để
+            xem danh sách học sinh.
           </Typography>
         </Paper>
       )}
 
       {/* =====================================================
-          TỔNG KẾT
+          TỔNG KẾT CUỐI BẢNG
+          GIỮ LẠI ĐỂ GV KÉO XUỐNG VẪN THẤY
       ===================================================== */}
 
       {rows.length > 0 && (
@@ -1300,7 +1284,10 @@ export default function ViewStudentConductPage() {
             spacing={3}
           >
             <Typography>
-              Sĩ số: <strong>{rows.length}</strong>
+              Sĩ số:{" "}
+              <strong>
+                {rows.length}
+              </strong>
             </Typography>
 
             <Typography>
@@ -1308,7 +1295,8 @@ export default function ViewStudentConductPage() {
               <strong>
                 {
                   rows.filter(
-                    (r) => r.totalPenalty > 0
+                    (r) =>
+                      r.totalPenalty > 0
                   ).length
                 }
               </strong>
@@ -1319,7 +1307,8 @@ export default function ViewStudentConductPage() {
               <strong>
                 {
                   rows.filter(
-                    (r) => r.totalPenalty === 0
+                    (r) =>
+                      r.totalPenalty === 0
                   ).length
                 }
               </strong>
@@ -1330,7 +1319,8 @@ export default function ViewStudentConductPage() {
               <strong>
                 {
                   rows.filter(
-                    (r) => r.specialViolation
+                    (r) =>
+                      r.specialViolation
                   ).length
                 }
               </strong>
@@ -1338,6 +1328,10 @@ export default function ViewStudentConductPage() {
           </Stack>
         </Paper>
       )}
+
+      {/* =====================================================
+          SNACKBAR
+      ===================================================== */}
 
       <Snackbar
         open={snackbar.open}
@@ -1361,7 +1355,9 @@ export default function ViewStudentConductPage() {
               open: false,
             })
           }
-          sx={{ width: "100%" }}
+          sx={{
+            width: "100%",
+          }}
         >
           {snackbar.message}
         </Alert>
