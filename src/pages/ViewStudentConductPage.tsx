@@ -626,10 +626,9 @@ export default function ViewStudentConductPage() {
       </Typography>
 
       {/* =====================================================
-          BỘ LỌC
-      ===================================================== */}
+    BỘ LỌC
+===================================================== */}
 
-{/* ================= BỘ LỌC ================= */}
 <Paper
   elevation={1}
   sx={{
@@ -638,60 +637,233 @@ export default function ViewStudentConductPage() {
     borderRadius: 2,
   }}
 >
-  {/* Hàng chọn tuần - chọn lớp - nút */}
   <Box
     sx={{
       display: "grid",
       gridTemplateColumns: {
         xs: "1fr",
-        md: "2fr 1.5fr auto",
+        md: "2fr 1.3fr 150px",
       },
       gap: 2,
-      alignItems: "center",
+      alignItems: "start",
     }}
   >
     {/* ================= CHỌN TUẦN ================= */}
-    <TextField
-      select
-      label="Chọn tuần"
-      value={selectedWeek ?? ""}
-      onChange={(e) =>
-        setSelectedWeek(
-          e.target.value ? Number(e.target.value) : null
-        )
-      }
-      size="small"
-      fullWidth
-    >
-      {weeks.map((week) => (
-        <MenuItem
-          key={week.weekNumber}
-          value={week.weekNumber}
-        >
-          Tuần {week.weekNumber}
-          {week.startDate && week.endDate
-            ? ` (${dayjs(week.startDate).format(
-                "DD/MM/YYYY"
-              )} - ${dayjs(week.endDate).format(
-                "DD/MM/YYYY"
-              )})`
-            : ""}
-        </MenuItem>
-      ))}
-    </TextField>
+    <Box>
+      <TextField
+        select
+        label="Chọn tuần"
+        value={selectedWeek}
+        onChange={(e) =>
+          setSelectedWeek(
+            e.target.value
+              ? Number(e.target.value)
+              : ""
+          )
+        }
+        size="small"
+        fullWidth
+      >
+        {weeks.map((week) => (
+          <MenuItem
+            key={week.weekNumber}
+            value={week.weekNumber}
+          >
+            Tuần {week.weekNumber}
+            {week.startDate && week.endDate
+              ? ` (${dayjs(week.startDate).format(
+                  "DD/MM"
+                )} - ${dayjs(week.endDate).format(
+                  "DD/MM"
+                )})`
+              : ""}
+          </MenuItem>
+        ))}
+      </TextField>
+
+      {/* ================= CHÚ THÍCH ================= */}
+      <Box
+        sx={{
+          mt: 1,
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "1fr 1fr 1fr",
+          },
+          columnGap: 2,
+          rowGap: 0.3,
+        }}
+      >
+        {/* CỘT 1: N1 - N2 */}
+        <Box>
+          {["N1", "N2"].map((code) => {
+            const rule = rules.find(
+              (r) =>
+                r.groupCode
+                  ?.trim()
+                  .toUpperCase() === code
+            );
+
+            return (
+              <Box
+                key={code}
+                sx={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  lineHeight: 1.5,
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{
+                    width: 26,
+                    minWidth: 26,
+                    fontWeight: 700,
+                  }}
+                >
+                  {code}
+                </Typography>
+
+                <Typography
+                  variant="caption"
+                  sx={{
+                    width: 12,
+                    minWidth: 12,
+                  }}
+                >
+                  -
+                </Typography>
+
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                >
+                  {rule?.groupName ||
+                    "Chưa thiết lập"}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+
+        {/* CỘT 2: N3 - N4 */}
+        <Box>
+          {["N3", "N4"].map((code) => {
+            const rule = rules.find(
+              (r) =>
+                r.groupCode
+                  ?.trim()
+                  .toUpperCase() === code
+            );
+
+            return (
+              <Box
+                key={code}
+                sx={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  lineHeight: 1.5,
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{
+                    width: 26,
+                    minWidth: 26,
+                    fontWeight: 700,
+                  }}
+                >
+                  {code}
+                </Typography>
+
+                <Typography
+                  variant="caption"
+                  sx={{
+                    width: 12,
+                    minWidth: 12,
+                  }}
+                >
+                  -
+                </Typography>
+
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                >
+                  {rule?.groupName ||
+                    "Chưa thiết lập"}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+
+        {/* CỘT 3: N5 */}
+        <Box>
+          {["N5"].map((code) => {
+            const rule = rules.find(
+              (r) =>
+                r.groupCode
+                  ?.trim()
+                  .toUpperCase() === code
+            );
+
+            return (
+              <Box
+                key={code}
+                sx={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  lineHeight: 1.5,
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{
+                    width: 26,
+                    minWidth: 26,
+                    fontWeight: 700,
+                  }}
+                >
+                  {code}
+                </Typography>
+
+                <Typography
+                  variant="caption"
+                  sx={{
+                    width: 12,
+                    minWidth: 12,
+                  }}
+                >
+                  -
+                </Typography>
+
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                >
+                  {rule?.groupName ||
+                    "Chưa thiết lập"}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
+    </Box>
 
     {/* ================= CHỌN LỚP ================= */}
     <TextField
       select
       label="Chọn lớp"
-      value={selectedClass ?? ""}
+      value={selectedClass}
       onChange={(e) =>
         setSelectedClass(e.target.value)
       }
       size="small"
       fullWidth
     >
-      {classOptions.map((cls) => (
+      {classes.map((cls) => (
         <MenuItem
           key={cls._id}
           value={cls.className}
@@ -704,90 +876,16 @@ export default function ViewStudentConductPage() {
     {/* ================= NÚT XEM ================= */}
     <Button
       variant="contained"
-      onClick={handleViewData}
+      onClick={handleView}
       sx={{
         height: 40,
         minWidth: 150,
-        whiteSpace: "nowrap",
         fontWeight: 600,
+        whiteSpace: "nowrap",
       }}
     >
       XEM DỮ LIỆU
     </Button>
-  </Box>
-
-  {/* ================= CHÚ THÍCH N1-N5 ================= */}
-  <Box
-    sx={{
-      mt: 1.5,
-      pt: 1.5,
-      borderTop: "1px solid",
-      borderColor: "divider",
-
-      display: "grid",
-      gridTemplateColumns: {
-        xs: "1fr",
-        sm: "1fr 1fr",
-        md: "1fr 1fr 1fr",
-      },
-      columnGap: 4,
-      rowGap: 0.5,
-    }}
-  >
-    {["N1", "N2", "N3", "N4", "N5"].map(
-      (code) => {
-        const rule = rules.find(
-          (r) =>
-            r.groupCode?.trim().toUpperCase() === code
-        );
-
-        return (
-          <Box
-            key={code}
-            sx={{
-              display: "flex",
-              alignItems: "flex-start",
-              minWidth: 0,
-            }}
-          >
-            {/* Mã N1, N2... */}
-            <Typography
-              variant="caption"
-              sx={{
-                width: 28,
-                minWidth: 28,
-                fontWeight: 700,
-                color: "text.primary",
-              }}
-            >
-              {code}
-            </Typography>
-
-            {/* Dấu - */}
-            <Typography
-              variant="caption"
-              sx={{
-                width: 14,
-                minWidth: 14,
-              }}
-            >
-              -
-            </Typography>
-
-            {/* Tên nhóm lỗi */}
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{
-                lineHeight: 1.5,
-              }}
-            >
-              {rule?.groupName || "Chưa thiết lập"}
-            </Typography>
-          </Box>
-        );
-      }
-    )}
   </Box>
 </Paper>
 
