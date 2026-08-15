@@ -607,11 +607,7 @@ export default function ViewStudentConductPage() {
   // CHÚ THÍCH NHÓM LỖI
   // =========================================================
 
-  const renderRuleGroup = (code: string) => {
-    const rule = rules.find(
-      (r) =>
-        r.groupCode?.trim().toUpperCase() === code
-    );
+
 
     return (
       <Box
