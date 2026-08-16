@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import api from "../../api/api";
+import { useEffect, useState } from 'react';
+import api from '../../api/api';
+
 import {
   Box,
   Paper,
@@ -8,9 +9,10 @@ import {
   Checkbox,
   TextField,
   Alert,
-  Snackbar,
-} from "@mui/material";
-import dayjs from "dayjs";
+  Stack,
+} from '@mui/material';
+
+import dayjs from 'dayjs';
 
 type AcademicWeek = {
   _id: string;
@@ -22,21 +24,26 @@ type AcademicWeek = {
 
 const AdminWeeksSettingsPage = () => {
   const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
-  const [editMode, setEditMode] = useState(false);
 
-  // Ngày bắt đầu năm học
-  const [startSchoolYear, setStartSchoolYear] = useState("");
+  const [editMode, setEditMode] =
+    useState(false);
 
-  const [loading, setLoading] = useState(false);
+  // Ngày bắt đầu tuần 1
+  const [startDate, setStartDate] =
+    useState('');
 
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "info" as "info" | "success" | "warning" | "error",
-  });
+  // Ngày kết thúc năm học
+  const [endDate, setEndDate] =
+    useState('');
+
+  const [message, setMessage] =
+    useState('');
+
+  const [error, setError] =
+    useState('');
 
   // =========================================================
-  // LOAD
+  // LOAD TUẦN
   // =========================================================
 
   useEffect(() => {
@@ -45,50 +52,36 @@ const AdminWeeksSettingsPage = () => {
 
   const fetchWeeks = async () => {
     try {
-      setLoading(true);
+      const res =
+        await api.get('/api/academic-weeks');
 
-      const res = await api.get("/api/academic-weeks");
+      setWeeks(res.data || []);
 
-      const data: AcademicWeek[] = Array.isArray(res.data)
-        ? res.data
-        : [];
+      setMessage('');
+      setError('');
+    } catch (err) {
+      console.error(err);
 
-      setWeeks(data);
-
-      // Nếu đã có tuần thì lấy ngày đầu tiên làm ngày bắt đầu
-      if (data.length > 0) {
-        const firstDate = dayjs(data[0].startDate);
-
-        if (firstDate.isValid()) {
-          setStartSchoolYear(firstDate.format("YYYY-MM-DD"));
-        }
-      }
-    } catch (error) {
-      console.error("Lỗi tải tuần học:", error);
-
-      setSnackbar({
-        open: true,
-        message: "Không thể tải danh sách tuần học",
-        severity: "error",
-      });
-    } finally {
-      setLoading(false);
+      setError(
+        'Không thể tải danh sách tuần'
+      );
     }
   };
 
   // =========================================================
-  // CHECKBOX TUẦN HỌC
+  // CHỌN / BỎ CHỌN TUẦN HỌC
   // =========================================================
 
-  const handleCheckboxChange = (id: string) => {
-    if (!editMode) return;
-
+  const handleCheckboxChange = (
+    id: string
+  ) => {
     setWeeks((prev) =>
       prev.map((week) =>
         week._id === id
           ? {
               ...week,
-              isStudyWeek: !week.isStudyWeek,
+              isStudyWeek:
+                !week.isStudyWeek,
             }
           : week
       )
@@ -100,56 +93,80 @@ const AdminWeeksSettingsPage = () => {
   // =========================================================
 
   const generateWeeks = async () => {
-    if (!startSchoolYear) {
-      setSnackbar({
-        open: true,
-        message: "Vui lòng chọn ngày bắt đầu năm học",
-        severity: "warning",
-      });
+    setMessage('');
+    setError('');
 
+    if (!startDate) {
+      setError(
+        'Vui lòng chọn ngày bắt đầu tuần 1'
+      );
       return;
     }
 
-    if (
-      !window.confirm(
-        "Tạo lại toàn bộ danh sách tuần học theo ngày bắt đầu đã chọn?"
-      )
-    ) {
+    if (!endDate) {
+      setError(
+        'Vui lòng chọn ngày kết thúc năm học'
+      );
+      return;
+    }
+
+    const start = dayjs(startDate);
+    const end = dayjs(endDate);
+
+    if (!start.isValid()) {
+      setError(
+        'Ngày bắt đầu không hợp lệ'
+      );
+      return;
+    }
+
+    if (!end.isValid()) {
+      setError(
+        'Ngày kết thúc không hợp lệ'
+      );
+      return;
+    }
+
+    if (start.isAfter(end)) {
+      setError(
+        'Ngày bắt đầu không được lớn hơn ngày kết thúc năm học'
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Tạo lại toàn bộ danh sách tuần? Dữ liệu tuần hiện tại sẽ được thay thế.'
+    );
+
+    if (!confirmed) {
       return;
     }
 
     try {
-      setLoading(true);
+      const res =
+        await api.post(
+          '/api/academic-weeks/generate',
+          {
+            startDate,
+            endDate,
+          }
+        );
 
-      const res = await api.post(
-        "/api/academic-weeks/generate",
-        {
-          startSchoolYear,
-        }
+      setMessage(
+        res.data?.message ||
+          'Đã tạo danh sách tuần'
       );
 
-      setWeeks(res.data.weeks || []);
-
-      setSnackbar({
-        open: true,
-        message:
-          res.data.message || "Đã tạo danh sách tuần học",
-        severity: "success",
-      });
-
       setEditMode(false);
-    } catch (error: any) {
-      console.error("Lỗi tạo tuần:", error);
 
-      setSnackbar({
-        open: true,
-        message:
-          error?.response?.data?.message ||
-          "Không thể tạo danh sách tuần học",
-        severity: "error",
-      });
-    } finally {
-      setLoading(false);
+      await fetchWeeks();
+    } catch (err: any) {
+      console.error(err);
+
+      setError(
+        err?.response?.data?.message ||
+          'Có lỗi khi tạo tuần'
+      );
     }
   };
 
@@ -160,34 +177,30 @@ const AdminWeeksSettingsPage = () => {
   const deleteAllWeeks = async () => {
     if (
       !window.confirm(
-        "Bạn có chắc muốn xoá toàn bộ tuần học không?"
+        'Bạn có chắc muốn xoá toàn bộ tuần học không?'
       )
     ) {
       return;
     }
 
     try {
-      setLoading(true);
-
-      await api.delete("/api/academic-weeks");
+      await api.delete(
+        '/api/academic-weeks'
+      );
 
       setWeeks([]);
 
-      setSnackbar({
-        open: true,
-        message: "Đã xoá toàn bộ tuần học",
-        severity: "success",
-      });
-    } catch (error) {
-      console.error("Lỗi xoá tuần:", error);
+      setMessage(
+        'Đã xoá toàn bộ tuần'
+      );
 
-      setSnackbar({
-        open: true,
-        message: "Không thể xoá tuần học",
-        severity: "error",
-      });
-    } finally {
-      setLoading(false);
+      setError('');
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        'Có lỗi khi xoá tuần'
+      );
     }
   };
 
@@ -197,98 +210,131 @@ const AdminWeeksSettingsPage = () => {
 
   const saveChanges = async () => {
     try {
-      setLoading(true);
+      const res =
+        await api.put(
+          '/api/academic-weeks/bulk',
+          weeks
+        );
 
-      const res = await api.put(
-        "/api/academic-weeks/bulk",
-        weeks
+      setMessage(
+        res.data?.message ||
+          'Đã lưu danh sách tuần'
       );
 
-      setWeeks(res.data.weeks || []);
-
-      setSnackbar({
-        open: true,
-        message:
-          res.data.message ||
-          "Đã lưu danh sách tuần học",
-        severity: "success",
-      });
-
       setEditMode(false);
-    } catch (error) {
-      console.error("Lỗi lưu tuần:", error);
 
-      setSnackbar({
-        open: true,
-        message: "Có lỗi khi lưu danh sách tuần",
-        severity: "error",
-      });
-    } finally {
-      setLoading(false);
+      await fetchWeeks();
+    } catch (err: any) {
+      console.error(err);
+
+      setError(
+        err?.response?.data?.message ||
+          'Có lỗi khi lưu'
+      );
     }
   };
 
   // =========================================================
-  // CHỈNH SỬA
+  // CHUYỂN SANG CHẾ ĐỘ SỬA
   // =========================================================
 
   const handleEdit = () => {
     setEditMode(true);
+
+    setMessage('');
+    setError('');
   };
 
   // =========================================================
-  // XÁC ĐỊNH TUẦN HỌC ĐÃ CHỌN
+  // TUẦN HỌC ĐÃ CHỌN
   // =========================================================
 
-  const selectedWeeks = weeks
-    .filter((week) => week.isStudyWeek)
-    .sort(
-      (a, b) =>
-        new Date(a.startDate).getTime() -
-        new Date(b.startDate).getTime()
-    );
-
-  const selectedOrderMap = new Map<string, number>();
-
-  selectedWeeks.forEach((week, index) => {
-    selectedOrderMap.set(week._id, index + 1);
-  });
+  const selectedWeeks =
+    weeks
+      .filter(
+        (week) =>
+          week.isStudyWeek
+      )
+      .sort(
+        (a, b) =>
+          new Date(
+            a.startDate
+          ).getTime() -
+          new Date(
+            b.startDate
+          ).getTime()
+      );
 
   // =========================================================
-  // TUẦN HIỆN TẠI
+  // TẠO MAP TUẦN
+  // =========================================================
+
+  const selectedOrderMap =
+    new Map<string, number>();
+
+  selectedWeeks.forEach(
+    (week, index) => {
+      selectedOrderMap.set(
+        week._id,
+        index + 1
+      );
+    }
+  );
+
+  // =========================================================
+  // XÁC ĐỊNH TUẦN HIỆN TẠI
   // =========================================================
 
   const getCurrentWeekNumber = () => {
     const today = dayjs();
 
-    const currentIndex = selectedWeeks.findIndex(
-      (week) => {
-        const start = dayjs(week.startDate).startOf("day");
-        const end = dayjs(week.endDate).endOf("day");
+    for (
+      let i = 0;
+      i < selectedWeeks.length;
+      i++
+    ) {
+      const week =
+        selectedWeeks[i];
 
-        return (
-          (today.isAfter(start) ||
-            today.isSame(start)) &&
-          (today.isBefore(end) ||
-            today.isSame(end))
-        );
+      const start =
+        dayjs(week.startDate);
+
+      const end =
+        dayjs(week.endDate);
+
+      if (
+        today.isAfter(start) ||
+        today.isSame(
+          start,
+          'day'
+        )
+      ) {
+        if (
+          today.isBefore(end) ||
+          today.isSame(
+            end,
+            'day'
+          )
+        ) {
+          return i + 1;
+        }
       }
-    );
+    }
 
-    return currentIndex >= 0
-      ? currentIndex + 1
-      : null;
+    return null;
   };
 
-  const currentWeekNumber = getCurrentWeekNumber();
+  const currentWeekNumber =
+    getCurrentWeekNumber();
 
   // =========================================================
-  // CHIA CỘT
+  // CHIA THÀNH 4 CỘT
   // =========================================================
 
   const columnSize = 10;
 
-  const columns: AcademicWeek[][] = [];
+  const columns: AcademicWeek[][] =
+    [];
 
   for (
     let i = 0;
@@ -296,17 +342,12 @@ const AdminWeeksSettingsPage = () => {
     i += columnSize
   ) {
     columns.push(
-      weeks.slice(i, i + columnSize)
+      weeks.slice(
+        i,
+        i + columnSize
+      )
     );
   }
-
-  // =========================================================
-  // FORMAT NGÀY
-  // =========================================================
-
-  const formatDate = (date: string) => {
-    return dayjs(date).format("DD/MM/YYYY");
-  };
 
   // =========================================================
   // RENDER
@@ -323,7 +364,35 @@ const AdminWeeksSettingsPage = () => {
       </Typography>
 
       {/* =====================================================
-          CẤU HÌNH NGÀY BẮT ĐẦU
+          THÔNG BÁO
+      ===================================================== */}
+
+      <Stack spacing={1} mb={2}>
+        {message && (
+          <Alert
+            severity="success"
+            onClose={() =>
+              setMessage('')
+            }
+          >
+            {message}
+          </Alert>
+        )}
+
+        {error && (
+          <Alert
+            severity="error"
+            onClose={() =>
+              setError('')
+            }
+          >
+            {error}
+          </Alert>
+        )}
+      </Stack>
+
+      {/* =====================================================
+          CHỌN NGÀY TẠO TUẦN
       ===================================================== */}
 
       <Paper
@@ -334,46 +403,86 @@ const AdminWeeksSettingsPage = () => {
         }}
       >
         <Typography
+          variant="h6"
           fontWeight="bold"
-          sx={{ mb: 1 }}
+          mb={2}
         >
-          Ngày bắt đầu năm học
+          Thiết lập thời gian năm học
         </Typography>
 
         <Box
-          display="flex"
+          display="grid"
+          gridTemplateColumns={{
+            xs: '1fr',
+            sm: '1fr 1fr',
+            md: '280px 280px auto',
+          }}
           gap={2}
-          flexWrap="wrap"
           alignItems="center"
         >
+          {/* NGÀY BẮT ĐẦU TUẦN 1 */}
+
           <TextField
+            label="Ngày bắt đầu tuần 1"
             type="date"
-            label="Ngày bắt đầu"
-            value={startSchoolYear}
+            value={startDate}
             onChange={(e) =>
-              setStartSchoolYear(e.target.value)
+              setStartDate(
+                e.target.value
+              )
             }
             InputLabelProps={{
               shrink: true,
             }}
-            size="small"
-            disabled={loading}
+            fullWidth
+            helperText="Chọn bất kỳ ngày nào"
           />
 
-          <Typography
-            variant="body2"
-            color="text.secondary"
+          {/* NGÀY KẾT THÚC */}
+
+          <TextField
+            label="Ngày kết thúc năm học"
+            type="date"
+            value={endDate}
+            onChange={(e) =>
+              setEndDate(
+                e.target.value
+              )
+            }
+            InputLabelProps={{
+              shrink: true,
+            }}
+            fullWidth
+          />
+
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={generateWeeks}
+            sx={{
+              height: 40,
+              whiteSpace:
+                'nowrap',
+            }}
           >
-            Ngày bạn chọn sẽ là ngày bắt đầu của
-            Tuần 1. Tuần 1 kết thúc vào Chủ nhật.
-            Từ Tuần 2 trở đi sẽ tính Thứ 2 → Chủ
-            nhật.
-          </Typography>
+            TẠO TUẦN MỚI
+          </Button>
         </Box>
+
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mt: 1.5 }}
+        >
+          Tuần 1 được tính từ ngày bạn
+          chọn đến hết Chủ nhật. Từ
+          tuần 2 trở đi, mỗi tuần tính
+          từ Thứ 2 đến hết Chủ nhật.
+        </Typography>
       </Paper>
 
       {/* =====================================================
-          NÚT CHỨC NĂNG
+          NÚT ĐIỀU KHIỂN
       ===================================================== */}
 
       <Box
@@ -382,32 +491,21 @@ const AdminWeeksSettingsPage = () => {
         gap={2}
         flexWrap="wrap"
       >
-        <Button
-          variant="contained"
-          color="secondary"
-          onClick={generateWeeks}
-          disabled={loading || !startSchoolYear}
-        >
-          Tạo tuần mới
-        </Button>
-
         {!editMode ? (
           <Button
             variant="contained"
             color="primary"
             onClick={handleEdit}
-            disabled={loading || weeks.length === 0}
           >
-            Cập nhật
+            CẬP NHẬT
           </Button>
         ) : (
           <Button
             variant="contained"
             color="success"
             onClick={saveChanges}
-            disabled={loading}
           >
-            Lưu
+            LƯU
           </Button>
         )}
 
@@ -415,48 +513,48 @@ const AdminWeeksSettingsPage = () => {
           variant="contained"
           color="error"
           onClick={deleteAllWeeks}
-          disabled={loading || weeks.length === 0}
         >
-          Xoá toàn bộ
+          XOÁ TOÀN BỘ
         </Button>
       </Box>
-
-      {/* =====================================================
-          THÔNG BÁO
-      ===================================================== */}
-
-      {weeks.length > 0 && (
-        <Alert
-          severity="info"
-          sx={{ mb: 2 }}
-        >
-          Đã tạo {weeks.length} khoảng tuần.{" "}
-          <strong>
-            {selectedWeeks.length}
-          </strong>{" "}
-          tuần đang được chọn là tuần học.
-        </Alert>
-      )}
 
       {/* =====================================================
           DANH SÁCH TUẦN
       ===================================================== */}
 
-      {columns.length > 0 ? (
+      {weeks.length === 0 ? (
+        <Paper
+          sx={{
+            p: 4,
+            textAlign: 'center',
+          }}
+        >
+          <Typography color="text.secondary">
+            Chưa có danh sách tuần.
+            Hãy chọn ngày và bấm
+            "TẠO TUẦN MỚI".
+          </Typography>
+        </Paper>
+      ) : (
         <Box
           display="flex"
           flexWrap="wrap"
           gap={2}
         >
           {columns.map(
-            (column, colIndex) => (
+            (
+              column,
+              colIndex
+            ) => (
               <Paper
                 key={colIndex}
                 elevation={3}
                 sx={{
-                  flex: "1 1 22%",
+                  flex:
+                    '1 1 22%',
                   p: 2,
-                  minWidth: "280px",
+                  minWidth:
+                    '260px',
                 }}
               >
                 <Typography
@@ -467,143 +565,117 @@ const AdminWeeksSettingsPage = () => {
                   Bảng {colIndex + 1}
                 </Typography>
 
-                {column.map((week) => {
-                  const weekNumber =
-                    selectedOrderMap.get(
-                      week._id
-                    );
+                {column.map(
+                  (week) => {
+                    const weekNumber =
+                      selectedOrderMap.get(
+                        week._id
+                      );
 
-                  const isCurrent =
-                    currentWeekNumber ===
-                    weekNumber;
+                    const isCurrent =
+                      currentWeekNumber ===
+                      weekNumber;
 
-                  return (
-                    <Box
-                      key={week._id}
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="space-between"
-                      borderBottom={1}
-                      borderColor="divider"
-                      py={0.7}
-                      gap={1}
-                    >
-                      {/* NGÀY */}
+                    return (
                       <Box
-                        sx={{
-                          flex: 1,
-                          minWidth: 0,
-                        }}
+                        key={
+                          week._id
+                        }
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        borderBottom={
+                          1
+                        }
+                        borderColor="divider"
+                        py={0.7}
+                        gap={1}
                       >
+                        {/* NGÀY */}
+
+                        <Box
+                          sx={{
+                            flex: 1,
+                            minWidth: 0,
+                          }}
+                        >
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              whiteSpace:
+                                'nowrap',
+                              fontSize:
+                                '13px',
+                            }}
+                          >
+                            {dayjs(
+                              week.startDate
+                            ).format(
+                              'DD/MM/YYYY'
+                            )}
+                            {' - '}
+                            {dayjs(
+                              week.endDate
+                            ).format(
+                              'DD/MM/YYYY'
+                            )}
+                          </Typography>
+                        </Box>
+
+                        {/* CHECKBOX */}
+
+                        <Checkbox
+                          checked={
+                            week.isStudyWeek
+                          }
+                          disabled={
+                            !editMode
+                          }
+                          onChange={() =>
+                            handleCheckboxChange(
+                              week._id
+                            )
+                          }
+                        />
+
+                        {/* TUẦN */}
+
                         <Typography
                           variant="body2"
                           sx={{
+                            width:
+                              '75px',
+                            textAlign:
+                              'center',
+                            color:
+                              isCurrent
+                                ? 'green'
+                                : 'inherit',
+                            fontWeight:
+                              isCurrent
+                                ? 'bold'
+                                : 'normal',
                             whiteSpace:
-                              "nowrap",
+                              'nowrap',
                           }}
                         >
-                          {formatDate(
-                            week.startDate
-                          )}{" "}
-                          -{" "}
-                          {formatDate(
-                            week.endDate
-                          )}
+                          {week.isStudyWeek
+                            ? `Tuần ${weekNumber}${
+                                isCurrent
+                                  ? ' ⭐'
+                                  : ''
+                              }`
+                            : 'Nghỉ'}
                         </Typography>
                       </Box>
-
-                      {/* CHECKBOX */}
-                      <Checkbox
-                        checked={
-                          week.isStudyWeek
-                        }
-                        disabled={!editMode}
-                        onChange={() =>
-                          handleCheckboxChange(
-                            week._id
-                          )
-                        }
-                      />
-
-                      {/* TUẦN */}
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          width: "80px",
-                          minWidth: "80px",
-                          textAlign:
-                            "center",
-                          color: isCurrent
-                            ? "green"
-                            : "inherit",
-                          fontWeight:
-                            isCurrent
-                              ? "bold"
-                              : "normal",
-                        }}
-                      >
-                        {week.isStudyWeek
-                          ? `Tuần ${weekNumber}${
-                              isCurrent
-                                ? " ⭐"
-                                : ""
-                            }`
-                          : "Nghỉ"}
-                      </Typography>
-                    </Box>
-                  );
-                })}
+                    );
+                  }
+                )}
               </Paper>
             )
           )}
         </Box>
-      ) : (
-        <Paper
-          sx={{
-            p: 4,
-            textAlign: "center",
-          }}
-        >
-          <Typography color="text.secondary">
-            Chưa có danh sách tuần học.
-            <br />
-            Hãy chọn ngày bắt đầu năm học rồi
-            nhấn <strong>Tạo tuần mới</strong>.
-          </Typography>
-        </Paper>
       )}
-
-      {/* =====================================================
-          SNACKBAR
-      ===================================================== */}
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() =>
-          setSnackbar((prev) => ({
-            ...prev,
-            open: false,
-          }))
-        }
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "center",
-        }}
-      >
-        <Alert
-          severity={snackbar.severity}
-          onClose={() =>
-            setSnackbar((prev) => ({
-              ...prev,
-              open: false,
-            }))
-          }
-          sx={{ width: "100%" }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };
