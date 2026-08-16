@@ -320,9 +320,6 @@ export default function ViewStudentConductPage() {
   const [loadingStudents, setLoadingStudents] =
     useState(false);
 
-  const [loading, setLoading] =
-    useState(false);
-
   const [snackbar, setSnackbar] =
     useState({
       open: false,
