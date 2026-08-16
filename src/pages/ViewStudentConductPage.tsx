@@ -7,7 +7,6 @@ import {
   MenuItem,
   Paper,
   Snackbar,
-  Stack,
   Table,
   TableBody,
   TableCell,
@@ -20,10 +19,8 @@ import {
 import api from "../api/api";
 
 // =========================================================
-// CẤU HÌNH NĂM HỌC HIỆN TẠI
+// TYPES
 // =========================================================
-
-const CURRENT_ACADEMIC_YEAR = "2026-2027";
 
 type ViewMode = "week" | "month" | "year";
 
@@ -45,7 +42,8 @@ interface WeeklyConduct {
   className: string;
   academicYear: string;
   weekNumber: number;
-  maxScore?: number;
+
+  maxScore: number;
 
   groupViolations?: {
     N1?: number;
@@ -59,16 +57,15 @@ interface WeeklyConduct {
   totalConductViolations?: number;
   totalDeduction?: number;
   finalScore?: number;
+
   hasSeriousViolation?: boolean;
 
   status?: "DRAFT" | "FINAL";
 }
 
 interface MonthlyWeek {
-  weekNumber?: number;
-  week?: number;
+  weekNumber: number;
   score?: number;
-  finalScore?: number;
   classification?: string;
 }
 
@@ -83,7 +80,11 @@ interface MonthlyConduct {
 
   weekNumbers?: number[];
 
-  weeks?: MonthlyWeek[];
+  /*
+   * Backend cũ có thể đang trả classificationCounts.
+   * Backend mới nếu có dữ liệu từng tuần thì dùng weeklyScores.
+   */
+  weeklyScores?: MonthlyWeek[];
 
   classificationCounts?: {
     tot?: number;
@@ -98,25 +99,47 @@ interface MonthlyConduct {
   finalizedAt?: string | null;
 }
 
-interface AnnualMonth {
-  month: number;
-  year: number;
-  classification: string;
-}
-
 interface AnnualConduct {
   _id?: string;
   name: string;
   className: string;
   academicYear: string;
 
-  months?: AnnualMonth[];
+  months?: {
+    month: number;
+    year: number;
+    classification: string;
+  }[];
 
   classification?: string;
 
   status?: "DRAFT" | "FINAL";
   finalizedAt?: string | null;
 }
+
+interface StudyWeek {
+  weekNumber: number;
+}
+
+// =========================================================
+// CẤU HÌNH NĂM HỌC HIỆN TẠI
+// =========================================================
+
+const CURRENT_ACADEMIC_YEAR = "2026-2027";
+
+// Các tháng của năm học hiện tại.
+// Hiển thị trong ComboBox dạng 09/26 ... 05/27.
+const SCHOOL_MONTHS = [
+  { month: 9, year: 2026 },
+  { month: 10, year: 2026 },
+  { month: 11, year: 2026 },
+  { month: 12, year: 2026 },
+  { month: 1, year: 2027 },
+  { month: 2, year: 2027 },
+  { month: 3, year: 2027 },
+  { month: 4, year: 2027 },
+  { month: 5, year: 2027 },
+];
 
 // =========================================================
 // HELPERS
@@ -192,69 +215,15 @@ const formatScore = (
 ) => {
   if (
     value === undefined ||
-    value === null ||
-    Number.isNaN(Number(value))
+    value === null
   ) {
     return "-";
   }
 
-  return Number.isInteger(Number(value))
+  return Number.isInteger(value)
     ? String(value)
     : Number(value).toFixed(1);
 };
-
-// =========================================================
-// DANH SÁCH THÁNG NĂM HỌC
-// 09/26 -> 05/27
-// =========================================================
-
-const SCHOOL_MONTHS = [
-  {
-    month: 9,
-    year: 2026,
-    label: "09/26",
-  },
-  {
-    month: 10,
-    year: 2026,
-    label: "10/26",
-  },
-  {
-    month: 11,
-    year: 2026,
-    label: "11/26",
-  },
-  {
-    month: 12,
-    year: 2026,
-    label: "12/26",
-  },
-  {
-    month: 1,
-    year: 2027,
-    label: "01/27",
-  },
-  {
-    month: 2,
-    year: 2027,
-    label: "02/27",
-  },
-  {
-    month: 3,
-    year: 2027,
-    label: "03/27",
-  },
-  {
-    month: 4,
-    year: 2027,
-    label: "04/27",
-  },
-  {
-    month: 5,
-    year: 2027,
-    label: "05/27",
-  },
-];
 
 // =========================================================
 // COMPONENT
@@ -262,7 +231,7 @@ const SCHOOL_MONTHS = [
 
 export default function ViewStudentConductPage() {
   // -------------------------------------------------------
-  // CHẾ ĐỘ
+  // CHẾ ĐỘ XEM
   // -------------------------------------------------------
 
   const [viewMode, setViewMode] =
@@ -284,8 +253,12 @@ export default function ViewStudentConductPage() {
   const [selectedMonthYear, setSelectedMonthYear] =
     useState<number | "">("");
 
-  const [selectedAnnualYear, setSelectedAnnualYear] =
-    useState(CURRENT_ACADEMIC_YEAR);
+  // -------------------------------------------------------
+  // DANH SÁCH TUẦN HỌC
+  // -------------------------------------------------------
+
+  const [studyWeeks, setStudyWeeks] =
+    useState<number[]>([]);
 
   // -------------------------------------------------------
   // DATA
@@ -316,6 +289,9 @@ export default function ViewStudentConductPage() {
   const [loadingStudents, setLoadingStudents] =
     useState(false);
 
+  const [loadingStudyWeeks, setLoadingStudyWeeks] =
+    useState(false);
+
   const [loadingData, setLoadingData] =
     useState(false);
 
@@ -336,11 +312,118 @@ export default function ViewStudentConductPage() {
     });
 
   // =========================================================
+  // LOAD DANH SÁCH TUẦN HỌC
+  // =========================================================
+  //
+  // QUAN TRỌNG:
+  // Không lấy danh sách tuần từ weeklyData.
+  //
+  // Tuần được lấy trực tiếp từ:
+  // /api/academic-weeks/study-weeks
+  //
+  // Vì vậy ComboBox Tuần sẽ có sẵn ngay khi mở trang.
+  // =========================================================
+
+  const loadStudyWeeks =
+    useCallback(async () => {
+      setLoadingStudyWeeks(true);
+
+      try {
+        const res = await api.get(
+          "/api/academic-weeks/study-weeks"
+        );
+
+        let rawData: any[] = [];
+
+        if (Array.isArray(res.data)) {
+          rawData = res.data;
+        } else if (
+          Array.isArray(res.data?.weeks)
+        ) {
+          rawData = res.data.weeks;
+        } else if (
+          Array.isArray(
+            res.data?.studyWeeks
+          )
+        ) {
+          rawData =
+            res.data.studyWeeks;
+        } else if (
+          Array.isArray(
+            res.data?.data
+          )
+        ) {
+          rawData = res.data.data;
+        }
+
+        const numbers =
+          rawData
+            .map(
+              (item: any) => {
+                if (
+                  typeof item ===
+                  "number"
+                ) {
+                  return Number(item);
+                }
+
+                return Number(
+                  item?.weekNumber ??
+                    item?.week ??
+                    item?.number
+                );
+              }
+            )
+            .filter(
+              (
+                value: number
+              ) =>
+                Number.isInteger(
+                  value
+                ) &&
+                value >= 1
+            );
+
+        const uniqueWeeks =
+          Array.from(
+            new Set(numbers)
+          ).sort(
+            (
+              a: number,
+              b: number
+            ) => a - b
+          );
+
+        setStudyWeeks(
+          uniqueWeeks
+        );
+      } catch (error) {
+        console.error(
+          "Lỗi tải danh sách tuần học:",
+          error
+        );
+
+        setStudyWeeks([]);
+
+        setSnackbar({
+          open: true,
+          message:
+            "Không thể tải danh sách tuần học",
+          severity: "error",
+        });
+      } finally {
+        setLoadingStudyWeeks(
+          false
+        );
+      }
+    }, []);
+
+  // =========================================================
   // LOAD LỚP
   // =========================================================
 
-  const loadClasses = useCallback(
-    async () => {
+  const loadClasses =
+    useCallback(async () => {
       setLoadingClasses(true);
 
       try {
@@ -354,13 +437,19 @@ export default function ViewStudentConductPage() {
               (cls: any) =>
                 cls?.className
             )
-            .map((cls: any) => ({
-              _id: String(cls._id),
-              className: String(
-                cls.className
-              ).trim(),
-              teacher: cls.teacher,
-            }))
+            .map(
+              (cls: any) => ({
+                _id: String(
+                  cls._id
+                ),
+                className:
+                  String(
+                    cls.className
+                  ).trim(),
+                teacher:
+                  cls.teacher,
+              })
+            )
             .sort(
               (
                 a: ClassOption,
@@ -391,16 +480,14 @@ export default function ViewStudentConductPage() {
       } finally {
         setLoadingClasses(false);
       }
-    },
-    []
-  );
+    }, []);
 
   // =========================================================
   // LOAD HỌC SINH
   // =========================================================
 
-  const loadStudents = useCallback(
-    async () => {
+  const loadStudents =
+    useCallback(async () => {
       if (!selectedClass) {
         setStudents([]);
         return;
@@ -425,21 +512,27 @@ export default function ViewStudentConductPage() {
               (student: any) =>
                 student?.name
             )
-            .map((student: any) => ({
-              _id: String(
-                student._id
-              ),
-              name: String(
-                student.name
-              ).trim(),
-              className: String(
-                student.className ||
-                  selectedClass
-              ).trim(),
-            }));
+            .map(
+              (student: any) => ({
+                _id: String(
+                  student._id
+                ),
+                name: String(
+                  student.name
+                ).trim(),
+                className:
+                  String(
+                    student.className ||
+                      selectedClass
+                  ).trim(),
+              })
+            );
 
         const map =
-          new Map<string, Student>();
+          new Map<
+            string,
+            Student
+          >();
 
         list.forEach(
           (student) => {
@@ -451,7 +544,10 @@ export default function ViewStudentConductPage() {
                 student.className
               )}`;
 
-            map.set(key, student);
+            map.set(
+              key,
+              student
+            );
           }
         );
 
@@ -491,11 +587,11 @@ export default function ViewStudentConductPage() {
           severity: "error",
         });
       } finally {
-        setLoadingStudents(false);
+        setLoadingStudents(
+          false
+        );
       }
-    },
-    [selectedClass]
-  );
+    }, [selectedClass]);
 
   // =========================================================
   // LOAD BAN ĐẦU
@@ -503,7 +599,11 @@ export default function ViewStudentConductPage() {
 
   useEffect(() => {
     loadClasses();
-  }, [loadClasses]);
+    loadStudyWeeks();
+  }, [
+    loadClasses,
+    loadStudyWeeks,
+  ]);
 
   useEffect(() => {
     loadStudents();
@@ -515,26 +615,33 @@ export default function ViewStudentConductPage() {
 
   const loadWeeklyData =
     useCallback(async () => {
-      if (!selectedClass) {
+      if (
+        !selectedClass
+      ) {
         return;
       }
 
       setLoadingData(true);
 
       try {
-        const params: Record<
-          string,
-          string | number
-        > = {
+        const params: {
+          className: string;
+          academicYear: string;
+          weekNumber?: number;
+        } = {
           className:
             selectedClass,
           academicYear:
             CURRENT_ACADEMIC_YEAR,
         };
 
-        if (selectedWeek !== "") {
+        if (
+          selectedWeek !== ""
+        ) {
           params.weekNumber =
-            Number(selectedWeek);
+            Number(
+              selectedWeek
+            );
         }
 
         const res = await api.get(
@@ -545,7 +652,9 @@ export default function ViewStudentConductPage() {
         );
 
         setWeeklyData(
-          Array.isArray(res.data)
+          Array.isArray(
+            res.data
+          )
             ? res.data
             : []
         );
@@ -577,7 +686,9 @@ export default function ViewStudentConductPage() {
 
   const loadMonthlyData =
     useCallback(async () => {
-      if (!selectedClass) {
+      if (
+        !selectedClass
+      ) {
         return;
       }
 
@@ -588,7 +699,7 @@ export default function ViewStudentConductPage() {
         setSnackbar({
           open: true,
           message:
-            "Vui lòng chọn tháng",
+            "Vui lòng chọn tháng học",
           severity: "warning",
         });
 
@@ -607,7 +718,9 @@ export default function ViewStudentConductPage() {
               academicYear:
                 CURRENT_ACADEMIC_YEAR,
               month:
-                Number(selectedMonth),
+                Number(
+                  selectedMonth
+                ),
               year:
                 Number(
                   selectedMonthYear
@@ -617,7 +730,9 @@ export default function ViewStudentConductPage() {
         );
 
         setMonthlyData(
-          Array.isArray(res.data)
+          Array.isArray(
+            res.data
+          )
             ? res.data
             : []
         );
@@ -650,7 +765,9 @@ export default function ViewStudentConductPage() {
 
   const loadAnnualData =
     useCallback(async () => {
-      if (!selectedClass) {
+      if (
+        !selectedClass
+      ) {
         return;
       }
 
@@ -664,13 +781,15 @@ export default function ViewStudentConductPage() {
               className:
                 selectedClass,
               academicYear:
-                selectedAnnualYear,
+                CURRENT_ACADEMIC_YEAR,
             },
           }
         );
 
         setAnnualData(
-          Array.isArray(res.data)
+          Array.isArray(
+            res.data
+          )
             ? res.data
             : []
         );
@@ -691,39 +810,56 @@ export default function ViewStudentConductPage() {
       } finally {
         setLoadingData(false);
       }
-    }, [
-      selectedClass,
-      selectedAnnualYear,
-    ]);
+    }, [selectedClass]);
 
   // =========================================================
   // XEM
   // =========================================================
 
-  const handleView = async () => {
-    if (!selectedClass) {
-      setSnackbar({
-        open: true,
-        message:
-          "Vui lòng chọn lớp",
-        severity: "warning",
-      });
+  const handleView =
+    async () => {
+      if (
+        !selectedClass
+      ) {
+        setSnackbar({
+          open: true,
+          message:
+            "Vui lòng chọn lớp",
+          severity: "warning",
+        });
 
-      return;
-    }
+        return;
+      }
 
-    if (viewMode === "week") {
-      await loadWeeklyData();
-      return;
-    }
+      if (
+        viewMode === "week"
+      ) {
+        if (
+          selectedWeek === ""
+        ) {
+          setSnackbar({
+            open: true,
+            message:
+              "Vui lòng chọn tuần",
+            severity: "warning",
+          });
 
-    if (viewMode === "month") {
-      await loadMonthlyData();
-      return;
-    }
+          return;
+        }
 
-    await loadAnnualData();
-  };
+        await loadWeeklyData();
+        return;
+      }
+
+      if (
+        viewMode === "month"
+      ) {
+        await loadMonthlyData();
+        return;
+      }
+
+      await loadAnnualData();
+    };
 
   // =========================================================
   // CHUYỂN CHẾ ĐỘ
@@ -737,45 +873,32 @@ export default function ViewStudentConductPage() {
     setWeeklyData([]);
     setMonthlyData([]);
     setAnnualData([]);
+
+    // Không xóa danh sách studyWeeks.
+    // Danh sách tuần đã được tải độc lập.
   };
 
   // =========================================================
-  // DANH SÁCH TUẦN
+  // TỰ ĐỘNG CHỌN THÁNG ĐẦU NĂM HỌC
   // =========================================================
 
-  const weekNumbers = useMemo(() => {
-    const set =
-      new Set<number>();
-
-    weeklyData.forEach(
-      (item) => {
-        const week =
-          Number(
-            item.weekNumber
-          );
-
-        if (
-          Number.isFinite(
-            week
-          )
-        ) {
-          set.add(week);
-        }
-      }
-    );
-
-    return Array.from(
-      set
-    ).sort(
-      (
-        a: number,
-        b: number
-      ) => a - b
-    );
-  }, [weeklyData]);
+  useEffect(() => {
+    if (
+      selectedMonth === "" &&
+      selectedMonthYear === ""
+    ) {
+      setSelectedMonth(9);
+      setSelectedMonthYear(
+        2026
+      );
+    }
+  }, [
+    selectedMonth,
+    selectedMonthYear,
+  ]);
 
   // =========================================================
-  // TÌM ĐIỂM TUẦN
+  // TÌM ĐIỂM TUẦN CỦA HỌC SINH
   // =========================================================
 
   const getWeeklyScore =
@@ -783,7 +906,9 @@ export default function ViewStudentConductPage() {
       student: Student
     ) => {
       return weeklyData.find(
-        (item) =>
+        (
+          item: WeeklyConduct
+        ) =>
           normalizeName(
             item.name
           ) ===
@@ -796,16 +921,12 @@ export default function ViewStudentConductPage() {
             normalizeClass(
               student.className
             ) &&
-          (
-            selectedWeek ===
-              "" ||
+          Number(
+            item.weekNumber
+          ) ===
             Number(
-              item.weekNumber
-            ) ===
-              Number(
-                selectedWeek
-              )
-          )
+              selectedWeek
+            )
       );
     };
 
@@ -818,7 +939,9 @@ export default function ViewStudentConductPage() {
       student: Student
     ) => {
       return monthlyData.find(
-        (item) =>
+        (
+          item: MonthlyConduct
+        ) =>
           normalizeName(
             item.name
           ) ===
@@ -843,7 +966,9 @@ export default function ViewStudentConductPage() {
       student: Student
     ) => {
       return annualData.find(
-        (item) =>
+        (
+          item: AnnualConduct
+        ) =>
           normalizeName(
             item.name
           ) ===
@@ -860,50 +985,113 @@ export default function ViewStudentConductPage() {
     };
 
   // =========================================================
-  // THỐNG KÊ TUẦN
+  // CÁC TUẦN HIỂN THỊ TRONG THÁNG
+  // =========================================================
+  //
+  // Nếu backend monthly đã trả weeklyScores thì dùng nó.
+  // Nếu chưa trả thì lấy weekNumbers.
+  //
+  // Sau này backend có thể hoàn thiện dữ liệu tuần
+  // mà không phải sửa lại giao diện.
   // =========================================================
 
-  const weeklyStatistics =
-    useMemo(() => {
-      let violationStudents = 0;
-      let noViolationStudents = 0;
-      let seriousStudents = 0;
-
-      weeklyData.forEach(
-        (item) => {
-          const total =
-            Number(
-              item.totalConductViolations
-            ) || 0;
-
-          if (total > 0) {
-            violationStudents++;
-          } else {
-            noViolationStudents++;
-          }
-
-          if (
-            item.hasSeriousViolation ||
-            (Number(
-              item.groupViolations?.S1
-            ) || 0) > 0
-          ) {
-            seriousStudents++;
-          }
+  const getMonthlyWeekNumbers =
+    useCallback(
+      (
+        record?: MonthlyConduct
+      ): number[] => {
+        if (!record) {
+          return [];
         }
-      );
 
-      return {
-        violationStudents,
-        noViolationStudents,
-        seriousStudents,
-        totalRecords:
-          weeklyData.length,
-      };
-    }, [weeklyData]);
+        if (
+          record.weeklyScores &&
+          record.weeklyScores.length >
+            0
+        ) {
+          return record.weeklyScores
+            .map(
+              (
+                item: MonthlyWeek
+              ) =>
+                Number(
+                  item.weekNumber
+                )
+            )
+            .filter(
+              (
+                value: number
+              ) =>
+                Number.isInteger(
+                  value
+                )
+            )
+            .sort(
+              (
+                a: number,
+                b: number
+              ) =>
+                a - b
+            );
+        }
+
+        return (
+          record.weekNumbers || []
+        )
+          .map(
+            (value: number) =>
+              Number(value)
+          )
+          .filter(
+            (
+              value: number
+            ) =>
+              Number.isInteger(
+                value
+              )
+          )
+          .sort(
+            (
+              a: number,
+              b: number
+            ) =>
+              a - b
+          );
+      },
+      []
+    );
 
   // =========================================================
-  // CHÚ THÍCH NHÓM VI PHẠM
+  // LẤY DỮ LIỆU CỦA 1 TUẦN TRONG THÁNG
+  // =========================================================
+
+  const getMonthlyWeek =
+    (
+      record: MonthlyConduct | undefined,
+      weekNumber: number
+    ) => {
+      if (
+        !record?.weeklyScores
+      ) {
+        return undefined;
+      }
+
+      return record.weeklyScores.find(
+        (
+          item: MonthlyWeek
+        ) =>
+          Number(
+            item.weekNumber
+          ) === weekNumber
+      );
+    };
+
+  // =========================================================
+  // RENDER CHÚ THÍCH VI PHẠM
+  // =========================================================
+  //
+  // LUÔN HIỂN THỊ.
+  // Vị trí: dưới bộ chọn + trên thông tin lớp.
   // =========================================================
 
   const renderViolationLegend =
@@ -914,67 +1102,77 @@ export default function ViewStudentConductPage() {
           p: 1.5,
           mb: 2,
           backgroundColor:
-            "#f8fbff",
+            "#f7fbff",
+          border: "1px solid #d7e8f7",
+          borderRadius: 2,
         }}
       >
         <Typography
           fontWeight="bold"
-          sx={{ mb: 1 }}
+          sx={{
+            mb: 0.75,
+          }}
         >
           Chú thích nhóm vi phạm
         </Typography>
 
-        <Stack
-          direction={{
-            xs: "column",
-            sm: "row",
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            columnGap: 2,
+            rowGap: 0.5,
           }}
-          spacing={{
-            xs: 0.5,
-            sm: 2,
-          }}
-          flexWrap="wrap"
         >
-          <Typography variant="body2">
+          <Typography
+            variant="body2"
+          >
             <strong>N1:</strong>{" "}
             Vi phạm nhóm N1
           </Typography>
 
-          <Typography variant="body2">
+          <Typography
+            variant="body2"
+          >
             <strong>N2:</strong>{" "}
             Vi phạm nhóm N2
           </Typography>
 
-          <Typography variant="body2">
+          <Typography
+            variant="body2"
+          >
             <strong>N3:</strong>{" "}
             Vi phạm nhóm N3
           </Typography>
 
-          <Typography variant="body2">
+          <Typography
+            variant="body2"
+          >
             <strong>N4:</strong>{" "}
             Vi phạm nhóm N4
           </Typography>
 
-          <Typography variant="body2">
+          <Typography
+            variant="body2"
+          >
             <strong>N5:</strong>{" "}
             Vi phạm nhóm N5
           </Typography>
 
           <Typography
             variant="body2"
-            sx={{
-              fontWeight: "bold",
-            }}
           >
             <strong>S1:</strong>{" "}
             Vi phạm nghiêm trọng
           </Typography>
-        </Stack>
+        </Box>
 
         <Typography
           variant="body2"
           color="text.secondary"
-          sx={{ mt: 1 }}
+          sx={{
+            mt: 0.75,
+          }}
         >
           Mỗi vi phạm N1–N5 bị trừ
           1 điểm. S1 không trừ điểm
@@ -985,7 +1183,101 @@ export default function ViewStudentConductPage() {
     );
 
   // =========================================================
-  // RENDER THỐNG KÊ TUẦN
+  // THỐNG KÊ TUẦN
+  // =========================================================
+
+  const weeklyStatistics =
+    useMemo(() => {
+      const total =
+        students.length;
+
+      let violationStudents = 0;
+      let noViolationStudents = 0;
+      let seriousStudents = 0;
+
+      students.forEach(
+        (
+          student: Student
+        ) => {
+          const record =
+            weeklyData.find(
+              (
+                item: WeeklyConduct
+              ) =>
+                normalizeName(
+                  item.name
+                ) ===
+                  normalizeName(
+                    student.name
+                  ) &&
+                normalizeClass(
+                  item.className
+                ) ===
+                  normalizeClass(
+                    student.className
+                  ) &&
+                Number(
+                  item.weekNumber
+                ) ===
+                  Number(
+                    selectedWeek
+                  )
+            );
+
+          const groups =
+            record?.groupViolations ||
+            {};
+
+          const totalViolation =
+            Number(
+              groups.N1 || 0
+            ) +
+            Number(
+              groups.N2 || 0
+            ) +
+            Number(
+              groups.N3 || 0
+            ) +
+            Number(
+              groups.N4 || 0
+            ) +
+            Number(
+              groups.N5 || 0
+            );
+
+          const hasS1 =
+            Number(
+              groups.S1 || 0
+            ) > 0;
+
+          if (
+            totalViolation > 0
+          ) {
+            violationStudents++;
+          } else {
+            noViolationStudents++;
+          }
+
+          if (hasS1) {
+            seriousStudents++;
+          }
+        }
+      );
+
+      return {
+        total,
+        violationStudents,
+        noViolationStudents,
+        seriousStudents,
+      };
+    }, [
+      students,
+      weeklyData,
+      selectedWeek,
+    ]);
+
+  // =========================================================
+  // THỐNG KÊ TUẦN
   // =========================================================
 
   const renderWeeklyStatistics =
@@ -994,14 +1286,16 @@ export default function ViewStudentConductPage() {
         sx={{
           display: "grid",
           gridTemplateColumns: {
-            xs: "1fr 1fr",
-            sm: "repeat(4, 1fr)",
+            xs: "1fr",
+            sm: "repeat(2, 1fr)",
+            md: "repeat(4, 1fr)",
           },
-          gap: 1.5,
+          gap: 1.25,
           mb: 2,
         }}
       >
         <Paper
+          elevation={1}
           sx={{
             p: 1.5,
             textAlign: "center",
@@ -1015,16 +1309,15 @@ export default function ViewStudentConductPage() {
           </Typography>
 
           <Typography
-            variant="h6"
             fontWeight="bold"
+            fontSize={20}
           >
-            {
-              weeklyStatistics.totalRecords
-            }
+            {weeklyData.length}
           </Typography>
         </Paper>
 
         <Paper
+          elevation={1}
           sx={{
             p: 1.5,
             textAlign: "center",
@@ -1038,8 +1331,8 @@ export default function ViewStudentConductPage() {
           </Typography>
 
           <Typography
-            variant="h6"
             fontWeight="bold"
+            fontSize={20}
             sx={{
               color: "#d32f2f",
             }}
@@ -1051,6 +1344,7 @@ export default function ViewStudentConductPage() {
         </Paper>
 
         <Paper
+          elevation={1}
           sx={{
             p: 1.5,
             textAlign: "center",
@@ -1064,8 +1358,8 @@ export default function ViewStudentConductPage() {
           </Typography>
 
           <Typography
-            variant="h6"
             fontWeight="bold"
+            fontSize={20}
             sx={{
               color: "#2e7d32",
             }}
@@ -1077,6 +1371,7 @@ export default function ViewStudentConductPage() {
         </Paper>
 
         <Paper
+          elevation={1}
           sx={{
             p: 1.5,
             textAlign: "center",
@@ -1090,8 +1385,8 @@ export default function ViewStudentConductPage() {
           </Typography>
 
           <Typography
-            variant="h6"
             fontWeight="bold"
+            fontSize={20}
             sx={{
               color: "#d32f2f",
             }}
@@ -1129,7 +1424,6 @@ export default function ViewStudentConductPage() {
 
       return (
         <>
-          {renderViolationLegend()}
           {renderWeeklyStatistics()}
 
           <TableContainer
@@ -1143,7 +1437,7 @@ export default function ViewStudentConductPage() {
             <Table
               size="small"
               sx={{
-                minWidth: 1050,
+                minWidth: 1000,
               }}
             >
               <TableHead>
@@ -1169,14 +1463,13 @@ export default function ViewStudentConductPage() {
                     "Trạng thái",
                   ].map(
                     (
-                      title: string,
-                      index: number
+                      title: string
                     ) => (
                       <TableCell
                         key={title}
                         align={
-                          index ===
-                          1
+                          title ===
+                            "Họ và tên"
                             ? "left"
                             : "center"
                         }
@@ -1197,8 +1490,8 @@ export default function ViewStudentConductPage() {
               <TableBody>
                 {students.map(
                   (
-                    student,
-                    index
+                    student: Student,
+                    index: number
                   ) => {
                     const record =
                       getWeeklyScore(
@@ -1244,8 +1537,7 @@ export default function ViewStudentConductPage() {
                         </TableCell>
 
                         <TableCell align="center">
-                          {record?.weekNumber ??
-                            selectedWeek ??
+                          {selectedWeek ||
                             "-"}
                         </TableCell>
 
@@ -1274,19 +1566,7 @@ export default function ViewStudentConductPage() {
                             0}
                         </TableCell>
 
-                        <TableCell
-                          align="center"
-                          sx={{
-                            fontWeight:
-                              groups.S1
-                                ? "bold"
-                                : "normal",
-                            color:
-                              groups.S1
-                                ? "#d32f2f"
-                                : "inherit",
-                          }}
-                        >
+                        <TableCell align="center">
                           {groups.S1 ??
                             0}
                         </TableCell>
@@ -1347,85 +1627,6 @@ export default function ViewStudentConductPage() {
     };
 
   // =========================================================
-  // LẤY ĐIỂM TUẦN TRONG BẢN GHI THÁNG
-  // =========================================================
-
-  const getMonthWeekData = (
-    record: MonthlyConduct,
-    weekNumber: number
-  ): MonthlyWeek | undefined => {
-    if (!record.weeks) {
-      return undefined;
-    }
-
-    return record.weeks.find(
-      (
-        week: MonthlyWeek
-      ) =>
-        Number(
-          week.weekNumber ??
-            week.week
-        ) === weekNumber
-    );
-  };
-
-  // =========================================================
-  // LẤY CÁC TUẦN CÓ TRONG THÁNG
-  // =========================================================
-
-  const monthWeekNumbers =
-    useMemo(() => {
-      const set =
-        new Set<number>();
-
-      monthlyData.forEach(
-        (record) => {
-          record.weekNumbers?.forEach(
-            (week) => {
-              const value =
-                Number(week);
-
-              if (
-                Number.isFinite(
-                  value
-                )
-              ) {
-                set.add(value);
-              }
-            }
-          );
-
-          record.weeks?.forEach(
-            (week) => {
-              const value =
-                Number(
-                  week.weekNumber ??
-                    week.week
-                );
-
-              if (
-                Number.isFinite(
-                  value
-                )
-              ) {
-                set.add(value);
-              }
-            }
-          );
-        }
-      );
-
-      return Array.from(
-        set
-      ).sort(
-        (
-          a: number,
-          b: number
-        ) => a - b
-      );
-    }, [monthlyData]);
-
-  // =========================================================
   // RENDER THÁNG
   // =========================================================
 
@@ -1448,9 +1649,6 @@ export default function ViewStudentConductPage() {
         );
       }
 
-      const weekColumns =
-        monthWeekNumbers;
-
       return (
         <TableContainer
           component={Paper}
@@ -1463,10 +1661,7 @@ export default function ViewStudentConductPage() {
           <Table
             size="small"
             sx={{
-              minWidth:
-                900 +
-                weekColumns.length *
-                  150,
+              minWidth: 900,
             }}
           >
             <TableHead>
@@ -1477,7 +1672,6 @@ export default function ViewStudentConductPage() {
                 }}
               >
                 <TableCell
-                  rowSpan={2}
                   align="center"
                   sx={{
                     fontWeight:
@@ -1488,7 +1682,6 @@ export default function ViewStudentConductPage() {
                 </TableCell>
 
                 <TableCell
-                  rowSpan={2}
                   sx={{
                     fontWeight:
                       "bold",
@@ -1498,28 +1691,70 @@ export default function ViewStudentConductPage() {
                   Họ và tên
                 </TableCell>
 
-                {weekColumns.map(
-                  (
-                    week: number
-                  ) => (
-                    <TableCell
-                      key={week}
-                      colSpan={2}
-                      align="center"
-                      sx={{
-                        fontWeight:
-                          "bold",
-                        borderLeft:
-                          "1px solid rgba(0,0,0,0.15)",
-                      }}
-                    >
-                      Tuần {week}
-                    </TableCell>
-                  )
-                )}
+                {/*
+                 * Nếu backend đã trả weeklyScores,
+                 * tạo cột Tuần 1, Tuần 2...
+                 *
+                 * Trường hợp chưa có weeklyScores,
+                 * lấy weekNumbers của bản ghi đầu tiên.
+                 */}
+                {(() => {
+                  const firstRecord =
+                    monthlyData[0];
+
+                  const weeks =
+                    getMonthlyWeekNumbers(
+                      firstRecord
+                    );
+
+                  return weeks.flatMap(
+                    (
+                      week: number
+                    ) => [
+                      <TableCell
+                        key={`week-${week}-score`}
+                        align="center"
+                        sx={{
+                          fontWeight:
+                            "bold",
+                          minWidth: 80,
+                        }}
+                      >
+                        Tuần{" "}
+                        {week}
+                        <br />
+                        <Typography
+                          component="span"
+                          variant="caption"
+                        >
+                          Điểm
+                        </Typography>
+                      </TableCell>,
+
+                      <TableCell
+                        key={`week-${week}-classification`}
+                        align="center"
+                        sx={{
+                          fontWeight:
+                            "bold",
+                          minWidth: 90,
+                        }}
+                      >
+                        Tuần{" "}
+                        {week}
+                        <br />
+                        <Typography
+                          component="span"
+                          variant="caption"
+                        >
+                          Xếp loại
+                        </Typography>
+                      </TableCell>,
+                    ]
+                  );
+                })()}
 
                 <TableCell
-                  rowSpan={2}
                   align="center"
                   sx={{
                     fontWeight:
@@ -1531,7 +1766,6 @@ export default function ViewStudentConductPage() {
                 </TableCell>
 
                 <TableCell
-                  rowSpan={2}
                   align="center"
                   sx={{
                     fontWeight:
@@ -1542,52 +1776,22 @@ export default function ViewStudentConductPage() {
                   Trạng thái
                 </TableCell>
               </TableRow>
-
-              <TableRow
-                sx={{
-                  backgroundColor:
-                    "#dceeff",
-                }}
-              >
-                {weekColumns.flatMap(
-                  (
-                    week: number
-                  ) => [
-                    <TableCell
-                      key={`${week}-score`}
-                      align="center"
-                      sx={{
-                        fontWeight:
-                          "bold",
-                      }}
-                    >
-                      Điểm
-                    </TableCell>,
-
-                    <TableCell
-                      key={`${week}-classification`}
-                      align="center"
-                      sx={{
-                        fontWeight:
-                          "bold",
-                      }}
-                    >
-                      Xếp loại
-                    </TableCell>,
-                  ]
-                )}
-              </TableRow>
             </TableHead>
 
             <TableBody>
               {students.map(
                 (
-                  student,
-                  index
+                  student: Student,
+                  index: number
                 ) => {
                   const record =
                     getMonthlyScore(
                       student
+                    );
+
+                  const weeks =
+                    getMonthlyWeekNumbers(
+                      record
                     );
 
                   return (
@@ -1611,21 +1815,15 @@ export default function ViewStudentConductPage() {
                         {student.name}
                       </TableCell>
 
-                      {weekColumns.flatMap(
+                      {weeks.flatMap(
                         (
                           week: number
                         ) => {
                           const weekData =
-                            record
-                              ? getMonthWeekData(
-                                  record,
-                                  week
-                                )
-                              : undefined;
-
-                          const score =
-                            weekData?.score ??
-                            weekData?.finalScore;
+                            getMonthlyWeek(
+                              record,
+                              week
+                            );
 
                           return [
                             <TableCell
@@ -1633,7 +1831,7 @@ export default function ViewStudentConductPage() {
                               align="center"
                             >
                               {formatScore(
-                                score
+                                weekData?.score
                               )}
                             </TableCell>,
 
@@ -1691,80 +1889,6 @@ export default function ViewStudentConductPage() {
     };
 
   // =========================================================
-  // CÁC THÁNG CÓ DỮ LIỆU NĂM
-  // =========================================================
-
-  const annualMonths =
-    useMemo(() => {
-      const map =
-        new Map<
-          string,
-          {
-            month: number;
-            year: number;
-          }
-        >();
-
-      annualData.forEach(
-        (
-          student: AnnualConduct
-        ) => {
-          student.months?.forEach(
-            (
-              item: AnnualMonth
-            ) => {
-              const key =
-                `${item.year}-${item.month}`;
-
-              if (!map.has(key)) {
-                map.set(key, {
-                  month:
-                    Number(
-                      item.month
-                    ),
-                  year:
-                    Number(
-                      item.year
-                    ),
-                });
-              }
-            }
-          );
-        }
-      );
-
-      return Array.from(
-        map.values()
-      ).sort(
-        (
-          a: {
-            month: number;
-            year: number;
-          },
-          b: {
-            month: number;
-            year: number;
-          }
-        ) => {
-          if (
-            a.year !==
-            b.year
-          ) {
-            return (
-              a.year -
-              b.year
-            );
-          }
-
-          return (
-            a.month -
-            b.month
-          );
-        }
-      );
-    }, [annualData]);
-
-  // =========================================================
   // RENDER NĂM
   // =========================================================
 
@@ -1787,6 +1911,84 @@ export default function ViewStudentConductPage() {
         );
       }
 
+      const annualMonths =
+        (() => {
+          const map =
+            new Map<
+              string,
+              {
+                month: number;
+                year: number;
+              }
+            >();
+
+          annualData.forEach(
+            (
+              student: AnnualConduct
+            ) => {
+              student.months?.forEach(
+                (
+                  item: {
+                    month: number;
+                    year: number;
+                    classification: string;
+                  }
+                ) => {
+                  const key = `${item.year}-${item.month}`;
+
+                  if (
+                    !map.has(key)
+                  ) {
+                    map.set(
+                      key,
+                      {
+                        month:
+                          Number(
+                            item.month
+                          ),
+                        year:
+                          Number(
+                            item.year
+                          ),
+                      }
+                    );
+                  }
+                }
+              );
+            }
+          );
+
+          return Array.from(
+            map.values()
+          ).sort(
+            (
+              a: {
+                month: number;
+                year: number;
+              },
+              b: {
+                month: number;
+                year: number;
+              }
+            ) => {
+              if (
+                a.year !==
+                b.year
+              ) {
+                return (
+                  a.year -
+                  b.year
+                );
+              }
+
+              return (
+                a.month -
+                b.month
+              );
+            }
+          );
+        })();
+
       return (
         <TableContainer
           component={Paper}
@@ -1799,10 +2001,7 @@ export default function ViewStudentConductPage() {
           <Table
             size="small"
             sx={{
-              minWidth:
-                900 +
-                annualMonths.length *
-                  100,
+              minWidth: 1100,
             }}
           >
             <TableHead>
@@ -1887,8 +2086,8 @@ export default function ViewStudentConductPage() {
             <TableBody>
               {students.map(
                 (
-                  student,
-                  index
+                  student: Student,
+                  index: number
                 ) => {
                   const record =
                     getAnnualScore(
@@ -1926,7 +2125,11 @@ export default function ViewStudentConductPage() {
                           const month =
                             record?.months?.find(
                               (
-                                item: AnnualMonth
+                                item: {
+                                  month: number;
+                                  year: number;
+                                  classification: string;
+                                }
                               ) =>
                                 Number(
                                   item.month
@@ -2004,8 +2207,7 @@ export default function ViewStudentConductPage() {
     <Box
       sx={{
         width: "100%",
-        maxWidth:
-          "1800px",
+        maxWidth: "1800px",
         mx: "auto",
         py: 3,
         px: {
@@ -2045,10 +2247,8 @@ export default function ViewStudentConductPage() {
           sx={{
             display: "flex",
             gap: 1,
-            flexWrap:
-              "wrap",
-            justifyContent:
-              "center",
+            flexWrap: "wrap",
+            justifyContent: "center",
           }}
         >
           <Button
@@ -2121,7 +2321,7 @@ export default function ViewStudentConductPage() {
         elevation={1}
         sx={{
           p: 2,
-          mb: 3,
+          mb: 2,
           borderRadius: 2,
         }}
       >
@@ -2130,18 +2330,11 @@ export default function ViewStudentConductPage() {
             display: "grid",
             gridTemplateColumns: {
               xs: "1fr",
-              sm:
-                viewMode ===
-                "month"
-                  ? "1fr 1fr"
-                  : "1fr 1fr",
+              sm: "1fr 1fr",
               md:
                 viewMode ===
                 "week"
-                  ? "1fr 1fr 1fr auto"
-                  : viewMode ===
-                    "month"
-                  ? "1fr 1fr 1fr auto"
+                  ? "1fr 1fr auto"
                   : "1fr 1fr auto",
             },
             gap: 1.5,
@@ -2182,7 +2375,9 @@ export default function ViewStudentConductPage() {
                       cls.className
                     }
                   >
-                    {cls.className}
+                    {
+                      cls.className
+                    }
                   </MenuItem>
                 )
               )
@@ -2215,19 +2410,26 @@ export default function ViewStudentConductPage() {
               fullWidth
             >
               <MenuItem value="">
-                Tất cả tuần
+                Chọn tuần
               </MenuItem>
 
-              {weekNumbers.map(
-                (
-                  week: number
-                ) => (
-                  <MenuItem
-                    key={week}
-                    value={week}
-                  >
-                    Tuần {week}
-                  </MenuItem>
+              {loadingStudyWeeks ? (
+                <MenuItem disabled>
+                  Đang tải tuần...
+                </MenuItem>
+              ) : (
+                studyWeeks.map(
+                  (
+                    week: number
+                  ) => (
+                    <MenuItem
+                      key={week}
+                      value={week}
+                    >
+                      Tuần{" "}
+                      {week}
+                    </MenuItem>
+                  )
                 )
               )}
             </TextField>
@@ -2245,14 +2447,14 @@ export default function ViewStudentConductPage() {
                   "" &&
                 selectedMonthYear !==
                   ""
-                  ? `${selectedMonthYear}-${selectedMonth}`
+                  ? `${selectedMonth}-${selectedMonthYear}`
                   : ""
               }
               onChange={(e) => {
-                const value =
-                  e.target.value;
-
-                if (!value) {
+                if (
+                  !e.target
+                    .value
+                ) {
                   setSelectedMonth(
                     ""
                   );
@@ -2263,10 +2465,10 @@ export default function ViewStudentConductPage() {
                 }
 
                 const [
-                  year,
                   month,
+                  year,
                 ] =
-                  value.split(
+                  e.target.value.split(
                     "-"
                   );
 
@@ -2285,23 +2487,29 @@ export default function ViewStudentConductPage() {
               size="small"
               fullWidth
             >
-              <MenuItem value="">
-                Chọn tháng
-              </MenuItem>
-
               {SCHOOL_MONTHS.map(
                 (
                   item: {
                     month: number;
                     year: number;
-                    label: string;
                   }
                 ) => (
                   <MenuItem
-                    key={`${item.year}-${item.month}`}
-                    value={`${item.year}-${item.month}`}
+                    key={`${item.month}-${item.year}`}
+                    value={`${item.month}-${item.year}`}
                   >
-                    {item.label}
+                    {String(
+                      item.month
+                    ).padStart(
+                      2,
+                      "0"
+                    )}
+                    /
+                    {String(
+                      item.year
+                    ).slice(
+                      -2
+                    )}
                   </MenuItem>
                 )
               )}
@@ -2313,31 +2521,14 @@ export default function ViewStudentConductPage() {
           {viewMode ===
             "year" && (
             <TextField
-              select
               label="Năm học"
               value={
-                selectedAnnualYear
-              }
-              onChange={(e) =>
-                setSelectedAnnualYear(
-                  e.target.value
-                )
+                CURRENT_ACADEMIC_YEAR
               }
               size="small"
               fullWidth
-            >
-              <MenuItem value="2026-2027">
-                2026-2027
-              </MenuItem>
-
-              <MenuItem value="2025-2026">
-                2025-2026
-              </MenuItem>
-
-              <MenuItem value="2024-2025">
-                2024-2025
-              </MenuItem>
-            </TextField>
+              disabled
+            />
           )}
 
           {/* BUTTON */}
@@ -2360,7 +2551,16 @@ export default function ViewStudentConductPage() {
       </Paper>
 
       {/* =====================================================
-          THÔNG TIN
+          CHÚ THÍCH VI PHẠM
+          
+          LUÔN HIỂN THỊ
+          VÀ NẰM NGAY DƯỚI BỘ LỌC
+      ===================================================== */}
+
+      {renderViolationLegend()}
+
+      {/* =====================================================
+          THÔNG TIN LỚP
       ===================================================== */}
 
       {selectedClass && (
