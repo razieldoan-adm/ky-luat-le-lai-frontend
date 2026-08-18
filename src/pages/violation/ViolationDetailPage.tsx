@@ -74,7 +74,7 @@ interface StudentConductScore {
   name: string;
   className: string;
   weekNumber: number;
-
+  academicYear: string;
   score: number;
 
   N1: number;
