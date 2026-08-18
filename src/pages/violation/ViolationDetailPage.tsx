@@ -59,8 +59,11 @@ interface Rule {
   _id: string;
   title: string;
   point: number;
-  groupCode?: string;
+
+  ruleCode: string;
+  groupCode: string;
   groupName?: string;
+  
   content?: string;
   active?: boolean;
 }
@@ -512,26 +515,32 @@ const ViolationDetailPage = () => {
           getViolationDate();
 
         await api.post(
-          "/api/violations",
-          {
-            name,
-            className,
+  "/api/violations",
+  {
+    name,
+    className,
 
-            description:
-              selectedRule.title,
+    description:
+      selectedRule.title,
 
-            handlingMethod: "",
+    ruleCode:
+      selectedRule.ruleCode,
 
-            weekNumber,
+    groupCode:
+      selectedRule.groupCode,
 
-            time:
-              violationDate.toISOString(),
+    handlingMethod: "",
 
-            handled: false,
+    weekNumber,
 
-            handledBy: "",
-          }
-        );
+    time:
+      violationDate.toISOString(),
+
+    handled: false,
+
+    handledBy: "",
+  }
+);
 
         setSelectedRuleId("");
 
