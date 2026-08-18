@@ -524,7 +524,9 @@ const ViolationDetailPage = () => {
             groupCode: selectedRule.groupCode,
           
             handlingMethod: "",
+            academicYear,
             weekNumber,
+          
             time: violationDate.toISOString(),
             handled: false,
             handledBy: "",
