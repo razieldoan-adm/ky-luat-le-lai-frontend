@@ -46,6 +46,10 @@ dayjs.tz.setDefault("Asia/Ho_Chi_Minh");
 interface Violation {
   _id: string;
   description: string;
+
+  ruleCode?: string;
+  groupCode?: string;
+
   time?: string;
   handled: boolean;
   handlingMethod: string;
@@ -120,7 +124,7 @@ const ViolationDetailPage = () => {
   // ==========================================================
 
   const [currentWeek, setCurrentWeek] = useState<number | null>(null);
-
+  const [academicYear, setAcademicYear] = useState<string>("");
   // ==========================================================
   // ĐIỂM HẠNH KIỂM
   // ==========================================================
@@ -261,17 +265,18 @@ const ViolationDetailPage = () => {
           );
         });
 
-      if (currentWeekFound) {
-        const week =
-          Number(
-            currentWeekFound.weekNumber
-          );
+if (currentWeekFound) {
+  const week =
+    Number(currentWeekFound.weekNumber);
 
-        setCurrentWeek(week);
+  const year =
+    String(currentWeekFound.academicYear || "");
 
-        fetchConductScore(week);
-      }
-    } catch (err) {
+  setCurrentWeek(week);
+  setAcademicYear(year);
+
+  fetchConductScore(week, year);
+} catch (err) {
       console.error(
         "Lỗi khi lấy tuần hiện tại:",
         err
@@ -284,9 +289,10 @@ const ViolationDetailPage = () => {
   // ==========================================================
 
   const fetchConductScore = async (
-    weekNumber: number
+    weekNumber: number,
+    year: string
   ) => {
-    if (!name || !className) return;
+    if (!name || !className || !year) return;
 
     try {
       const res =
@@ -296,6 +302,7 @@ const ViolationDetailPage = () => {
             params: {
               name,
               className,
+              academicYear: year,
               weekNumber,
             },
           }
@@ -321,12 +328,16 @@ const ViolationDetailPage = () => {
   // ==========================================================
 
   const refreshConductScore = async () => {
-    if (currentWeek !== null) {
-      await fetchConductScore(
-        currentWeek
-      );
-    }
-  };
+  if (
+    currentWeek !== null &&
+    academicYear
+  ) {
+    await fetchConductScore(
+      currentWeek,
+      academicYear
+    );
+  }
+};
 
   // ==========================================================
   // NGÀY VI PHẠM
