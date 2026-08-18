@@ -514,33 +514,21 @@ const ViolationDetailPage = () => {
         const violationDate =
           getViolationDate();
 
-        await api.post(
-  "/api/violations",
-  {
-    name,
-    className,
-
-    description:
-      selectedRule.title,
-
-    ruleCode:
-      selectedRule.ruleCode,
-
-    groupCode:
-      selectedRule.groupCode,
-
-    handlingMethod: "",
-
-    weekNumber,
-
-    time:
-      violationDate.toISOString(),
-
-    handled: false,
-
-    handledBy: "",
-  }
-);
+          await api.post("/api/violations", {
+            name,
+            className,
+          
+            description: selectedRule.title,
+          
+            ruleCode: selectedRule.ruleCode,
+            groupCode: selectedRule.groupCode,
+          
+            handlingMethod: "",
+            weekNumber,
+            time: violationDate.toISOString(),
+            handled: false,
+            handledBy: "",
+          });
 
         setSelectedRuleId("");
 
