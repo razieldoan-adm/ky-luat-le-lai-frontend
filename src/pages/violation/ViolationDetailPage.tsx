@@ -77,17 +77,27 @@ interface StudentConductScore {
 
   name: string;
   className: string;
-  weekNumber: number;
   academicYear: string;
-  score: number;
+  weekNumber: number;
 
-  N1: number;
-  N2: number;
-  N3: number;
-  N4: number;
-  N5: number;
+  maxScore: number;
 
-  seriousViolation: boolean;
+  groupViolations: {
+    N1: number;
+    N2: number;
+    N3: number;
+    N4: number;
+    N5: number;
+    S1: number;
+  };
+
+  totalConductViolations: number;
+  totalDeduction: number;
+  finalScore: number;
+
+  hasSeriousViolation: boolean;
+
+  status: "DRAFT" | "FINAL";
 }
 
 // ============================================================
@@ -837,20 +847,17 @@ const fetchSettings = async () => {
   // ĐIỂM HIỆN TẠI
   // ==========================================================
 
-  const currentScore =
-    conductScore?.score ??
-    maxConductScore;
+const currentScore =
+  conductScore?.finalScore ??
+  maxConductScore;
 
-  const seriousViolation =
-    conductScore?.seriousViolation ??
-    false;
+ const seriousViolation =
+  conductScore?.hasSeriousViolation ??
+  false;
 
-  const totalConductViolations =
-    (conductScore?.N1 || 0) +
-    (conductScore?.N2 || 0) +
-    (conductScore?.N3 || 0) +
-    (conductScore?.N4 || 0) +
-    (conductScore?.N5 || 0);
+const totalConductViolations =
+  conductScore?.totalConductViolations ??
+  0;
 
   const isBelowThreshold =
     currentScore <
@@ -997,35 +1004,35 @@ const fetchSettings = async () => {
             <Chip
               size="small"
               label={`N1: ${
-                conductScore?.N1 || 0
+                conductScore?.groupViolations?.N1 ?? 0
               } lần`}
             />
 
             <Chip
               size="small"
               label={`N2: ${
-                conductScore?.N2 || 0
+                conductScore?.groupViolations?.N2 ?? 0
               } lần`}
             />
 
             <Chip
               size="small"
               label={`N3: ${
-                conductScore?.N3 || 0
+                conductScore?.groupViolations?.N3 ?? 0
               } lần`}
             />
 
             <Chip
               size="small"
               label={`N4: ${
-                conductScore?.N4 || 0
+                conductScore?.groupViolations?.N4 ?? 0
               } lần`}
             />
 
             <Chip
               size="small"
               label={`N5: ${
-                conductScore?.N5 || 0
+                conductScore?.groupViolations?.N5 ?? 0
               } lần`}
             />
           </Stack>
