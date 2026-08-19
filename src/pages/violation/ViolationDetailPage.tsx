@@ -851,13 +851,29 @@ const currentScore =
   conductScore?.finalScore ??
   maxConductScore;
 
- const seriousViolation =
+const seriousViolation =
   conductScore?.hasSeriousViolation ??
   false;
 
+const groupViolations =
+  conductScore?.groupViolations ?? {
+    N1: 0,
+    N2: 0,
+    N3: 0,
+    N4: 0,
+    N5: 0,
+    S1: 0,
+  };
+
 const totalConductViolations =
   conductScore?.totalConductViolations ??
-  0;
+  (
+    groupViolations.N1 +
+    groupViolations.N2 +
+    groupViolations.N3 +
+    groupViolations.N4 +
+    groupViolations.N5
+  );
 
   const isBelowThreshold =
     currentScore <
@@ -1004,8 +1020,8 @@ const totalConductViolations =
             <Chip
               size="small"
               label={`N1: ${
-                conductScore?.groupViolations?.N1 ?? 0
-              } lần`}
+  groupViolations.N1
+} lần`}
             />
 
             <Chip
@@ -1018,22 +1034,22 @@ const totalConductViolations =
             <Chip
               size="small"
               label={`N3: ${
-                conductScore?.groupViolations?.N3 ?? 0
-              } lần`}
+  groupViolations.N3
+} lần`}
             />
 
             <Chip
               size="small"
               label={`N4: ${
-                conductScore?.groupViolations?.N4 ?? 0
-              } lần`}
+  groupViolations.N4
+} lần`}
             />
 
             <Chip
               size="small"
               label={`N5: ${
-                conductScore?.groupViolations?.N5 ?? 0
-              } lần`}
+  groupViolations.N5
+} lần`}
             />
           </Stack>
 
