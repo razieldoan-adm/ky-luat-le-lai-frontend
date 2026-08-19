@@ -125,6 +125,19 @@ const ViolationDetailPage = () => {
 
   const [currentWeek, setCurrentWeek] = useState<number | null>(null);
   const [academicYear, setAcademicYear] = useState<string>("");
+  const getCurrentAcademicYear = (
+  date: Date = new Date()
+): string => {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+
+  // Tháng 1 -> tháng 7 vẫn thuộc năm học
+  // bắt đầu từ năm trước
+  if (month < 8) {
+    return `${year - 1}-${year}`;
+  }
+  return `${year}-${year + 1}`;
+};
   // ==========================================================
   // ĐIỂM HẠNH KIỂM
   // ==========================================================
@@ -162,37 +175,77 @@ const ViolationDetailPage = () => {
   // LOAD DATA
   // ==========================================================
 
-  useEffect(() => {
-    if (!name || !className) return;
+useEffect(() => {
+  if (!name || !className) return;
 
-    fetchViolations();
-    fetchRules();
-    fetchSettings();
-    fetchCurrentWeek();
-  }, [name, className]);
+  const loadPage = async () => {
+    await fetchViolations();
+    await fetchRules();
+    await fetchSettings();
+    await fetchCurrentWeek();
+  };
+
+  loadPage();
+}, [name, className]);
 
   // ==========================================================
   // LẤY SETTINGS
   // ==========================================================
 
-  const fetchSettings = async () => {
-    try {
-      const res = await api.get("/api/settings");
+const fetchSettings = async () => {
+  try {
+    const res = await api.get(
+      "/api/settings"
+    );
 
-      if (
-        res.data?.maxConductScore !== undefined
-      ) {
-        setMaxConductScore(
-          Number(res.data.maxConductScore)
-        );
-      }
-    } catch (err) {
-      console.error(
-        "Lỗi khi lấy settings:",
-        err
+    console.log(
+      "SETTINGS:",
+      res.data
+    );
+
+    if (
+      res.data?.maxConductScore !==
+      undefined
+    ) {
+      setMaxConductScore(
+        Number(
+          res.data.maxConductScore
+        )
       );
     }
-  };
+
+    // ==========================================
+    // LẤY NĂM HỌC
+    // ==========================================
+
+    const settingAcademicYear =
+      res.data?.academicYear;
+
+    if (
+      settingAcademicYear
+    ) {
+      setAcademicYear(
+        String(settingAcademicYear)
+      );
+    } else {
+      setAcademicYear(
+        getCurrentAcademicYear()
+      );
+    }
+
+  } catch (err) {
+    console.error(
+      "Lỗi khi lấy settings:",
+      err
+    );
+
+    // Nếu không lấy được settings
+    // vẫn xác định năm học từ ngày hiện tại
+    setAcademicYear(
+      getCurrentAcademicYear()
+    );
+  }
+};
 
   // ==========================================================
   // LẤY VI PHẠM
@@ -242,86 +295,124 @@ const ViolationDetailPage = () => {
   // ==========================================================
 
   const fetchCurrentWeek = async () => {
-    try {
-      const res = await api.get(
-        "/api/academic-weeks/study-weeks"
+  try {
+    const res = await api.get(
+      "/api/academic-weeks/study-weeks"
+    );
+
+    const weeks = res.data || [];
+
+    const now = new Date();
+
+    const currentWeekFound =
+      weeks.find((w: any) => {
+        const start =
+          new Date(w.startDate);
+
+        const end =
+          new Date(w.endDate);
+
+        return (
+          now >= start &&
+          now <= end
+        );
+      });
+
+    if (!currentWeekFound) {
+      console.warn(
+        "Không tìm thấy tuần học hiện tại."
       );
 
-      const weeks = res.data || [];
-
-      const now = new Date();
-
-      const currentWeekFound =
-        weeks.find((w: any) => {
-          const start =
-            new Date(w.startDate);
-
-          const end =
-            new Date(w.endDate);
-
-          return (
-            now >= start &&
-            now <= end
-          );
-        });
-
-if (currentWeekFound) {
-  const week =
-    Number(currentWeekFound.weekNumber);
-
-  const year =
-    String(currentWeekFound.academicYear || "");
-
-  setCurrentWeek(week);
-  setAcademicYear(year);
-
-  fetchConductScore(week, year);
-} catch (err) {
-      console.error(
-        "Lỗi khi lấy tuần hiện tại:",
-        err
-      );
+      return;
     }
-  };
+
+    const week =
+      Number(
+        currentWeekFound.weekNumber
+      );
+
+    // AcademicWeek hiện tại không có academicYear
+    // nên dùng academicYear đã lấy từ settings
+    // hoặc tự suy ra từ ngày hiện tại.
+
+    const year =
+      academicYear ||
+      getCurrentAcademicYear();
+
+    setCurrentWeek(week);
+    setAcademicYear(year);
+
+    await fetchConductScore(
+      week,
+      year
+    );
+
+  } catch (err) {
+    console.error(
+      "Lỗi khi lấy tuần hiện tại:",
+      err
+    );
+  }
+};
 
   // ==========================================================
   // LẤY ĐIỂM HẠNH KIỂM
   // ==========================================================
 
   const fetchConductScore = async (
-    weekNumber: number,
-    year: string
-  ) => {
-    if (!name || !className || !year) return;
-
-    try {
-      const res =
-        await api.get(
-          "/api/student-conduct-scores/student",
-          {
-            params: {
-              name,
-              className,
-              academicYear: year,
-              weekNumber,
-            },
-          }
-        );
-
-      if (res.data) {
-        setConductScore(res.data);
-      } else {
-        setConductScore(null);
+  weekNumber: number,
+  year: string
+) => {
+  if (
+    !name ||
+    !className ||
+    !year
+  ) {
+    console.warn(
+      "Thiếu dữ liệu lấy điểm HK:",
+      {
+        name,
+        className,
+        year,
+        weekNumber,
       }
-    } catch (err) {
-      console.error(
-        "Lỗi khi lấy điểm hạnh kiểm:",
-        err
+    );
+
+    return;
+  }
+
+  try {
+    const res =
+      await api.get(
+        "/api/student-conduct-scores/student",
+        {
+          params: {
+            name,
+            className,
+            academicYear: year,
+            weekNumber,
+          },
+        }
       );
 
-      setConductScore(null);
-    }
-  };
+    console.log(
+      "CONDUCT SCORE:",
+      res.data
+    );
+
+    setConductScore(
+      res.data || null
+    );
+
+  } catch (err) {
+    console.error(
+      "Lỗi khi lấy điểm hạnh kiểm:",
+      err
+    );
+
+    setConductScore(null);
+  }
+};
 
   // ==========================================================
   // SAU KHI GHI / XÓA / SỬA → LOAD LẠI HK
@@ -440,147 +531,177 @@ if (currentWeekFound) {
   // ➕ GHI NHẬN LỖI
   // ==========================================================
 
-  const handleAddViolation =
-    async () => {
-      const selectedRule =
-        rules.find(
-          (r) =>
-            r._id ===
-            selectedRuleId
-        );
+  const handleAddViolation = async () => {
+  const selectedRule =
+    rules.find(
+      (r) =>
+        r._id === selectedRuleId
+    );
 
-      if (
-        !selectedRule ||
-        !name ||
-        !className
-      ) {
-        setSnackbarMessage(
-          "Vui lòng chọn lỗi vi phạm và đảm bảo có tên/lớp."
-        );
+  if (
+    !selectedRule ||
+    !name ||
+    !className
+  ) {
+    setSnackbarMessage(
+      "Vui lòng chọn lỗi vi phạm và đảm bảo có tên/lớp."
+    );
 
-        setSnackbarSeverity(
-          "error"
-        );
+    setSnackbarSeverity("error");
+    setSnackbarOpen(true);
 
-        setSnackbarOpen(true);
+    return;
+  }
 
-        return;
-      }
+  try {
+    const weeksRes =
+      await api.get(
+        "/api/academic-weeks/study-weeks"
+      );
 
-      try {
-        const weeksRes =
-          await api.get(
-            "/api/academic-weeks/study-weeks"
+    const weeks =
+      weeksRes.data || [];
+
+    const now = new Date();
+
+    const currentWeekFound =
+      weeks.find(
+        (w: any) => {
+          const start =
+            new Date(
+              w.startDate
+            );
+
+          const end =
+            new Date(
+              w.endDate
+            );
+
+          return (
+            now >= start &&
+            now <= end
           );
-
-        const weeks =
-          weeksRes.data || [];
-
-        const now =
-          new Date();
-
-        const currentWeekFound =
-          weeks.find(
-            (w: any) => {
-              const start =
-                new Date(
-                  w.startDate
-                );
-
-              const end =
-                new Date(
-                  w.endDate
-                );
-
-              return (
-                now >= start &&
-                now <= end
-              );
-            }
-          );
-
-        const weekNumber =
-          currentWeekFound
-            ? Number(
-                currentWeekFound.weekNumber
-              )
-            : null;
-
-        if (
-          weekNumber === null
-        ) {
-          setSnackbarMessage(
-            "Không xác định được tuần học hiện tại."
-          );
-
-          setSnackbarSeverity(
-            "error"
-          );
-
-          setSnackbarOpen(true);
-
-          return;
         }
+      );
 
-        const violationDate =
-          getViolationDate();
+    if (!currentWeekFound) {
+      setSnackbarMessage(
+        "Không xác định được tuần học hiện tại."
+      );
 
-          await api.post("/api/violations", {
-            name,
-            className,
-          
-            description: selectedRule.title,
-          
-            ruleCode: selectedRule.ruleCode,
-            groupCode: selectedRule.groupCode,
-          
-            handlingMethod: "",
-            academicYear,
-            weekNumber,
-          
-            time: violationDate.toISOString(),
-            handled: false,
-            handledBy: "",
-          });
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
 
-        setSelectedRuleId("");
+      return;
+    }
 
-        setDayInput("");
+    const weekNumber =
+      Number(
+        currentWeekFound.weekNumber
+      );
 
-        setMonthInput("");
+    const year =
+      academicYear ||
+      getCurrentAcademicYear();
 
-        setSnackbarMessage(
-          `Đã ghi nhận lỗi: ${selectedRule.title}`
-        );
+    if (!year) {
+      setSnackbarMessage(
+        "Không xác định được năm học."
+      );
 
-        setSnackbarSeverity(
-          "success"
-        );
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
 
-        setSnackbarOpen(true);
+      return;
+    }
 
-        await fetchViolations();
+    const violationDate =
+      getViolationDate();
 
-        await fetchConductScore(
-          weekNumber
-        );
-      } catch (err) {
-        console.error(
-          "Lỗi khi ghi nhận vi phạm:",
-          err
-        );
-
-        setSnackbarMessage(
-          "Lỗi khi ghi nhận vi phạm."
-        );
-
-        setSnackbarSeverity(
-          "error"
-        );
-
-        setSnackbarOpen(true);
+    console.log(
+      "POST VIOLATION:",
+      {
+        name,
+        className,
+        description:
+          selectedRule.title,
+        ruleCode:
+          selectedRule.ruleCode,
+        groupCode:
+          selectedRule.groupCode,
+        academicYear: year,
+        weekNumber,
       }
-    };
+    );
+
+    await api.post(
+      "/api/violations",
+      {
+        name,
+        className,
+
+        description:
+          selectedRule.title,
+
+        ruleCode:
+          selectedRule.ruleCode,
+
+        groupCode:
+          selectedRule.groupCode,
+
+        handlingMethod: "",
+
+        academicYear: year,
+
+        weekNumber,
+
+        time:
+          violationDate.toISOString(),
+
+        handled: false,
+
+        handledBy: "",
+      }
+    );
+
+    setSelectedRuleId("");
+    setDayInput("");
+    setMonthInput("");
+
+    setSnackbarMessage(
+      `Đã ghi nhận lỗi: ${selectedRule.title}`
+    );
+
+    setSnackbarSeverity(
+      "success"
+    );
+
+    setSnackbarOpen(true);
+
+    await fetchViolations();
+
+    await fetchConductScore(
+      weekNumber,
+      year
+    );
+
+  } catch (err) {
+    console.error(
+      "Lỗi khi ghi nhận vi phạm:",
+      err
+    );
+
+    setSnackbarMessage(
+      "Lỗi khi ghi nhận vi phạm."
+    );
+
+    setSnackbarSeverity(
+      "error"
+    );
+
+    setSnackbarOpen(true);
+  }
+};
 
   // ==========================================================
   // ❌ XÓA VI PHẠM
