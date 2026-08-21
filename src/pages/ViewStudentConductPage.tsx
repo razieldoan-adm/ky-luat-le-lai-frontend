@@ -733,20 +733,36 @@ export default function ViewStudentConductPage() {
         const result =
           Array.from(
             unique.values()
-          ).sort(
-            (
-              a: Student,
-              b: Student
-            ) =>
-              a.name.localeCompare(
-                b.name,
-                "vi",
-                {
-                  sensitivity:
-                    "base",
-                }
-              )
-          );
+          ).sort((a: Student, b: Student) => {
+  const getLastName = (name: string) => {
+    const parts = name.trim().split(/\s+/);
+    return parts[parts.length - 1] || "";
+  };
+
+  const nameA = getLastName(a.name);
+  const nameB = getLastName(b.name);
+
+  const compareName = nameA.localeCompare(
+    nameB,
+    "vi",
+    {
+      sensitivity: "base",
+    }
+  );
+
+  // Nếu trùng tên → xét toàn bộ họ tên
+  if (compareName !== 0) {
+    return compareName;
+  }
+
+  return a.name.localeCompare(
+    b.name,
+    "vi",
+    {
+      sensitivity: "base",
+    }
+  );
+})
 
         setStudents(result);
       } catch (error) {
@@ -1804,12 +1820,17 @@ export default function ViewStudentConductPage() {
 
                   return (
                     <TableRow
-                      key={
-                        student._id ||
-                        `${student.name}-${index}`
-                      }
-                      hover
-                    >
+  key={
+    student._id ||
+    `${student.name}-${index}`
+  }
+  hover
+  sx={{
+    ...getConductRowStyle(
+      classification
+    ),
+  }}
+>
                       <TableCell align="center">
                         {index + 1}
                       </TableCell>
@@ -2473,7 +2494,40 @@ export default function ViewStudentConductPage() {
   // =========================================================
   // RENDER
   // =========================================================
+const getConductRowStyle = (
+  classification: string
+) => {
+  const value = classification
+    .trim()
+    .toLowerCase();
 
+  if (value === "khá") {
+    return {
+      backgroundColor: "#fff3cd",
+      fontWeight: "bold",
+    };
+  }
+
+  if (value === "đạt") {
+    return {
+      backgroundColor: "#ffe0b2",
+      fontWeight: "bold",
+    };
+  }
+
+  if (
+    value === "chưa đạt" ||
+    value === "chưađạt"
+  ) {
+    return {
+      backgroundColor: "#ffcdd2",
+      fontWeight: "bold",
+    };
+  }
+
+  // Tốt → giữ nguyên
+  return {};
+};
   return (
     <Box
       sx={{
