@@ -191,9 +191,9 @@ useEffect(() => {
 const loadPage = async () => {
   await fetchViolations();
   await fetchRules();
-
+  
   await fetchSettings();
-
+  await fetchCurrentWeek();
   // Chờ state academicYear cập nhật rồi
   // useEffect bên dưới sẽ lấy ConductScore.
 };
