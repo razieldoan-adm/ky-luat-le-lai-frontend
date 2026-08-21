@@ -188,16 +188,43 @@ const ViolationDetailPage = () => {
 useEffect(() => {
   if (!name || !className) return;
 
-  const loadPage = async () => {
-    await fetchViolations();
-    await fetchRules();
-    await fetchSettings();
-    await fetchCurrentWeek();
-  };
+const loadPage = async () => {
+  await fetchViolations();
+  await fetchRules();
+
+  await fetchSettings();
+
+  // Chờ state academicYear cập nhật rồi
+  // useEffect bên dưới sẽ lấy ConductScore.
+};
 
   loadPage();
 }, [name, className]);
+// ==========================================================
+  // mời bổ sung
+  // ==========================================================
 
+  useEffect(() => {
+  if (
+    !name ||
+    !className ||
+    !academicYear ||
+    currentWeek === null
+  ) {
+    return;
+  }
+
+  fetchConductScore(
+    currentWeek,
+    academicYear
+  );
+}, [
+  name,
+  className,
+  academicYear,
+  currentWeek,
+]);
+  
   // ==========================================================
   // LẤY SETTINGS
   // ==========================================================
@@ -304,7 +331,7 @@ const fetchSettings = async () => {
   // LẤY TUẦN HIỆN TẠI
   // ==========================================================
 
-  const fetchCurrentWeek = async () => {
+ const fetchCurrentWeek = async () => {
   try {
     const res = await api.get(
       "/api/academic-weeks/study-weeks"
@@ -314,49 +341,37 @@ const fetchSettings = async () => {
 
     const now = new Date();
 
-    const currentWeekFound =
-      weeks.find((w: any) => {
-        const start =
-          new Date(w.startDate);
+    const currentWeekFound = weeks.find((w: any) => {
+      const start = new Date(w.startDate);
+      const end = new Date(w.endDate);
 
-        const end =
-          new Date(w.endDate);
-
-        return (
-          now >= start &&
-          now <= end
-        );
-      });
+      return now >= start && now <= end;
+    });
 
     if (!currentWeekFound) {
       console.warn(
         "Không tìm thấy tuần học hiện tại."
       );
-
       return;
     }
 
-    const week =
-      Number(
-        currentWeekFound.weekNumber
-      );
-
-    // AcademicWeek hiện tại không có academicYear
-    // nên dùng academicYear đã lấy từ settings
-    // hoặc tự suy ra từ ngày hiện tại.
+    const week = Number(
+      currentWeekFound.weekNumber
+    );
 
     const year =
       academicYear ||
       getCurrentAcademicYear();
 
     setCurrentWeek(week);
-    setAcademicYear(year);
 
+    // Quan trọng:
+    // dùng chính year để gọi API,
+    // không chờ state academicYear cập nhật.
     await fetchConductScore(
       week,
       year
     );
-
   } catch (err) {
     console.error(
       "Lỗi khi lấy tuần hiện tại:",
