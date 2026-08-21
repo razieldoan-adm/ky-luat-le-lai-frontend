@@ -3056,22 +3056,35 @@ export default function ViewStudentConductPage() {
       =================================================== */}
 
       {selectedClass &&
-        !loadingStudents &&
-        students.length ===
-          0 && (
-          <Paper
-            sx={{
-              p: 5,
-              textAlign:
-                "center",
-            }}
-          >
-            <Typography color="text.secondary">
-              Không có học sinh
-              trong lớp này.
-            </Typography>
-          </Paper>
-        )}
+  !loadingStudents &&
+  !hasLoadedData && (
+    <Paper
+      sx={{
+        p: 5,
+        textAlign: "center",
+      }}
+    >
+      <Typography color="text.secondary">
+        Bấm vào nút "XEM DỮ LIỆU" để xem.
+      </Typography>
+    </Paper>
+  )}
+
+{selectedClass &&
+  !loadingStudents &&
+  hasLoadedData &&
+  students.length === 0 && (
+    <Paper
+      sx={{
+        p: 5,
+        textAlign: "center",
+      }}
+    >
+      <Typography color="text.secondary">
+        Không có học sinh trong lớp này.
+      </Typography>
+    </Paper>
+  )}
 
       {/* ===================================================
           SNACKBAR
