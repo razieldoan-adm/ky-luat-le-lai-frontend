@@ -2844,6 +2844,10 @@ export default function ViewStudentConductPage() {
                 onChange={(e) =>
                   setSelectedMonthKey(
                     e.target.value
+                    setSelectedClass(newClass);
+                  setHasLoadedData(false);
+                  setStudents([]);
+                  setWeeklyData([]);
                   )
                 }
                 size="small"
