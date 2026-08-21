@@ -2105,7 +2105,7 @@ export default function ViewStudentConductPage() {
             </TableHead>
 
             <TableBody>
-              {students.map(
+              {hasLoadedData && students.map(
                 (
                   student: Student,
                   index: number
