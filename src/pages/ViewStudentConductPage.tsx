@@ -2843,7 +2843,7 @@ export default function ViewStudentConductPage() {
                 }
                 onChange={(e) =>
                   setSelectedMonthKey(
-                    e.target.value
+                    e.target.value;
                     setSelectedClass(newClass);
                   setHasLoadedData(false);
                   setStudents([]);
