@@ -2626,10 +2626,16 @@ export default function ViewStudentConductPage() {
                 value={
                   selectedClass
                 }
-                onChange={(e) =>
-                  setSelectedClass(
-                    e.target.value
-                  )
+                onChange={(e) =>{
+                    const newClass = e.target.value;
+                  
+                    setSelectedClass(newClass);
+                  
+                    // Reset dữ liệu đang hiển thị
+                    setHasLoadedData(false);
+                    setStudents([]);
+                    setWeeklyData([]);
+                  }
                 }
                 size="small"
                 fullWidth
