@@ -777,9 +777,7 @@ export default function ViewStudentConductPage() {
     loadClasses,
   ]);
 
-  useEffect(() => {
-    loadStudents();
-  }, [loadStudents]);
+
 
   // =========================================================
   // LOAD WEEK DATA
