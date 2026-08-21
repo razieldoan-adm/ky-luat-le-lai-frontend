@@ -390,6 +390,9 @@ export default function ViewStudentConductPage() {
   const [loadingData, setLoadingData] =
     useState(false);
 
+  const [hasLoadedData, setHasLoadedData] =
+    useState(false);
+
   // -------------------------------------------------------
   // SNACKBAR
   // -------------------------------------------------------
@@ -770,6 +773,7 @@ export default function ViewStudentConductPage() {
   // =========================================================
 
   useEffect(() => {
+    setHasLoadedData(false);
     loadStudyWeeks();
     loadClasses();
   }, [
@@ -1129,6 +1133,7 @@ export default function ViewStudentConductPage() {
       if (viewMode === "week") {
         await loadStudents();
         await loadWeeklyData();
+        setHasLoadedData(true);
         return;
       }
 
