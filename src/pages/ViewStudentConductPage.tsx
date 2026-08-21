@@ -1178,40 +1178,55 @@ export default function ViewStudentConductPage() {
         return;
       }
 
-      if (viewMode === "week") {
-        await loadStudents();
-        await loadWeeklyData();
-        setHasLoadedData(true);
-        return;
-      }
+if (viewMode === "week") {
+  await loadStudents();
+  await loadWeeklyData();
 
-      if (viewMode === "month") {
-        await loadMonthlyData();
-        return;
-      }
+  setHasLoadedData(true);
+  return;
+}
 
-      await loadAnnualData();
+if (viewMode === "month") {
+  await loadStudents();
+  await loadMonthlyData();
+
+  setHasLoadedData(true);
+  return;
+}
+
+await loadStudents();
+await loadAnnualData();
+
+setHasLoadedData(true);
     };
 
   // =========================================================
   // CHANGE VIEW MODE
   // =========================================================
 
-  const changeViewMode =
-    (mode: ViewMode) => {
-      setViewMode(mode);
+const changeViewMode =
+  (mode: ViewMode) => {
+    // Đổi chế độ xem -> luôn trở về trạng thái trống
+    setViewMode(mode);
 
-      setWeeklyData([]);
-      setMonthlyData([]);
-      setMonthlyWeeklyData([]);
-      setAnnualData([]);
+    // XÓA TOÀN BỘ DỮ LIỆU ĐANG HIỂN THỊ
+    setHasLoadedData(false);
 
-      if (mode === "month") {
-        setSelectedMonthKey(
-          `${SCHOOL_MONTHS[0].month}-${SCHOOL_MONTHS[0].year}`
-        );
-      }
-    };
+    setStudents([]);
+
+    setWeeklyData([]);
+    setMonthlyData([]);
+    setMonthlyWeeklyData([]);
+    setAnnualData([]);
+
+    // Không tự động tải lại dữ liệu
+    // Phải bấm "XEM DỮ LIỆU"
+    if (mode === "month") {
+      setSelectedMonthKey(
+        `${SCHOOL_MONTHS[0].month}-${SCHOOL_MONTHS[0].year}`
+      );
+    }
+  };
 
   // =========================================================
   // WEEK DATA FOR MONTH
@@ -2801,11 +2816,21 @@ export default function ViewStudentConductPage() {
                 value={
                   selectedClass
                 }
-                onChange={(e) =>
-                  setSelectedClass(
-                    e.target.value
-                  )
-                }
+                onChange={(e) => {
+  const newClass = e.target.value;
+
+  setSelectedClass(newClass);
+
+  // Đổi lớp -> xóa dữ liệu cũ
+  setHasLoadedData(false);
+
+  setStudents([]);
+
+  setWeeklyData([]);
+  setMonthlyData([]);
+  setMonthlyWeeklyData([]);
+  setAnnualData([]);
+}}
                 size="small"
                 fullWidth
               >
@@ -2841,15 +2866,21 @@ export default function ViewStudentConductPage() {
                 value={
                   selectedMonthKey
                 }
-                onChange={(e) =>
-                  setSelectedMonthKey(
-                    e.target.value;
-                    setSelectedClass(newClass);
-                  setHasLoadedData(false);
-                  setStudents([]);
-                  setWeeklyData([]);
-                  )
-                }
+onChange={(e) => {
+  const newMonth = e.target.value;
+
+  setSelectedMonthKey(newMonth);
+
+  // Đổi tháng -> xóa dữ liệu cũ
+  setHasLoadedData(false);
+
+  setStudents([]);
+
+  setWeeklyData([]);
+  setMonthlyData([]);
+  setMonthlyWeeklyData([]);
+  setAnnualData([]);
+}}
                 size="small"
                 fullWidth
               >
