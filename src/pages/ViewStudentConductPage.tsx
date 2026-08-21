@@ -1127,6 +1127,7 @@ export default function ViewStudentConductPage() {
       }
 
       if (viewMode === "week") {
+        await loadStudents();
         await loadWeeklyData();
         return;
       }
