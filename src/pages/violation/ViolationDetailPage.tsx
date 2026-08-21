@@ -194,10 +194,10 @@ const loadPage = async () => {
   
   await fetchSettings();
   await fetchCurrentWeek();
+  
   // Chờ state academicYear cập nhật rồi
   // useEffect bên dưới sẽ lấy ConductScore.
 };
-
   loadPage();
 }, [name, className]);
 // ==========================================================
@@ -357,21 +357,8 @@ const fetchSettings = async () => {
 
     const week = Number(
       currentWeekFound.weekNumber
-    );
-
-    const year =
-      academicYear ||
-      getCurrentAcademicYear();
-
-    setCurrentWeek(week);
-
-    // Quan trọng:
-    // dùng chính year để gọi API,
-    // không chờ state academicYear cập nhật.
-    await fetchConductScore(
-      week,
-      year
-    );
+    );    
+    setCurrentWeek(week);    
   } catch (err) {
     console.error(
       "Lỗi khi lấy tuần hiện tại:",
@@ -407,6 +394,12 @@ const fetchSettings = async () => {
   }
 
   try {
+    console.log("📌 THAM SỐ LẤY HẠNH KIỂM:", {
+  name,
+  className,
+  academicYear: year,
+  weekNumber,
+  });
     const res =
       await api.get(
         "/api/student-conduct-scores/student",
