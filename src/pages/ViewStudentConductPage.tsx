@@ -3098,27 +3098,30 @@ export default function ViewStudentConductPage() {
       =================================================== */}
 
       {selectedClass &&
+        hasLoadedData &&
         students.length > 0 &&
         viewMode === "week" &&
         selectedWeek !== "" &&
         renderWeekTable()}
 
       {selectedClass &&
+        hasLoadedData &&
         students.length > 0 &&
         viewMode === "month" &&
         selectedMonthInfo &&
         renderMonthTable()}
 
       {selectedClass &&
+        hasLoadedData &&
         students.length > 0 &&
         viewMode === "year" &&
         renderYearTable()}
 
-      {/* ===================================================
-          NO STUDENTS
-      =================================================== */}
+{/* ===================================================
+    NO STUDENTS / CHƯA XEM DỮ LIỆU
+=================================================== */}
 
-      {selectedClass &&
+{selectedClass &&
   !loadingStudents &&
   !hasLoadedData && (
     <Paper
