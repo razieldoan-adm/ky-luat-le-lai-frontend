@@ -182,6 +182,38 @@ const classificationColor = (
   }
 };
 
+const getConductRowStyle = (
+  classification: string
+) => {
+  const value = classification
+    .trim()
+    .toLowerCase();
+
+  if (value === "khá") {
+    return {
+      backgroundColor: "#fff3cd",
+    };
+  }
+
+  if (value === "đạt") {
+    return {
+      backgroundColor: "#ffe0b2",
+    };
+  }
+
+  if (
+    value === "chưa đạt" ||
+    value === "chưa đạt"
+  ) {
+    return {
+      backgroundColor: "#ffcdd2",
+    };
+  }
+
+  // Tốt → giữ nguyên
+  return {};
+};
+
 const renderClassification = (
   value?: string
 ) => {
@@ -2494,40 +2526,7 @@ export default function ViewStudentConductPage() {
   // =========================================================
   // RENDER
   // =========================================================
-const getConductRowStyle = (
-  classification: string
-) => {
-  const value = classification
-    .trim()
-    .toLowerCase();
 
-  if (value === "khá") {
-    return {
-      backgroundColor: "#fff3cd",
-      fontWeight: "bold",
-    };
-  }
-
-  if (value === "đạt") {
-    return {
-      backgroundColor: "#ffe0b2",
-      fontWeight: "bold",
-    };
-  }
-
-  if (
-    value === "chưa đạt" ||
-    value === "chưađạt"
-  ) {
-    return {
-      backgroundColor: "#ffcdd2",
-      fontWeight: "bold",
-    };
-  }
-
-  // Tốt → giữ nguyên
-  return {};
-};
   return (
     <Box
       sx={{
