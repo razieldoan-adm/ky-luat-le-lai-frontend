@@ -2889,23 +2889,6 @@ const changeViewMode =
     DUYỆT TUẦN
   </Button>
 
-  <Button
-    variant="contained"
-    color="inherit"
-    onClick={handleExportExcel}
-    disabled={
-      selectedWeek === "" ||
-      !hasLoadedData ||
-      loadingData
-    }
-    sx={{
-      height: 40,
-      minWidth: 145,
-      fontWeight: "bold",
-    }}
-  >
-    XUẤT EXCEL
-  </Button>
 </Box>
             </>
           )}
