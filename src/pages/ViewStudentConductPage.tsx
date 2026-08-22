@@ -888,7 +888,73 @@ export default function ViewStudentConductPage() {
       selectedClass,
       selectedWeek,
     ]);
+  // =========================================================
+// FINALIZE TOÀN TRƯỜNG THEO TUẦN
+// =========================================================
 
+const handleFinalizeWeek = async () => {
+  if (selectedWeek === "") {
+    setSnackbar({
+      open: true,
+      message: "Vui lòng chọn tuần trước khi duyệt",
+      severity: "warning",
+    });
+
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Bạn có chắc muốn duyệt hạnh kiểm TOÀN TRƯỜNG của tuần ${selectedWeek} không?`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setLoadingData(true);
+
+    const res = await api.post(
+      "/api/student-conduct-scores/finalize-class-week",
+      {
+        academicYear: CURRENT_ACADEMIC_YEAR,
+        weekNumber: Number(selectedWeek),
+      }
+    );
+
+    console.log(
+      "✅ KẾT QUẢ DUYỆT TOÀN TRƯỜNG:",
+      res.data
+    );
+
+    setSnackbar({
+      open: true,
+      message:
+        res.data?.message ||
+        `Đã duyệt hạnh kiểm toàn trường tuần ${selectedWeek}`,
+      severity: "success",
+    });
+
+    // Tải lại dữ liệu lớp đang xem
+    await loadWeeklyData();
+
+  } catch (error: any) {
+    console.error(
+      "❌ Lỗi duyệt hạnh kiểm toàn trường:",
+      error
+    );
+
+    setSnackbar({
+      open: true,
+      message:
+        error?.response?.data?.message ||
+        "Không thể duyệt hạnh kiểm toàn trường",
+      severity: "error",
+    });
+  } finally {
+    setLoadingData(false);
+  }
+};
   // =========================================================
   // LOAD MONTH DATA
   // =========================================================
@@ -2788,19 +2854,30 @@ const changeViewMode =
               </TextField>
 
               <Button
-                variant="contained"
-                onClick={
-                  handleView
-                }
-                sx={{
-                  height: 40,
-                  minWidth: 145,
-                  fontWeight:
-                    "bold",
-                }}
-              >
-                XEM DỮ LIỆU
-              </Button>
+  variant="contained"
+  onClick={handleView}
+  sx={{
+    height: 40,
+    minWidth: 145,
+    fontWeight: "bold",
+  }}
+>
+  XEM DỮ LIỆU
+</Button>
+
+<Button
+  variant="contained"
+  color="success"
+  onClick={handleFinalizeWeek}
+  disabled={selectedWeek === "" || loadingData}
+  sx={{
+    height: 40,
+    minWidth: 145,
+    fontWeight: "bold",
+  }}
+>
+  DUYỆT TUẦN
+</Button>
             </>
           )}
 
