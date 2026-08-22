@@ -943,7 +943,18 @@ const handleFinalizeWeek = async () => {
       "❌ Lỗi duyệt hạnh kiểm toàn trường:",
       error
     );
+     const status = error?.response?.status;
 
+  if (status === 401 || status === 403) {
+    setSnackbar({
+      open: true,
+      message:
+        "Bạn không phải QTV, không có quyền duyệt.",
+      severity: "warning",
+    });
+
+    return;
+  }
     setSnackbar({
       open: true,
       message:
