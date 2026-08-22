@@ -2852,32 +2852,61 @@ const changeViewMode =
                   )
                 )}
               </TextField>
-
-              <Button
-  variant="contained"
-  onClick={handleView}
+              <Box
   sx={{
-    height: 40,
-    minWidth: 145,
-    fontWeight: "bold",
+    display: "flex",
+    gap: 1,
+    alignItems: "center",
+    flexWrap: "wrap",
   }}
 >
-  XEM DỮ LIỆU
-</Button>
+  <Button
+    variant="contained"
+    onClick={handleView}
+    sx={{
+      height: 40,
+      minWidth: 145,
+      fontWeight: "bold",
+    }}
+  >
+    XEM DỮ LIỆU
+  </Button>
 
-<Button
-  variant="contained"
-  color="success"
-  onClick={handleFinalizeWeek}
-  disabled={selectedWeek === "" || loadingData}
-  sx={{
-    height: 40,
-    minWidth: 145,
-    fontWeight: "bold",
-  }}
->
-  DUYỆT TUẦN
-</Button>
+  <Button
+    variant="contained"
+    color="success"
+    onClick={handleFinalizeWeek}
+    disabled={
+      selectedWeek === "" ||
+      loadingData
+    }
+    sx={{
+      height: 40,
+      minWidth: 145,
+      fontWeight: "bold",
+    }}
+  >
+    DUYỆT TUẦN
+  </Button>
+
+  <Button
+    variant="contained"
+    color="inherit"
+    onClick={handleExportExcel}
+    disabled={
+      selectedWeek === "" ||
+      !hasLoadedData ||
+      loadingData
+    }
+    sx={{
+      height: 40,
+      minWidth: 145,
+      fontWeight: "bold",
+    }}
+  >
+    XUẤT EXCEL
+  </Button>
+</Box>
             </>
           )}
 
