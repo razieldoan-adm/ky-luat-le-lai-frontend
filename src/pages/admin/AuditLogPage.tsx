@@ -95,39 +95,32 @@ export default function AuditLogPage() {
   // HIỂN THỊ HÀNH ĐỘNG
   // ==========================================================
 
-  const getActionInfo = (
-    action: AuditLog["action"]
-  ) => {
-    switch (action) {
-      case "CREATE":
-        return {
-          text: "THÊM",
-          icon: <AddCircle />,
-          color: "success" as const,
-        };
+ const getActionInfo = (
+  action: AuditLog["action"]
+) => {
+  switch (action) {
+    case "CREATE":
+      return {
+        text: "THÊM",
+        icon: <AddCircle />,
+        color: "success" as const,
+      };
 
-      case "UPDATE":
-        return {
-          text: "SỬA",
-          icon: <Edit />,
-          color: "warning" as const,
-        };
+    case "UPDATE":
+      return {
+        text: "SỬA",
+        icon: <Edit />,
+        color: "warning" as const,
+      };
 
-      case "DELETE":
-        return {
-          text: "XÓA",
-          icon: <Delete />,
-          color: "error" as const,
-        };
-
-      default:
-        return {
-          text: action,
-          icon: null,
-          color: "default" as const,
-        };
-    }
-  };
+    case "DELETE":
+      return {
+        text: "XÓA",
+        icon: <Delete />,
+        color: "error" as const,
+      };
+  }
+};
 
   // ==========================================================
   // ĐỊNH DẠNG THỜI GIAN
