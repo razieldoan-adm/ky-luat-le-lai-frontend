@@ -31,13 +31,14 @@ const AdminLayout: React.FC = () => {
       </Toolbar>
 
       <List>
-        <ListItemButton onClick={() => navigate('/admin/audit-logs')}>
-          <ListItemIcon>📋</ListItemIcon>
-          <ListItemText primary=" Theo dõi thay đổi" />
-        </ListItemButton>
+        
         <ListItemButton onClick={() => navigate('/admin/settings')}>
           <ListItemIcon><SettingsIcon /></ListItemIcon>
           <ListItemText primary="Cấu hình hệ thống" />
+        </ListItemButton> 
+        <ListItemButton onClick={() => navigate('/admin/audit-logs')}>
+          <ListItemIcon>📋</ListItemIcon>
+          <ListItemText primary=" Theo dõi thay đổi" />
         </ListItemButton>
         <ListItemButton onClick={() => navigate('/admin/add-class')}>
           <ListItemIcon><ClassIcon /></ListItemIcon>
