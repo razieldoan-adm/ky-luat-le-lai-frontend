@@ -189,7 +189,6 @@ useEffect(() => {
   if (!name || !className) return;
 
 const loadPage = async () => {
-  await fetchViolations();
   await fetchRules();
   
   await fetchSettings();
@@ -200,9 +199,31 @@ const loadPage = async () => {
 };
   loadPage();
 }, [name, className]);
+  
 // ==========================================================
-  // mời bổ sung
-  // ==========================================================
+// LẤY VI PHẠM THEO TUẦN HIỆN TẠI
+// ==========================================================
+
+useEffect(() => {
+  if (
+    !name ||
+    !className ||
+    currentWeek === null
+  ) {
+    return;
+  }
+
+  fetchViolations();
+}, [
+  name,
+  className,
+  currentWeek,
+]);
+
+
+// ==========================================================
+// LẤY CONDUCT SCORE
+// ==========================================================
 
   useEffect(() => {
   if (
@@ -288,26 +309,36 @@ const fetchSettings = async () => {
   // LẤY VI PHẠM
   // ==========================================================
 
-  const fetchViolations = async () => {
-    try {
-      const res = await api.get(
-        `/api/violations/${encodeURIComponent(
-          name || ""
-        )}?className=${encodeURIComponent(
-          className
-        )}`
-      );
-
-      setViolations(res.data || []);
-    } catch (err) {
-      console.error(
-        "Lỗi lấy vi phạm:",
-        err
-      );
-
-      setViolations([]);
+ const fetchViolations = async () => {
+  try {
+    // Chưa xác định tuần hiện tại thì chưa lấy dữ liệu
+    if (
+      !name ||
+      !className ||
+      currentWeek === null
+    ) {
+      return;
     }
-  };
+
+    const res = await api.get(
+      `/api/violations/${encodeURIComponent(
+        name
+      )}?className=${encodeURIComponent(
+        className
+      )}&weekNumber=${currentWeek}`
+    );
+
+    setViolations(res.data || []);
+
+  } catch (err) {
+    console.error(
+      "Lỗi lấy vi phạm:",
+      err
+    );
+
+    setViolations([]);
+  }
+};
 
   // ==========================================================
   // LẤY RULE
