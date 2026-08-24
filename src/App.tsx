@@ -33,7 +33,7 @@ import AdminSettingPage from './pages/admin/AdminSettingPage';
 import AdminAddClassPage from './pages/admin/AdminAddClassPage';
 import AcademicWeeksPage from './pages/admin/AdminWeeksSettingsPage';
 import AdminRulesPage from './pages/admin/AdminRulesPage';
-
+import AuditLogPage from './pages/admin/AuditLogPage';
 // Emulation
 import EmulationLayout from './layouts/EmulationLayout';
 import EnterExamScoresPage from './pages/emulation/ClassAcademicScoresPage';
@@ -60,6 +60,7 @@ function AppContent() {
             </ProtectedRoute>
           }
         >
+          <Route path="audit-logs" element={<AuditLogPage />} />
           <Route path="settings" element={<AdminSettingPage />} />
           <Route path="add-class" element={<AdminAddClassPage />} />
           <Route path="weeks" element={<AcademicWeeksPage />} />
