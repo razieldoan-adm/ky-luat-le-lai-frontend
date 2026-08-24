@@ -31,8 +31,8 @@ const AdminLayout: React.FC = () => {
       </Toolbar>
 
       <List>
-        <ListItemButton onClick={() => navigate('/admin/')}>
-          <ListItemIcon><CalendarToday /></ListItemIcon>
+        <ListItemButton onClick={() => navigate('/admin/audit-logs')}>
+          <ListItemIcon></></ListItemIcon>
           <ListItemText primary="📋 Theo dõi thay đổi" />
         </ListItemButton>
         <ListItemButton onClick={() => navigate('/admin/settings')}>
