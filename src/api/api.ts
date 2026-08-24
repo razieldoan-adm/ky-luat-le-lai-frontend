@@ -30,4 +30,47 @@ instance.interceptors.request.use(
   }
 );
 
+// ======================================================
+// XỬ LÝ TOKEN HẾT HẠN / KHÔNG CÒN ĐĂNG NHẬP
+// ======================================================
+
+instance.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+
+  (error) => {
+    const status =
+      error.response?.status;
+
+    // 401 = chưa đăng nhập / token không hợp lệ
+    // 403 = token hết hạn hoặc không có quyền
+    if (
+      status === 401 ||
+      status === 403
+    ) {
+      const currentPath =
+        window.location.pathname;
+
+      // Không xử lý lặp lại nếu đang ở trang đăng nhập
+      if (
+        currentPath !== "/login"
+      ) {
+        localStorage.removeItem("token");
+
+        // Thông báo cho người dùng
+        alert(
+          "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại."
+        );
+
+        // Chuyển về trang đăng nhập
+        window.location.href =
+          "/login";
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 export default instance;
