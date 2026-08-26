@@ -1144,6 +1144,121 @@ XLSX.utils.sheet_add_aoa(
           origin: "A2",
         }
       );
+      worksheet["!merges"] = [
+  {
+    s: { r: 0, c: 0 },
+    e: { r: 0, c: 10 },
+  },
+];
+
+      const totalRows =
+  sheetData.length + 4;
+
+const totalCols = 11;
+
+for (
+  let row = 0;
+  row < totalRows;
+  row++
+) {
+  for (
+    let col = 0;
+    col < totalCols;
+    col++
+  ) {
+    const address =
+      XLSX.utils.encode_cell({
+        r: row,
+        c: col,
+      });
+
+    const cell =
+      worksheet[address];
+
+    if (!cell) continue;
+
+    cell.s = {
+      font: {
+        name: "Times New Roman",
+        sz: 14,
+      },
+      alignment: {
+        vertical: "center",
+        horizontal:
+          col === 1
+            ? "left"
+            : "center",
+      },
+      border: {
+        top: {
+          style: "thin",
+        },
+        bottom: {
+          style: "thin",
+        },
+        left: {
+          style: "thin",
+        },
+        right: {
+          style: "thin",
+        },
+      },
+    };
+  }
+}
+
+      for (let col = 0; col < 11; col++) {
+  const address =
+    XLSX.utils.encode_cell({
+      r: 3,
+      c: col,
+    });
+
+  const cell =
+    worksheet[address];
+
+  if (!cell) continue;
+
+  cell.s = {
+    font: {
+      name: "Times New Roman",
+      sz: 14,
+      bold: true,
+    },
+    alignment: {
+      horizontal: "center",
+      vertical: "center",
+      wrapText: true,
+    },
+    border: {
+      top: {
+        style: "thin",
+      },
+      bottom: {
+        style: "thin",
+      },
+      left: {
+        style: "thin",
+      },
+      right: {
+        style: "thin",
+      },
+    },
+  };
+}
+
+      worksheet["A1"].s = {
+  font: {
+    name: "Times New Roman",
+    sz: 14,
+    bold: true,
+  },
+  alignment: {
+    horizontal: "center",
+    vertical: "center",
+  },
+};
+      
       // =========================================================
       // DỮ LIỆU HỌC SINH
       // =========================================================
@@ -1161,10 +1276,50 @@ XLSX.utils.sheet_add_json(
       // -----------------------------------------
 
       worksheet["!cols"] = [
-        { wch: 8 },
-        { wch: 30 },
-        { wch: 12 },
-      ];
+  { wch: 8 },   // STT
+  { wch: 30 },  // HỌ VÀ TÊN
+  { wch: 10 },  // LỚP
+  { wch: 12 },  // ĐIỂM ĐẦU
+  { wch: 15 },  // VI PHẠM/LẦN
+  { wch: 10 },  // TRỪ
+  { wch: 12 },  // VIỆC TỐT
+  { wch: 10 },  // CỘNG
+  { wch: 12 },  // ĐIỂM CUỐI
+  { wch: 14 },  // XẾP LOẠI
+  { wch: 25 },  // GHI CHÚ
+];
+
+      // -----------------------------------------
+      // ĐỘ RỘNG CỘT
+      // -----------------------------------------
+      
+      worksheet["!rows"] = [];
+
+      worksheet["!rows"][0] = {
+        hpt: 28,
+      };
+      
+      worksheet["!rows"][1] = {
+        hpt: 24,
+      };
+      
+      worksheet["!rows"][2] = {
+        hpt: 10,
+      };
+      
+      worksheet["!rows"][3] = {
+        hpt: 38,
+      };
+      
+      for (
+        let row = 4;
+        row < totalRows;
+        row++
+      ) {
+        worksheet["!rows"][row] = {
+          hpt: 24,
+        };
+      }
 
       // -----------------------------------------
       // THÊM SHEET
