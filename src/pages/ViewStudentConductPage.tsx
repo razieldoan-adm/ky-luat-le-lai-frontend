@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import {
   Alert,
   Box,
@@ -15,6 +16,7 @@ import {
   TableRow,
   TextField,
   Typography,
+  FileDownload,
 } from "@mui/material";
 import api from "../api/api";
 
@@ -139,6 +141,20 @@ interface AnnualConduct {
 
   finalizedAt?: string | null;
 }
+// =========================================================
+// DIALOG XUẤT EXCEL
+// =========================================================
+
+const openExportDialog = () => {
+  setExportGrade("");
+  setExportWeek(
+    selectedWeek !== ""
+      ? selectedWeek
+      : ""
+  );
+
+  setExportDialogOpen(true);
+};
 
 // =========================================================
 // HELPERS
@@ -372,6 +388,15 @@ export default function ViewStudentConductPage() {
 
   const [annualAcademicYear, setAnnualAcademicYear] =
     useState(CURRENT_ACADEMIC_YEAR);
+
+  const [exportDialogOpen, setExportDialogOpen] =
+  useState(false);
+
+  const [exportGrade, setExportGrade] =
+  useState("");
+
+  const [exportWeek, setExportWeek] =
+  useState<number | "">("");
 
   // -------------------------------------------------------
   // STUDY WEEKS
@@ -2899,7 +2924,19 @@ const changeViewMode =
   >
     DUYỆT TUẦN
   </Button>
-
+  <Button
+  variant="contained"
+  color="primary"
+  startIcon={<FileDownload />}
+  onClick={openExportDialog}
+  sx={{
+    height: 40,
+    minWidth: 145,
+    fontWeight: "bold",
+  }}
+>
+  XUẤT EXCEL
+</Button>
 </Box>
             </>
           )}
@@ -3282,7 +3319,102 @@ onChange={(e) => {
       </Typography>
     </Paper>
   )}
+  <Dialog
+  open={exportDialogOpen}
+  onClose={() => setExportDialogOpen(false)}
+  fullWidth
+  maxWidth="xs"
+>
+  <DialogTitle>
+    📊 Xuất báo cáo hạnh kiểm
+  </DialogTitle>
 
+  <DialogContent>
+    <Stack spacing={2} sx={{ mt: 1 }}>
+
+      <TextField
+        select
+        label="Khối"
+        value={exportGrade}
+        onChange={(e) =>
+          setExportGrade(e.target.value)
+        }
+        fullWidth
+      >
+        <MenuItem value="">
+          Chọn khối
+        </MenuItem>
+
+        <MenuItem value="6">
+          Khối 6
+        </MenuItem>
+
+        <MenuItem value="7">
+          Khối 7
+        </MenuItem>
+
+        <MenuItem value="8">
+          Khối 8
+        </MenuItem>
+
+        <MenuItem value="9">
+          Khối 9
+        </MenuItem>
+      </TextField>
+
+      <TextField
+        select
+        label="Tuần"
+        value={exportWeek}
+        onChange={(e) =>
+          setExportWeek(
+            e.target.value === ""
+              ? ""
+              : Number(e.target.value)
+          )
+        }
+        fullWidth
+      >
+        <MenuItem value="">
+          Chọn tuần
+        </MenuItem>
+
+        {studyWeeks.map(
+          (week: StudyWeek) => (
+            <MenuItem
+              key={week.weekNumber}
+              value={week.weekNumber}
+            >
+              Tuần {week.weekNumber}
+            </MenuItem>
+          )
+        )}
+      </TextField>
+
+    </Stack>
+  </DialogContent>
+
+  <DialogActions>
+    <Button
+      onClick={() =>
+        setExportDialogOpen(false)
+      }
+    >
+      HỦY
+    </Button>
+
+    <Button
+      variant="contained"
+      startIcon={<FileDownload />}
+      disabled={
+        exportGrade === "" ||
+        exportWeek === ""
+      }
+    >
+      XUẤT EXCEL
+    </Button>
+  </DialogActions>
+</Dialog>
       {/* ===================================================
           SNACKBAR
       =================================================== */}
