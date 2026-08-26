@@ -459,9 +459,8 @@ export default function ViewStudentConductPage() {
           | "error",
     });
 const getClassesByGrade = (grade: string) => {
-  return classes.filter(
-    (item) =>
-      String(item.grade) === String(grade)
+  return classes.filter((item) =>
+    String(item.className).startsWith(`${grade}`)
   );
 };
   // =========================================================
