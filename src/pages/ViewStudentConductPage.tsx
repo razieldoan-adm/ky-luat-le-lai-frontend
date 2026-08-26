@@ -950,6 +950,36 @@ const loadStudentsForExport = async (
   }
 };
   // =========================================================
+// GHÉP DANH SÁCH HỌC SINH + DỮ LIỆU HẠNH KIỂM TUẦN
+// =========================================================
+
+const mergeStudentsWithWeeklyData = (
+  studentsForExport: Student[],
+  weeklyDataForExport: any[]
+) => {
+  return studentsForExport.map(
+    (student, index) => {
+      const conductData =
+        weeklyDataForExport.find(
+          (item) =>
+            normalizeName(item.name) ===
+            normalizeName(student.name)
+        );
+
+      return {
+        stt: index + 1,
+
+        name: student.name,
+
+        className:
+          student.className,
+
+        conduct: conductData || null,
+      };
+    }
+  );
+};
+  // =========================================================
   // INITIAL LOAD
   // =========================================================
 
@@ -3587,14 +3617,25 @@ for (const classItem of gradeClasses) {
       weekNumber
     );
 
+  const mergedData =
+    mergeStudentsWithWeeklyData(
+      studentsForExport,
+      weeklyDataForExport
+    );
+
   console.log(
     `📚 HỌC SINH ${className}:`,
-    studentsForExport
+    studentsForExport.length
   );
 
   console.log(
     `📄 HẠNH KIỂM ${className}:`,
-    weeklyDataForExport
+    weeklyDataForExport.length
+  );
+
+  console.log(
+    `🔗 DỮ LIỆU GHÉP ${className}:`,
+    mergedData
   );
 }
 }}
