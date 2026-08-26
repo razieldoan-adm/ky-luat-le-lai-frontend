@@ -1037,25 +1037,32 @@ const exportConductExcel = async () => {
           studentsForExport,
           weeklyDataForExport
         );
-
+      console.log(
+  `🔎 CONDUCT ${className}:`,
+      mergedData[0]?.conduct
+    );
       // -----------------------------------------
       // TẠO DỮ LIỆU SHEET
       // -----------------------------------------
 
-      const sheetData = mergedData.map((item) => ({
-  "STT": item.stt,
-  "HỌ VÀ TÊN": item.name,
-  "LỚP": item.className,
-
-  "ĐIỂM ĐẦU": item.startScore ?? "",
-  "VI PHẠM/LẦN": item.violationCount ?? "",
-  "TRỪ": item.totalDeduction ?? "",
-  "VIỆC TỐT": item.bonusScore ?? "",
-  "CỘNG": item.bonusScore ?? "",
-  "ĐIỂM CUỐI": item.finalScore ?? "",
-  "XẾP LOẠI": item.classification ?? "",
-  "GHI CHÚ": item.note ?? "",
-}));
+      const sheetData = mergedData.map((item) => {
+      const conduct = item.conduct;
+    
+      return {
+        "STT": item.stt,
+        "HỌ VÀ TÊN": item.name,
+        "LỚP": item.className,
+    
+        "ĐIỂM ĐẦU": conduct?.startScore ?? "",
+        "VI PHẠM/LẦN": conduct?.violationCount ?? "",
+        "TRỪ": conduct?.totalDeduction ?? "",
+        "VIỆC TỐT": conduct?.bonusScore ?? "",
+        "CỘNG": conduct?.bonusScore ?? "",
+        "ĐIỂM CUỐI": conduct?.finalScore ?? "",
+        "XẾP LOẠI": conduct?.classification ?? "",
+        "GHI CHÚ": conduct?.note ?? "",
+      };
+    });
 
       // Tạo worksheet
       const worksheet =
