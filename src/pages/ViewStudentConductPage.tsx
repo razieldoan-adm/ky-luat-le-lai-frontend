@@ -458,9 +458,10 @@ export default function ViewStudentConductPage() {
           | "warning"
           | "error",
     });
-  const getClassesByGrade = (grade: string) => {
-  return classes.filter((className) =>
-    className.startsWith(`${grade}`)
+const getClassesByGrade = (grade: string) => {
+  return classes.filter(
+    (item) =>
+      String(item.grade) === String(grade)
   );
 };
   // =========================================================
@@ -2938,19 +2939,19 @@ const changeViewMode =
     exportWeek === ""
   }
   onClick={() => {
-    const gradeClasses =
-      getClassesByGrade(exportGrade);
+  const gradeClasses =
+    getClassesByGrade(exportGrade);
 
-    console.log(
-      "📊 KHỐI XUẤT:",
-      exportGrade
-    );
+  console.log(
+    "📊 KHỐI XUẤT:",
+    exportGrade
+  );
 
-    console.log(
-      "📚 CÁC LỚP:",
-      gradeClasses
-    );
-  }}
+  console.log(
+    "📚 CÁC LỚP:",
+    gradeClasses
+  );
+}}
 >
   XUẤT EXCEL
 </Button>
