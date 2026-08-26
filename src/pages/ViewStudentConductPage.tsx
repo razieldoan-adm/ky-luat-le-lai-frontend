@@ -3420,16 +3420,19 @@ onChange={(e) => {
       HỦY
     </Button>
 
-    <Button
-      variant="contained"
-      startIcon={<FileDownload />}
-      disabled={
-        exportGrade === "" ||
-        exportWeek === ""
-      }
-    >
-      XUẤT EXCEL
-    </Button>
+<Button
+  variant="contained"
+  color="primary"
+  startIcon={<FileDownload />}
+  onClick={openExportDialog}
+  sx={{
+    height: 40,
+    minWidth: 145,
+    fontWeight: "bold",
+  }}
+>
+  XUẤT EXCEL
+</Button>
   </DialogActions>
 </Dialog>
       {/* ===================================================
