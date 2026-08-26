@@ -1042,12 +1042,20 @@ const exportConductExcel = async () => {
       // TẠO DỮ LIỆU SHEET
       // -----------------------------------------
 
-      const sheetData =
-        mergedData.map((item) => ({
-          "STT": item.stt,
-          "HỌ VÀ TÊN": item.name,
-          "LỚP": item.className,
-        }));
+      const sheetData = mergedData.map((item) => ({
+  "STT": item.stt,
+  "HỌ VÀ TÊN": item.name,
+  "LỚP": item.className,
+
+  "ĐIỂM ĐẦU": item.startScore ?? "",
+  "VI PHẠM/LẦN": item.violationCount ?? "",
+  "TRỪ": item.totalDeduction ?? "",
+  "VIỆC TỐT": item.bonusScore ?? "",
+  "CỘNG": item.bonusScore ?? "",
+  "ĐIỂM CUỐI": item.finalScore ?? "",
+  "XẾP LOẠI": item.classification ?? "",
+  "GHI CHÚ": item.note ?? "",
+}));
 
       // Tạo worksheet
       const worksheet =
