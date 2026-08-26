@@ -1045,32 +1045,107 @@ const exportConductExcel = async () => {
       // TẠO DỮ LIỆU SHEET
       // -----------------------------------------
 
-      const sheetData = mergedData.map((item) => {
-      const conduct = item.conduct;
-    
-      return {
-        "STT": item.stt,
-        "HỌ VÀ TÊN": item.name,
-        "LỚP": item.className,
-    
-        "ĐIỂM ĐẦU": conduct?.startScore ?? "",
-        "VI PHẠM/LẦN": conduct?.violationCount ?? "",
-        "TRỪ": conduct?.totalDeduction ?? "",
-        "VIỆC TỐT": conduct?.bonusScore ?? "",
-        "CỘNG": conduct?.bonusScore ?? "",
-        "ĐIỂM CUỐI": conduct?.finalScore ?? "",
-        "XẾP LOẠI": conduct?.classification ?? "",
-        "GHI CHÚ": conduct?.note ?? "",
-      };
-    });
+const sheetData = mergedData.map((item) => {
+  const conduct = item.conduct;
+
+  // ================================
+  // ĐIỂM ĐẦU
+  // ================================
+  const startScore = 100;
+
+  // ================================
+  // SỐ LẦN VI PHẠM
+  // ================================
+  const violationCount =
+    conduct?.totalConductViolations ?? 0;
+
+  // ================================
+  // ĐIỂM TRỪ
+  // ================================
+  const deduction =
+    conduct?.totalDeduction ?? 0;
+
+  // ================================
+  // ĐIỂM CUỐI
+  // ================================
+  const finalScore =
+    violationCount === 0
+      ? startScore
+      : conduct?.finalScore ?? startScore;
+
+  // ================================
+  // XẾP LOẠI
+  // ================================
+  const classification =
+    conduct?.classification ?? "";
+
+  return {
+    "STT": item.stt,
+    "HỌ VÀ TÊN": item.name,
+    "LỚP": item.className,
+
+    "ĐIỂM ĐẦU": startScore,
+
+    "VI PHẠM/LẦN":
+      violationCount,
+
+    "TRỪ":
+      deduction,
+
+    "VIỆC TỐT":
+      conduct?.bonusScore ?? "",
+
+    "CỘNG":
+      conduct?.bonusScore ?? "",
+
+    "ĐIỂM CUỐI":
+      finalScore,
+
+    "XẾP LOẠI":
+      classification,
+
+    "GHI CHÚ":
+      conduct?.note ?? "",
+  };
+});
 
       // Tạo worksheet
       const worksheet =
         XLSX.utils.json_to_sheet(
-          sheetData
+          sheetData,
+          {
+            origin: "A3",
+          }
         );
-
-      // -----------------------------------------
+      // =========================================================
+      // TIÊU ĐỀ SHEET
+      // =========================================================
+      
+      XLSX.utils.sheet_add_aoa(
+        worksheet,
+        [
+          [
+            `BẢNG THEO DÕI ĐIỂM RÈN LUYỆN TUẦN ${weekNumber}`,
+          ],
+        ],
+        {
+          origin: "A1",
+        }
+      );
+      
+      // Thông tin lớp
+      XLSX.utils.sheet_add_aoa(
+        worksheet,
+        [
+          [
+            `Lớp: ${className}    |    Khối: ${exportGrade}`,
+          ],
+        ],
+        {
+          origin: "A2",
+        }
+      );
+            // -----------------------------------------
       // ĐỘ RỘNG CỘT
       // -----------------------------------------
 
