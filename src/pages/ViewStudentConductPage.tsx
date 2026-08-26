@@ -1151,29 +1151,22 @@ XLSX.utils.sheet_add_aoa(
   },
 ];
 
-      const totalRows =
-  sheetData.length + 4;
+// =========================================================
+// ĐỊNH DẠNG TOÀN BỘ Ô DỮ LIỆU
+// =========================================================
 
+const totalRows = sheetData.length + 4;
 const totalCols = 11;
 
-for (
-  let row = 0;
-  row < totalRows;
-  row++
-) {
-  for (
-    let col = 0;
-    col < totalCols;
-    col++
-  ) {
-    const address =
-      XLSX.utils.encode_cell({
-        r: row,
-        c: col,
-      });
+for (let row = 0; row < totalRows; row++) {
+  for (let col = 0; col < totalCols; col++) {
 
-    const cell =
-      worksheet[address];
+    const address = XLSX.utils.encode_cell({
+      r: row,
+      c: col,
+    });
+
+    const cell = worksheet[address];
 
     if (!cell) continue;
 
@@ -1182,13 +1175,13 @@ for (
         name: "Times New Roman",
         sz: 14,
       },
+
       alignment: {
+        horizontal: col === 1 ? "left" : "center",
         vertical: "center",
-        horizontal:
-          col === 1
-            ? "left"
-            : "center",
+        wrapText: true,
       },
+
       border: {
         top: {
           style: "thin",
@@ -1267,7 +1260,7 @@ XLSX.utils.sheet_add_json(
   worksheet,
   sheetData,
   {
-    origin: "A3",
+    origin: "A4",
     skipHeader: false,
   }
 );
