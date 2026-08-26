@@ -49,9 +49,8 @@ export default function AuditLogPage() {
 
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
   const [selectedClass, setSelectedClass] = useState<string>("");
-
-  const [weeks, setWeeks] = useState<number[]>([]);
-  const [classes, setClasses] = useState<string[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  
 
     // ==========================================================
   // TẢI DANH SÁCH TUẦN
@@ -71,19 +70,25 @@ const fetchWeeks = async () => {
       "/api/academic-weeks/study-weeks"
     );
 
-    const data = res.data || [];
+    const data: any[] = res.data || [];
 
-    const weekNumbers = data
-      .map((week: any) => Number(week.weekNumber))
-      .filter((week: number) => !isNaN(week));
+    const weekNumbers: number[] = data
+      .map((week: any) =>
+        Number(week.weekNumber)
+      )
+      .filter(
+        (week: number) =>
+          !isNaN(week)
+      );
 
     setWeeks(
       [...new Set(weekNumbers)].sort(
-        (a, b) => a - b
+        (a: number, b: number) =>
+          a - b
       )
     );
 
-    // Mặc định chọn tuần hiện tại
+    // Tìm tuần hiện tại
     const currentWeek = data.find(
       (week: any) =>
         week.isCurrent === true
@@ -94,6 +99,7 @@ const fetchWeeks = async () => {
         Number(currentWeek.weekNumber)
       );
     }
+
   } catch (err) {
     console.error(
       "❌ Lỗi lấy danh sách tuần:",
