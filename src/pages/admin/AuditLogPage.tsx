@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -8,6 +8,10 @@ import {
   Alert,
   Chip,
   Divider,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 
 import {
@@ -43,10 +47,64 @@ export default function AuditLogPage() {
   const [checked, setChecked] = useState(false);
   const [error, setError] = useState("");
 
+  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  const [selectedClass, setSelectedClass] = useState<string>("");
+
+  const [weeks, setWeeks] = useState<number[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+
+    // ==========================================================
+  // TẢI DANH SÁCH TUẦN
+  // ==========================================================
+
+  useEffect(() => {
+    fetchWeeks();
+  }, []);
+ 
+  // ==========================================================
+// LẤY DANH SÁCH TUẦN
+// ==========================================================
+
+const fetchWeeks = async () => {
+  try {
+    const res = await api.get(
+      "/api/academic-weeks/study-weeks"
+    );
+
+    const data = res.data || [];
+
+    const weekNumbers = data
+      .map((week: any) => Number(week.weekNumber))
+      .filter((week: number) => !isNaN(week));
+
+    setWeeks(
+      [...new Set(weekNumbers)].sort(
+        (a, b) => a - b
+      )
+    );
+
+    // Mặc định chọn tuần hiện tại
+    const currentWeek = data.find(
+      (week: any) =>
+        week.isCurrent === true
+    );
+
+    if (currentWeek) {
+      setSelectedWeek(
+        Number(currentWeek.weekNumber)
+      );
+    }
+  } catch (err) {
+    console.error(
+      "❌ Lỗi lấy danh sách tuần:",
+      err
+    );
+  }
+};
   // ==========================================================
   // KIỂM TRA THAY ĐỔI
   // ==========================================================
-
+  
   const checkChanges = async () => {
     setLoading(true);
     setError("");
@@ -171,29 +229,120 @@ export default function AuditLogPage() {
           BUTTON KIỂM TRA
       ====================================================== */}
 
-      <Button
-        variant="contained"
-        startIcon={
-          loading ? (
-            <CircularProgress
-              size={20}
-              color="inherit"
-            />
-          ) : (
-            <Search />
-          )
-        }
-        onClick={checkChanges}
-        disabled={loading}
-        sx={{
-          mb: 3,
-          minWidth: 220,
-        }}
-      >
-        {loading
-          ? "Đang kiểm tra..."
-          : "Kiểm tra thay đổi"}
-      </Button>
+{/* =====================================================
+    BỘ LỌC
+====================================================== */}
+
+<Box
+  sx={{
+    display: "flex",
+    gap: 2,
+    flexWrap: "wrap",
+    alignItems: "center",
+    mb: 3,
+  }}
+>
+
+  {/* TUẦN */}
+
+  <FormControl
+    size="small"
+    sx={{ minWidth: 150 }}
+  >
+    <InputLabel>Tuần</InputLabel>
+
+    <Select
+      value={selectedWeek}
+      label="Tuần"
+      onChange={(e) => {
+        setSelectedWeek(
+          e.target.value === ""
+            ? ""
+            : Number(e.target.value)
+        );
+
+        setChecked(false);
+        setLogs([]);
+      }}
+    >
+
+      {weeks.map((week) => (
+        <MenuItem
+          key={week}
+          value={week}
+        >
+          Tuần {week}
+        </MenuItem>
+      ))}
+
+    </Select>
+  </FormControl>
+
+
+  {/* LỚP */}
+
+  <FormControl
+    size="small"
+    sx={{ minWidth: 150 }}
+  >
+    <InputLabel>Lớp</InputLabel>
+
+    <Select
+      value={selectedClass}
+      label="Lớp"
+      onChange={(e) => {
+        setSelectedClass(
+          e.target.value
+        );
+
+        setChecked(false);
+        setLogs([]);
+      }}
+    >
+
+      <MenuItem value="">
+        Tất cả
+      </MenuItem>
+
+      {classes.map((className) => (
+        <MenuItem
+          key={className}
+          value={className}
+        >
+          {className}
+        </MenuItem>
+      ))}
+
+    </Select>
+  </FormControl>
+
+
+  {/* KIỂM TRA */}
+
+  <Button
+    variant="contained"
+    startIcon={
+      loading ? (
+        <CircularProgress
+          size={20}
+          color="inherit"
+        />
+      ) : (
+        <Search />
+      )
+    }
+    onClick={checkChanges}
+    disabled={
+      loading ||
+      selectedWeek === ""
+    }
+  >
+    {loading
+      ? "Đang kiểm tra..."
+      : "Kiểm tra thay đổi"}
+  </Button>
+
+</Box>
 
       {/* =====================================================
           LỖI
