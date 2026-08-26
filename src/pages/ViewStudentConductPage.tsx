@@ -998,6 +998,38 @@ const handleFinalizeWeek = async () => {
   }
 };
   // =========================================================
+// LẤY DỮ LIỆU HẠNH KIỂM TUẦN CHO 1 LỚP - DÙNG KHI XUẤT EXCEL
+// =========================================================
+
+const loadWeeklyDataForExport = async (
+  className: string,
+  weekNumber: number
+) => {
+  try {
+    const res = await api.get(
+      "/api/student-conduct-scores",
+      {
+        params: {
+          className,
+          academicYear: CURRENT_ACADEMIC_YEAR,
+          weekNumber,
+        },
+      }
+    );
+
+    return Array.isArray(res.data)
+      ? res.data
+      : [];
+  } catch (error) {
+    console.error(
+      `❌ Lỗi tải dữ liệu lớp ${className}, tuần ${weekNumber}:`,
+      error
+    );
+
+    return [];
+  }
+};
+  // =========================================================
   // LOAD MONTH DATA
   // =========================================================
 
@@ -3416,21 +3448,40 @@ onChange={(e) => {
     exportGrade === "" ||
     exportWeek === ""
   }
-  onClick={() => {
-  const gradeClasses = getClassesByGrade(exportGrade);
+onClick={async () => {
+  const gradeClasses =
+    getClassesByGrade(exportGrade);
 
-  console.log("📊 KHỐI XUẤT:", exportGrade);
-  console.log("📅 TUẦN XUẤT:", exportWeek);
-  console.log("📚 CÁC LỚP:", gradeClasses);
+  const weekNumber =
+    Number(exportWeek);
 
-  gradeClasses.forEach((classItem) => {
+  console.log(
+    "📊 KHỐI XUẤT:",
+    exportGrade
+  );
+
+  console.log(
+    "📅 TUẦN XUẤT:",
+    weekNumber
+  );
+
+  console.log(
+    "📚 CÁC LỚP:",
+    gradeClasses
+  );
+
+  for (const classItem of gradeClasses) {
+    const data =
+      await loadWeeklyDataForExport(
+        classItem.className,
+        weekNumber
+      );
+
     console.log(
-      "➡️ LỚP:",
-      classItem.className,
-      " | TUẦN:",
-      exportWeek
+      `📄 DỮ LIỆU ${classItem.className}:`,
+      data
     );
-  });
+  }
 }}
 >
   XUẤT EXCEL
