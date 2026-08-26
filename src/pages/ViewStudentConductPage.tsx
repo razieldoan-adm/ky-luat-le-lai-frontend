@@ -2932,28 +2932,18 @@ const changeViewMode =
   </Button>
   <Button
   variant="contained"
+  color="primary"
   startIcon={<FileDownload />}
-  disabled={
-    exportGrade === "" ||
-    exportWeek === ""
-  }
-  onClick={() => {
-  const gradeClasses =
-    getClassesByGrade(exportGrade);
-
-  console.log(
-    "📊 KHỐI XUẤT:",
-    exportGrade
-  );
-
-  console.log(
-    "📚 CÁC LỚP:",
-    gradeClasses
-  );
-}}
+  onClick={openExportDialog}
+  sx={{
+    height: 40,
+    minWidth: 145,
+    fontWeight: "bold",
+  }}
 >
   XUẤT EXCEL
-</Button>
+</Button>              
+  
 </Box>
             </>
           )}
@@ -3419,20 +3409,31 @@ onChange={(e) => {
     >
       HỦY
     </Button>
-
-<Button
+    <Button
   variant="contained"
-  color="primary"
   startIcon={<FileDownload />}
-  onClick={openExportDialog}
-  sx={{
-    height: 40,
-    minWidth: 145,
-    fontWeight: "bold",
-  }}
+  disabled={
+    exportGrade === "" ||
+    exportWeek === ""
+  }
+  onClick={() => {
+  const gradeClasses =
+    getClassesByGrade(exportGrade);
+
+  console.log(
+    "📊 KHỐI XUẤT:",
+    exportGrade
+  );
+
+  console.log(
+    "📚 CÁC LỚP:",
+    gradeClasses
+  );
+}}
 >
   XUẤT EXCEL
 </Button>
+
   </DialogActions>
 </Dialog>
       {/* ===================================================
