@@ -50,7 +50,7 @@ export default function AuditLogPage() {
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [weeks, setWeeks] = useState<number[]>([]);
-  const [classes] = useState<string[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
   
   // ==========================================================
   // TẢI DANH SÁCH TUẦN
@@ -58,6 +58,7 @@ export default function AuditLogPage() {
 
   useEffect(() => {
     fetchWeeks();
+    fetchClasses();
   }, []);
  
   // ==========================================================
@@ -110,50 +111,110 @@ const fetchWeeks = async () => {
   // ==========================================================
   // KIỂM TRA THAY ĐỔI
   // ==========================================================
+
+  const fetchClasses = async () => {
+  try {
+    const res = await api.get(
+      "/api/classes"
+    );
+
+    const data = res.data || [];
+
+    const classNames = data
+      .map((item: any) =>
+        typeof item === "string"
+          ? item
+          : item.className
+      )
+      .filter(
+        (name: any): name is string =>
+          Boolean(name)
+      );
+
+    setClasses(
+      [...new Set(classNames)].sort()
+    );
+
+  } catch (err) {
+    console.error(
+      "❌ Lỗi lấy danh sách lớp:",
+      err
+    );
+  }
+};
+  
+  // ==========================================================
+  // KIỂM TRA THAY ĐỔI
+  // ==========================================================
   
   const checkChanges = async () => {
-    setLoading(true);
-    setError("");
+  if (selectedWeek === "") {
+    setError("Vui lòng chọn tuần.");
+    return;
+  }
 
-    try {
-      const token = localStorage.getItem("token");
+  setLoading(true);
+  setError("");
 
-      const res = await api.get(
-        "/api/audit-logs/violations",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      setLogs(res.data.logs || []);
-      setChecked(true);
-
-    } catch (err: any) {
-      console.error(
-        "❌ Lỗi kiểm tra AuditLog:",
-        err
-      );
-
-      if (err.response?.status === 401) {
-        setError(
-          "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại."
-        );
-      } else if (err.response?.status === 403) {
-        setError(
-          "Bạn không có quyền xem lịch sử thay đổi."
-        );
-      } else {
-        setError(
-          "Không thể tải lịch sử thay đổi."
-        );
+  try {
+    const res = await api.get(
+      "/api/audit-logs/violations",
+      {
+        params: {
+          weekNumber: selectedWeek,
+          className:
+            selectedClass || undefined,
+        },
       }
+    );
 
-    } finally {
-      setLoading(false);
+    console.log(
+      "🔎 AUDIT FILTER:",
+      {
+        weekNumber: selectedWeek,
+        className: selectedClass || "Tất cả",
+      }
+    );
+
+    console.log(
+      "📋 AUDIT RESULT:",
+      res.data
+    );
+
+    setLogs(
+      res.data.logs || []
+    );
+
+    setChecked(true);
+
+  } catch (err: any) {
+    console.error(
+      "❌ Lỗi kiểm tra AuditLog:",
+      err
+    );
+
+    if (
+      err.response?.status === 401
+    ) {
+      setError(
+        "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại."
+      );
+    } else if (
+      err.response?.status === 403
+    ) {
+      setError(
+        "Bạn không có quyền xem lịch sử thay đổi."
+      );
+    } else {
+      setError(
+        "Không thể tải lịch sử thay đổi."
+      );
     }
-  };
+
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ==========================================================
   // HIỂN THỊ HÀNH ĐỘNG
