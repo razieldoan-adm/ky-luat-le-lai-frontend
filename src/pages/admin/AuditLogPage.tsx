@@ -50,7 +50,7 @@ export default function AuditLogPage() {
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [weeks, setWeeks] = useState<number[]>([]);
-  const [classes, setClasses] = useState<string[]>([]);
+  const [classes] = useState<string[]>([]);
   
   // ==========================================================
   // TẢI DANH SÁCH TUẦN
@@ -262,7 +262,7 @@ const fetchWeeks = async () => {
       label="Tuần"
       onChange={(e) => {
         setSelectedWeek(
-          e.target.value === ""
+          e.target.value === 0
             ? ""
             : Number(e.target.value)
         );
