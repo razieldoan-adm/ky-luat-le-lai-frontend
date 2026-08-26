@@ -458,7 +458,11 @@ export default function ViewStudentConductPage() {
           | "warning"
           | "error",
     });
-
+  const getClassesByGrade = (grade: string) => {
+  return classes.filter((className) =>
+    className.startsWith(`${grade}`)
+  );
+};
   // =========================================================
   // SELECTED MONTH
   // =========================================================
@@ -2928,13 +2932,24 @@ const changeViewMode =
   </Button>
   <Button
   variant="contained"
-  color="primary"
   startIcon={<FileDownload />}
-  onClick={openExportDialog}
-  sx={{
-    height: 40,
-    minWidth: 145,
-    fontWeight: "bold",
+  disabled={
+    exportGrade === "" ||
+    exportWeek === ""
+  }
+  onClick={() => {
+    const gradeClasses =
+      getClassesByGrade(exportGrade);
+
+    console.log(
+      "📊 KHỐI XUẤT:",
+      exportGrade
+    );
+
+    console.log(
+      "📚 CÁC LỚP:",
+      gradeClasses
+    );
   }}
 >
   XUẤT EXCEL
