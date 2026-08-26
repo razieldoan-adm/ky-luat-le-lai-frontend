@@ -262,9 +262,7 @@ const fetchWeeks = async () => {
       label="Tuần"
       onChange={(e) => {
         setSelectedWeek(
-          e.target.value === 0
-            ? ""
-            : Number(e.target.value)
+           Number(e.target.value)
         );
 
         setChecked(false);
