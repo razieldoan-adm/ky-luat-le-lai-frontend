@@ -49,10 +49,10 @@ export default function AuditLogPage() {
 
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
   const [selectedClass, setSelectedClass] = useState<string>("");
-  const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  const [weeks, setWeeks] = useState<number[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
   
-
-    // ==========================================================
+  // ==========================================================
   // TẢI DANH SÁCH TUẦN
   // ==========================================================
 
@@ -61,8 +61,8 @@ export default function AuditLogPage() {
   }, []);
  
   // ==========================================================
-// LẤY DANH SÁCH TUẦN
-// ==========================================================
+  // LẤY DANH SÁCH TUẦN
+  // ==========================================================
 
 const fetchWeeks = async () => {
   try {
