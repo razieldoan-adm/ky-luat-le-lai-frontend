@@ -846,7 +846,109 @@ const openExportDialog = () => {
         setLoadingStudents(false);
       }
     }, [selectedClass]);
+// =========================================================
+// LẤY DANH SÁCH HỌC SINH 1 LỚP - DÙNG KHI XUẤT EXCEL
+// =========================================================
 
+const loadStudentsForExport = async (
+  className: string
+): Promise<Student[]> => {
+  try {
+    const res = await api.get(
+      "/api/students/search",
+      {
+        params: {
+          className,
+        },
+      }
+    );
+
+    const list: Student[] =
+      Array.isArray(res.data)
+        ? res.data
+            .filter((item: unknown) => {
+              const value =
+                item as Record<string, unknown>;
+
+              return Boolean(value.name);
+            })
+            .map((item: unknown) => {
+              const value =
+                item as Record<string, unknown>;
+
+              return {
+                _id: String(value._id ?? ""),
+                name: String(value.name).trim(),
+                className: String(
+                  value.className ?? className
+                ).trim(),
+              };
+            })
+        : [];
+
+    const unique =
+      new Map<string, Student>();
+
+    list.forEach((student: Student) => {
+      const key =
+        student._id ||
+        `${normalizeName(
+          student.name
+        )}-${normalizeClass(
+          student.className
+        )}`;
+
+      unique.set(key, student);
+    });
+
+    return Array.from(
+      unique.values()
+    ).sort((a: Student, b: Student) => {
+      const getLastName = (name: string) => {
+        const parts =
+          name.trim().split(/\s+/);
+
+        return (
+          parts[parts.length - 1] || ""
+        );
+      };
+
+      const nameA =
+        getLastName(a.name);
+
+      const nameB =
+        getLastName(b.name);
+
+      const compareName =
+        nameA.localeCompare(
+          nameB,
+          "vi",
+          {
+            sensitivity: "base",
+          }
+        );
+
+      if (compareName !== 0) {
+        return compareName;
+      }
+
+      return a.name.localeCompare(
+        b.name,
+        "vi",
+        {
+          sensitivity: "base",
+        }
+      );
+    });
+  } catch (error) {
+    console.error(
+      `❌ Lỗi tải học sinh lớp ${className}:`,
+      error
+    );
+
+    return [];
+  }
+};
   // =========================================================
   // INITIAL LOAD
   // =========================================================
@@ -3470,18 +3572,31 @@ onClick={async () => {
     gradeClasses
   );
 
-  for (const classItem of gradeClasses) {
-    const data =
-      await loadWeeklyDataForExport(
-        classItem.className,
-        weekNumber
-      );
+for (const classItem of gradeClasses) {
+  const className =
+    classItem.className;
 
-    console.log(
-      `📄 DỮ LIỆU ${classItem.className}:`,
-      data
+  const studentsForExport =
+    await loadStudentsForExport(
+      className
     );
-  }
+
+  const weeklyDataForExport =
+    await loadWeeklyDataForExport(
+      className,
+      weekNumber
+    );
+
+  console.log(
+    `📚 HỌC SINH ${className}:`,
+    studentsForExport
+  );
+
+  console.log(
+    `📄 HẠNH KIỂM ${className}:`,
+    weeklyDataForExport
+  );
+}
 }}
 >
   XUẤT EXCEL
