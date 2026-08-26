@@ -3417,18 +3417,20 @@ onChange={(e) => {
     exportWeek === ""
   }
   onClick={() => {
-  const gradeClasses =
-    getClassesByGrade(exportGrade);
+  const gradeClasses = getClassesByGrade(exportGrade);
 
-  console.log(
-    "📊 KHỐI XUẤT:",
-    exportGrade
-  );
+  console.log("📊 KHỐI XUẤT:", exportGrade);
+  console.log("📅 TUẦN XUẤT:", exportWeek);
+  console.log("📚 CÁC LỚP:", gradeClasses);
 
-  console.log(
-    "📚 CÁC LỚP:",
-    gradeClasses
-  );
+  gradeClasses.forEach((classItem) => {
+    console.log(
+      "➡️ LỚP:",
+      classItem.className,
+      " | TUẦN:",
+      exportWeek
+    );
+  });
 }}
 >
   XUẤT EXCEL
