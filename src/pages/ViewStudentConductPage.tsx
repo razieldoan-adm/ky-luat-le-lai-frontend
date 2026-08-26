@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import FileDownload from "@mui/icons-material/FileDownload";
+import * as XLSX from "xlsx";
 import {
   Alert,
   Box,
@@ -978,6 +979,139 @@ const mergeStudentsWithWeeklyData = (
       };
     }
   );
+};
+  // =========================================================
+// XUẤT EXCEL THEO KHỐI - MỖI LỚP 1 SHEET
+// =========================================================
+
+const exportConductExcel = async () => {
+  if (
+    exportGrade === "" ||
+    exportWeek === ""
+  ) {
+    return;
+  }
+
+  const weekNumber =
+    Number(exportWeek);
+
+  try {
+    setLoadingData(true);
+
+    const gradeClasses =
+      getClassesByGrade(exportGrade);
+
+    // Tạo workbook mới
+    const workbook =
+      XLSX.utils.book_new();
+
+    for (const classItem of gradeClasses) {
+      const className =
+        classItem.className;
+
+      // -----------------------------------------
+      // LẤY HỌC SINH
+      // -----------------------------------------
+
+      const studentsForExport =
+        await loadStudentsForExport(
+          className
+        );
+
+      // -----------------------------------------
+      // LẤY HẠNH KIỂM
+      // -----------------------------------------
+
+      const weeklyDataForExport =
+        await loadWeeklyDataForExport(
+          className,
+          weekNumber
+        );
+
+      // -----------------------------------------
+      // GHÉP DỮ LIỆU
+      // -----------------------------------------
+
+      const mergedData =
+        mergeStudentsWithWeeklyData(
+          studentsForExport,
+          weeklyDataForExport
+        );
+
+      // -----------------------------------------
+      // TẠO DỮ LIỆU SHEET
+      // -----------------------------------------
+
+      const sheetData =
+        mergedData.map((item) => ({
+          "STT": item.stt,
+          "HỌ VÀ TÊN": item.name,
+          "LỚP": item.className,
+        }));
+
+      // Tạo worksheet
+      const worksheet =
+        XLSX.utils.json_to_sheet(
+          sheetData
+        );
+
+      // -----------------------------------------
+      // ĐỘ RỘNG CỘT
+      // -----------------------------------------
+
+      worksheet["!cols"] = [
+        { wch: 8 },
+        { wch: 30 },
+        { wch: 12 },
+      ];
+
+      // -----------------------------------------
+      // THÊM SHEET
+      // -----------------------------------------
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        className
+      );
+    }
+
+    // -----------------------------------------
+    // TẢI FILE
+    // -----------------------------------------
+
+    const fileName =
+      `HanhKiem_Khoi${exportGrade}_Tuan${weekNumber}.xlsx`;
+
+    XLSX.writeFile(
+      workbook,
+      fileName
+    );
+
+    setSnackbar({
+      open: true,
+      message:
+        `Đã xuất Excel khối ${exportGrade}, tuần ${weekNumber}`,
+      severity: "success",
+    });
+
+    setExportDialogOpen(false);
+
+  } catch (error) {
+    console.error(
+      "❌ LỖI XUẤT EXCEL:",
+      error
+    );
+
+    setSnackbar({
+      open: true,
+      message:
+        "Không thể xuất file Excel.",
+      severity: "error",
+    });
+  } finally {
+    setLoadingData(false);
+  }
 };
   // =========================================================
   // INITIAL LOAD
@@ -3580,65 +3714,7 @@ onChange={(e) => {
     exportGrade === "" ||
     exportWeek === ""
   }
-onClick={async () => {
-  const gradeClasses =
-    getClassesByGrade(exportGrade);
-
-  const weekNumber =
-    Number(exportWeek);
-
-  console.log(
-    "📊 KHỐI XUẤT:",
-    exportGrade
-  );
-
-  console.log(
-    "📅 TUẦN XUẤT:",
-    weekNumber
-  );
-
-  console.log(
-    "📚 CÁC LỚP:",
-    gradeClasses
-  );
-
-for (const classItem of gradeClasses) {
-  const className =
-    classItem.className;
-
-  const studentsForExport =
-    await loadStudentsForExport(
-      className
-    );
-
-  const weeklyDataForExport =
-    await loadWeeklyDataForExport(
-      className,
-      weekNumber
-    );
-
-  const mergedData =
-    mergeStudentsWithWeeklyData(
-      studentsForExport,
-      weeklyDataForExport
-    );
-
-  console.log(
-    `📚 HỌC SINH ${className}:`,
-    studentsForExport.length
-  );
-
-  console.log(
-    `📄 HẠNH KIỂM ${className}:`,
-    weeklyDataForExport.length
-  );
-
-  console.log(
-    `🔗 DỮ LIỆU GHÉP ${className}:`,
-    mergedData
-  );
-}
-}}
+onClick={exportConductExcel}
 >
   XUẤT EXCEL
 </Button>
