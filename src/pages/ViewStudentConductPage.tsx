@@ -1113,73 +1113,151 @@ const sheetData = mergedData.map((item) => {
 // TẠO WORKSHEET
 // =========================================================
 
-const worksheet =
-  XLSX.utils.aoa_to_sheet([]);
+// =========================================================
+// TẠO WORKSHEET
+// =========================================================
 
-      // =========================================================
-      // TIÊU ĐỀ
-      // =========================================================
+const worksheet = XLSX.utils.aoa_to_sheet([]);
 
-      XLSX.utils.sheet_add_aoa(
-        worksheet,
-        [
-          [
-            `BẢNG THEO DÕI ĐIỂM RÈN LUYỆN TUẦN ${weekNumber}`,
-          ],
-        ],
-        {
-          origin: "A1",
-        }
-      );
-      // =========================================================
-      // DỮ LIỆU HỌC SINH
-      // =========================================================
-      
-      XLSX.utils.sheet_add_json(
-        worksheet,
-        sheetData,
-        {
-          origin: "A4",
-          skipHeader: false,
-        }
-      );
-            
-      // Thông tin lớp
-      XLSX.utils.sheet_add_aoa(
-        worksheet,
-        [
-          [
-            `Lớp: ${className}    |    Khối: ${exportGrade}`,
-          ],
-        ],
-        {
-          origin: "A2",
-        }
-      );
-      worksheet["!merges"] = [
+// =========================================================
+// TIÊU ĐỀ
+// =========================================================
+
+XLSX.utils.sheet_add_aoa(
+  worksheet,
+  [
+    [
+      `BẢNG THEO DÕI ĐIỂM RÈN LUYỆN TUẦN ${weekNumber}`,
+    ],
+  ],
+  {
+    origin: "A1",
+  }
+);
+
+// =========================================================
+// THÔNG TIN LỚP + KHỐI
+// =========================================================
+
+XLSX.utils.sheet_add_aoa(
+  worksheet,
+  [
+    [
+      `Lớp: ${className}`,
+      "",
+      "",
+      "",
+      "",
+      `Khối: ${exportGrade}`,
+    ],
+  ],
+  {
+    origin: "A2",
+  }
+);
+
+// =========================================================
+// GỘP TIÊU ĐỀ
+// =========================================================
+
+worksheet["!merges"] = [
   {
     s: { r: 0, c: 0 },
     e: { r: 0, c: 10 },
   },
 ];
 
+// =========================================================
+// THÊM DỮ LIỆU HỌC SINH
+// =========================================================
+
+XLSX.utils.sheet_add_json(
+  worksheet,
+  sheetData,
+  {
+    origin: "A4",
+    skipHeader: false,
+  }
+);
 
 // =========================================================
-// ĐỊNH DẠNG TOÀN BỘ Ô DỮ LIỆU
+// ĐỘ RỘNG CỘT
 // =========================================================
 
-const totalRows = sheetData.length + 4;
+worksheet["!cols"] = [
+  { wch: 8 },   // A - STT
+  { wch: 30 },  // B - HỌ VÀ TÊN
+  { wch: 10 },  // C - LỚP
+  { wch: 12 },  // D - ĐIỂM ĐẦU
+  { wch: 15 },  // E - VI PHẠM/LẦN
+  { wch: 10 },  // F - TRỪ
+  { wch: 12 },  // G - VIỆC TỐT
+  { wch: 10 },  // H - CỘNG
+  { wch: 12 },  // I - ĐIỂM CUỐI
+  { wch: 14 },  // J - XẾP LOẠI
+  { wch: 25 },  // K - GHI CHÚ
+];
+
+// =========================================================
+// CHIỀU CAO DÒNG
+// =========================================================
+
+worksheet["!rows"] = [];
+
+worksheet["!rows"][0] = {
+  hpt: 28,
+};
+
+worksheet["!rows"][1] = {
+  hpt: 24,
+};
+
+worksheet["!rows"][2] = {
+  hpt: 10,
+};
+
+worksheet["!rows"][3] = {
+  hpt: 38,
+};
+
+for (
+  let row = 4;
+  row < sheetData.length + 4;
+  row++
+) {
+  worksheet["!rows"][row] = {
+    hpt: 24,
+  };
+}
+
+// =========================================================
+// ĐỊNH DẠNG TOÀN BỘ BẢNG
+// =========================================================
+
+const totalRows =
+  sheetData.length + 4;
+
 const totalCols = 11;
 
-for (let row = 0; row < totalRows; row++) {
-  for (let col = 0; col < totalCols; col++) {
+for (
+  let row = 0;
+  row < totalRows;
+  row++
+) {
+  for (
+    let col = 0;
+    col < totalCols;
+    col++
+  ) {
 
-    const address = XLSX.utils.encode_cell({
-      r: row,
-      c: col,
-    });
+    const address =
+      XLSX.utils.encode_cell({
+        r: row,
+        c: col,
+      });
 
-    const cell = worksheet[address];
+    const cell =
+      worksheet[address];
 
     if (!cell) continue;
 
@@ -1190,8 +1268,13 @@ for (let row = 0; row < totalRows; row++) {
       },
 
       alignment: {
-        horizontal: col === 1 ? "left" : "center",
+        horizontal:
+          col === 1
+            ? "left"
+            : "center",
+
         vertical: "center",
+
         wrapText: true,
       },
 
@@ -1213,7 +1296,16 @@ for (let row = 0; row < totalRows; row++) {
   }
 }
 
-      for (let col = 0; col < 11; col++) {
+// =========================================================
+// ĐỊNH DẠNG TIÊU ĐỀ BẢNG - DÒNG 4
+// =========================================================
+
+for (
+  let col = 0;
+  col < totalCols;
+  col++
+) {
+
   const address =
     XLSX.utils.encode_cell({
       r: 3,
@@ -1231,11 +1323,13 @@ for (let row = 0; row < totalRows; row++) {
       sz: 14,
       bold: true,
     },
+
     alignment: {
       horizontal: "center",
       vertical: "center",
       wrapText: true,
     },
+
     border: {
       top: {
         style: "thin",
@@ -1253,78 +1347,72 @@ for (let row = 0; row < totalRows; row++) {
   };
 }
 
-      worksheet["A1"].s = {
-  font: {
-    name: "Times New Roman",
-    sz: 14,
-    bold: true,
-  },
-  alignment: {
-    horizontal: "center",
-    vertical: "center",
-  },
-};
-      
-      // -----------------------------------------
-      // ĐỘ RỘNG CỘT
-      // -----------------------------------------
+// =========================================================
+// TIÊU ĐỀ LỚN A1
+// =========================================================
 
-      worksheet["!cols"] = [
-  { wch: 8 },   // STT
-  { wch: 30 },  // HỌ VÀ TÊN
-  { wch: 10 },  // LỚP
-  { wch: 12 },  // ĐIỂM ĐẦU
-  { wch: 15 },  // VI PHẠM/LẦN
-  { wch: 10 },  // TRỪ
-  { wch: 12 },  // VIỆC TỐT
-  { wch: 10 },  // CỘNG
-  { wch: 12 },  // ĐIỂM CUỐI
-  { wch: 14 },  // XẾP LOẠI
-  { wch: 25 },  // GHI CHÚ
-];
+if (worksheet["A1"]) {
+  worksheet["A1"].s = {
+    font: {
+      name: "Times New Roman",
+      sz: 14,
+      bold: true,
+    },
 
-      // -----------------------------------------
-      // ĐỘ RỘNG CỘT
-      // -----------------------------------------
-      
-      worksheet["!rows"] = [];
+    alignment: {
+      horizontal: "center",
+      vertical: "center",
+    },
+  };
+}
 
-      worksheet["!rows"][0] = {
-        hpt: 28,
-      };
-      
-      worksheet["!rows"][1] = {
-        hpt: 24,
-      };
-      
-      worksheet["!rows"][2] = {
-        hpt: 10,
-      };
-      
-      worksheet["!rows"][3] = {
-        hpt: 38,
-      };
-      
-      for (
-        let row = 4;
-        row < totalRows;
-        row++
-      ) {
-        worksheet["!rows"][row] = {
-          hpt: 24,
-        };
-      }
+// =========================================================
+// THÔNG TIN LỚP - A2
+// =========================================================
 
-      // -----------------------------------------
-      // THÊM SHEET
-      // -----------------------------------------
+if (worksheet["A2"]) {
+  worksheet["A2"].s = {
+    font: {
+      name: "Times New Roman",
+      sz: 14,
+      bold: true,
+    },
 
-      XLSX.utils.book_append_sheet(
-        workbook,
-        worksheet,
-        className
-      );
-    }
+    alignment: {
+      horizontal: "left",
+      vertical: "center",
+    },
+  };
+}
+
+// =========================================================
+// KHỐI - F2
+// =========================================================
+
+if (worksheet["F2"]) {
+  worksheet["F2"].s = {
+    font: {
+      name: "Times New Roman",
+      sz: 14,
+      bold: true,
+    },
+
+    alignment: {
+      horizontal: "center",
+      vertical: "center",
+    },
+  };
+}
+
+// =========================================================
+// THÊM SHEET
+// =========================================================
+
+XLSX.utils.book_append_sheet(
+  workbook,
+  worksheet,
+  className
+);
 
     // -----------------------------------------
     // TẢI FILE
