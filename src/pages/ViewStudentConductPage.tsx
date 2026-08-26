@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-
+import FileDownload from "@mui/icons-material/FileDownload";
 import {
   Alert,
   Box,
@@ -16,7 +16,13 @@ import {
   TableRow,
   TextField,
   Typography,
-  FileDownload,
+  Chip,
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stack,
 } from "@mui/material";
 import api from "../api/api";
 
@@ -141,20 +147,7 @@ interface AnnualConduct {
 
   finalizedAt?: string | null;
 }
-// =========================================================
-// DIALOG XUẤT EXCEL
-// =========================================================
 
-const openExportDialog = () => {
-  setExportGrade("");
-  setExportWeek(
-    selectedWeek !== ""
-      ? selectedWeek
-      : ""
-  );
-
-  setExportDialogOpen(true);
-};
 
 // =========================================================
 // HELPERS
@@ -379,7 +372,16 @@ export default function ViewStudentConductPage() {
 
   const [selectedClass, setSelectedClass] =
     useState("");
+  
+  const [exportDialogOpen, setExportDialogOpen] =
+    useState(false);
 
+  const [exportGrade, setExportGrade] =
+    useState("");
+
+  const [exportWeek, setExportWeek] =
+    useState<number | "">("");
+  
   const [selectedWeek, setSelectedWeek] =
     useState<number | "">("");
 
@@ -389,14 +391,7 @@ export default function ViewStudentConductPage() {
   const [annualAcademicYear, setAnnualAcademicYear] =
     useState(CURRENT_ACADEMIC_YEAR);
 
-  const [exportDialogOpen, setExportDialogOpen] =
-  useState(false);
 
-  const [exportGrade, setExportGrade] =
-  useState("");
-
-  const [exportWeek, setExportWeek] =
-  useState<number | "">("");
 
   // -------------------------------------------------------
   // STUDY WEEKS
@@ -693,7 +688,16 @@ export default function ViewStudentConductPage() {
         setLoadingClasses(false);
       }
     }, []);
+  // =========================================================
+  // DIALOG XUẤT EXCEL
+  // =========================================================
 
+const openExportDialog = () => {
+  setExportGrade("");
+  setExportWeek("");
+  setExportDialogOpen(true);
+
+};
   // =========================================================
   // LOAD STUDENTS
   // =========================================================
