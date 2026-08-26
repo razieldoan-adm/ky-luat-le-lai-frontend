@@ -109,18 +109,18 @@ const fetchWeeks = async () => {
   }
 };
   // ==========================================================
-  // KIỂM TRA THAY ĐỔI
+  // KIỂM TRA THAY ĐỔI CLASS
   // ==========================================================
 
-  const fetchClasses = async () => {
+const fetchClasses = async () => {
   try {
     const res = await api.get(
       "/api/classes"
     );
 
-    const data = res.data || [];
+    const data: any[] = res.data || [];
 
-    const classNames = data
+    const classNames: string[] = data
       .map((item: any) =>
         typeof item === "string"
           ? item
@@ -131,9 +131,11 @@ const fetchWeeks = async () => {
           Boolean(name)
       );
 
-    setClasses(
-      [...new Set(classNames)].sort()
-    );
+    const uniqueClasses: string[] = [
+      ...new Set<string>(classNames),
+    ].sort();
+
+    setClasses(uniqueClasses);
 
   } catch (err) {
     console.error(
