@@ -1116,22 +1116,34 @@ const sheetData = mergedData.map((item) => {
 const worksheet =
   XLSX.utils.aoa_to_sheet([]);
 
-// =========================================================
-// TIÊU ĐỀ
-// =========================================================
+      // =========================================================
+      // TIÊU ĐỀ
+      // =========================================================
 
-XLSX.utils.sheet_add_aoa(
-  worksheet,
-  [
-    [
-      `BẢNG THEO DÕI ĐIỂM RÈN LUYỆN TUẦN ${weekNumber}`,
-    ],
-  ],
-  {
-    origin: "A1",
-  }
-);
+      XLSX.utils.sheet_add_aoa(
+        worksheet,
+        [
+          [
+            `BẢNG THEO DÕI ĐIỂM RÈN LUYỆN TUẦN ${weekNumber}`,
+          ],
+        ],
+        {
+          origin: "A1",
+        }
+      );
+      // =========================================================
+      // DỮ LIỆU HỌC SINH
+      // =========================================================
       
+      XLSX.utils.sheet_add_json(
+        worksheet,
+        sheetData,
+        {
+          origin: "A4",
+          skipHeader: false,
+        }
+      );
+            
       // Thông tin lớp
       XLSX.utils.sheet_add_aoa(
         worksheet,
@@ -1150,6 +1162,7 @@ XLSX.utils.sheet_add_aoa(
     e: { r: 0, c: 10 },
   },
 ];
+
 
 // =========================================================
 // ĐỊNH DẠNG TOÀN BỘ Ô DỮ LIỆU
@@ -1252,18 +1265,6 @@ for (let row = 0; row < totalRows; row++) {
   },
 };
       
-      // =========================================================
-      // DỮ LIỆU HỌC SINH
-      // =========================================================
-
-XLSX.utils.sheet_add_json(
-  worksheet,
-  sheetData,
-  {
-    origin: "A4",
-    skipHeader: false,
-  }
-);
       // -----------------------------------------
       // ĐỘ RỘNG CỘT
       // -----------------------------------------
