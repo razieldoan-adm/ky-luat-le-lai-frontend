@@ -1109,29 +1109,28 @@ const sheetData = mergedData.map((item) => {
   };
 });
 
-      // Tạo worksheet
-      const worksheet =
-        XLSX.utils.json_to_sheet(
-          sheetData,
-          {
-            origin: "A3",
-          }
-        );
-      // =========================================================
-      // TIÊU ĐỀ SHEET
-      // =========================================================
-      
-      XLSX.utils.sheet_add_aoa(
-        worksheet,
-        [
-          [
-            `BẢNG THEO DÕI ĐIỂM RÈN LUYỆN TUẦN ${weekNumber}`,
-          ],
-        ],
-        {
-          origin: "A1",
-        }
-      );
+// =========================================================
+// TẠO WORKSHEET
+// =========================================================
+
+const worksheet =
+  XLSX.utils.aoa_to_sheet([]);
+
+// =========================================================
+// TIÊU ĐỀ
+// =========================================================
+
+XLSX.utils.sheet_add_aoa(
+  worksheet,
+  [
+    [
+      `BẢNG THEO DÕI ĐIỂM RÈN LUYỆN TUẦN ${weekNumber}`,
+    ],
+  ],
+  {
+    origin: "A1",
+  }
+);
       
       // Thông tin lớp
       XLSX.utils.sheet_add_aoa(
