@@ -1041,9 +1041,9 @@ const exportConductExcel = async () => {
   `🔎 CONDUCT ${className}:`,
       mergedData[0]?.conduct
     );
-      // -----------------------------------------
-      // TẠO DỮ LIỆU SHEET
-      // -----------------------------------------
+// -----------------------------------------
+// TẠO DỮ LIỆU SHEET
+// -----------------------------------------
 
 const sheetData = mergedData.map((item) => {
   const conduct = item.conduct;
@@ -1065,20 +1065,6 @@ const sheetData = mergedData.map((item) => {
   const deduction =
     conduct?.totalDeduction ?? 0;
 
-  // ================================
-  // ĐIỂM CUỐI
-  // ================================
-  const finalScore =
-    violationCount === 0
-      ? startScore
-      : conduct?.finalScore ?? startScore;
-
-  // ================================
-  // XẾP LOẠI
-  // ================================
-  const classification =
-    conduct?.classification ?? "";
-
   return {
     "STT": item.stt,
     "HỌ VÀ TÊN": item.name,
@@ -1092,26 +1078,22 @@ const sheetData = mergedData.map((item) => {
     "TRỪ":
       deduction,
 
-    "VIỆC TỐT":
-      conduct?.bonusScore ?? "",
+    // Mặc định 0 để người dùng có thể sửa trực tiếp
+    "VIỆC TỐT": 0,
 
-    "CỘNG":
-      conduct?.bonusScore ?? "",
+    // Mặc định 0
+    "CỘNG": 0,
 
-    "ĐIỂM CUỐI":
-      finalScore,
+    // Sẽ thay bằng công thức Excel sau
+    "ĐIỂM CUỐI": null,
 
-    "XẾP LOẠI":
-      classification,
+    // Sẽ thay bằng công thức Excel sau
+    "XẾP LOẠI": "",
 
-    "GHI CHÚ":
-      conduct?.note ?? "",
+    "GHI CHÚ": "",
   };
 });
 
-// =========================================================
-// TẠO WORKSHEET
-// =========================================================
 
 // =========================================================
 // TẠO WORKSHEET
@@ -1179,6 +1161,46 @@ XLSX.utils.sheet_add_json(
     skipHeader: false,
   }
 );
+// =========================================================
+// CÔNG THỨC ĐIỂM CUỐI + XẾP LOẠI
+// =========================================================
+
+// Dòng dữ liệu đầu tiên là dòng 5
+// Vì:
+// dòng 1 = tiêu đề
+// dòng 2 = thông tin lớp
+// dòng 3 = trống
+// dòng 4 = tiêu đề cột
+
+for (let row = 5; row < 5 + sheetData.length; row++) {
+
+  // -------------------------------------------------------
+  // ĐIỂM CUỐI
+  // = ĐIỂM ĐẦU - TRỪ + CỘNG
+  // D = ĐIỂM ĐẦU
+  // F = TRỪ
+  // H = CỘNG
+  // -------------------------------------------------------
+
+  worksheet[`I${row}`] = {
+    t: "n",
+    f: `D${row}-F${row}+H${row}`,
+  };
+
+  // -------------------------------------------------------
+  // XẾP LOẠI
+  //
+  // 90 - 100  = Tốt
+  // 75 - 89   = Khá
+  // 50 - 74   = Đạt
+  // 0 - 49    = Chưa đạt
+  // -------------------------------------------------------
+
+  worksheet[`J${row}`] = {
+    t: "s",
+    f: `IF(I${row}>=90,"Tốt",IF(I${row}>=75,"Khá",IF(I${row}>=50,"Đạt","Chưa đạt")))`,
+  };
+}
 
 // =========================================================
 // ĐỘ RỘNG CỘT
