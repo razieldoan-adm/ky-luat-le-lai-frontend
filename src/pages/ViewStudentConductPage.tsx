@@ -2932,7 +2932,7 @@ const changeViewMode =
                       >
                         Xếp loại
                       </TableCell>
-                    </span>
+                    </React.Fragment>
                   )
                 )}
               </TableRow>
@@ -2997,8 +2997,8 @@ const changeViewMode =
                               : undefined;
 
                           return (
-                            <span
-                              key={`${student._id}-${week.weekNumber}`}
+                            <React.Fragment
+                                key={`${student._id}-${week.weekNumber}`}
                             >
                               <TableCell
                                 align="center"
@@ -3018,7 +3018,7 @@ const changeViewMode =
                                   classification
                                 )}
                               </TableCell>
-                            </span>
+                            </React.Fragment>
                           );
                         }
                       )}
