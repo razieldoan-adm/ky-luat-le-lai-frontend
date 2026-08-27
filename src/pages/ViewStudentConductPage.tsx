@@ -2908,7 +2908,7 @@ const changeViewMode =
                   (
                     week: StudyWeek
                   ) => (
-                    <React.Fragment 
+                    <Fragment 
                       key={
                         week.weekNumber
                       }
@@ -2932,7 +2932,7 @@ const changeViewMode =
                       >
                         Xếp loại
                       </TableCell>
-                    </React.Fragment>
+                    </Fragment>
                   )
                 )}
               </TableRow>
@@ -2997,7 +2997,7 @@ const changeViewMode =
                               : undefined;
 
                           return (
-                            <React.Fragment
+                            <Fragment
                                 key={`${student._id}-${week.weekNumber}`}
                             >
                               <TableCell
@@ -3018,7 +3018,7 @@ const changeViewMode =
                                   classification
                                 )}
                               </TableCell>
-                            </React.Fragment>
+                            </Fragment>
                           );
                         }
                       )}
