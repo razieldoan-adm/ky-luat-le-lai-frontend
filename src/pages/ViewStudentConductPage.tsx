@@ -2908,7 +2908,7 @@ const changeViewMode =
                   (
                     week: StudyWeek
                   ) => (
-                    <span
+                    <React.Fragment 
                       key={
                         week.weekNumber
                       }
