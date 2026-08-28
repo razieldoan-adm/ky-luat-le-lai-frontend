@@ -215,34 +215,94 @@ const WeeklyScoresPage: React.FC = () => {
 
   // --- Xuất Excel tổng hợp 4 khối
   // Bấm 1 lần -> tạo và tải file ngay, không mở dialog.
-  const handleExport = () => {
-    if (!selectedWeek || !scores.length) {
-      alert("❌ Không có dữ liệu để xuất Excel.");
+  const handleExport = async () => {
+    if (!selectedWeek) {
+      alert("❌ Chưa chọn tuần để xuất Excel.");
       return;
     }
 
-    // Toàn bộ khối 6 -> 7 -> 8 -> 9, trong cùng một sheet.
-    const allScores = ["6", "7", "8", "9"]
-      .flatMap((grade) =>
-        scores
-          .filter((s) => s.grade === grade)
-          .sort((a, b) =>
+    try {
+      // Lấy DANH SÁCH LỚP CHÍNH THỨC từ hệ thống trước.
+      // Không dùng scores làm danh sách lớp vì scores chỉ là dữ liệu điểm
+      // và có thể thiếu lớp chưa có bản ghi điểm tuần.
+      const classRes = await api.get("/api/classes/with-teacher");
+      const classList = Array.isArray(classRes.data)
+        ? classRes.data
+        : Array.isArray(classRes.data?.classes)
+        ? classRes.data.classes
+        : [];
+
+      if (!classList.length) {
+        alert("❌ Không lấy được danh sách lớp có GVCN.");
+        return;
+      }
+
+      const normalizeClassName = (value: unknown) =>
+        String(value ?? "").trim().toUpperCase();
+
+      const getGrade = (item: any) => {
+        const directGrade = String(item?.grade ?? "").trim();
+        if (["6", "7", "8", "9"].includes(directGrade)) return directGrade;
+
+        const className = normalizeClassName(
+          item?.className ?? item?.name ?? item?.class?.className
+        );
+        return className.match(/^[6789]/)?.[0] ?? "";
+      };
+
+      // Ghép danh sách lớp chính thức với điểm tuần.
+      // Lớp chưa có dữ liệu tuần vẫn được xuất, các khoản điểm = 0.
+      const scoreMap = new Map(
+        scores.map((s) => [normalizeClassName(s.className), s])
+      );
+
+      const mergedClasses = classList
+        .map((c: any) => {
+          const className = String(
+            c?.className ?? c?.name ?? c?.class?.className ?? ""
+          ).trim();
+          const grade = getGrade(c);
+          const score = scoreMap.get(normalizeClassName(className));
+
+          return {
+            className,
+            grade,
+            score,
+          };
+        })
+        .filter((c: any) => ["6", "7", "8", "9"].includes(c.grade) && c.className);
+
+      if (!mergedClasses.length) {
+        alert("❌ Không tìm thấy lớp khối 6-9 có GVCN.");
+        return;
+      }
+
+      // Toàn bộ khối 6 -> 7 -> 8 -> 9 theo danh sách lớp chính thức.
+      const allScores = ["6", "7", "8", "9"].flatMap((grade) =>
+        mergedClasses
+          .filter((c: any) => c.grade === grade)
+          .sort((a: any, b: any) =>
             a.className.localeCompare(b.className, undefined, {
               numeric: true,
             })
           )
       );
 
-    const rows = allScores.map((row, index) => ({
-      stt: index + 1,
-      className: row.className,
-      academic: row.academicScore ?? 0,
-      bonus: row.bonusScore ?? 0,
-      violation: row.violationScore ?? 0,
-      lineUp: row.lineUpScore ?? 0,
-      attendance: (row.attendanceScore ?? 0) * 5,
-      hygiene: row.hygieneScore ?? 0,
-    }));
+    const rows = allScores.map((row: any, index: number) => {
+      const score = row.score;
+
+      return {
+        stt: index + 1,
+        className: row.className,
+        grade: row.grade,
+        academic: score?.academicScore ?? 0,
+        bonus: score?.bonusScore ?? 0,
+        violation: score?.violationScore ?? 0,
+        lineUp: score?.lineUpScore ?? 0,
+        attendance: (score?.attendanceScore ?? 0) * 5,
+        hygiene: score?.hygieneScore ?? 0,
+      };
+    });
 
     // Header 2 tầng giống mẫu:
     // E:H = nhóm "Nề nếp".
@@ -381,12 +441,12 @@ const WeeklyScoresPage: React.FC = () => {
       // K = Xếp loại.
       // Theo đúng điều kiện người dùng đã chốt:
       // TỐT: Tổng >= 100 và Nề nếp >= 85
-      // KHÁ: Tổng 80-89 và Nề nếp 60-79
+      // KHÁ: Tổng 80-99 và Nề nếp 60-79
       // ĐẠT: Tổng < 60
       // Các khoảng chưa được quy định giữ trống.
       worksheet[`K${excelRow}`] = {
         t: "s",
-        f: `IF(AND(J${excelRow}>=100,I${excelRow}>=85),"TỐT",IF(AND(J${excelRow}>=80,J${excelRow}<=89,I${excelRow}>=60,I${excelRow}<=79),"KHÁ",IF(J${excelRow}<60,"ĐẠT","")))`,
+        f: `IF(AND(J${excelRow}>=100,I${excelRow}>=85),"TỐT",IF(AND(J${excelRow}>=80,J${excelRow}<=99,I${excelRow}>=60,I${excelRow}<=79),"KHÁ",IF(AND(J${excelRow}<80,I${excelRow}<60),"ĐẠT","")))`,
         s: cellStyle,
       };
 
@@ -394,9 +454,10 @@ const WeeklyScoresPage: React.FC = () => {
       // Trong cùng loại: Tổng thi đua cao hơn đứng trước.
       worksheet[`L${excelRow}`] = {
         t: "n",
-        // Xếp hạng RIÊNG THEO KHỐI, giống bảng đang có trên hệ thống.
-        // Trong từng khối: TỐT -> KHÁ -> ĐẠT.
-        // Cùng loại thì Tổng thi đua cao hơn đứng trước; bằng điểm thì đồng hạng.
+        // Xếp hạng RIÊNG THEO KHỐI:
+        // TỐT -> KHÁ -> ĐẠT.
+        // Trong cùng loại: Tổng thi đua cao hơn đứng trước.
+        // Bằng điểm: đồng hạng.
         f:
           `IF(K${excelRow}="","",` +
           `IF(K${excelRow}="TỐT",` +
