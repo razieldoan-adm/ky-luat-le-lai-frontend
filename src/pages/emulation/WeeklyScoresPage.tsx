@@ -446,7 +446,7 @@ const WeeklyScoresPage: React.FC = () => {
       // Các khoảng chưa được quy định giữ trống.
       worksheet[`K${excelRow}`] = {
         t: "s",
-        f: `IF(AND(J${excelRow}>=100,I${excelRow}>=85),"TỐT",IF(AND(J${excelRow}>=80,J${excelRow}<=99,I${excelRow}>=60,I${excelRow}<=79),"KHÁ",IF(AND(J${excelRow}<80,I${excelRow}<60),"ĐẠT","")))`,
+        f: `IF(AND(J${excelRow}>=100,I${excelRow}>=85),"TỐT",IF(AND(J${excelRow}>=80,J${excelRow}<=99,I${excelRow}>=60,I${excelRow}<=84),"KHÁ",IF(AND(J${excelRow}<80,I${excelRow}<60),"ĐẠT","")))`,
         s: cellStyle,
       };
 
