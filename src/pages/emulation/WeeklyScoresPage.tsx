@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import * as XLSX from "xlsx-js-style";
 import {
   Box, Typography, CircularProgress, TextField, MenuItem, Button,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
@@ -212,11 +213,354 @@ const WeeklyScoresPage: React.FC = () => {
     }, 0);
   };
 
-  // --- Xuất Excel
-  const handleExport = () => {
-    if (!selectedWeek) return;
-    window.open(`/api/class-weekly-scores/export/${selectedWeek}`, "_blank");
+// --- Xuất Excel tổng hợp toàn trường ---
+const handleExport = () => {
+  if (!selectedWeek || !scores.length) {
+    alert("❌ Không có dữ liệu để xuất Excel.");
+    return;
+  }
+
+  // Lấy toàn bộ 4 khối
+  const allScores = ["6", "7", "8", "9"]
+    .flatMap((grade) =>
+      scores.filter((s) => s.grade === grade)
+    )
+    .sort((a, b) => {
+      const gradeA = Number(a.grade);
+      const gradeB = Number(b.grade);
+
+      if (gradeA !== gradeB) return gradeA - gradeB;
+
+      return a.className.localeCompare(b.className, undefined, {
+        numeric: true,
+      });
+    });
+
+  // ---------------------------------------------------------
+  // TÍNH DỮ LIỆU XUẤT EXCEL
+  // ---------------------------------------------------------
+
+  const exportData = allScores.map((row, index) => ({
+    STT: index + 1,
+    Lớp: row.className,
+
+    // Học tập và thưởng mặc định = 0
+    "Học tập": 0,
+    "Thưởng": 0,
+
+    // Các khoản lấy từ hệ thống, thiếu = 0
+    "Xếp hàng": row.lineUpScore ?? 0,
+    "Vi phạm": row.violationScore ?? 0,
+
+    // attendanceScore trong hệ thống là số HS nghỉ
+    // => điểm chuyên cần = số HS nghỉ x 5
+    "Chuyên cần": (row.attendanceScore ?? 0) * 5,
+
+    "Vệ sinh": row.hygieneScore ?? 0,
+
+    // Các cột này sẽ được thay bằng công thức Excel bên dưới
+    "Nề nếp": 0,
+    "Tổng thi đua": 0,
+    "Xếp loại": "",
+    "Xếp hạng": "",
+  }));
+
+  // ---------------------------------------------------------
+  // TẠO WORKBOOK
+  // ---------------------------------------------------------
+
+  const workbook = XLSX.utils.book_new();
+
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    ["LIÊN ĐỘI THCS LÊ LAI"],
+    [`BẢNG TỔNG HỢP ĐIỂM THI ĐUA TUẦN ${selectedWeek}`],
+    ["Năm học: 2026 - 2027"],
+    [],
+    [
+      "STT",
+      "Lớp",
+      "Học tập",
+      "Thưởng",
+      "Xếp hàng",
+      "Vi phạm",
+      "Chuyên cần",
+      "Vệ sinh",
+      "Nề nếp",
+      "Tổng thi đua",
+      "Xếp loại",
+      "Xếp hạng",
+    ],
+    ...exportData.map((row) => [
+      row.STT,
+      row.Lớp,
+      row["Học tập"],
+      row["Thưởng"],
+      row["Xếp hàng"],
+      row["Vi phạm"],
+      row["Chuyên cần"],
+      row["Vệ sinh"],
+      row["Nề nếp"],
+      row["Tổng thi đua"],
+      row["Xếp loại"],
+      row["Xếp hạng"],
+    ]),
+  ]);
+
+  // ---------------------------------------------------------
+  // MERGE TIÊU ĐỀ
+  // ---------------------------------------------------------
+
+  worksheet["!merges"] = [
+    {
+      s: { r: 0, c: 0 },
+      e: { r: 0, c: 11 },
+    },
+    {
+      s: { r: 1, c: 0 },
+      e: { r: 1, c: 11 },
+    },
+    {
+      s: { r: 2, c: 0 },
+      e: { r: 2, c: 11 },
+    },
+  ];
+
+  // ---------------------------------------------------------
+  // CÔNG THỨC EXCEL
+  // ---------------------------------------------------------
+
+  const headerRow = 5;
+
+  allScores.forEach((_, index) => {
+    const excelRow = headerRow + index;
+
+    // Cột:
+    // E = Xếp hàng
+    // F = Vi phạm
+    // G = Chuyên cần
+    // H = Vệ sinh
+    // I = Nề nếp
+    // C = Học tập
+    // D = Thưởng
+    // J = Tổng thi đua
+    // K = Xếp loại
+    // L = Xếp hạng
+
+    worksheet[`I${excelRow}`] = {
+      t: "n",
+      f: `MAX(0,100-(E${excelRow}+F${excelRow}+G${excelRow}+H${excelRow}))`,
+    };
+
+    worksheet[`J${excelRow}`] = {
+      t: "n",
+      f: `I${excelRow}+C${excelRow}+D${excelRow}`,
+    };
+
+    // XẾP LOẠI
+    //
+    // TỐT:
+    // Tổng >= 100 và Nề nếp >= 85
+    //
+    // KHÁ:
+    // Tổng từ 80 đến 89 và Nề nếp từ 60 đến 79
+    //
+    // ĐẠT:
+    // Tổng < 60
+    worksheet[`K${excelRow}`] = {
+      t: "s",
+      f: `IF(AND(J${excelRow}>=100,I${excelRow}>=85),"TỐT",IF(AND(J${excelRow}>=80,J${excelRow}<=89,I${excelRow}>=60,I${excelRow}<=79),"KHÁ",IF(J${excelRow}<60,"ĐẠT","")))`,
+    };
+  });
+
+  // ---------------------------------------------------------
+  // XẾP HẠNG
+  // ƯU TIÊN: TỐT -> KHÁ -> ĐẠT
+  // Trong cùng loại: Tổng thi đua cao hơn đứng trước
+  // ---------------------------------------------------------
+
+  const firstDataRow = headerRow;
+  const lastDataRow = headerRow + allScores.length - 1;
+
+  allScores.forEach((_, index) => {
+    const excelRow = headerRow + index;
+
+    worksheet[`L${excelRow}`] = {
+      t: "n",
+      f:
+        `COUNTIFS($K$${firstDataRow}:$K$${lastDataRow},"<"&K${excelRow})` +
+        `+COUNTIFS($K$${firstDataRow}:$K$${lastDataRow},K${excelRow},$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow})+1`,
+    };
+  });
+
+  // ---------------------------------------------------------
+  // STYLE
+  // ---------------------------------------------------------
+
+  const titleStyle = {
+    font: {
+      name: "Arial",
+      sz: 16,
+      bold: true,
+    },
+    alignment: {
+      horizontal: "center",
+      vertical: "center",
+    },
   };
+
+  const subTitleStyle = {
+    font: {
+      name: "Arial",
+      sz: 13,
+      bold: true,
+    },
+    alignment: {
+      horizontal: "center",
+      vertical: "center",
+    },
+  };
+
+  const headerStyle = {
+    font: {
+      name: "Arial",
+      sz: 11,
+      bold: true,
+    },
+    alignment: {
+      horizontal: "center",
+      vertical: "center",
+      wrapText: true,
+    },
+    border: {
+      top: { style: "thin" },
+      bottom: { style: "thin" },
+      left: { style: "thin" },
+      right: { style: "thin" },
+    },
+  };
+
+  const cellStyle = {
+    font: {
+      name: "Arial",
+      sz: 11,
+    },
+    alignment: {
+      horizontal: "center",
+      vertical: "center",
+    },
+    border: {
+      top: { style: "thin" },
+      bottom: { style: "thin" },
+      left: { style: "thin" },
+      right: { style: "thin" },
+    },
+  };
+
+  // Tiêu đề
+  worksheet["A1"].s = titleStyle;
+  worksheet["A2"].s = titleStyle;
+  worksheet["A3"].s = subTitleStyle;
+
+  // Header
+  for (let col = 0; col < 12; col++) {
+    const cell = XLSX.utils.encode_cell({
+      r: 4,
+      c: col,
+    });
+
+    if (worksheet[cell]) {
+      worksheet[cell].s = headerStyle;
+    }
+  }
+
+  // Dữ liệu
+  for (let row = firstDataRow - 1; row <= lastDataRow - 1; row++) {
+    for (let col = 0; col < 12; col++) {
+      const cell = XLSX.utils.encode_cell({
+        r: row,
+        c: col,
+      });
+
+      if (worksheet[cell]) {
+        worksheet[cell].s = cellStyle;
+      }
+    }
+  }
+
+  // ---------------------------------------------------------
+  // ĐỊNH DẠNG SỐ
+  // ---------------------------------------------------------
+
+  for (let row = firstDataRow; row <= lastDataRow; row++) {
+    ["C", "D", "E", "F", "G", "H", "I", "J"].forEach((col) => {
+      if (worksheet[`${col}${row}`]) {
+        worksheet[`${col}${row}`].z = "0.0";
+      }
+    });
+  }
+
+  // ---------------------------------------------------------
+  // ĐỘ RỘNG CỘT
+  // ---------------------------------------------------------
+
+  worksheet["!cols"] = [
+    { wch: 7 },   // STT
+    { wch: 12 },  // Lớp
+    { wch: 12 },  // Học tập
+    { wch: 12 },  // Thưởng
+    { wch: 12 },  // Xếp hàng
+    { wch: 12 },  // Vi phạm
+    { wch: 14 },  // Chuyên cần
+    { wch: 12 },  // Vệ sinh
+    { wch: 12 },  // Nề nếp
+    { wch: 15 },  // Tổng
+    { wch: 12 },  // Xếp loại
+    { wch: 12 },  // Xếp hạng
+  ];
+
+  // Chiều cao
+  worksheet["!rows"] = [
+    { hpt: 25 },
+    { hpt: 24 },
+    { hpt: 20 },
+    { hpt: 10 },
+    { hpt: 40 },
+  ];
+
+  // ---------------------------------------------------------
+  // IN ẤN
+  // ---------------------------------------------------------
+
+  worksheet["!pageSetup"] = {
+    orientation: "landscape",
+    fitToWidth: 1,
+    fitToHeight: 0,
+  };
+
+  worksheet["!printOptions"] = {
+    horizontalCentered: true,
+    verticalCentered: false,
+  };
+
+  // ---------------------------------------------------------
+  // TÊN SHEET
+  // ---------------------------------------------------------
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    `Thi đua tuần ${selectedWeek}`
+  );
+
+  // ---------------------------------------------------------
+  // DOWNLOAD NGAY - KHÔNG DIALOG
+  // ---------------------------------------------------------
+
+  XLSX.writeFile(
+    workbook,
+    `Tong_Hop_Thi_Dua_Tuan_${selectedWeek}_2026-2027.xlsx`
+  );
+};
 
   // --- Hàm render bảng theo khối
   const renderTable = (grade: string) => {
