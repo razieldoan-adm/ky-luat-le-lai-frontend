@@ -12,12 +12,12 @@ interface ClassWeeklyScore {
   grade: string;
   weekNumber: number;
   hygieneScore: number;
-  lineUpScore: number;       // âœ… Ä‘á»•i chá»¯ â€œUâ€ â†’ thÆ°á»ng
+  lineUpScore: number;       // ✅ đổi chữ “U” → thường
   violationScore: number;
   attendanceScore: number;
   academicScore: number;
-  bonusScore: number;         // âœ… Ä‘á»•i rewardScore â†’ bonusScore
-  totalViolation?: number;    // âœ… thÃªm náº¿u backend cÃ³
+  bonusScore: number;         // ✅ đổi rewardScore → bonusScore
+  totalViolation?: number;    // ✅ thêm nếu backend có
   totalScore?: number;
   rank?: number;
 }
@@ -31,7 +31,7 @@ const WeeklyScoresPage: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [loadingRank, setLoadingRank] = useState(false);
 
-  // --- Load danh sÃ¡ch tuáº§n & tuáº§n hiá»‡n táº¡i
+  // --- Load danh sách tuần & tuần hiện tại
   useEffect(() => {
     const fetchWeeks = async () => {
       try {
@@ -42,13 +42,13 @@ const WeeklyScoresPage: React.FC = () => {
         setSelectedWeek(current);
         loadScores(current);
       } catch (err) {
-        console.error("Lá»—i khi táº£i tuáº§n:", err);
+        console.error("Lỗi khi tải tuần:", err);
       }
     };
     fetchWeeks();
   }, []);
 
-  // --- Load cáº¥u hÃ¬nh há»‡ thá»‘ng
+  // --- Load cấu hình hệ thống
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -61,14 +61,14 @@ const WeeklyScoresPage: React.FC = () => {
     loadSettings();
   }, []);
 
-  // --- Load Ä‘iá»ƒm tuáº§n
+  // --- Load điểm tuần
   const loadScores = async (weekNumber: number) => {
     setLoading(true);
     try {
       const res = await api.get(`/api/class-weekly-scores/weekly`, { params: { weekNumber } });
       let data: ClassWeeklyScore[] = res.data || [];
 
-      // TÃ­nh Ä‘iá»ƒm ká»· luáº­t vÃ  tá»•ng thi Ä‘ua
+      // Tính điểm kỷ luật và tổng thi đua
       data = data.map((item) => {
         const discipline =
           settings.maxDiscipline -
@@ -80,7 +80,7 @@ const WeeklyScoresPage: React.FC = () => {
         return { ...item, totalViolation: discipline, totalScore: total };
       });
 
-      // --- Xáº¿p háº¡ng riÃªng theo khá»‘i, cÃ³ Ä‘á»“ng háº¡ng ---
+      // --- Xếp hạng riêng theo khối, có đồng hạng ---
       const grades = ["6", "7", "8", "9"];
       grades.forEach((g) => {
         const filtered = data.filter((d) => d.grade === g);
@@ -89,7 +89,7 @@ const WeeklyScoresPage: React.FC = () => {
         let currentRank = 1;
         filtered.forEach((d, i) => {
           if (i > 0 && d.totalScore === filtered[i - 1].totalScore) {
-            d.rank = filtered[i - 1].rank; // Ä‘á»“ng háº¡ng vá»›i lá»›p trÆ°á»›c
+            d.rank = filtered[i - 1].rank; // đồng hạng với lớp trước
           } else {
             d.rank = currentRank;
           }
@@ -100,25 +100,25 @@ const WeeklyScoresPage: React.FC = () => {
       setScores(data);
       setHasChanges(false);
     } catch (err) {
-      console.error("Lá»—i khi táº£i Ä‘iá»ƒm:", err);
+      console.error("Lỗi khi tải điểm:", err);
       setScores([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- Khi Ä‘á»•i tuáº§n
+  // --- Khi đổi tuần
   const handleWeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const w = Number(e.target.value);
     setSelectedWeek(w);
     loadScores(w);
   };
 
-  // --- LÆ°u toÃ n bá»™ Ä‘iá»ƒm
+  // --- Lưu toàn bộ điểm
   const handleSave = async () => {
   try {
     if (!scores.length || !selectedWeek) {
-      alert("âŒ KhÃ´ng cÃ³ dá»¯ liá»‡u Ä‘á»ƒ lÆ°u.");
+      alert("❌ Không có dữ liệu để lưu.");
       return;
     }
 
@@ -128,29 +128,29 @@ const WeeklyScoresPage: React.FC = () => {
         grade: s.grade,
         weekNumber: s.weekNumber || selectedWeek,
         academicScore: s.academicScore ?? 0,
-        bonusScore: s.bonusScore ?? 0, // âœ… Ä‘á»•i rewardScore â†’ bonusScore
+        bonusScore: s.bonusScore ?? 0, // ✅ đổi rewardScore → bonusScore
         hygieneScore: s.hygieneScore ?? 0,
-        lineUpScore: s.lineUpScore ?? 0, // âœ… Ä‘á»•i lineUpScore â†’ lineupScore
+        lineUpScore: s.lineUpScore ?? 0, // ✅ đổi lineUpScore → lineupScore
         attendanceScore: s.attendanceScore ?? 0,
         violationScore: s.violationScore ?? 0,
-        totalViolation: s.totalViolation ?? 0, // âœ… thÃªm má»›i náº¿u cÃ³
+        totalViolation: s.totalViolation ?? 0, // ✅ thêm mới nếu có
         totalScore: s.totalScore ?? 0,
         rank: s.rank ?? 0,
       })),
     };
 
-    // ðŸ”¹ Gá»i API má»›i Ä‘á»ƒ lÆ°u toÃ n bá»™ Ä‘iá»ƒm tuáº§n
+    // 🔹 Gọi API mới để lưu toàn bộ điểm tuần
     const res = await api.post("/api/class-weekly-scores/save-manual", payload);
 
-    alert("âœ… " + (res.data?.message || "ÄÃ£ lÆ°u toÃ n bá»™ Ä‘iá»ƒm tuáº§n!"));
+    alert("✅ " + (res.data?.message || "Đã lưu toàn bộ điểm tuần!"));
     loadScores(Number(selectedWeek));
   } catch (err) {
-    console.error("âŒ Lá»—i khi lÆ°u:", err);
-    alert("âŒ KhÃ´ng thá»ƒ lÆ°u dá»¯ liá»‡u Ä‘iá»ƒm tuáº§n!");
+    console.error("❌ Lỗi khi lưu:", err);
+    alert("❌ Không thể lưu dữ liệu điểm tuần!");
   }
 };
 
-  // --- Khi sá»­a Ä‘iá»ƒm há»c táº­p hoáº·c thÆ°á»Ÿng
+  // --- Khi sửa điểm học tập hoặc thưởng
   const handleChangeScore = (
     className: string,
     field: keyof ClassWeeklyScore,
@@ -161,10 +161,10 @@ const WeeklyScoresPage: React.FC = () => {
       prev.map((s) => {
         if (s.className !== className) return s;
 
-        // cáº­p nháº­t giÃ¡ trá»‹ má»›i
+        // cập nhật giá trị mới
         const updated = { ...s, [field]: value };
 
-        // tÃ­nh láº¡i Ä‘iá»ƒm ká»· luáº­t vÃ  tá»•ng thi Ä‘ua
+        // tính lại điểm kỷ luật và tổng thi đua
         const discipline =
           settings.maxDiscipline -
           ((updated.attendanceScore ?? 0) * 5 +
@@ -183,7 +183,7 @@ const WeeklyScoresPage: React.FC = () => {
     );
   };
 
-  // --- Cáº­p nháº­t láº¡i thá»© háº¡ng (Ä‘á»“ng háº¡ng) ---
+  // --- Cập nhật lại thứ hạng (đồng hạng) ---
   const handleRecalculateRanks = () => {
     if (!scores.length) return;
     setLoadingRank(true);
@@ -213,15 +213,15 @@ const WeeklyScoresPage: React.FC = () => {
     }, 0);
   };
 
-  // --- Xuáº¥t Excel tá»•ng há»£p 4 khá»‘i
-  // Báº¥m 1 láº§n -> táº¡o vÃ  táº£i file ngay, khÃ´ng má»Ÿ dialog.
+  // --- Xuất Excel tổng hợp 4 khối
+  // Bấm 1 lần -> tạo và tải file ngay, không mở dialog.
   const handleExport = () => {
     if (!selectedWeek || !scores.length) {
-      alert("âŒ KhÃ´ng cÃ³ dá»¯ liá»‡u Ä‘á»ƒ xuáº¥t Excel.");
+      alert("❌ Không có dữ liệu để xuất Excel.");
       return;
     }
 
-    // ToÃ n bá»™ khá»‘i 6 -> 7 -> 8 -> 9, trong cÃ¹ng má»™t sheet.
+    // Toàn bộ khối 6 -> 7 -> 8 -> 9, trong cùng một sheet.
     const allScores = ["6", "7", "8", "9"]
       .flatMap((grade) =>
         scores
@@ -244,36 +244,36 @@ const WeeklyScoresPage: React.FC = () => {
       hygiene: row.hygieneScore ?? 0,
     }));
 
-    // Header 2 táº§ng giá»‘ng máº«u:
-    // E:H = nhÃ³m "Ná» náº¿p".
+    // Header 2 tầng giống mẫu:
+    // E:H = nhóm "Nề nếp".
     const data: (string | number | null)[][] = [
-      ["LiÃªn Ä‘á»™i THCS LÃª Lai"],
+      ["Liên đội THCS Lê Lai"],
       [],
-      [`Báº¢NG ÄIá»‚M THI ÄUA TUáº¦N ${selectedWeek} - NÄ‚M Há»ŒC: 2026-2027`],
+      [`BẢNG ĐIỂM THI ĐUA TUẦN ${selectedWeek} - NĂM HỌC: 2026-2027`],
       [],
       [
         "STT",
-        "Lá»›p",
-        "Há»c táº­p",
-        "Khen thÆ°á»Ÿng",
-        "Ná» náº¿p",
+        "Lớp",
+        "Học tập",
+        "Khen thưởng",
+        "Nề nếp",
         null,
         null,
         null,
-        "Tá»•ng\nná» náº¿p",
-        "Tá»•ng",
-        "Xáº¿p loáº¡i",
-        "Xáº¿p háº¡ng",
+        "Tổng\nnề nếp",
+        "Tổng",
+        "Xếp loại",
+        "Xếp hạng",
       ],
       [
         null,
         null,
         null,
         null,
-        "Vi pháº¡m",
-        "Xáº¿p hÃ ng",
-        "ChuyÃªn cáº§n",
-        "Vá»‡ sinh",
+        "Vi phạm",
+        "Xếp hàng",
+        "Chuyên cần",
+        "Vệ sinh",
         null,
         null,
         null,
@@ -291,10 +291,10 @@ const WeeklyScoresPage: React.FC = () => {
         row.lineUp,
         row.attendance,
         row.hygiene,
-        null, // I: cÃ´ng thá»©c
-        null, // J: cÃ´ng thá»©c
-        null, // K: cÃ´ng thá»©c
-        null, // L: cÃ´ng thá»©c
+        null, // I: công thức
+        null, // J: công thức
+        null, // K: công thức
+        null, // L: công thức
       ]);
     });
 
@@ -350,7 +350,7 @@ const WeeklyScoresPage: React.FC = () => {
     worksheet["A1"].s = titleStyle;
     worksheet["A3"].s = mainTitleStyle;
 
-    // Header 2 táº§ng.
+    // Header 2 tầng.
     for (let r = 4; r <= 5; r++) {
       for (let c = 0; c < 12; c++) {
         const cell = XLSX.utils.encode_cell({ r, c });
@@ -364,54 +364,54 @@ const WeeklyScoresPage: React.FC = () => {
     rows.forEach((_, index) => {
       const excelRow = firstDataRow + index;
 
-      // I = 100 - (Vi pháº¡m + Xáº¿p hÃ ng + ChuyÃªn cáº§n + Vá»‡ sinh)
+      // I = 100 - (Vi phạm + Xếp hàng + Chuyên cần + Vệ sinh)
       worksheet[`I${excelRow}`] = {
         t: "n",
         f: `MAX(0,100-(E${excelRow}+F${excelRow}+G${excelRow}+H${excelRow}))`,
         s: cellStyle,
       };
 
-      // J = Ná» náº¿p + Há»c táº­p + Khen thÆ°á»Ÿng
+      // J = Nề nếp + Học tập + Khen thưởng
       worksheet[`J${excelRow}`] = {
         t: "n",
         f: `I${excelRow}+C${excelRow}+D${excelRow}`,
         s: cellStyle,
       };
 
-      // K = Xáº¿p loáº¡i.
-      // Theo Ä‘Ãºng Ä‘iá»u kiá»‡n ngÆ°á»i dÃ¹ng Ä‘Ã£ chá»‘t:
-      // Tá»T: Tá»•ng >= 100 vÃ  Ná» náº¿p >= 85
-      // KHÃ: Tá»•ng 80-89 vÃ  Ná» náº¿p 60-79
-      // Äáº T: Tá»•ng < 60
-      // CÃ¡c khoáº£ng chÆ°a Ä‘Æ°á»£c quy Ä‘á»‹nh giá»¯ trá»‘ng.
+      // K = Xếp loại.
+      // Theo đúng điều kiện người dùng đã chốt:
+      // TỐT: Tổng >= 100 và Nề nếp >= 85
+      // KHÁ: Tổng 80-89 và Nề nếp 60-79
+      // ĐẠT: Tổng < 60
+      // Các khoảng chưa được quy định giữ trống.
       worksheet[`K${excelRow}`] = {
         t: "s",
-        f: `IF(AND(J${excelRow}>=100,I${excelRow}>=85),"Tá»T",IF(AND(J${excelRow}>=80,J${excelRow}<=89,I${excelRow}>=60,I${excelRow}<=79),"KHÃ",IF(J${excelRow}<60,"Äáº T","")))`,
+        f: `IF(AND(J${excelRow}>=100,I${excelRow}>=85),"TỐT",IF(AND(J${excelRow}>=80,J${excelRow}<=89,I${excelRow}>=60,I${excelRow}<=79),"KHÁ",IF(J${excelRow}<60,"ĐẠT","")))`,
         s: cellStyle,
       };
 
-      // L = xáº¿p háº¡ng toÃ n trÆ°á»ng, Æ°u tiÃªn Tá»T -> KHÃ -> Äáº T.
-      // Trong cÃ¹ng loáº¡i: Tá»•ng thi Ä‘ua cao hÆ¡n Ä‘á»©ng trÆ°á»›c.
+      // L = xếp hạng toàn trường, ưu tiên TỐT -> KHÁ -> ĐẠT.
+      // Trong cùng loại: Tổng thi đua cao hơn đứng trước.
       worksheet[`L${excelRow}`] = {
         t: "n",
-        // Xáº¿p háº¡ng RIÃŠNG THEO KHá»I, giá»‘ng báº£ng Ä‘ang cÃ³ trÃªn há»‡ thá»‘ng.
-        // Trong tá»«ng khá»‘i: Tá»T -> KHÃ -> Äáº T.
-        // CÃ¹ng loáº¡i thÃ¬ Tá»•ng thi Ä‘ua cao hÆ¡n Ä‘á»©ng trÆ°á»›c; báº±ng Ä‘iá»ƒm thÃ¬ Ä‘á»“ng háº¡ng.
+        // Xếp hạng RIÊNG THEO KHỐI, giống bảng đang có trên hệ thống.
+        // Trong từng khối: TỐT -> KHÁ -> ĐẠT.
+        // Cùng loại thì Tổng thi đua cao hơn đứng trước; bằng điểm thì đồng hạng.
         f:
           `IF(K${excelRow}="","",` +
-          `IF(K${excelRow}="Tá»T",` +
-          `COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"Tá»T",$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow})+1,` +
-          `IF(K${excelRow}="KHÃ",` +
-          `COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"Tá»T")` +
-          `+COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"KHÃ",$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow})+1,` +
-          `COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"Tá»T")` +
-          `+COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"KHÃ")` +
-          `+COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"Äáº T",$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow})+1)))`,
+          `IF(K${excelRow}="TỐT",` +
+          `COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"TỐT",$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow})+1,` +
+          `IF(K${excelRow}="KHÁ",` +
+          `COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"TỐT")` +
+          `+COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"KHÁ",$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow})+1,` +
+          `COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"TỐT")` +
+          `+COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"KHÁ")` +
+          `+COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"ĐẠT",$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow})+1)))`,
         s: cellStyle,
       };
     });
 
-    // Style toÃ n bá»™ dá»¯ liá»‡u.
+    // Style toàn bộ dữ liệu.
     for (let r = firstDataRow - 1; r <= lastDataRow - 1; r++) {
       for (let c = 0; c < 12; c++) {
         const cell = XLSX.utils.encode_cell({ r, c });
@@ -421,7 +421,7 @@ const WeeklyScoresPage: React.FC = () => {
       }
     }
 
-    // CÃ´ng thá»©c cáº§n style láº¡i sau vÃ²ng trÃªn.
+    // Công thức cần style lại sau vòng trên.
     for (let r = firstDataRow; r <= lastDataRow; r++) {
       ["I", "J", "K", "L"].forEach((col) => {
         if (worksheet[`${col}${r}`]) {
@@ -438,17 +438,17 @@ const WeeklyScoresPage: React.FC = () => {
 
     worksheet["!cols"] = [
       { wch: 7 },  // STT
-      { wch: 10 }, // Lá»›p
-      { wch: 12 }, // Há»c táº­p
-      { wch: 14 }, // Khen thÆ°á»Ÿng
-      { wch: 11 }, // Vi pháº¡m
-      { wch: 12 }, // Xáº¿p hÃ ng
-      { wch: 14 }, // ChuyÃªn cáº§n
-      { wch: 11 }, // Vá»‡ sinh
-      { wch: 14 }, // Tá»•ng ná» náº¿p
-      { wch: 11 }, // Tá»•ng
-      { wch: 12 }, // Xáº¿p loáº¡i
-      { wch: 12 }, // Xáº¿p háº¡ng
+      { wch: 10 }, // Lớp
+      { wch: 12 }, // Học tập
+      { wch: 14 }, // Khen thưởng
+      { wch: 11 }, // Vi phạm
+      { wch: 12 }, // Xếp hàng
+      { wch: 14 }, // Chuyên cần
+      { wch: 11 }, // Vệ sinh
+      { wch: 14 }, // Tổng nề nếp
+      { wch: 11 }, // Tổng
+      { wch: 12 }, // Xếp loại
+      { wch: 12 }, // Xếp hạng
     ];
 
     worksheet["!rows"] = [
@@ -476,7 +476,7 @@ const WeeklyScoresPage: React.FC = () => {
     XLSX.utils.book_append_sheet(
       workbook,
       worksheet,
-      `Thi Ä‘ua tuáº§n ${selectedWeek}`
+      `Thi đua tuần ${selectedWeek}`
     );
 
     XLSX.writeFile(
@@ -485,7 +485,7 @@ const WeeklyScoresPage: React.FC = () => {
     );
   };
 
-  // --- HÃ m render báº£ng theo khá»‘i
+  // --- Hàm render bảng theo khối
   const renderTable = (grade: string) => {
     const list = scores.filter((s) => s.grade === grade);
     if (!list.length) return null;
@@ -493,23 +493,23 @@ const WeeklyScoresPage: React.FC = () => {
     return (
       <Box key={grade} mt={4}>
         <Typography variant="h6" fontWeight="bold" mb={1}>
-          ðŸ“š Khá»‘i {grade}
+          📚 Khối {grade}
         </Typography>
         <TableContainer component={Paper}>
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Lá»›p</TableCell>
+                <TableCell>Lớp</TableCell>
                
-                <TableCell align="center">Xáº¿p hÃ ng</TableCell>
-                <TableCell align="center">Vi pháº¡m</TableCell>
-                <TableCell align="center">ChuyÃªn cáº§n</TableCell>
-                 <TableCell align="center">Vá»‡ sinh</TableCell>
-                <TableCell align="center">Há»c táº­p</TableCell>
-                <TableCell align="center">ThÆ°á»Ÿng</TableCell>
-                <TableCell align="center">Ká»· luáº­t</TableCell>
-                <TableCell align="center">Tá»•ng thi Ä‘ua</TableCell>
-                <TableCell align="center">Xáº¿p háº¡ng</TableCell>
+                <TableCell align="center">Xếp hàng</TableCell>
+                <TableCell align="center">Vi phạm</TableCell>
+                <TableCell align="center">Chuyên cần</TableCell>
+                 <TableCell align="center">Vệ sinh</TableCell>
+                <TableCell align="center">Học tập</TableCell>
+                <TableCell align="center">Thưởng</TableCell>
+                <TableCell align="center">Kỷ luật</TableCell>
+                <TableCell align="center">Tổng thi đua</TableCell>
+                <TableCell align="center">Xếp hạng</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -567,26 +567,26 @@ const WeeklyScoresPage: React.FC = () => {
   return (
     <Box p={3}>
       <Typography variant="h5" fontWeight="bold" mb={2}>
-        ðŸ« Tá»•ng há»£p Ä‘iá»ƒm thi Ä‘ua theo khá»‘i
+        🏫 Tổng hợp điểm thi đua theo khối
       </Typography>
 
       <Box display="flex" gap={2} mb={3}>
         <TextField
           select
-          label="Tuáº§n há»c"
+          label="Tuần học"
           value={selectedWeek}
           onChange={handleWeekChange}
           sx={{ width: 160 }}
         >
           {weeks.map((w) => (
             <MenuItem key={w} value={w}>
-              Tuáº§n {w}
+              Tuần {w}
             </MenuItem>
           ))}
         </TextField>
 
         <Button variant="contained" color="primary" onClick={handleSave}>
-          ðŸ’¾ LÆ°u Ä‘iá»ƒm
+          💾 Lưu điểm
         </Button>
 
         <Button
@@ -595,12 +595,12 @@ const WeeklyScoresPage: React.FC = () => {
   onClick={handleRecalculateRanks}
   disabled={!hasChanges || loadingRank}
 >
-  {loadingRank ? "â³ Äang xáº¿p háº¡ng..." : "ðŸ“Š Xáº¿p háº¡ng"}
+  {loadingRank ? "⏳ Đang xếp hạng..." : "📊 Xếp hạng"}
 </Button>
 
 
         <Button variant="outlined" color="success" onClick={handleExport}>
-          ðŸ“¤ Xuáº¥t Excel
+          📤 Xuất Excel
         </Button>
       </Box>
 
