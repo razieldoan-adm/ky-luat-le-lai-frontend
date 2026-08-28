@@ -544,6 +544,10 @@ const WeeklyScoresPage: React.FC = () => {
       workbook,
       `Tong_Hop_Thi_Dua_Tuan_${selectedWeek}_2026-2027.xlsx`
     );
+    } catch (error) {
+      console.error("❌ Lỗi xuất Excel:", error);
+      alert("❌ Không thể xuất Excel. Vui lòng thử lại.");
+    }
   };
 
   // --- Hàm render bảng theo khối
