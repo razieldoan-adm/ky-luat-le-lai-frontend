@@ -102,8 +102,11 @@ export default function ViewFinalCompetitionResult() {
   // --- Khi đổi tuần hoặc tuần hiện tại ---
   useEffect(() => {
     const week = selectedWeek ?? currentWeek;
-    if (week) fetchScores(week);
-  }, [currentWeek, selectedWeek]);
+  
+    if (week && academicYear) {
+      fetchScores(week);
+    }
+  }, [currentWeek, selectedWeek, academicYear]);
 
   // --- Gọi API lấy điểm ---
   const fetchScores = async (weekNumber: number) => {
