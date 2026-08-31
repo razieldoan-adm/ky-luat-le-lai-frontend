@@ -34,6 +34,7 @@ interface Violation {
   _id: string;
   className: string;
   penalty: number;
+  academicYear: string;
   weekNumber: number;
   time: string;
   handled: boolean;
