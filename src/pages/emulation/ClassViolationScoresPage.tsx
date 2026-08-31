@@ -80,7 +80,11 @@ const checkIfCalculated = async (weekNumber: number) => {
     const weekObj = weekList.find(
       (w) => w.weekNumber === weekNumber
     );
-
+    console.log("===== KIỂM TRA TUẦN =====");
+    console.log("weekNumber:", weekNumber);
+    console.log("weekList:", weekList);
+    console.log("weekObj:", weekObj);
+    console.log("academicYear:", weekObj?.academicYear);
     if (!weekObj?.academicYear) {
       console.error("Không xác định được academicYear của tuần:", weekNumber);
       setIsCalculated(false);
