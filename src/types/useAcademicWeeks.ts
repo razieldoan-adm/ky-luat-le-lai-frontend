@@ -6,7 +6,7 @@ interface AcademicWeek {
   weekNumber: number;
   startDate: string;
   endDate: string;
-  academicYear: w.academicYear,
+  academicYear: string;
 }
 
 export default function useAcademicWeeks(
