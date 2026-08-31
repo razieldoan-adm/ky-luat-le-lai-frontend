@@ -23,6 +23,7 @@ interface Week {
   weekNumber: number;
   startDate?: string;
   endDate?: string;
+  academicYear?: string;
 }
 
 interface ScoreRow {
@@ -45,6 +46,7 @@ export default function ViewFinalCompetitionResult() {
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [currentWeek, setCurrentWeek] = useState<number | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+  const [academicYear, setAcademicYear] = useState<string>("");
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [snackbar, setSnackbar] = useState({
@@ -70,8 +72,16 @@ export default function ViewFinalCompetitionResult() {
         weekNumber: Number(w.weekNumber ?? idx + 1),
         startDate: w.startDate,
         endDate: w.endDate,
+        academicYear: w.academicYear,
       }));
+      
       setWeeks(list);
+      
+      // Lấy năm học từ cấu hình tuần học
+      const currentAcademicYear =
+        list.find((w) => w.academicYear)?.academicYear || "";
+      
+      setAcademicYear(currentAcademicYear);
 
       const cur = await api.get("/api/academic-weeks/current");
       const currentNum = cur.data?.weekNumber ?? null;
@@ -98,7 +108,13 @@ export default function ViewFinalCompetitionResult() {
   // --- Gọi API lấy điểm ---
   const fetchScores = async (weekNumber: number) => {
     try {
-      const res = await api.get(`/api/class-weekly-scores/full/${weekNumber}`);
+      const res = await api.get(`/api/class-weekly-scores/full/${weekNumber}`,
+      {
+        params: {
+          academicYear,
+        },
+      }
+      );
       const raw = res.data.data || res.data || [];
 
       const normalized: ScoreRow[] = raw.map((r: any) => ({
