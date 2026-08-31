@@ -27,7 +27,9 @@ const WeeklyScoresPage: React.FC = () => {
   const [weeks, setWeeks] = useState<number[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
   
-  const [selectedAcademicYear] = useState<string>("");
+  const [academicYears, setAcademicYears] = useState<string[]>([]);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>("");
+  
   const [scores, setScores] = useState<ClassWeeklyScore[]>([]);
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<{ maxDiscipline: number }>({ maxDiscipline: 100 });
@@ -36,20 +38,77 @@ const WeeklyScoresPage: React.FC = () => {
 
   // --- Load danh sách tuần & tuần hiện tại
   useEffect(() => {
-    const fetchWeeks = async () => {
-      try {
-        const res = await api.get("/api/class-weekly-scores/weeks");
-        const list = res.data || [];
-        setWeeks(list);
+  const fetchAcademicYears = async () => {
+    try {
+      const res = await api.get("/api/academic-weeks");
+
+      const list = Array.isArray(res.data)
+        ? res.data
+        : [];
+
+      const years = Array.from(
+        new Set(
+          list
+            .map((item: any) => item.academicYear)
+            .filter(Boolean)
+        )
+      ).sort();
+
+      setAcademicYears(years);
+
+      if (years.length > 0) {
+        const currentYear = years.includes("2026-2027")
+          ? "2026-2027"
+          : years[years.length - 1];
+
+        setSelectedAcademicYear(currentYear);
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải năm học:", err);
+    }
+  };
+
+  fetchAcademicYears();
+}, []);
+
+  useEffect(() => {
+  if (!selectedAcademicYear) return;
+
+  const fetchWeeks = async () => {
+    try {
+      const res = await api.get(
+        "/api/class-weekly-scores/weeks",
+        {
+          params: {
+            academicYear: selectedAcademicYear,
+          },
+        }
+      );
+
+      const list: number[] = Array.isArray(res.data)
+        ? res.data
+        : [];
+
+      setWeeks(list);
+
+      if (list.length > 0) {
         const current = Math.max(...list);
         setSelectedWeek(current);
         loadScores(current);
-      } catch (err) {
-        console.error("Lỗi khi tải tuần:", err);
+      } else {
+        setSelectedWeek("");
+        setScores([]);
       }
-    };
-    fetchWeeks();
-  }, []);
+    } catch (err) {
+      console.error("Lỗi khi tải tuần:", err);
+      setWeeks([]);
+      setSelectedWeek("");
+      setScores([]);
+    }
+  };
+
+  fetchWeeks();
+}, [selectedAcademicYear]);
   
   // --- Load cấu hình hệ thống
   useEffect(() => {
@@ -116,10 +175,28 @@ const WeeklyScoresPage: React.FC = () => {
   };
 
   // --- Khi đổi tuần
-  const handleWeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleAcademicYearChange = (
+      e: React.ChangeEvent<HTMLInputElement>
+    ) => {
+      const year = e.target.value;
+    
+      setSelectedAcademicYear(year);
+      setSelectedWeek("");
+      setScores([]);
+      setHasChanges(false);
+    };
+  
+  const handleWeekChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const w = Number(e.target.value);
+  
     setSelectedWeek(w);
-    loadScores(w);
+  
+    if (selectedAcademicYear && w) {
+      loadScores(w);
+    }
   };
 
   // --- Lưu toàn bộ điểm
@@ -645,6 +722,21 @@ const WeeklyScoresPage: React.FC = () => {
       </Typography>
 
       <Box display="flex" gap={2} mb={3}>
+
+        <TextField
+          select
+          label="Năm học"
+          value={selectedAcademicYear}
+          onChange={handleAcademicYearChange}
+          sx={{ width: 180 }}
+        >
+          {academicYears.map((year) => (
+            <MenuItem key={year} value={year}>
+              {year}
+            </MenuItem>
+          ))}
+        </TextField>
+        
         <TextField
           select
           label="Tuần học"
