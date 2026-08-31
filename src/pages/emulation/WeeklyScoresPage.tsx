@@ -10,6 +10,7 @@ interface ClassWeeklyScore {
   _id?: string;
   className: string;
   grade: string;
+  academicYear: string;
   weekNumber: number;
   hygieneScore: number;
   lineUpScore: number;       // ✅ đổi chữ “U” → thường
@@ -25,6 +26,8 @@ interface ClassWeeklyScore {
 const WeeklyScoresPage: React.FC = () => {
   const [weeks, setWeeks] = useState<number[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
+  const [academicYears, setAcademicYears] = useState<string[]>([]);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>("");
   const [scores, setScores] = useState<ClassWeeklyScore[]>([]);
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<{ maxDiscipline: number }>({ maxDiscipline: 100 });
@@ -47,7 +50,7 @@ const WeeklyScoresPage: React.FC = () => {
     };
     fetchWeeks();
   }, []);
-
+  
   // --- Load cấu hình hệ thống
   useEffect(() => {
     const loadSettings = async () => {
@@ -65,7 +68,12 @@ const WeeklyScoresPage: React.FC = () => {
   const loadScores = async (weekNumber: number) => {
     setLoading(true);
     try {
-      const res = await api.get(`/api/class-weekly-scores/weekly`, { params: { weekNumber } });
+      const res = await api.get(`/api/class-weekly-scores/weekly`, { 
+        params: { 
+          academicYear: selectedAcademicYear,
+          weekNumber 
+        } 
+      });
       let data: ClassWeeklyScore[] = res.data || [];
 
       // Tính điểm kỷ luật và tổng thi đua
@@ -117,7 +125,7 @@ const WeeklyScoresPage: React.FC = () => {
   // --- Lưu toàn bộ điểm
   const handleSave = async () => {
   try {
-    if (!scores.length || !selectedWeek) {
+    if (!scores.length || !selectedWeek || !selectedAcademicYear) {
       alert("❌ Không có dữ liệu để lưu.");
       return;
     }
@@ -126,6 +134,7 @@ const WeeklyScoresPage: React.FC = () => {
       records: scores.map((s) => ({
         className: s.className,
         grade: s.grade,
+        academicYear: selectedAcademicYear,
         weekNumber: s.weekNumber || selectedWeek,
         academicScore: s.academicScore ?? 0,
         bonusScore: s.bonusScore ?? 0, // ✅ đổi rewardScore → bonusScore
@@ -216,8 +225,8 @@ const WeeklyScoresPage: React.FC = () => {
   // --- Xuất Excel tổng hợp 4 khối
   // Bấm 1 lần -> tạo và tải file ngay, không mở dialog.
   const handleExport = async () => {
-    if (!selectedWeek) {
-      alert("❌ Chưa chọn tuần để xuất Excel.");
+    if (!selectedAcademicYear || !selectedWeek) {
+      alert("❌ Chưa chọn năm học hoặc tuần để xuất Excel.");
       return;
     }
 
