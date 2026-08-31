@@ -18,6 +18,7 @@ type AcademicWeek = {
   _id: string;
   startDate: string;
   endDate: string;
+  academicYear: string;
   weekNumber: number | null;
   isStudyWeek: boolean;
 };
@@ -35,7 +36,10 @@ const AdminWeeksSettingsPage = () => {
   // Ngày kết thúc năm học
   const [endDate, setEndDate] =
     useState('');
-
+  
+  const [academicYear, setAcademicYear] =
+    useState('');
+  
   const [message, setMessage] =
     useState('');
 
@@ -56,6 +60,12 @@ const AdminWeeksSettingsPage = () => {
         await api.get('/api/academic-weeks');
 
       setWeeks(res.data || []);
+
+      if (res.data?.length > 0) {
+        setAcademicYear(
+          res.data[0].academicYear || ''
+        );
+      }
 
       setMessage('');
       setError('');
@@ -99,6 +109,13 @@ const AdminWeeksSettingsPage = () => {
     if (!startDate) {
       setError(
         'Vui lòng chọn ngày bắt đầu tuần 1'
+      );
+      return;
+    }
+    
+    if (!academicYear) {
+      setError(
+        'Vui lòng nhập năm học'
       );
       return;
     }
@@ -149,6 +166,7 @@ const AdminWeeksSettingsPage = () => {
           {
             startDate,
             endDate,
+            academicYear,
           }
         );
 
@@ -213,7 +231,10 @@ const AdminWeeksSettingsPage = () => {
       const res =
         await api.put(
           '/api/academic-weeks/bulk',
-          weeks
+           weeks.map((week) => ({
+            ...week,
+            academicYear,
+  }))
         );
 
       setMessage(
