@@ -74,25 +74,40 @@ export default function ClassDisciplineTotalPage() {
   }, []);
 
   // ✅ Check xem tuần đó đã có dữ liệu tổng vi phạm chưa
-  const checkIfCalculated = async (weekNumber: number) => {
-    try {
-      const res = await api.get("/api/class-weekly-scores/weekly", {
-        params: { weekNumber },
-      });
-      if (res.data && res.data.length > 0) {
-        setIsCalculated(true);
-        setSnackbar({
-          open: true,
-          message: `Tuần ${weekNumber} đã có dữ liệu.`,
-          severity: "info",
-        });
-      } else {
-        setIsCalculated(false);
-      }
-    } catch (err) {
-      console.error("Lỗi khi check tuần:", err);
+const checkIfCalculated = async (weekNumber: number) => {
+  try {
+    const weekObj = weekList.find(
+      (w) => w.weekNumber === weekNumber
+    );
+
+    if (!weekObj?.academicYear) {
+      console.error("Không xác định được academicYear của tuần:", weekNumber);
+      setIsCalculated(false);
+      return;
     }
-  };
+
+    const res = await api.get("/api/class-weekly-scores/weekly", {
+      params: {
+        weekNumber,
+        academicYear: weekObj.academicYear,
+      },
+    });
+
+    if (res.data && res.data.length > 0) {
+      setIsCalculated(true);
+      setSnackbar({
+        open: true,
+        message: `Tuần ${weekNumber} năm học ${weekObj.academicYear} đã có dữ liệu.`,
+        severity: "info",
+      });
+    } else {
+      setIsCalculated(false);
+    }
+  } catch (err) {
+    console.error("Lỗi khi check tuần:", err);
+    setIsCalculated(false);
+  }
+};
 
   // ✅ Load dữ liệu vi phạm trong tuần
   const handleLoadData = async () => {
@@ -166,43 +181,75 @@ export default function ClassDisciplineTotalPage() {
   };
 
   // ✅ Lưu dữ liệu vào bảng tổng
-  const handleSaveData = async () => {
-    if (!selectedWeek) {
+const handleSaveData = async () => {
+  if (!selectedWeek) {
+    setSnackbar({
+      open: true,
+      message: "Vui lòng chọn tuần.",
+      severity: "error",
+    });
+    return;
+  }
+
+  try {
+    // Lấy đúng tuần từ Setting
+    const weekObj = weekList.find(
+      (w) => w.weekNumber === selectedWeek
+    );
+
+    if (!weekObj) {
       setSnackbar({
         open: true,
-        message: "Vui lòng chọn tuần.",
+        message: "Không tìm thấy thông tin tuần.",
         severity: "error",
       });
       return;
     }
 
-    try {
-      for (const row of tableData) {
-        const gradeMatch = row.className.match(/^(\d+)/);
-        const grade = gradeMatch ? gradeMatch[1] : "Khác";
+    // Lấy năm học của tuần
+    const academicYear = weekObj.academicYear;
 
-        await api.post("/api/class-weekly-scores/update", {
-          className: row.className,
-          grade,
-          weekNumber: selectedWeek,
-          violationScore: row.total,
-        });
-      }
-
+    if (!academicYear) {
       setSnackbar({
         open: true,
-        message: "✅ Đã lưu điểm vi phạm vào bảng tổng tuần.",
-        severity: "success",
-      });
-    } catch (err) {
-      console.error("Lỗi khi lưu:", err);
-      setSnackbar({
-        open: true,
-        message: "❌ Lỗi khi lưu dữ liệu.",
+        message: "Không xác định được năm học của tuần này.",
         severity: "error",
       });
+      return;
     }
-  };
+
+    for (const row of tableData) {
+      const gradeMatch = row.className.match(/^(\d+)/);
+      const grade = gradeMatch ? gradeMatch[1] : "Khác";
+
+      await api.post("/api/class-weekly-scores/update", {
+        className: row.className,
+        grade,
+        academicYear,
+        weekNumber: selectedWeek,
+        violationScore: row.total,
+      });
+    }
+
+    setSnackbar({
+      open: true,
+      message: `✅ Đã lưu điểm vi phạm tuần ${selectedWeek} năm học ${academicYear}.`,
+      severity: "success",
+    });
+
+    // Kiểm tra lại dữ liệu sau khi lưu
+    await checkIfCalculated(selectedWeek);
+
+  } catch (err) {
+    console.error("Lỗi khi lưu:", err);
+
+    setSnackbar({
+      open: true,
+      message: "❌ Lỗi khi lưu dữ liệu.",
+      severity: "error",
+    });
+  }
+};
 
   return (
     <Box sx={{ maxWidth: "100%", mx: "auto", py: 4 }}>
