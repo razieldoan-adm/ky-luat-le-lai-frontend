@@ -26,8 +26,8 @@ interface ClassWeeklyScore {
 const WeeklyScoresPage: React.FC = () => {
   const [weeks, setWeeks] = useState<number[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
-  const [academicYears, setAcademicYears] = useState<string[]>([]);
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>("");
+  
+  const [selectedAcademicYear] = useState<string>("");
   const [scores, setScores] = useState<ClassWeeklyScore[]>([]);
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<{ maxDiscipline: number }>({ maxDiscipline: 100 });
