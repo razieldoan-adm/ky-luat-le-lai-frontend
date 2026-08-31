@@ -20,7 +20,8 @@ interface ClassType {
 
 const AddClassPage = () => {
   const [classList, setClassList] = useState<ClassType[]>([]);
-
+  const [deletedClasses, setDeletedClasses] = useState<string[]>([]);
+  
   useEffect(() => {
     fetchExistingClasses();
   }, []);
@@ -58,14 +59,37 @@ const AddClassPage = () => {
   };
 
   const handleDeleteClass = (className: string) => {
-    setClassList(prev => prev.filter(c => c.className !== className));
-  };
+  setClassList(prev =>
+    prev.filter(c => c.className !== className)
+  );
+
+  setDeletedClasses(prev =>
+    prev.includes(className)
+      ? prev
+      : [...prev, className]
+  );
+};
 
   const handleSaveAll = async () => {
   try {
+    // Xóa các lớp đã bị xóa trên giao diện
+    for (const className of deletedClasses) {
+      await api.delete(
+        `/api/classes/${encodeURIComponent(className)}`
+      );
+    }
+
+    // Lưu các lớp còn lại
     for (const classItem of classList) {
       await api.post('/api/classes', classItem);
     }
+
+    // Xóa danh sách chờ xóa
+    setDeletedClasses([]);
+
+    // Tải lại dữ liệu thật từ MongoDB
+    await fetchExistingClasses();
+
     alert('Đã lưu danh sách lớp thành công');
   } catch (err) {
     console.error('Lỗi khi lưu:', err);
