@@ -24,11 +24,34 @@ interface ClassWeeklyScore {
 }
 
 const WeeklyScoresPage: React.FC = () => {
+
+  // =========================================================
+  // XÁC ĐỊNH NĂM HỌC HIỆN TẠI
+  // =========================================================
+  const getCurrentAcademicYear = () => {
+    const today = new Date();
+
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1;
+
+    // Tháng 1 -> tháng 5:
+    // thuộc năm học bắt đầu từ năm trước
+    if (month >= 1 && month <= 5) {
+      return `${year - 1}-${year}`;
+    }
+
+    // Tháng 6 -> tháng 12:
+    // thuộc năm học mới
+    return `${year}-${year + 1}`;
+  };
+  
   const [weeks, setWeeks] = useState<number[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
   
   const [academicYears, setAcademicYears] = useState<string[]>([]);
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>("");
+
+  const [currentWeekNumber, setCurrentWeekNumber] = useState<number | null>(null);
   
   const [scores, setScores] = useState<ClassWeeklyScore[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,34 +60,60 @@ const WeeklyScoresPage: React.FC = () => {
   const [loadingRank, setLoadingRank] = useState(false);
 
   // --- Load danh sách tuần & tuần hiện tại
-  useEffect(() => {
+useEffect(() => {
   const fetchAcademicYears = async () => {
     try {
-      const res = await api.get("/api/academic-weeks");
+      const currentYear =
+        getCurrentAcademicYear();
 
-      const list = Array.isArray(res.data)
-        ? res.data
-        : [];
+      const res = await api.get(
+        "/api/class-weekly-scores/academic-years"
+      );
 
+      const savedYears: string[] =
+        Array.isArray(res.data)
+          ? res.data
+          : [];
+
+      // Chỉ giữ các năm học không lớn hơn năm hiện tại
+      const validPastYears =
+        savedYears.filter(
+          (year) =>
+            year <= currentYear
+        );
+
+      // Năm hiện tại luôn phải xuất hiện
       const years = Array.from(
-        new Set(
-          list
-            .map((item: any) => item.academicYear)
-            .filter(Boolean)
-        )
-      ).sort();
+        new Set([
+          currentYear,
+          ...validPastYears,
+        ])
+      ).sort((a, b) =>
+        b.localeCompare(a)
+      );
 
       setAcademicYears(years);
 
-      if (years.length > 0) {
-        const currentYear = years.includes("2026-2027")
-          ? "2026-2027"
-          : years[years.length - 1];
-
-        setSelectedAcademicYear(currentYear);
-      }
+      // Mặc định luôn là năm học hiện tại
+      setSelectedAcademicYear(
+        currentYear
+      );
     } catch (err) {
-      console.error("Lỗi khi tải năm học:", err);
+      console.error(
+        "❌ Lỗi khi tải năm học:",
+        err
+      );
+
+      const currentYear =
+        getCurrentAcademicYear();
+
+      setAcademicYears([
+        currentYear,
+      ]);
+
+      setSelectedAcademicYear(
+        currentYear
+      );
     }
   };
 
@@ -77,30 +126,107 @@ const WeeklyScoresPage: React.FC = () => {
   const fetchWeeks = async () => {
     try {
       const res = await api.get(
-        "/api/class-weekly-scores/weeks",
+        "/api/class-weekly-scores/study-weeks",
         {
           params: {
-            academicYear: selectedAcademicYear,
+            academicYear:
+              selectedAcademicYear,
           },
         }
       );
 
-      const list: number[] = Array.isArray(res.data)
-        ? res.data
-        : [];
+      const list: AcademicWeek[] =
+        Array.isArray(res.data)
+          ? res.data
+          : [];
 
       setWeeks(list);
 
-      if (list.length > 0) {
-        const current = Math.max(...list);
-        setSelectedWeek(current);
-        loadScores(current);
+      // =========================================
+      // XÁC ĐỊNH TUẦN HIỆN TẠI
+      // =========================================
+
+      const today = new Date();
+
+      let currentWeek: number | null =
+        null;
+
+      for (const week of list) {
+        if (week.weekNumber == null) {
+          continue;
+        }
+
+        const start =
+          new Date(week.startDate);
+
+        const end =
+          new Date(week.endDate);
+
+        if (
+          today >= start &&
+          today <= end
+        ) {
+          currentWeek =
+            week.weekNumber;
+
+          break;
+        }
+      }
+
+      setCurrentWeekNumber(
+        currentWeek
+      );
+
+      // =========================================
+      // NĂM HIỆN TẠI
+      // → chọn tuần hiện tại
+      //
+      // NĂM CŨ
+      // → chọn tuần đầu tiên có dữ liệu
+      // =========================================
+
+      if (
+        selectedAcademicYear ===
+        getCurrentAcademicYear()
+      ) {
+        if (currentWeek !== null) {
+          setSelectedWeek(
+            currentWeek
+          );
+
+          await loadScores(
+            currentWeek
+          );
+        } else {
+          setSelectedWeek("");
+          setScores([]);
+        }
       } else {
-        setSelectedWeek("");
-        setScores([]);
+        const firstWeek =
+          list.find(
+            (w) =>
+              w.weekNumber != null
+          );
+
+        if (firstWeek?.weekNumber) {
+          setSelectedWeek(
+            firstWeek.weekNumber
+          );
+
+          await loadScores(
+            firstWeek.weekNumber
+          );
+        } else {
+          setSelectedWeek("");
+          setScores([]);
+        }
       }
     } catch (err) {
-      console.error("Lỗi khi tải tuần:", err);
+      console.error(
+        "❌ Lỗi khi tải tuần học:",
+        err
+      );
+
       setWeeks([]);
       setSelectedWeek("");
       setScores([]);
@@ -636,6 +762,93 @@ const WeeklyScoresPage: React.FC = () => {
     }
   };
 
+  // =========================================================
+  // PHẦN SỐ 9 TRỞ XUỐNG: thêm tại đây
+  // =========================================================
+
+  const calculateRanks = (
+  data: ClassWeeklyScore[]
+) => {
+  const grades = [
+    "6",
+    "7",
+    "8",
+    "9",
+  ];
+
+  grades.forEach((grade) => {
+    const filtered =
+      data.filter(
+        (d) =>
+          d.grade === grade
+      );
+
+    filtered.sort(
+      (a, b) =>
+        (b.totalScore ?? 0) -
+        (a.totalScore ?? 0)
+    );
+
+    let currentRank = 1;
+
+    filtered.forEach(
+      (d, index) => {
+        if (
+          index > 0 &&
+          d.totalScore ===
+            filtered[index - 1]
+              .totalScore
+        ) {
+          d.rank =
+            filtered[
+              index - 1
+            ].rank;
+        } else {
+          d.rank =
+            currentRank;
+        }
+
+        currentRank++;
+      }
+    );
+  });
+};
+
+  const handleAcademicYearChange = (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  const year = e.target.value;
+
+  setSelectedAcademicYear(year);
+  setSelectedWeek("");
+  setScores([]);
+  setHasChanges(false);
+  setCurrentWeekNumber(null);
+};
+
+  const handleWeekChange = (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  const weekNumber =
+    Number(e.target.value);
+
+  setSelectedWeek(
+    weekNumber
+  );
+
+  if (
+    selectedAcademicYear &&
+    weekNumber
+  ) {
+    loadScores(
+      weekNumber
+    );
+  }
+};
+
+
+
+  
   // --- Hàm render bảng theo khối
   const renderTable = (grade: string) => {
     const list = scores.filter((s) => s.grade === grade);
@@ -721,55 +934,110 @@ const WeeklyScoresPage: React.FC = () => {
         🏫 Tổng hợp điểm thi đua theo khối
       </Typography>
 
-      <Box display="flex" gap={2} mb={3}>
-
-        <TextField
-          select
-          label="Năm học"
-          value={selectedAcademicYear}
-          onChange={handleAcademicYearChange}
-          sx={{ width: 180 }}
-        >
-          {academicYears.map((year) => (
-            <MenuItem key={year} value={year}>
-              {year}
-            </MenuItem>
-          ))}
-        </TextField>
-        
-        <TextField
-          select
-          label="Tuần học"
-          value={selectedWeek}
-          onChange={handleWeekChange}
-          sx={{ width: 160 }}
-        >
-          {weeks.map((w) => (
-            <MenuItem key={w} value={w}>
-              Tuần {w}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        <Button variant="contained" color="primary" onClick={handleSave}>
-          💾 Lưu điểm
-        </Button>
-
-        <Button
-  variant="outlined"
-  color="secondary"
-  onClick={handleRecalculateRanks}
-  disabled={!hasChanges || loadingRank}
+      <Box
+  display="flex"
+  gap={2}
+  mb={1}
+  flexWrap="wrap"
 >
-  {loadingRank ? "⏳ Đang xếp hạng..." : "📊 Xếp hạng"}
-</Button>
+  <TextField
+    select
+    label="Năm học"
+    value={selectedAcademicYear}
+    onChange={
+      handleAcademicYearChange
+    }
+    sx={{
+      width: 180,
+    }}
+  >
+    {academicYears.map(
+      (year) => (
+        <MenuItem
+          key={year}
+          value={year}
+        >
+          {year}
+        </MenuItem>
+      )
+    )}
+  </TextField>
 
+  <TextField
+    select
+    label="Tuần học"
+    value={selectedWeek}
+    onChange={
+      handleWeekChange
+    }
+    sx={{
+      width: 180,
+    }}
+  >
+    {weeks
+      .filter(
+        (w) =>
+          w.weekNumber != null
+      )
+      .map((week) => (
+        <MenuItem
+          key={week._id}
+          value={
+            week.weekNumber!
+          }
+        >
+          Tuần{" "}
+          {week.weekNumber}
+        </MenuItem>
+      ))}
+  </TextField>
 
-        <Button variant="outlined" color="success" onClick={handleExport}>
-          📤 Xuất Excel
-        </Button>
-      </Box>
+  <Button
+    variant="contained"
+    color="primary"
+    onClick={handleSave}
+  >
+    💾 LƯU ĐIỂM
+  </Button>
 
+  <Button
+    variant="outlined"
+    color="secondary"
+    onClick={
+      handleRecalculateRanks
+    }
+    disabled={
+      !hasChanges ||
+      loadingRank
+    }
+  >
+    {loadingRank
+      ? "⏳ Đang xếp hạng..."
+      : "📊 XẾP HẠNG"}
+  </Button>
+
+  <Button
+    variant="outlined"
+    color="success"
+    onClick={handleExport}
+  >
+    📤 XUẤT EXCEL
+  </Button>
+</Box>
+{selectedWeek && (
+  <Typography
+    variant="body2"
+    color="text.secondary"
+    mb={3}
+  >
+    {selectedAcademicYear ===
+      getCurrentAcademicYear() &&
+    currentWeekNumber ===
+      selectedWeek
+      ? `⭐ Tuần hiện tại: Tuần ${selectedWeek}`
+      : `Đang xem Tuần ${selectedWeek} - Năm học ${selectedAcademicYear}`}
+  </Typography>
+)}
       {loading ? (
         <CircularProgress />
       ) : (
