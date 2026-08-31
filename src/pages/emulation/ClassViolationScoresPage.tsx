@@ -55,11 +55,11 @@ export default function ClassDisciplineTotalPage() {
 
   // ✅ Gán tuần hiện tại mặc định
   useEffect(() => {
-    if (currentWeek) {
-      setSelectedWeek(currentWeek);
-      checkIfCalculated(currentWeek);
-    }
-  }, [currentWeek]);
+  if (currentWeek && weekList.length > 0) {
+    setSelectedWeek(currentWeek);
+    checkIfCalculated(currentWeek);
+  }
+}, [currentWeek, weekList]);
 
   // ✅ Load danh sách lớp
   useEffect(() => {
