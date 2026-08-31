@@ -22,7 +22,14 @@ interface ClassWeeklyScore {
   totalScore?: number;
   rank?: number;
 }
-
+interface AcademicWeek {
+  _id: string;
+  startDate: string;
+  endDate: string;
+  academicYear: string;
+  weekNumber: number | null;
+  isStudyWeek: boolean;
+}
 const WeeklyScoresPage: React.FC = () => {
 
   // =========================================================
@@ -45,7 +52,7 @@ const WeeklyScoresPage: React.FC = () => {
     return `${year}-${year + 1}`;
   };
   
-  const [weeks, setWeeks] = useState<number[]>([]);
+  const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
   
   const [academicYears, setAcademicYears] = useState<string[]>([]);
@@ -765,88 +772,6 @@ useEffect(() => {
   // =========================================================
   // PHẦN SỐ 9 TRỞ XUỐNG: thêm tại đây
   // =========================================================
-
-  const calculateRanks = (
-  data: ClassWeeklyScore[]
-) => {
-  const grades = [
-    "6",
-    "7",
-    "8",
-    "9",
-  ];
-
-  grades.forEach((grade) => {
-    const filtered =
-      data.filter(
-        (d) =>
-          d.grade === grade
-      );
-
-    filtered.sort(
-      (a, b) =>
-        (b.totalScore ?? 0) -
-        (a.totalScore ?? 0)
-    );
-
-    let currentRank = 1;
-
-    filtered.forEach(
-      (d, index) => {
-        if (
-          index > 0 &&
-          d.totalScore ===
-            filtered[index - 1]
-              .totalScore
-        ) {
-          d.rank =
-            filtered[
-              index - 1
-            ].rank;
-        } else {
-          d.rank =
-            currentRank;
-        }
-
-        currentRank++;
-      }
-    );
-  });
-};
-
-  const handleAcademicYearChange = (
-  e: React.ChangeEvent<HTMLInputElement>
-) => {
-  const year = e.target.value;
-
-  setSelectedAcademicYear(year);
-  setSelectedWeek("");
-  setScores([]);
-  setHasChanges(false);
-  setCurrentWeekNumber(null);
-};
-
-  const handleWeekChange = (
-  e: React.ChangeEvent<HTMLInputElement>
-) => {
-  const weekNumber =
-    Number(e.target.value);
-
-  setSelectedWeek(
-    weekNumber
-  );
-
-  if (
-    selectedAcademicYear &&
-    weekNumber
-  ) {
-    loadScores(
-      weekNumber
-    );
-  }
-};
-
-
 
   
   // --- Hàm render bảng theo khối
