@@ -80,29 +80,45 @@ const checkIfCalculated = async (weekNumber: number) => {
     const weekObj = weekList.find(
       (w) => w.weekNumber === weekNumber
     );
-    console.log("===== KIỂM TRA TUẦN =====");
-    console.log("weekNumber:", weekNumber);
-    console.log("weekList:", weekList);
-    console.log("weekObj:", weekObj);
-    console.log("academicYear:", weekObj?.academicYear);
-    if (!weekObj?.academicYear) {
-      console.error("Không xác định được academicYear của tuần:", weekNumber);
-      setIsCalculated(false);
+
+    if (!weekObj) {
+      console.error(
+        "Không tìm thấy tuần trong weekList:",
+        weekNumber
+      );
       return;
     }
 
-    const res = await api.get("/api/class-weekly-scores/weekly", {
-      params: {
+    const academicYear = weekObj.academicYear;
+
+    if (!academicYear) {
+      console.error(
+        "Không xác định được academicYear của tuần:",
         weekNumber,
-        academicYear: weekObj.academicYear,
-      },
-    });
+        weekObj
+      );
+
+      setIsCalculated(false);
+
+      return;
+    }
+
+    const res = await api.get(
+      "/api/class-weekly-scores/weekly",
+      {
+        params: {
+          weekNumber,
+          academicYear,
+        },
+      }
+    );
 
     if (res.data && res.data.length > 0) {
       setIsCalculated(true);
+
       setSnackbar({
         open: true,
-        message: `Tuần ${weekNumber} năm học ${weekObj.academicYear} đã có dữ liệu.`,
+        message: `Tuần ${weekNumber} năm học ${academicYear} đã có dữ liệu.`,
         severity: "info",
       });
     } else {
