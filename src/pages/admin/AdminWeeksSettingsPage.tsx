@@ -231,9 +231,10 @@ const AdminWeeksSettingsPage = () => {
       const res =
         await api.put(
           '/api/academic-weeks/bulk',
-           weeks.map((week) => ({
-            ...week,
-            academicYear,
+          startDate: week.startDate,
+          endDate: week.endDate,
+          academicYear: academicYear,
+          isStudyWeek: week.isStudyWeek,
   }))
         );
 
