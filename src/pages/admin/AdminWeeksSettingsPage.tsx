@@ -112,13 +112,6 @@ const AdminWeeksSettingsPage = () => {
       );
       return;
     }
-    
-    if (!academicYear) {
-      setError(
-        'Vui lòng nhập năm học'
-      );
-      return;
-    }
 
     if (!endDate) {
       setError(
@@ -127,6 +120,13 @@ const AdminWeeksSettingsPage = () => {
       return;
     }
 
+    const startYear = dayjs(startDate).year();
+    const endYear = dayjs(endDate).year();
+    
+    const generatedAcademicYear = `${startYear}-${endYear}`;
+    
+    setAcademicYear(generatedAcademicYear);
+    
     const start = dayjs(startDate);
     const end = dayjs(endDate);
 
@@ -166,7 +166,7 @@ const AdminWeeksSettingsPage = () => {
           {
             startDate,
             endDate,
-            academicYear,
+            academicYear: generatedAcademicYear,
           }
         );
 
@@ -461,9 +461,17 @@ const AdminWeeksSettingsPage = () => {
             fullWidth
             helperText="Chọn bất kỳ ngày nào"
           />
-
+        
           {/* NGÀY KẾT THÚC */}
-
+          {academicYear && (
+            <Typography
+              variant="body1"
+              fontWeight="bold"
+              sx={{ mt: 2 }}
+            >
+              Năm học: {academicYear}
+            </Typography>
+          )}
           <TextField
             label="Ngày kết thúc năm học"
             type="date"
@@ -478,7 +486,7 @@ const AdminWeeksSettingsPage = () => {
             }}
             fullWidth
           />
-
+          
           <Button
             variant="contained"
             color="secondary"
