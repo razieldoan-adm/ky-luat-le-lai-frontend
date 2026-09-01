@@ -27,25 +27,56 @@ export default function useAcademicWeeks(
       setWeeks([]);
     }
 
-    try {
-      // ✅ Lấy tuần hiện tại
-      const cur = await api.get("/api/academic-weeks/current");
-      const wk = cur.data?.weekNumber ?? null;
-      setCurrentWeek(wk);
-      setSelectedWeek(wk ?? "");
+try {
+  // ✅ Lấy tuần hiện tại
+  const cur = await api.get("/api/academic-weeks/current");
 
-      // ✅ Gọi callback nếu có (để load dữ liệu theo tuần)
-      if (loadRecords) {
-        await loadRecords(wk ?? undefined, selectedClass || undefined);
-      }
-    } catch (err) {
-      console.error("Lỗi khi tải tuần hiện tại:", err);
-      setCurrentWeek(null);
-      setSelectedWeek("");
-      if (loadRecords) {
-        await loadRecords(undefined, selectedClass || undefined);
-      }
+  const wk = cur.data?.weekNumber ?? null;
+
+  setCurrentWeek(wk);
+  setSelectedWeek(wk ?? "");
+
+  // ✅ Có tuần hiện tại thì mới load dữ liệu
+  if (loadRecords) {
+    await loadRecords(
+      wk ?? undefined,
+      selectedClass || undefined
+    );
+  }
+
+} catch (err: any) {
+
+  // ✅ 404 = hiện tại chưa nằm trong tuần học nào
+  // Không xem đây là lỗi hệ thống
+  if (err?.response?.status === 404) {
+    console.log("Hiện tại chưa có tuần học.");
+
+    setCurrentWeek(null);
+    setSelectedWeek("");
+
+    if (loadRecords) {
+      await loadRecords(
+        undefined,
+        selectedClass || undefined
+      );
     }
+
+    return;
+  }
+
+  // ❌ Các lỗi khác vẫn phải báo
+  console.error("Lỗi khi tải tuần hiện tại:", err);
+
+  setCurrentWeek(null);
+  setSelectedWeek("");
+
+  if (loadRecords) {
+    await loadRecords(
+      undefined,
+      selectedClass || undefined
+    );
+  }
+}
   };
 
   useEffect(() => {
