@@ -415,103 +415,129 @@ const AdminWeeksSettingsPage = () => {
         )}
       </Stack>
 
-      {/* =====================================================
-          CHỌN NGÀY TẠO TUẦN
-      ===================================================== */}
+     {/* =====================================================
+    CHỌN NGÀY TẠO TUẦN
+===================================================== */}
 
-      <Paper
-        elevation={2}
-        sx={{
-          p: 2,
-          mb: 2,
-        }}
+<Paper
+  elevation={2}
+  sx={{
+    p: { xs: 2, md: 3 },
+    mb: 2,
+    borderRadius: 2,
+  }}
+>
+  <Typography
+    variant="h6"
+    fontWeight="bold"
+    sx={{ mb: 3 }}
+  >
+    Thiết lập thời gian năm học
+  </Typography>
+
+  {/* HAI NGÀY */}
+  <Box
+    display="grid"
+    gridTemplateColumns={{
+      xs: "1fr",
+      md: "1fr 1fr",
+    }}
+    gap={3}
+  >
+    {/* NGÀY BẮT ĐẦU TUẦN 1 */}
+    <TextField
+      label="Ngày bắt đầu tuần 1"
+      type="date"
+      value={startDate}
+      onChange={(e) =>
+        setStartDate(e.target.value)
+      }
+      InputLabelProps={{
+        shrink: true,
+      }}
+      fullWidth
+      helperText="Chọn ngày bắt đầu năm học"
+    />
+
+    {/* NGÀY KẾT THÚC */}
+    <TextField
+      label="Ngày kết thúc năm học"
+      type="date"
+      value={endDate}
+      onChange={(e) =>
+        setEndDate(e.target.value)
+      }
+      InputLabelProps={{
+        shrink: true,
+      }}
+      fullWidth
+      helperText="Chọn ngày kết thúc năm học"
+    />
+  </Box>
+
+  {/* NĂM HỌC */}
+  {academicYear && (
+    <Box
+      sx={{
+        mt: 2.5,
+        px: 2,
+        py: 1.5,
+        borderRadius: 1.5,
+        backgroundColor: "rgba(25, 118, 210, 0.08)",
+        border: "1px solid rgba(25, 118, 210, 0.2)",
+        textAlign: "center",
+      }}
+    >
+      <Typography
+        variant="body1"
+        fontWeight="bold"
       >
-        <Typography
-          variant="h6"
-          fontWeight="bold"
-          mb={2}
-        >
-          Thiết lập thời gian năm học
-        </Typography>
+        Năm học: {academicYear}
+      </Typography>
+    </Box>
+  )}
 
-        <Box
-          display="grid"
-          gridTemplateColumns={{
-            xs: '1fr',
-            sm: '1fr 1fr',
-            md: '280px 280px auto',
-          }}
-          gap={2}
-          alignItems="center"
-        >
-          {/* NGÀY BẮT ĐẦU TUẦN 1 */}
+  {/* NÚT TẠO TUẦN */}
+  <Box
+    sx={{
+      mt: 2.5,
+      display: "flex",
+      justifyContent: {
+        xs: "stretch",
+        md: "flex-start",
+      },
+    }}
+  >
+    <Button
+      variant="contained"
+      color="secondary"
+      onClick={generateWeeks}
+      sx={{
+        height: 42,
+        px: 4,
+        fontWeight: "bold",
+        width: {
+          xs: "100%",
+          md: "240px",
+        },
+      }}
+    >
+      TẠO TUẦN MỚI
+    </Button>
+  </Box>
 
-          <TextField
-            label="Ngày bắt đầu tuần 1"
-            type="date"
-            value={startDate}
-            onChange={(e) =>
-              setStartDate(
-                e.target.value
-              )
-            }
-            InputLabelProps={{
-              shrink: true,
-            }}
-            fullWidth
-            helperText="Chọn bất kỳ ngày nào"
-          />
-        
-          {/* NGÀY KẾT THÚC */}
-          {academicYear && (
-            <Typography
-              variant="body1"
-              fontWeight="bold"
-              sx={{ mt: 2 }}
-            >
-              Năm học: {academicYear}
-            </Typography>
-          )}
-          <TextField
-            label="Ngày kết thúc năm học"
-            type="date"
-            value={endDate}
-            onChange={(e) =>
-              setEndDate(
-                e.target.value
-              )
-            }
-            InputLabelProps={{
-              shrink: true,
-            }}
-            fullWidth
-          />
-          
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={generateWeeks}
-            sx={{
-              height: 40,
-              whiteSpace:
-                'nowrap',
-            }}
-          >
-            TẠO TUẦN MỚI
-          </Button>
-        </Box>
-
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ mt: 1.5 }}
-        >
-          Tuần 1 được tính từ ngày bạn
-          chọn đến hết Chủ nhật. Từ
-          tuần 2 trở đi, mỗi tuần tính
-          từ Thứ 2 đến hết Chủ nhật.
-        </Typography>
-      </Paper>
+  <Typography
+    variant="body2"
+    color="text.secondary"
+    sx={{
+      mt: 2,
+      lineHeight: 1.6,
+    }}
+  >
+    Tuần 1 được tính từ ngày bạn chọn đến hết Chủ nhật.
+    Từ tuần 2 trở đi, mỗi tuần tính từ Thứ 2 đến hết Chủ nhật.
+  </Typography>
+</Paper>
 
       {/* =====================================================
           NÚT ĐIỀU KHIỂN
