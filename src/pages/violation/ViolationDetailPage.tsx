@@ -880,9 +880,7 @@ const loadDetailImages = async (violation: Violation) => {
 // 👁️ MỞ DIALOG XEM CHI TIẾT VI PHẠM
 // ==========================================================
 
-const openDetailDialog = (
-  v: Violation
-) => {
+const openDetailDialog = async (v: Violation) => {
   setDetailItem(v);
   setImageFiles([]);
   setDetailImageUrls({});
