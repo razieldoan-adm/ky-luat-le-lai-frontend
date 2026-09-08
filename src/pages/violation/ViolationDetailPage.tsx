@@ -970,73 +970,57 @@ const openDetailDialog = async (v: Violation) => {
 // 📷 CHỌN HÌNH ẢNH
 // ==========================================================
 
-const handleSelectImages = (
+const handleSelectImages = async (
   event: ChangeEvent<HTMLInputElement>
 ) => {
-  const files = Array.from(
-    event.target.files || []
-  );
+  const files = Array.from(event.target.files || []);
 
-  if (files.length === 0) {
-    return;
-  }
+  if (files.length === 0) return;
 
-  // Chỉ nhận hình ảnh
-  const imageOnlyFiles = files.filter(
-    (file) =>
-      file.type.startsWith("image/")
-  );
+  try {
+    const validFiles = files.filter((file) => {
+      if (!file.type.startsWith("image/")) {
+        return false;
+      }
 
-  if (
-    imageOnlyFiles.length !==
-    files.length
-  ) {
-    setSnackbarMessage(
-      "Chỉ được chọn file hình ảnh."
+      if (file.size > 10 * 1024 * 1024) {
+        return false;
+      }
+
+      return true;
+    });
+
+    if (validFiles.length === 0) {
+      setSnackbarMessage("Không có hình ảnh hợp lệ.");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+      return;
+    }
+
+    if (validFiles.length > 5) {
+      setSnackbarMessage("Mỗi lần chỉ được chọn tối đa 5 hình.");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+      return;
+    }
+
+    // Nén ảnh ngay sau khi chụp/chọn
+    const compressedFiles = await Promise.all(
+      validFiles.map((file) => compressImage(file))
     );
 
+    setImageFiles(compressedFiles);
+
+    event.target.value = "";
+  } catch (error) {
+    console.error("❌ Lỗi nén hình ảnh:", error);
+
+    setSnackbarMessage("Không thể xử lý hình ảnh.");
     setSnackbarSeverity("error");
     setSnackbarOpen(true);
+
+    event.target.value = "";
   }
-
-  // Kiểm tra tối đa 5 ảnh mỗi lần
-  if (imageOnlyFiles.length > 5) {
-    setSnackbarMessage(
-      "Mỗi lần chỉ được thêm tối đa 5 hình ảnh."
-    );
-
-    setSnackbarSeverity("error");
-    setSnackbarOpen(true);
-
-    setImageFiles(
-      imageOnlyFiles.slice(0, 5)
-    );
-
-    return;
-  }
-
-  // Kiểm tra dung lượng từng ảnh
-  const validFiles =
-    imageOnlyFiles.filter(
-      (file) =>
-        file.size <=
-        10 * 1024 * 1024
-    );
-
-  if (
-    validFiles.length !==
-    imageOnlyFiles.length
-  ) {
-    setSnackbarMessage(
-      "Mỗi hình ảnh không được vượt quá 10MB."
-    );
-
-    setSnackbarSeverity("error");
-    setSnackbarOpen(true);
-  }
-
-  setImageFiles(validFiles);
-  event.target.value = "";
 };
 
 // ==========================================================
@@ -1082,11 +1066,7 @@ const handleUploadImages = async () => {
 
 const formData = new FormData();
 
-const compressedFiles = await Promise.all(
-  imageFiles.map((file) => compressImage(file))
-);
-
-compressedFiles.forEach((file) => {
+imageFiles.forEach((file) => {
   formData.append("images", file);
 });
     console.log(
