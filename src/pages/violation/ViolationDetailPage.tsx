@@ -207,6 +207,9 @@ const [loadingDetailImages, setLoadingDetailImages] = useState(false);
 
 const cameraInputRef = useRef<HTMLInputElement | null>(null);
 const galleryInputRef = useRef<HTMLInputElement | null>(null);
+
+const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  
   // ==========================================================
   // LOAD DATA
   // ==========================================================
@@ -1010,7 +1013,13 @@ const handleSelectImages = async (
     );
 
     setImageFiles(compressedFiles);
-
+    
+    const previewUrls = compressedFiles.map((file) =>
+      URL.createObjectURL(file)
+    );
+    
+    setImagePreviews(previewUrls);
+    
     event.target.value = "";
   } catch (error) {
     console.error("❌ Lỗi nén hình ảnh:", error);
@@ -1100,7 +1109,12 @@ setViolations(prev =>
 // Tải lại toàn bộ ảnh để ảnh vừa upload hiển thị ngay
 await loadDetailImages(updatedItem);
 
+imagePreviews.forEach((url) => {
+  URL.revokeObjectURL(url);
+});
+
 setImageFiles([]);
+setImagePreviews([]);
 
     setSnackbarMessage(
       "Đã thêm hình ảnh thành công."
@@ -2311,6 +2325,72 @@ const totalConductViolations =
       ? "Đang tải lên..."
       : "Tải hình lên"}
   </Button>
+         {imagePreviews.length > 0 && (
+  <Stack
+    direction="row"
+    spacing={1}
+    sx={{
+      mt: 2,
+      flexWrap: "wrap",
+      gap: 1,
+    }}
+  >
+    {imagePreviews.map((url, index) => (
+      <Box
+        key={url}
+        sx={{
+          position: "relative",
+          width: 100,
+          height: 100,
+          borderRadius: 1,
+          overflow: "hidden",
+          border: "1px solid",
+          borderColor: "divider",
+        }}
+      >
+        <img
+          src={url}
+          alt={`Ảnh ${index + 1}`}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+        />
+
+        <Button
+          size="small"
+          color="error"
+          variant="contained"
+          onClick={() => {
+            URL.revokeObjectURL(url);
+
+            setImagePreviews((prev) =>
+              prev.filter((_, i) => i !== index)
+            );
+
+            setImageFiles((prev) =>
+              prev.filter((_, i) => i !== index)
+            );
+          }}
+          sx={{
+            position: "absolute",
+            right: 2,
+            top: 2,
+            minWidth: 28,
+            width: 28,
+            height: 28,
+            p: 0,
+            fontSize: 16,
+          }}
+        >
+          ×
+        </Button>
+      </Box>
+    ))}
+  </Stack>
+)}
 </Box>
 
       </Stack>
