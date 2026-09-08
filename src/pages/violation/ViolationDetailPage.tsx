@@ -891,7 +891,81 @@ const openDetailDialog = async (v: Violation) => {
 
   await loadDetailImages(v);
 };
+// ==========================================================
+// 📷 GIẢM DUNG LƯỢNG HÌNH ẢNH
+// ==========================================================
 
+  const compressImage = (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
+      const maxSize = 1600;
+
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxSize || height > maxSize) {
+        if (width > height) {
+          height = Math.round((height * maxSize) / width);
+          width = maxSize;
+        } else {
+          width = Math.round((width * maxSize) / height);
+          height = maxSize;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) {
+        reject(new Error("Không thể xử lý hình ảnh."));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("Không thể nén hình ảnh."));
+            return;
+          }
+
+          const fileName =
+            file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+
+          const compressedFile = new File(
+            [blob],
+            fileName,
+            {
+              type: "image/jpeg",
+              lastModified: Date.now(),
+            }
+          );
+
+          resolve(compressedFile);
+        },
+        "image/jpeg",
+        0.8
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Không thể đọc hình ảnh."));
+    };
+
+    img.src = objectUrl;
+  });
+};
+  
 // ==========================================================
 // 📷 CHỌN HÌNH ẢNH
 // ==========================================================
