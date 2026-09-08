@@ -1082,6 +1082,68 @@ console.log("📤 FILES:", imageFiles);
   }
 };
   // ==========================================================
+// 📤 DELETE HÌNH ẢNH
+// ==========================================================
+  const handleDeleteImage = async (fileId: string) => {
+  if (!detailItem) return;
+
+  const confirmed = window.confirm(
+    "Bạn có chắc muốn xóa hình ảnh này không?"
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await api.delete(
+      `/api/violations/${detailItem._id}/images/${fileId}`
+    );
+
+    // Giải phóng URL ảnh tạm
+    if (detailImageUrls[fileId]) {
+      URL.revokeObjectURL(detailImageUrls[fileId]);
+    }
+
+    // Xóa khỏi danh sách URL đang hiển thị
+    setDetailImageUrls((prev) => {
+      const next = { ...prev };
+      delete next[fileId];
+      return next;
+    });
+
+    // Xóa khỏi detailItem
+    const updatedImages = (detailItem.images || []).filter(
+      (image) => image.fileId !== fileId
+    );
+
+    const updatedItem = {
+      ...detailItem,
+      images: updatedImages,
+    };
+
+    setDetailItem(updatedItem);
+
+    // Cập nhật luôn danh sách ngoài bảng
+    setViolations((prev) =>
+      prev.map((v) =>
+        v._id === detailItem._id
+          ? { ...v, images: updatedImages }
+          : v
+      )
+    );
+
+    setSnackbarMessage("Đã xóa hình ảnh.");
+    setSnackbarSeverity("success");
+    setSnackbarOpen(true);
+
+  } catch (error) {
+    console.error("❌ Lỗi xóa hình ảnh:", error);
+
+    setSnackbarMessage("Không thể xóa hình ảnh.");
+    setSnackbarSeverity("error");
+    setSnackbarOpen(true);
+  }
+};
+  // ==========================================================
   // ✏️ MỞ DIALOG SỬA
   // ==========================================================
 
@@ -2076,6 +2138,18 @@ const totalConductViolations =
       display: "block",
     }}
   />
+      <Box sx={{ p: 1 }}>
+      <Button
+        fullWidth
+        size="small"
+        color="error"
+        variant="outlined"
+        onClick={() => handleDeleteImage(image.fileId)}
+      >
+        Xóa hình
+      </Button>
+    </Box>
+  </>
 ) : (
   <Box
     sx={{
