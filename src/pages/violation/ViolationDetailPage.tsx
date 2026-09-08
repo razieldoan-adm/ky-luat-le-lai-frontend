@@ -889,6 +889,7 @@ const loadDetailImages = async (violation: Violation) => {
 const openDetailDialog = async (v: Violation) => {
   setDetailItem(v);
   setImageFiles([]);
+  setImagePreviews([]);
   setDetailImageUrls({});
   setDetailDialogOpen(true);
 
@@ -978,9 +979,22 @@ const handleSelectImages = async (
 ) => {
   const files = Array.from(event.target.files || []);
 
+  // Cho phép chọn lại đúng file vừa chọn trước đó
+  event.target.value = "";
+
   if (files.length === 0) return;
 
   try {
+    // Tổng số ảnh đang chờ upload + ảnh mới không được quá 5
+    if (imageFiles.length + files.length > 5) {
+      setSnackbarMessage(
+        `Tối đa 5 hình ảnh. Hiện đã có ${imageFiles.length} hình.`
+      );
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+      return;
+    }
+
     const validFiles = files.filter((file) => {
       if (!file.type.startsWith("image/")) {
         return false;
@@ -1000,35 +1014,33 @@ const handleSelectImages = async (
       return;
     }
 
-    if (validFiles.length > 5) {
-      setSnackbarMessage("Mỗi lần chỉ được chọn tối đa 5 hình.");
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
-      return;
-    }
-
     // Nén ảnh ngay sau khi chụp/chọn
     const compressedFiles = await Promise.all(
       validFiles.map((file) => compressImage(file))
     );
 
-    setImageFiles(compressedFiles);
-    
+    // THÊM vào danh sách cũ, không ghi đè
+    setImageFiles((prev) => [
+      ...prev,
+      ...compressedFiles,
+    ]);
+
     const previewUrls = compressedFiles.map((file) =>
       URL.createObjectURL(file)
     );
-    
-    setImagePreviews(previewUrls);
-    
-    event.target.value = "";
+
+    // THÊM preview mới vào preview cũ
+    setImagePreviews((prev) => [
+      ...prev,
+      ...previewUrls,
+    ]);
+
   } catch (error) {
     console.error("❌ Lỗi nén hình ảnh:", error);
 
     setSnackbarMessage("Không thể xử lý hình ảnh.");
     setSnackbarSeverity("error");
     setSnackbarOpen(true);
-
-    event.target.value = "";
   }
 };
 
@@ -2088,7 +2100,15 @@ const totalConductViolations =
 ========================= */}
 <Dialog
   open={detailDialogOpen}
-  onClose={() => setDetailDialogOpen(false)}
+  onClose={() => {
+    imagePreviews.forEach((url) => {
+      URL.revokeObjectURL(url);
+    });
+
+    setImagePreviews([]);
+    setImageFiles([]);
+    setDetailDialogOpen(false);
+  }}
   fullWidth
   maxWidth="md"
 >
@@ -2398,10 +2418,20 @@ const totalConductViolations =
   </DialogContent>
 
   <DialogActions>
-    <Button onClick={() => setDetailDialogOpen(false)}>
-      Đóng
-    </Button>
-  </DialogActions>
+  <Button
+    onClick={() => {
+      imagePreviews.forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
+
+      setImagePreviews([]);
+      setImageFiles([]);
+      setDetailDialogOpen(false);
+    }}
+  >
+    Đóng
+  </Button>
+</DialogActions>
 </Dialog>
       
       
