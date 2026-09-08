@@ -903,7 +903,7 @@ const openDetailDialog = async (v: Violation) => {
     img.onload = () => {
       URL.revokeObjectURL(objectUrl);
 
-      const maxSize = 1600;
+      const maxSize = 1280;
 
       let width = img.width;
       let height = img.height;
@@ -953,7 +953,7 @@ const openDetailDialog = async (v: Violation) => {
           resolve(compressedFile);
         },
         "image/jpeg",
-        0.8
+        0.7
       );
     };
 
