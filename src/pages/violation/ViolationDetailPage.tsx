@@ -1028,32 +1028,27 @@ console.log("📤 FILES:", imageFiles);
       formData
     );
 
-    const updatedImages =
-      res.data?.images ||
-      [];
+    const updatedImages = res.data?.images || [];
 
-    // Cập nhật ngay Dialog
-    setDetailItem({
-      ...detailItem,
-      images: updatedImages,
-    });
+const updatedItem = {
+  ...detailItem,
+  images: updatedImages,
+};
 
-    // Đồng bộ lại danh sách
-    setViolations(
-      (prev) =>
-        prev.map((v) =>
-          v._id ===
-          detailItem._id
-            ? {
-                ...v,
-                images:
-                  updatedImages,
-              }
-            : v
-        )
-    );
+setDetailItem(updatedItem);
 
-    setImageFiles([]);
+setViolations(prev =>
+  prev.map(v =>
+    v._id === detailItem._id
+      ? { ...v, images: updatedImages }
+      : v
+  )
+);
+
+// Tải lại toàn bộ ảnh để ảnh vừa upload hiển thị ngay
+await loadDetailImages(updatedItem);
+
+setImageFiles([]);
 
     setSnackbarMessage(
       "Đã thêm hình ảnh thành công."
