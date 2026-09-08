@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent, } from "react";
 import {
   Box,
   Button,
@@ -57,6 +57,10 @@ interface Violation {
   handlingNote?: string;
   weekNumber?: number;
   penalty?: number;
+  images?: {
+  fileId: string;
+  url: string;
+}[];
 }
 
 interface Rule {
@@ -180,6 +184,26 @@ const ViolationDetailPage = () => {
 
   const [editDate, setEditDate] =
     useState("");
+
+  // ==========================================================
+// 📷 DIALOG XEM CHI TIẾT VI PHẠM
+// ==========================================================
+
+const [detailDialogOpen, setDetailDialogOpen] =
+  useState(false);
+
+const [detailItem, setDetailItem] =
+  useState<Violation | null>(null);
+
+// ==========================================================
+// 📷 THÊM HÌNH ẢNH
+// ==========================================================
+
+const [imageFiles, setImageFiles] =
+  useState<File[]>([]);
+
+const [uploadingImages, setUploadingImages] =
+  useState(false);
 
   // ==========================================================
   // LOAD DATA
@@ -793,7 +817,205 @@ const fetchSettings = async () => {
         setSnackbarOpen(true);
       }
     };
+  // ==========================================================
+// 👁️ MỞ DIALOG XEM CHI TIẾT VI PHẠM
+// ==========================================================
 
+const openDetailDialog = (
+  v: Violation
+) => {
+  setDetailItem(v);
+  setImageFiles([]);
+  setDetailDialogOpen(true);
+};
+
+// ==========================================================
+// 📷 CHỌN HÌNH ẢNH
+// ==========================================================
+
+const handleSelectImages = (
+  event: ChangeEvent<HTMLInputElement>
+) => {
+  const files = Array.from(
+    event.target.files || []
+  );
+
+  if (files.length === 0) {
+    return;
+  }
+
+  // Chỉ nhận hình ảnh
+  const imageOnlyFiles = files.filter(
+    (file) =>
+      file.type.startsWith("image/")
+  );
+
+  if (
+    imageOnlyFiles.length !==
+    files.length
+  ) {
+    setSnackbarMessage(
+      "Chỉ được chọn file hình ảnh."
+    );
+
+    setSnackbarSeverity("error");
+    setSnackbarOpen(true);
+  }
+
+  // Kiểm tra tối đa 5 ảnh mỗi lần
+  if (imageOnlyFiles.length > 5) {
+    setSnackbarMessage(
+      "Mỗi lần chỉ được thêm tối đa 5 hình ảnh."
+    );
+
+    setSnackbarSeverity("error");
+    setSnackbarOpen(true);
+
+    setImageFiles(
+      imageOnlyFiles.slice(0, 5)
+    );
+
+    return;
+  }
+
+  // Kiểm tra dung lượng từng ảnh
+  const validFiles =
+    imageOnlyFiles.filter(
+      (file) =>
+        file.size <=
+        10 * 1024 * 1024
+    );
+
+  if (
+    validFiles.length !==
+    imageOnlyFiles.length
+  ) {
+    setSnackbarMessage(
+      "Mỗi hình ảnh không được vượt quá 10MB."
+    );
+
+    setSnackbarSeverity("error");
+    setSnackbarOpen(true);
+  }
+
+  setImageFiles(validFiles);
+};
+
+// ==========================================================
+// 📤 UPLOAD HÌNH ẢNH
+// ==========================================================
+
+const handleUploadImages = async () => {
+  if (!detailItem) {
+    return;
+  }
+
+  if (imageFiles.length === 0) {
+    setSnackbarMessage(
+      "Vui lòng chọn hình ảnh."
+    );
+
+    setSnackbarSeverity("error");
+    setSnackbarOpen(true);
+
+    return;
+  }
+
+  const currentImageCount =
+    detailItem.images?.length || 0;
+
+  if (
+    currentImageCount +
+      imageFiles.length >
+    20
+  ) {
+    setSnackbarMessage(
+      `Vi phạm này đã có ${currentImageCount} ảnh. Tối đa 20 ảnh.`
+    );
+
+    setSnackbarSeverity("error");
+    setSnackbarOpen(true);
+
+    return;
+  }
+
+  try {
+    setUploadingImages(true);
+
+    const formData =
+      new FormData();
+
+    imageFiles.forEach(
+      (file) => {
+        formData.append(
+          "images",
+          file
+        );
+      }
+    );
+
+    const res = await api.post(
+      `/api/violations/${detailItem._id}/images`,
+      formData
+    );
+
+    const updatedImages =
+      res.data?.images ||
+      [];
+
+    // Cập nhật ngay Dialog
+    setDetailItem({
+      ...detailItem,
+      images: updatedImages,
+    });
+
+    // Đồng bộ lại danh sách
+    setViolations(
+      (prev) =>
+        prev.map((v) =>
+          v._id ===
+          detailItem._id
+            ? {
+                ...v,
+                images:
+                  updatedImages,
+              }
+            : v
+        )
+    );
+
+    setImageFiles([]);
+
+    setSnackbarMessage(
+      "Đã thêm hình ảnh thành công."
+    );
+
+    setSnackbarSeverity(
+      "success"
+    );
+
+    setSnackbarOpen(true);
+
+  } catch (err) {
+    console.error(
+      "Lỗi upload hình ảnh:",
+      err
+    );
+
+    setSnackbarMessage(
+      "Không thể upload hình ảnh."
+    );
+
+    setSnackbarSeverity(
+      "error"
+    );
+
+    setSnackbarOpen(true);
+
+  } finally {
+    setUploadingImages(false);
+  }
+};
   // ==========================================================
   // ✏️ MỞ DIALOG SỬA
   // ==========================================================
@@ -1488,34 +1710,57 @@ const totalConductViolations =
                     </TableCell>
 
                     <TableCell>
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                      >
-                        <Button
-                          size="small"
-                          onClick={() =>
-                            openEditDialog(
-                              v
-                            )
-                          }
-                        >
-                          Sửa
-                        </Button>
+  <Stack
+    direction="row"
+    spacing={1}
+    flexWrap="wrap"
+  >
+    {/* 👁️ XEM CHI TIẾT */}
+    <Button
+      size="small"
+      variant="outlined"
+      onClick={() =>
+        openDetailDialog(v)
+      }
+    >
+      Xem chi tiết
+    </Button>
 
-                        <Button
-                          size="small"
-                          color="error"
-                          onClick={() =>
-                            handleDeleteViolation(
-                              v._id
-                            )
-                          }
-                        >
-                          Xoá
-                        </Button>
-                      </Stack>
-                    </TableCell>
+    {/* 📷 THÊM HÌNH */}
+    <Button
+      size="small"
+      variant="outlined"
+      onClick={() =>
+        openDetailDialog(v)
+      }
+    >
+      Thêm hình
+    </Button>
+
+    {/* ✏️ SỬA */}
+    <Button
+      size="small"
+      onClick={() =>
+        openEditDialog(v)
+      }
+    >
+      Sửa
+    </Button>
+
+    {/* ❌ XÓA */}
+    <Button
+      size="small"
+      color="error"
+      onClick={() =>
+        handleDeleteViolation(
+          v._id
+        )
+      }
+    >
+      Xoá
+    </Button>
+  </Stack>
+</TableCell>
                   </TableRow>
                 );
               }
@@ -1637,6 +1882,172 @@ const totalConductViolations =
         </DialogActions>
       </Dialog>
 
+      {/* =========================
+    DETAIL DIALOG
+========================= */}
+<Dialog
+  open={detailDialogOpen}
+  onClose={() => setDetailDialogOpen(false)}
+  fullWidth
+  maxWidth="md"
+>
+  <DialogTitle>
+    Chi tiết vi phạm
+  </DialogTitle>
+
+  <DialogContent dividers>
+    {detailItem && (
+      <Stack spacing={2}>
+
+        <Box>
+          <Typography variant="body2" color="text.secondary">
+            Học sinh
+          </Typography>
+          <Typography fontWeight={600}>
+            {detailItem.name}
+          </Typography>
+        </Box>
+
+        <Box>
+          <Typography variant="body2" color="text.secondary">
+            Lớp
+          </Typography>
+          <Typography fontWeight={600}>
+            {detailItem.className}
+          </Typography>
+        </Box>
+
+        <Box>
+          <Typography variant="body2" color="text.secondary">
+            Nội dung vi phạm
+          </Typography>
+          <Typography fontWeight={600}>
+            {detailItem.description}
+          </Typography>
+        </Box>
+
+        <Box>
+          <Typography variant="body2" color="text.secondary">
+            Nhóm
+          </Typography>
+          <Typography>
+            {detailItem.groupCode} - {detailItem.groupName}
+          </Typography>
+        </Box>
+
+        <Box>
+          <Typography variant="body2" color="text.secondary">
+            Thời gian
+          </Typography>
+          <Typography>
+            {dayjs(detailItem.time).format("DD/MM/YYYY HH:mm")}
+          </Typography>
+        </Box>
+
+        <Box>
+          <Typography variant="body2" color="text.secondary">
+            Hình thức xử lý
+          </Typography>
+          <Typography>
+            {detailItem.handlingMethod || "Chưa có"}
+          </Typography>
+        </Box>
+
+        <Divider />
+
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Hình ảnh vi phạm
+          </Typography>
+
+          {(!detailItem.images || detailItem.images.length === 0) ? (
+            <Typography color="text.secondary">
+              Chưa có hình ảnh.
+            </Typography>
+          ) : (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "repeat(2, 1fr)",
+                  md: "repeat(3, 1fr)",
+                },
+                gap: 2,
+              }}
+            >
+              {detailItem.images.map((image) => (
+                <Box
+                  key={image.fileId}
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    overflow: "hidden",
+                  }}
+                >
+                  <img
+                    src={image.url}
+                    alt="Hình ảnh vi phạm"
+                    style={{
+                      width: "100%",
+                      height: 220,
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
+
+        <Divider />
+
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Thêm hình ảnh
+          </Typography>
+
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleSelectImages}
+          />
+
+          {imageFiles.length > 0 && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 1 }}
+            >
+              Đã chọn {imageFiles.length} hình ảnh
+            </Typography>
+          )}
+
+          <Button
+            variant="contained"
+            sx={{ mt: 2 }}
+            onClick={handleUploadImages}
+            disabled={uploadingImages || imageFiles.length === 0}
+          >
+            {uploadingImages ? "Đang tải lên..." : "Tải hình lên"}
+          </Button>
+        </Box>
+
+      </Stack>
+    )}
+  </DialogContent>
+
+  <DialogActions>
+    <Button onClick={() => setDetailDialogOpen(false)}>
+      Đóng
+    </Button>
+  </DialogActions>
+</Dialog>
+      
+      
       {/* ======================================================
           SNACKBAR
       ====================================================== */}
