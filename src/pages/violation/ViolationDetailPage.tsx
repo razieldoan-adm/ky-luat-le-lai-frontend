@@ -1080,17 +1080,15 @@ const handleUploadImages = async () => {
   try {
     setUploadingImages(true);
 
-    const formData =
-      new FormData();
+const formData = new FormData();
 
-    imageFiles.forEach(
-      (file) => {
-        formData.append(
-          "images",
-          file
-        );
-      }
-    );
+const compressedFiles = await Promise.all(
+  imageFiles.map((file) => compressImage(file))
+);
+
+compressedFiles.forEach((file) => {
+  formData.append("images", file);
+});
     console.log(
   "📤 UPLOAD IMAGE URL:",
   `/api/violations/${detailItem._id}/images`
