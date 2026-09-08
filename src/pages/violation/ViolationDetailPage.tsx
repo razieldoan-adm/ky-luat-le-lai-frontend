@@ -1013,7 +1013,12 @@ const handleUploadImages = async () => {
         );
       }
     );
-
+    console.log(
+  "📤 UPLOAD IMAGE URL:",
+  `/api/violations/${detailItem._id}/images`
+);
+console.log("📤 VIOLATION ID:", detailItem._id);
+console.log("📤 FILES:", imageFiles);
     const res = await api.post(
       `/api/violations/${detailItem._id}/images`,
       formData
