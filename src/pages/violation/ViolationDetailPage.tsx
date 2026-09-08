@@ -1839,55 +1839,64 @@ const totalConductViolations =
                     <TableCell>
   <Stack
     direction="row"
-    spacing={1}
-    flexWrap="wrap"
+    spacing={0.5}
+    alignItems="center"
+    sx={{
+      flexWrap: "nowrap",
+      whiteSpace: "nowrap",
+    }}
   >
-    {/* 👁️ XEM CHI TIẾT */}
     <Button
       size="small"
       variant="outlined"
-      onClick={() =>
-        openDetailDialog(v)
-      }
+      onClick={() => openDetailDialog(v)}
+      sx={{
+        minWidth: 90,
+        height: 32,
+      }}
     >
       Xem chi tiết
     </Button>
 
-    {/* 📷 THÊM HÌNH */}
     <Button
       size="small"
       variant="outlined"
-      onClick={() =>
-        openDetailDialog(v)
-      }
+      onClick={() => openDetailDialog(v)}
+      sx={{
+        minWidth: 80,
+        height: 32,
+      }}
     >
       Thêm hình
     </Button>
 
-    {/* ✏️ SỬA */}
     <Button
       size="small"
-      onClick={() =>
-        openEditDialog(v)
-      }
+      variant="outlined"
+      onClick={() => openEditDialog(v)}
+      sx={{
+        minWidth: 55,
+        height: 32,
+      }}
     >
       Sửa
     </Button>
 
-    {/* ❌ XÓA */}
     <Button
       size="small"
+      variant="outlined"
       color="error"
-      onClick={() =>
-        handleDeleteViolation(
-          v._id
-        )
-      }
+      onClick={() => handleDeleteViolation(v._id)}
+      sx={{
+        minWidth: 55,
+        height: 32,
+      }}
     >
-      Xoá
+      Xóa
     </Button>
   </Stack>
 </TableCell>
+                    
                   </TableRow>
                 );
               }
