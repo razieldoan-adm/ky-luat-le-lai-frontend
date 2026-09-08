@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, } from "react";
+import { useEffect, useState, useRef, type ChangeEvent, } from "react";
 import {
   Box,
   Button,
@@ -204,6 +204,9 @@ const [uploadingImages, setUploadingImages] = useState(false);
 
 const [detailImageUrls, setDetailImageUrls] = useState<Record<string, string>>({});
 const [loadingDetailImages, setLoadingDetailImages] = useState(false);
+
+const cameraInputRef = useRef<HTMLInputElement | null>(null);
+const galleryInputRef = useRef<HTMLInputElement | null>(null);
   // ==========================================================
   // LOAD DATA
   // ==========================================================
@@ -959,6 +962,7 @@ const handleSelectImages = (
   }
 
   setImageFiles(validFiles);
+  event.target.value = "";
 };
 
 // ==========================================================
@@ -2186,38 +2190,81 @@ const totalConductViolations =
         </Box>
 
         <Divider />
+      {/* ======================================================
+          Thêm ảnh
+      ====================================================== */}
+       <Box>
+  <Typography variant="h6" gutterBottom>
+    Thêm hình ảnh
+  </Typography>
 
-        <Box>
-          <Typography variant="h6" gutterBottom>
-            Thêm hình ảnh
-          </Typography>
+  {/* Camera */}
+  <input
+    ref={cameraInputRef}
+    type="file"
+    accept="image/*"
+    capture="environment"
+    style={{ display: "none" }}
+    onChange={handleSelectImages}
+  />
 
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleSelectImages}
-          />
+  {/* Thư viện ảnh */}
+  <input
+    ref={galleryInputRef}
+    type="file"
+    accept="image/*"
+    multiple
+    style={{ display: "none" }}
+    onChange={handleSelectImages}
+  />
 
-          {imageFiles.length > 0 && (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 1 }}
-            >
-              Đã chọn {imageFiles.length} hình ảnh
-            </Typography>
-          )}
+  <Stack
+    direction="row"
+    spacing={1}
+    sx={{
+      flexWrap: "wrap",
+      gap: 1,
+    }}
+  >
+    <Button
+      variant="outlined"
+      onClick={() => cameraInputRef.current?.click()}
+    >
+      📷 Chụp ảnh
+    </Button>
 
-          <Button
-            variant="contained"
-            sx={{ mt: 2 }}
-            onClick={handleUploadImages}
-            disabled={uploadingImages || imageFiles.length === 0}
-          >
-            {uploadingImages ? "Đang tải lên..." : "Tải hình lên"}
-          </Button>
-        </Box>
+    <Button
+      variant="outlined"
+      onClick={() => galleryInputRef.current?.click()}
+    >
+      🖼️ Chọn ảnh
+    </Button>
+  </Stack>
+
+  {imageFiles.length > 0 && (
+    <Typography
+      variant="body2"
+      color="text.secondary"
+      sx={{ mt: 1 }}
+    >
+      Đã chọn {imageFiles.length} hình ảnh
+    </Typography>
+  )}
+
+  <Button
+    variant="contained"
+    sx={{ mt: 2 }}
+    onClick={handleUploadImages}
+    disabled={
+      uploadingImages ||
+      imageFiles.length === 0
+    }
+  >
+    {uploadingImages
+      ? "Đang tải lên..."
+      : "Tải hình lên"}
+  </Button>
+</Box>
 
       </Stack>
     )}
