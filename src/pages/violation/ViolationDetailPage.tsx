@@ -2128,23 +2128,27 @@ const totalConductViolations =
     </Typography>
   </Box>
 ) : detailImageUrls[image.fileId] ? (
-  <img
-    src={detailImageUrls[image.fileId]}
-    alt="Hình ảnh vi phạm"
-    style={{
-      width: "100%",
-      height: 220,
-      objectFit: "cover",
-      display: "block",
-    }}
-  />
-      <Box sx={{ p: 1 }}>
+  <>
+    <img
+      src={detailImageUrls[image.fileId]}
+      alt="Hình ảnh vi phạm"
+      style={{
+        width: "100%",
+        height: 220,
+        objectFit: "cover",
+        display: "block",
+      }}
+    />
+
+    <Box sx={{ p: 1 }}>
       <Button
         fullWidth
         size="small"
         color="error"
         variant="outlined"
-        onClick={() => handleDeleteImage(image.fileId)}
+        onClick={() =>
+          handleDeleteImage(image.fileId)
+        }
       >
         Xóa hình
       </Button>
