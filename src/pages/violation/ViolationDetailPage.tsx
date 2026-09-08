@@ -1904,7 +1904,7 @@ const totalConductViolations =
             Học sinh
           </Typography>
           <Typography fontWeight={600}>
-            {detailItem.name}
+            {name}
           </Typography>
         </Box>
 
@@ -1913,7 +1913,7 @@ const totalConductViolations =
             Lớp
           </Typography>
           <Typography fontWeight={600}>
-            {detailItem.className}
+            {className}
           </Typography>
         </Box>
 
@@ -1931,7 +1931,7 @@ const totalConductViolations =
             Nhóm
           </Typography>
           <Typography>
-            {detailItem.groupCode} - {detailItem.groupName}
+            {detailItem.groupCode}
           </Typography>
         </Box>
 
