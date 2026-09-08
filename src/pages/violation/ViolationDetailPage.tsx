@@ -199,12 +199,11 @@ const [detailItem, setDetailItem] =
 // 📷 THÊM HÌNH ẢNH
 // ==========================================================
 
-const [imageFiles, setImageFiles] =
-  useState<File[]>([]);
+const [imageFiles, setImageFiles] = useState<File[]>([]);
+const [uploadingImages, setUploadingImages] = useState(false);
 
-const [uploadingImages, setUploadingImages] =
-  useState(false);
-
+const [detailImageUrls, setDetailImageUrls] = useState<Record<string, string>>({});
+const [loadingDetailImages, setLoadingDetailImages] = useState(false);
   // ==========================================================
   // LOAD DATA
   // ==========================================================
@@ -817,7 +816,67 @@ const fetchSettings = async () => {
         setSnackbarOpen(true);
       }
     };
-  // ==========================================================
+// ==========================================================
+// 👁️ MỚI BỔ SUNG
+// ==========================================================
+const loadDetailImages = async (violation: Violation) => {
+  if (!violation.images || violation.images.length === 0) {
+    setDetailImageUrls({});
+    return;
+  }
+
+  try {
+    setLoadingDetailImages(true);
+
+    const imageEntries = await Promise.all(
+      violation.images.map(async (image) => {
+        try {
+          const response = await api.get(
+            image.url,
+            {
+              responseType: "blob",
+            }
+          );
+
+          const objectUrl = URL.createObjectURL(response.data);
+
+          return {
+            fileId: image.fileId,
+            url: objectUrl,
+          };
+        } catch (error) {
+          console.error(
+            "❌ Không thể tải hình ảnh:",
+            image.fileId,
+            error
+          );
+
+          return null;
+        }
+      })
+    );
+
+    const imageMap: Record<string, string> = {};
+
+    imageEntries.forEach((item) => {
+      if (item) {
+        imageMap[item.fileId] = item.url;
+      }
+    });
+
+    setDetailImageUrls(imageMap);
+
+  } catch (error) {
+    console.error("❌ loadDetailImages:", error);
+    setSnackbarMessage("Không thể tải hình ảnh.");
+    setSnackbarSeverity("error");
+    setSnackbarOpen(true);
+  } finally {
+    setLoadingDetailImages(false);
+  }
+};
+  
+// ==========================================================
 // 👁️ MỞ DIALOG XEM CHI TIẾT VI PHẠM
 // ==========================================================
 
@@ -826,7 +885,10 @@ const openDetailDialog = (
 ) => {
   setDetailItem(v);
   setImageFiles([]);
+  setDetailImageUrls({});
   setDetailDialogOpen(true);
+
+  await loadDetailImages(v);
 };
 
 // ==========================================================
@@ -1986,16 +2048,47 @@ const totalConductViolations =
                     overflow: "hidden",
                   }}
                 >
-                  <img
-                    src={image.url}
-                    alt="Hình ảnh vi phạm"
-                    style={{
-                      width: "100%",
-                      height: 220,
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                  />
+
+                  {loadingDetailImages ? (
+  <Box
+    sx={{
+      height: 220,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <Typography color="text.secondary">
+      Đang tải hình ảnh...
+    </Typography>
+  </Box>
+) : detailImageUrls[image.fileId] ? (
+  <img
+    src={detailImageUrls[image.fileId]}
+    alt="Hình ảnh vi phạm"
+    style={{
+      width: "100%",
+      height: 220,
+      objectFit: "cover",
+      display: "block",
+    }}
+  />
+) : (
+  <Box
+    sx={{
+      height: 220,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <Typography color="text.secondary">
+      Không thể tải hình ảnh
+    </Typography>
+  </Box>
+)}
+                  
+                  
                 </Box>
               ))}
             </Box>
