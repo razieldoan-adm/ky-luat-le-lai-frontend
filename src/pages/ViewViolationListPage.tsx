@@ -515,10 +515,10 @@ const handleExportExcel = async () => {
   { wch: 7 },   // STT
   { wch: 28 },  // Họ tên
   { wch: 10 },  // Lớp
-  { wch: 55 },  // Lỗi vi phạm
+  { wch: 70 },  // Lỗi vi phạm
   { wch: 22 },  // Số lần
   { wch: 17 },  // Thời gian
-  { wch: 35 },  // Ghi chú
+  { wch: 25 },  // Ghi chú
 ];
 
     // ============================
