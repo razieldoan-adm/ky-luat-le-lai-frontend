@@ -325,7 +325,7 @@ const handleExportExcel = async () => {
       );
 
       return [
-        index + 1,
+        "",
         v.name || "",
         v.className || "",
         v.description || "",
