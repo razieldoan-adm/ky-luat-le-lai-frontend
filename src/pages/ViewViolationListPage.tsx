@@ -30,7 +30,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -230,7 +230,7 @@ useEffect(() => {
       classTotals[v.className] = (classTotals[v.className] || 0) + point;
     }
   });
-  // ============================
+// ============================
 // XUẤT EXCEL THEO KHOẢNG THỜI GIAN
 // ============================
 const handleExportExcel = async () => {
@@ -255,88 +255,318 @@ const handleExportExcel = async () => {
   try {
     setIsExporting(true);
 
-    // Lấy dữ liệu vi phạm
+    // ============================
+    // LẤY DỮ LIỆU VI PHẠM
+    // ============================
     const res = await api.get("/api/violations/all/all-student");
 
     const violations: Violation[] = Array.isArray(res.data)
       ? res.data
       : [];
 
-    // Lọc theo khoảng thời gian
+    // ============================
+    // LỌC THEO KHOẢNG THỜI GIAN
+    // ============================
     const fromDate = dayjs(exportFromDate).startOf("day");
     const toDate = dayjs(exportToDate).endOf("day");
 
-    const dataToExport = violations.filter((v) => {
-      const violationDate = dayjs(v.time);
+    const dataToExport = violations
+      .filter((v) => {
+        const violationDate = dayjs(v.time);
 
-      return (
-        violationDate.isSameOrAfter(fromDate) &&
-        violationDate.isSameOrBefore(toDate)
-      );
-    });
+        return (
+          violationDate.isSameOrAfter(fromDate) &&
+          violationDate.isSameOrBefore(toDate)
+        );
+      })
+      .sort((a, b) => {
+        return dayjs(a.time).valueOf() - dayjs(b.time).valueOf();
+      });
 
     if (dataToExport.length === 0) {
       setSnackbar({
         open: true,
-        message: "⚠️ Không có dữ liệu vi phạm trong khoảng thời gian đã chọn.",
+        message:
+          "⚠️ Không có học sinh vi phạm trong khoảng thời gian đã chọn.",
         severity: "warning",
       });
       return;
     }
 
-    // Tạo dữ liệu Excel
-    const exportData = dataToExport.map((v, index) => {
+    // ============================
+    // TIÊU ĐỀ
+    // ============================
+    const title = "DANH SÁCH HS VI PHẠM NỘI QUI";
+
+    const dateRange =
+      `Từ ngày ${dayjs(exportFromDate).format("DD/MM/YYYY")}` +
+      ` đến ngày ${dayjs(exportToDate).format("DD/MM/YYYY")}`;
+
+    // ============================
+    // HEADER
+    // ============================
+    const headers = [
+      "STT",
+      "HỌ VÀ TÊN",
+      "LỚP",
+      "LỖI VI PHẠM",
+      "ĐIỂM TRỪ",
+      "NGÀY VI PHẠM",
+      "TRẠNG THÁI",
+      "NGƯỜI XỬ LÝ",
+    ];
+
+    // ============================
+    // DỮ LIỆU
+    // ============================
+    const rows = dataToExport.map((v, index) => {
       const matchedRule = rules.find(
         (r) => r.title === v.description
       );
 
-      return {
-        STT: index + 1,
-        "Họ và tên": v.name,
-        "Lớp": v.className,
-        "Lỗi vi phạm": v.description,
-        "Điểm trừ": matchedRule?.point || 0,
-        "Ngày vi phạm": dayjs(v.time).format("DD/MM/YYYY"),
-        "Trạng thái": v.handled
-          ? "Đã xử lý"
-          : "Chưa xử lý",
-        "Người xử lý": v.handledBy || "",
-      };
+      return [
+        index + 1,
+        v.name || "",
+        v.className || "",
+        v.description || "",
+        matchedRule?.point || 0,
+        dayjs(v.time).format("DD/MM/YYYY"),
+        v.handled ? "Đã xử lý" : "Chưa xử lý",
+        v.handledBy || "",
+      ];
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    // ============================
+    // TẠO WORKSHEET
+    // ============================
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      [title],
+      [dateRange],
+      [],
+      headers,
+      ...rows,
+    ]);
 
-    worksheet["!cols"] = [
-      { wch: 6 },
-      { wch: 25 },
-      { wch: 10 },
-      { wch: 45 },
-      { wch: 12 },
-      { wch: 16 },
-      { wch: 16 },
-      { wch: 15 },
+    // ============================
+    // MERGE TIÊU ĐỀ
+    // ============================
+    worksheet["!merges"] = [
+      {
+        s: { r: 0, c: 0 },
+        e: { r: 0, c: headers.length - 1 },
+      },
+      {
+        s: { r: 1, c: 0 },
+        e: { r: 1, c: headers.length - 1 },
+      },
     ];
 
+    // ============================
+    // FONT CHUNG
+    // ============================
+    const normalFont = {
+      name: "Times New Roman",
+      sz: 14,
+    };
+
+    const boldFont = {
+      name: "Times New Roman",
+      sz: 14,
+      bold: true,
+    };
+
+    // ============================
+    // STYLE TIÊU ĐỀ
+    // ============================
+    worksheet["A1"].s = {
+      font: {
+        name: "Times New Roman",
+        sz: 16,
+        bold: true,
+      },
+      alignment: {
+        horizontal: "center",
+        vertical: "center",
+      },
+    };
+
+    worksheet["A2"].s = {
+      font: {
+        name: "Times New Roman",
+        sz: 14,
+        italic: true,
+      },
+      alignment: {
+        horizontal: "center",
+        vertical: "center",
+      },
+    };
+
+    // ============================
+    // STYLE HEADER
+    // ============================
+    for (let col = 0; col < headers.length; col++) {
+      const cellAddress = XLSX.utils.encode_cell({
+        r: 3,
+        c: col,
+      });
+
+      worksheet[cellAddress].s = {
+        font: boldFont,
+        alignment: {
+          horizontal: "center",
+          vertical: "center",
+          wrapText: true,
+        },
+        border: {
+          top: {
+            style: "thin",
+            color: { rgb: "000000" },
+          },
+          bottom: {
+            style: "thin",
+            color: { rgb: "000000" },
+          },
+          left: {
+            style: "thin",
+            color: { rgb: "000000" },
+          },
+          right: {
+            style: "thin",
+            color: { rgb: "000000" },
+          },
+        },
+      };
+    }
+
+    // ============================
+    // STYLE DỮ LIỆU
+    // ============================
+    for (let row = 4; row < 4 + rows.length; row++) {
+      for (let col = 0; col < headers.length; col++) {
+        const cellAddress = XLSX.utils.encode_cell({
+          r: row,
+          c: col,
+        });
+
+        const cell = worksheet[cellAddress];
+
+        if (!cell) continue;
+
+        // Căn lề
+        let horizontal:
+          | "left"
+          | "center"
+          | "right" = "center";
+
+        // Họ tên + lỗi vi phạm căn trái
+        if (col === 1 || col === 3) {
+          horizontal = "left";
+        }
+
+        cell.s = {
+          font: normalFont,
+          alignment: {
+            horizontal,
+            vertical: "center",
+            wrapText: true,
+          },
+          border: {
+            top: {
+              style: "thin",
+              color: { rgb: "000000" },
+            },
+            bottom: {
+              style: "thin",
+              color: { rgb: "000000" },
+            },
+            left: {
+              style: "thin",
+              color: { rgb: "000000" },
+            },
+            right: {
+              style: "thin",
+              color: { rgb: "000000" },
+            },
+          },
+        };
+      }
+    }
+
+    // ============================
+    // ĐỊNH DẠNG CỘT
+    // ============================
+    worksheet["!cols"] = [
+      { wch: 7 },   // STT
+      { wch: 28 },  // HỌ TÊN
+      { wch: 10 },  // LỚP
+      { wch: 55 },  // LỖI VI PHẠM
+      { wch: 12 },  // ĐIỂM TRỪ
+      { wch: 17 },  // NGÀY
+      { wch: 17 },  // TRẠNG THÁI
+      { wch: 18 },  // NGƯỜI XỬ LÝ
+    ];
+
+    // ============================
+    // CHIỀU CAO DÒNG
+    // ============================
+    worksheet["!rows"] = [
+      { hpt: 28 }, // tiêu đề
+      { hpt: 22 }, // khoảng thời gian
+      { hpt: 8 },  // dòng trống
+      { hpt: 35 }, // header
+    ];
+
+    // Dòng dữ liệu
+    for (let i = 0; i < rows.length; i++) {
+      const rowIndex = i + 4;
+
+      if (!worksheet["!rows"]) {
+        worksheet["!rows"] = [];
+      }
+
+      worksheet["!rows"][rowIndex] = {
+        hpt: 32,
+      };
+    }
+
+    // ============================
+    // AUTO FILTER
+    // ============================
+    worksheet["!autofilter"] = {
+      ref: `A4:H${rows.length + 4}`,
+    };
+
+    // ============================
+    // TẠO WORKBOOK
+    // ============================
     const workbook = XLSX.utils.book_new();
 
     XLSX.utils.book_append_sheet(
       workbook,
       worksheet,
-      "DS học sinh vi phạm"
+      "DS HS vi phạm"
     );
 
+    // ============================
+    // TÊN FILE
+    // ============================
     const fileName =
-      `DS_Hoc_Sinh_Vi_Pham_` +
+      `DS_HS_VI_PHAM_NOI_QUI_` +
       `${dayjs(exportFromDate).format("DD-MM-YYYY")}_` +
       `${dayjs(exportToDate).format("DD-MM-YYYY")}.xlsx`;
 
+    // ============================
+    // XUẤT FILE
+    // ============================
     XLSX.writeFile(workbook, fileName);
 
     setExportDialogOpen(false);
 
     setSnackbar({
       open: true,
-      message: `✅ Đã xuất ${dataToExport.length} lượt vi phạm.`,
+      message:
+        `✅ Đã xuất ${dataToExport.length} lượt vi phạm.`,
       severity: "success",
     });
   } catch (error) {
@@ -351,6 +581,10 @@ const handleExportExcel = async () => {
     setIsExporting(false);
   }
 };
+
+     // ============================
+    // ket thuc xuat file
+    // ============================ 
   return (
     <Box sx={{ maxWidth: "100%", mx: "auto", py: 4 }}>
       <Typography variant="h5" fontWeight="bold" align="center" gutterBottom>
