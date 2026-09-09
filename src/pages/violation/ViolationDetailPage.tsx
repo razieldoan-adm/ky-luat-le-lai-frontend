@@ -2224,15 +2224,16 @@ const totalConductViolations =
 ) : detailImageUrls[image.fileId] ? (
   <>
     <img
-      src={detailImageUrls[image.fileId]}
-      alt="Hình ảnh vi phạm"
-      style={{
-        width: "100%",
-        height: 220,
-        objectFit: "cover",
-        display: "block",
-      }}
-    />
+  src={detailImageUrls[image.fileId]}
+  alt="Hình ảnh vi phạm"
+  style={{
+    width: "100%",
+    height: "auto",
+    maxHeight: "500px",
+    objectFit: "contain",
+    display: "block",
+  }}
+/>
 
     <Box sx={{ p: 1 }}>
       <Button
