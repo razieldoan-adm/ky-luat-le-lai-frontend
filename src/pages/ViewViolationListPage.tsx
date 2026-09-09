@@ -25,6 +25,13 @@ import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import useAcademicWeeks from "../types/useAcademicWeeks";
 import CircularProgress from "@mui/material/CircularProgress";
+
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import * as XLSX from "xlsx";
+
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
@@ -59,6 +66,18 @@ export default function ViewViolationListPage() {
   // ✅ Cài đặt giới hạn GVCN
   const [limitGVCN, setLimitGVCN] = useState(false);
   const [classViolationLimit, setClassViolationLimit] = useState<number>(0);
+
+// ============================
+// Xuất Excel - chọn khoảng thời gian
+// ============================
+const [exportDialogOpen, setExportDialogOpen] = useState(false);
+const [exportFromDate, setExportFromDate] = useState(
+  dayjs().startOf("month").format("YYYY-MM-DD")
+);
+const [exportToDate, setExportToDate] = useState(
+  dayjs().format("YYYY-MM-DD")
+);
+const [isExporting, setIsExporting] = useState(false);
   
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -211,7 +230,127 @@ useEffect(() => {
       classTotals[v.className] = (classTotals[v.className] || 0) + point;
     }
   });
+  // ============================
+// XUẤT EXCEL THEO KHOẢNG THỜI GIAN
+// ============================
+const handleExportExcel = async () => {
+  if (!exportFromDate || !exportToDate) {
+    setSnackbar({
+      open: true,
+      message: "⚠️ Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc.",
+      severity: "warning",
+    });
+    return;
+  }
 
+  if (dayjs(exportFromDate).isAfter(dayjs(exportToDate), "day")) {
+    setSnackbar({
+      open: true,
+      message: "⚠️ Ngày bắt đầu không được lớn hơn ngày kết thúc.",
+      severity: "warning",
+    });
+    return;
+  }
+
+  try {
+    setIsExporting(true);
+
+    // Lấy dữ liệu vi phạm
+    const res = await api.get("/api/violations/all/all-student");
+
+    const violations: Violation[] = Array.isArray(res.data)
+      ? res.data
+      : [];
+
+    // Lọc theo khoảng thời gian
+    const fromDate = dayjs(exportFromDate).startOf("day");
+    const toDate = dayjs(exportToDate).endOf("day");
+
+    const dataToExport = violations.filter((v) => {
+      const violationDate = dayjs(v.time);
+
+      return (
+        violationDate.isSameOrAfter(fromDate) &&
+        violationDate.isSameOrBefore(toDate)
+      );
+    });
+
+    if (dataToExport.length === 0) {
+      setSnackbar({
+        open: true,
+        message: "⚠️ Không có dữ liệu vi phạm trong khoảng thời gian đã chọn.",
+        severity: "warning",
+      });
+      return;
+    }
+
+    // Tạo dữ liệu Excel
+    const exportData = dataToExport.map((v, index) => {
+      const matchedRule = rules.find(
+        (r) => r.title === v.description
+      );
+
+      return {
+        STT: index + 1,
+        "Họ và tên": v.name,
+        "Lớp": v.className,
+        "Lỗi vi phạm": v.description,
+        "Điểm trừ": matchedRule?.point || 0,
+        "Ngày vi phạm": dayjs(v.time).format("DD/MM/YYYY"),
+        "Trạng thái": v.handled
+          ? "Đã xử lý"
+          : "Chưa xử lý",
+        "Người xử lý": v.handledBy || "",
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+    worksheet["!cols"] = [
+      { wch: 6 },
+      { wch: 25 },
+      { wch: 10 },
+      { wch: 45 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 15 },
+    ];
+
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      "DS học sinh vi phạm"
+    );
+
+    const fileName =
+      `DS_Hoc_Sinh_Vi_Pham_` +
+      `${dayjs(exportFromDate).format("DD-MM-YYYY")}_` +
+      `${dayjs(exportToDate).format("DD-MM-YYYY")}.xlsx`;
+
+    XLSX.writeFile(workbook, fileName);
+
+    setExportDialogOpen(false);
+
+    setSnackbar({
+      open: true,
+      message: `✅ Đã xuất ${dataToExport.length} lượt vi phạm.`,
+      severity: "success",
+    });
+  } catch (error) {
+    console.error("Lỗi xuất Excel:", error);
+
+    setSnackbar({
+      open: true,
+      message: "❌ Có lỗi xảy ra khi xuất Excel.",
+      severity: "error",
+    });
+  } finally {
+    setIsExporting(false);
+  }
+};
   return (
     <Box sx={{ maxWidth: "100%", mx: "auto", py: 4 }}>
       <Typography variant="h5" fontWeight="bold" align="center" gutterBottom>
@@ -307,7 +446,17 @@ useEffect(() => {
           />
         )}
       </Stack>
-
+      <Button
+  variant="contained"
+  color="success"
+  onClick={() => setExportDialogOpen(true)}
+  sx={{
+    minHeight: 56,
+    fontWeight: "bold",
+  }}
+>
+  📊 Xuất Excel
+</Button>
       {/* --- Bảng dữ liệu --- */}
       <Paper elevation={3} sx={{ width: "100%", overflowX: "auto" }}>
         <Table size="small">
@@ -481,6 +630,88 @@ disabled={
         </Table>
       </Paper>
 
+      {/* ============================
+    DIALOG XUẤT EXCEL
+============================ */}
+<Dialog
+  open={exportDialogOpen}
+  onClose={() => {
+    if (!isExporting) {
+      setExportDialogOpen(false);
+    }
+  }}
+  maxWidth="sm"
+  fullWidth
+>
+  <DialogTitle sx={{ fontWeight: "bold" }}>
+    📊 Xuất danh sách học sinh vi phạm
+  </DialogTitle>
+
+  <DialogContent>
+    <Typography
+      color="text.secondary"
+      sx={{ mb: 3, mt: 1 }}
+    >
+      Chọn khoảng thời gian cần xuất. Tất cả lỗi vi phạm
+      trong khoảng thời gian này sẽ được xuất ra Excel.
+      Sau đó có thể lọc lỗi trực tiếp trong Excel.
+    </Typography>
+
+    <Stack spacing={2}>
+      <TextField
+        label="Từ ngày"
+        type="date"
+        value={exportFromDate}
+        onChange={(e) => setExportFromDate(e.target.value)}
+        fullWidth
+        InputLabelProps={{
+          shrink: true,
+        }}
+      />
+
+      <TextField
+        label="Đến ngày"
+        type="date"
+        value={exportToDate}
+        onChange={(e) => setExportToDate(e.target.value)}
+        fullWidth
+        InputLabelProps={{
+          shrink: true,
+        }}
+      />
+    </Stack>
+  </DialogContent>
+
+  <DialogActions sx={{ px: 3, pb: 2 }}>
+    <Button
+      onClick={() => setExportDialogOpen(false)}
+      disabled={isExporting}
+    >
+      Hủy
+    </Button>
+
+    <Button
+      variant="contained"
+      color="success"
+      onClick={handleExportExcel}
+      disabled={isExporting}
+    >
+      {isExporting ? (
+        <>
+          <CircularProgress
+            size={20}
+            color="inherit"
+            sx={{ mr: 1 }}
+          />
+          Đang xuất...
+        </>
+      ) : (
+        "📊 Xuất Excel"
+      )}
+    </Button>
+  </DialogActions>
+</Dialog>
+      
       {/* ✅ Snackbar hiển thị cảnh báo */}
       <Snackbar
         open={snackbar.open}
