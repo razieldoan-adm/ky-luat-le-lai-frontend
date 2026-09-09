@@ -310,31 +310,33 @@ const handleExportExcel = async () => {
       "HỌ VÀ TÊN",
       "LỚP",
       "LỖI VI PHẠM",
-      "ĐIỂM TRỪ",
-      "NGÀY VI PHẠM",
-      "TRẠNG THÁI",
-      "NGƯỜI XỬ LÝ",
+      "SỐ LẦN VI PHẠM CÙNG 1 LỖI TRONG NGÀY",
+      "THỜI GIAN",
+      "GHI CHÚ",
     ];
 
     // ============================
     // DỮ LIỆU
     // ============================
     const rows = dataToExport.map((v) => {
-      const matchedRule = rules.find(
-        (r) => r.title === v.description
-      );
+  const key =
+    `${v.name?.trim().toLowerCase()}|` +
+    `${v.className?.trim().toLowerCase()}|` +
+    `${v.description?.trim().toLowerCase()}|` +
+    `${dayjs(v.time).format("YYYY-MM-DD")}`;
 
-      return [
-        "",
-        v.name || "",
-        v.className || "",
-        v.description || "",
-        matchedRule?.point || 0,
-        dayjs(v.time).format("DD/MM/YYYY"),
-        v.handled ? "Đã xử lý" : "Chưa xử lý",
-        v.handledBy || "",
-      ];
-    });
+  const violationCount = violationCountMap[key] || 0;
+
+  return [
+    "",
+    v.name || "",
+    v.className || "",
+    v.description || "",
+    violationCount,
+    dayjs(v.time).format("DD/MM/YYYY"),
+    "",
+  ];
+});
 
     // ============================
     // TẠO WORKSHEET
@@ -497,15 +499,14 @@ const handleExportExcel = async () => {
     // ĐỊNH DẠNG CỘT
     // ============================
     worksheet["!cols"] = [
-      { wch: 7 },   // STT
-      { wch: 28 },  // HỌ TÊN
-      { wch: 10 },  // LỚP
-      { wch: 55 },  // LỖI VI PHẠM
-      { wch: 12 },  // ĐIỂM TRỪ
-      { wch: 17 },  // NGÀY
-      { wch: 17 },  // TRẠNG THÁI
-      { wch: 18 },  // NGƯỜI XỬ LÝ
-    ];
+  { wch: 7 },   // STT
+  { wch: 28 },  // Họ tên
+  { wch: 10 },  // Lớp
+  { wch: 55 },  // Lỗi vi phạm
+  { wch: 22 },  // Số lần
+  { wch: 17 },  // Thời gian
+  { wch: 35 },  // Ghi chú
+];
 
     // ============================
     // CHIỀU CAO DÒNG
@@ -534,7 +535,7 @@ const handleExportExcel = async () => {
     // AUTO FILTER
     // ============================
     worksheet["!autofilter"] = {
-      ref: `A4:H${rows.length + 4}`,
+      ref: `A4:G${rows.length + 4}`,
     };
 
     // ============================
