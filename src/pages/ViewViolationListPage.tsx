@@ -319,7 +319,7 @@ const handleExportExcel = async () => {
     // ============================
     // DỮ LIỆU
     // ============================
-    const rows = dataToExport.map((v, index) => {
+    const rows = dataToExport.map((v) => {
       const matchedRule = rules.find(
         (r) => r.title === v.description
       );
