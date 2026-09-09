@@ -292,7 +292,54 @@ const handleExportExcel = async () => {
       });
       return;
     }
+    // ============================
+    // TỔNG HỢP VI PHẠM
+    // Cùng học sinh + cùng lớp + cùng lỗi
+    // Không phân biệt ngày
+    // ============================
+    const summaryMap: Record<
+      string,
+      {
+        name: string;
+        className: string;
+        description: string;
+        count: number;
+      }
+    > = {};
+    
+    dataToExport.forEach((item) => {
+      const key =
+        `${item.name?.trim().toLowerCase()}|` +
+        `${item.className?.trim().toLowerCase()}|` +
+        `${item.description?.trim().toLowerCase()}`;
+    
+      if (!summaryMap[key]) {
+        summaryMap[key] = {
+          name: item.name || "",
+          className: item.className || "",
+          description: item.description || "",
+          count: 0,
+        };
+      }
+    
+      summaryMap[key].count += 1;
+    });
 
+    // ============================
+// DỮ LIỆU EXCEL TỔNG HỢP
+// ============================
+const rows = Object.values(summaryMap).map((item) => {
+  return [
+    "",
+    item.name,
+    item.className,
+    item.description,
+    item.count,
+    dayjs(exportFromDate).format("DD/MM/YYYY"),
+    dayjs(exportToDate).format("DD/MM/YYYY"),
+    "",
+  ];
+});
     // ============================
     // TIÊU ĐỀ
     // ============================
@@ -305,51 +352,18 @@ const handleExportExcel = async () => {
     // ============================
     // HEADER
     // ============================
-    const headers = [
-      "STT",
-      "HỌ VÀ TÊN",
-      "LỚP",
-      "LỖI VI PHẠM",
-      "SỐ LẦN VI PHẠM CÙNG 1 LỖI TRONG NGÀY",
-      "THỜI GIAN",
-      "GHI CHÚ",
-    ];
+const headers = [
+  "STT",
+  "HỌ VÀ TÊN",
+  "LỚP",
+  "LỖI VI PHẠM",
+  "TỔNG SỐ LẦN VI PHẠM",
+  "TỪ NGÀY",
+  "ĐẾN NGÀY",
+  "GHI CHÚ",
+];
 
-    // ============================
-    // DỮ LIỆU
-    // ============================
-    // ĐẾM SỐ LẦN CÙNG HỌC SINH + CÙNG LỚP
-// + CÙNG LỖI + CÙNG NGÀY
-    
-    const violationCountMap: Record<string, number> = {};
-      dataToExport.forEach((item) => {
-      const key =
-        `${item.name?.trim().toLowerCase()}|` +
-        `${item.className?.trim().toLowerCase()}|` +
-        `${item.description?.trim().toLowerCase()}|` +
-        `${dayjs(item.time).format("YYYY-MM-DD")}`;
-    
-      violationCountMap[key] = (violationCountMap[key] || 0) + 1;
-    });
-        const rows = dataToExport.map((v) => {
-      const key =
-        `${v.name?.trim().toLowerCase()}|` +
-        `${v.className?.trim().toLowerCase()}|` +
-        `${v.description?.trim().toLowerCase()}|` +
-        `${dayjs(v.time).format("YYYY-MM-DD")}`;
-    
-      const violationCount = violationCountMap[key] || 0;
-    
-      return [
-        "",
-        v.name || "",
-        v.className || "",
-        v.description || "",
-        violationCount,
-        dayjs(v.time).format("DD/MM/YYYY"),
-        "",
-      ];
-    });
+
 
     // ============================
     // TẠO WORKSHEET
@@ -511,14 +525,15 @@ const handleExportExcel = async () => {
     // ============================
     // ĐỊNH DẠNG CỘT
     // ============================
-    worksheet["!cols"] = [
-  { wch: 7 },   // STT
-  { wch: 28 },  // Họ tên
-  { wch: 10 },  // Lớp
-  { wch: 70 },  // Lỗi vi phạm
-  { wch: 22 },  // Số lần
-  { wch: 17 },  // Thời gian
-  { wch: 25 },  // Ghi chú
+   worksheet["!cols"] = [
+  { wch: 7 },
+  { wch: 28 },
+  { wch: 10 },
+  { wch: 70 },
+  { wch: 22 },
+  { wch: 17 },
+  { wch: 17 },
+  { wch: 35 },
 ];
 
     // ============================
@@ -548,7 +563,7 @@ const handleExportExcel = async () => {
     // AUTO FILTER
     // ============================
     worksheet["!autofilter"] = {
-      ref: `A4:G${rows.length + 4}`,
+      ref: `A4:H${rows.length + 4}`,
     };
 
     // ============================
@@ -580,7 +595,7 @@ const handleExportExcel = async () => {
     setSnackbar({
       open: true,
       message:
-        `✅ Đã xuất ${dataToExport.length} lượt vi phạm.`,
+        `✅ Đã xuất ${Object.keys(summaryMap).length} dòng tổng hợp vi phạm.`,
       severity: "success",
     });
   } catch (error) {
