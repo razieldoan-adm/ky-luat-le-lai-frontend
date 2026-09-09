@@ -318,25 +318,38 @@ const handleExportExcel = async () => {
     // ============================
     // DỮ LIỆU
     // ============================
-    const rows = dataToExport.map((v) => {
-  const key =
-    `${v.name?.trim().toLowerCase()}|` +
-    `${v.className?.trim().toLowerCase()}|` +
-    `${v.description?.trim().toLowerCase()}|` +
-    `${dayjs(v.time).format("YYYY-MM-DD")}`;
-
-  const violationCount = violationCountMap[key] || 0;
-
-  return [
-    "",
-    v.name || "",
-    v.className || "",
-    v.description || "",
-    violationCount,
-    dayjs(v.time).format("DD/MM/YYYY"),
-    "",
-  ];
-});
+    // ĐẾM SỐ LẦN CÙNG HỌC SINH + CÙNG LỚP
+// + CÙNG LỖI + CÙNG NGÀY
+    
+    const violationCountMap: Record<string, number> = {};
+      dataToExport.forEach((item) => {
+      const key =
+        `${item.name?.trim().toLowerCase()}|` +
+        `${item.className?.trim().toLowerCase()}|` +
+        `${item.description?.trim().toLowerCase()}|` +
+        `${dayjs(item.time).format("YYYY-MM-DD")}`;
+    
+      violationCountMap[key] = (violationCountMap[key] || 0) + 1;
+    });
+        const rows = dataToExport.map((v) => {
+      const key =
+        `${v.name?.trim().toLowerCase()}|` +
+        `${v.className?.trim().toLowerCase()}|` +
+        `${v.description?.trim().toLowerCase()}|` +
+        `${dayjs(v.time).format("YYYY-MM-DD")}`;
+    
+      const violationCount = violationCountMap[key] || 0;
+    
+      return [
+        "",
+        v.name || "",
+        v.className || "",
+        v.description || "",
+        violationCount,
+        dayjs(v.time).format("DD/MM/YYYY"),
+        "",
+      ];
+    });
 
     // ============================
     // TẠO WORKSHEET
