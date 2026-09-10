@@ -47,7 +47,10 @@ interface Violation {
   studentId?: string;
 
   // Hình ảnh vi phạm
-  images?: string[];
+  images?: {
+    fileId: string;
+    url: string;
+  }[];
 }
 
 interface Rule {
@@ -66,6 +69,17 @@ export default function ViewViolationListPage() {
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
   const { weeks, selectedWeek, setSelectedWeek} = useAcademicWeeks();
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // ============================
+// HÌNH ẢNH CHI TIẾT VI PHẠM
+// ============================
+const [detailImageUrls, setDetailImageUrls] = useState<
+  Record<string, string>
+>({});
+
+const [loadingDetailImages, setLoadingDetailImages] =
+  useState(false);
+  
   // ✅ Cài đặt giới hạn GVCN
   const [limitGVCN, setLimitGVCN] = useState(false);
   const [classViolationLimit, setClassViolationLimit] = useState<number>(0);
@@ -79,12 +93,8 @@ export default function ViewViolationListPage() {
 // Xuất Excel - chọn khoảng thời gian
 // ============================
 const [exportDialogOpen, setExportDialogOpen] = useState(false);
-const [exportFromDate, setExportFromDate] = useState(
-  dayjs().startOf("month").format("YYYY-MM-DD")
-);
-const [exportToDate, setExportToDate] = useState(
-  dayjs().format("YYYY-MM-DD")
-);
+const [exportFromDate, setExportFromDate] = useState( dayjs().startOf("month").format("YYYY-MM-DD"));
+const [exportToDate, setExportToDate] = useState(dayjs().format("YYYY-MM-DD"));
 const [isExporting, setIsExporting] = useState(false);
   
   const [snackbar, setSnackbar] = useState({
@@ -621,9 +631,75 @@ const headers = [
 // ============================
 // MỞ CHI TIẾT VI PHẠM
 // ============================
-const handleViewViolationDetail = (violation: Violation) => {
+const handleViewViolationDetail = async (
+  violation: Violation
+) => {
   setSelectedViolation(violation);
   setDetailDialogOpen(true);
+
+  await loadDetailImages(violation);
+};
+  // ============================
+// TẢI HÌNH ẢNH CHI TIẾT
+// ============================
+const loadDetailImages = async (violation: Violation) => {
+  // Không có hình
+  if (!violation.images || violation.images.length === 0) {
+    setDetailImageUrls({});
+    return;
+  }
+
+  try {
+    setLoadingDetailImages(true);
+
+    // Giải phóng URL cũ
+    Object.values(detailImageUrls).forEach((url) => {
+      URL.revokeObjectURL(url);
+    });
+
+    const imageEntries = await Promise.all(
+      violation.images.map(async (image) => {
+        try {
+          // QUAN TRỌNG:
+          // dùng api.get để request có token xác thực
+          const response = await api.get(image.url, {
+            responseType: "blob",
+          });
+
+          const objectUrl = URL.createObjectURL(response.data);
+
+          return {
+            fileId: image.fileId,
+            url: objectUrl,
+          };
+        } catch (error) {
+          console.error(
+            "❌ Không thể tải hình ảnh:",
+            image.fileId,
+            image.url,
+            error
+          );
+
+          return null;
+        }
+      })
+    );
+
+    const imageMap: Record<string, string> = {};
+
+    imageEntries.forEach((item) => {
+      if (item) {
+        imageMap[item.fileId] = item.url;
+      }
+    });
+
+    setDetailImageUrls(imageMap);
+  } catch (error) {
+    console.error("❌ Lỗi load hình ảnh:", error);
+    setDetailImageUrls({});
+  } finally {
+    setLoadingDetailImages(false);
+  }
 };
      // ============================
     // ket thuc xuat file
@@ -1024,79 +1100,97 @@ disabled={
           </Box>
         )}
 
-        {/* ============================
-            HÌNH ẢNH VI PHẠM
-        ============================ */}
-        <Box>
-          <Typography
-            variant="h6"
-            fontWeight="bold"
-            sx={{ mb: 2 }}
-          >
-            📷 Hình ảnh vi phạm
-          </Typography>
+{/* ============================
+    HÌNH ẢNH VI PHẠM
+============================ */}
+<Box>
+  <Typography
+    variant="h6"
+    fontWeight="bold"
+    sx={{ mb: 2 }}
+  >
+    📷 Hình ảnh vi phạm
+  </Typography>
 
-          {!selectedViolation.images ||
-          selectedViolation.images.length === 0 ? (
-            <Typography color="text.secondary">
-              Chưa có hình ảnh.
-            </Typography>
-          ) : (
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: {
-                  xs: "1fr",
-                  sm: "repeat(2, 1fr)",
-                  md: "repeat(3, 1fr)",
-                },
-                gap: 2,
-              }}
-            >
-              {selectedViolation.images.map(
-                (image, index) => (
-                  <Box
-                    key={index}
-                    sx={{
-                      border: "1px solid #ddd",
-                      borderRadius: 2,
-                      overflow: "hidden",
-                      backgroundColor: "#f5f5f5",
-                    }}
-                  >
-                    <Box
-                      component="img"
-                      src={image}
-                      alt={`Hình ảnh vi phạm ${index + 1}`}
-                      sx={{
-                        width: "100%",
-                        height: 220,
-                        objectFit: "contain",
-                        display: "block",
-                        cursor: "pointer",
-                      }}
-                      onClick={() => window.open(image, "_blank")}
-                    />
-                  </Box>
-                )
-              )}
-            </Box>
-          )}
-        </Box>
-      </Stack>
-    )}
-  </DialogContent>
-
-  <DialogActions>
-    <Button
-      onClick={() => setDetailDialogOpen(false)}
-      variant="contained"
+  {!selectedViolation?.images ||
+  selectedViolation.images.length === 0 ? (
+    <Typography color="text.secondary">
+      Chưa có hình ảnh.
+    </Typography>
+  ) : loadingDetailImages ? (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        py: 4,
+      }}
     >
-      Đóng
-    </Button>
-  </DialogActions>
-</Dialog>
-      
+      <CircularProgress />
+    </Box>
+  ) : (
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "1fr",
+          sm: "repeat(2, 1fr)",
+          md: "repeat(3, 1fr)",
+        },
+        gap: 2,
+      }}
+    >
+      {selectedViolation.images.map((image, index) => {
+        const imageUrl = detailImageUrls[image.fileId];
+
+        return (
+          <Box
+            key={image.fileId}
+            sx={{
+              border: "1px solid #ddd",
+              borderRadius: 2,
+              overflow: "hidden",
+              backgroundColor: "#f5f5f5",
+            }}
+          >
+            {imageUrl ? (
+              <Box
+                component="img"
+                src={imageUrl}
+                alt={`Hình ảnh vi phạm ${index + 1}`}
+                sx={{
+                  width: "100%",
+                  height: 250,
+                  objectFit: "contain",
+                  display: "block",
+                  cursor: "pointer",
+                  backgroundColor: "#f5f5f5",
+                }}
+                onClick={() =>
+                  window.open(imageUrl, "_blank")
+                }
+              />
+            ) : (
+              <Box
+                sx={{
+                  height: 250,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "text.secondary",
+                  textAlign: "center",
+                  p: 2,
+                }}
+              >
+                Không tải được hình ảnh
+              </Box>
+            )}
+          </Box>
+        );
+      })}
+    </Box>
+  )}
+</Box>
+
       
       {/* ============================
     DIALOG XUẤT EXCEL
