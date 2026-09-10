@@ -45,6 +45,9 @@ interface Violation {
   handled?: boolean;
   handledBy?: string;
   studentId?: string;
+
+  // Hình ảnh vi phạm
+  images?: string[];
 }
 
 interface Rule {
@@ -67,6 +70,11 @@ export default function ViewViolationListPage() {
   const [limitGVCN, setLimitGVCN] = useState(false);
   const [classViolationLimit, setClassViolationLimit] = useState<number>(0);
 
+  // ============================
+  // XEM CHI TIẾT VI PHẠM
+  // ============================
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedViolation, setSelectedViolation] = useState<Violation | null>(null);
 // ============================
 // Xuất Excel - chọn khoảng thời gian
 // ============================
@@ -610,7 +618,13 @@ const headers = [
     setIsExporting(false);
   }
 };
-
+// ============================
+// MỞ CHI TIẾT VI PHẠM
+// ============================
+const handleViewViolationDetail = (violation: Violation) => {
+  setSelectedViolation(violation);
+  setDetailDialogOpen(true);
+};
      // ============================
     // ket thuc xuat file
     // ============================ 
@@ -732,6 +746,7 @@ const headers = [
               <TableCell>Điểm trừ</TableCell>
               <TableCell>Ngày</TableCell>
               <TableCell>Trạng thái</TableCell>
+              <TableCell>Chi tiết</TableCell>
               <TableCell>Tiếp nhận xử lý</TableCell>
             </TableRow>
           </TableHead>
@@ -775,7 +790,19 @@ const headers = [
                       </Box>
                     )}
                   </TableCell>
-
+                  {/* ============================
+                        XEM CHI TIẾT VI PHẠM
+                    ============================ */}
+                    <TableCell>
+                      <Button
+                        variant="outlined"
+                        color="info"
+                        size="small"
+                        onClick={() => handleViewViolationDetail(v)}
+                      >
+                        👁 Xem chi tiết
+                      </Button>
+                    </TableCell>
                   {/* ✅ Button xử lý có giới hạn GVCN */}
                   <TableCell> {v.handledBy === "PGT" ? ( 
                     <Typography color="gray" fontStyle="italic"> 
@@ -893,6 +920,184 @@ disabled={
         </Table>
       </Paper>
 
+{/* ============================
+    DIALOG CHI TIẾT VI PHẠM
+============================ */}
+<Dialog
+  open={detailDialogOpen}
+  onClose={() => setDetailDialogOpen(false)}
+  maxWidth="md"
+  fullWidth
+>
+  <DialogTitle sx={{ fontWeight: "bold" }}>
+    🔎 Chi tiết lỗi vi phạm
+  </DialogTitle>
+
+  <DialogContent dividers>
+    {selectedViolation && (
+      <Stack spacing={2}>
+
+        {/* Thông tin học sinh */}
+        <Box>
+          <Typography variant="subtitle2" color="text.secondary">
+            Học sinh
+          </Typography>
+
+          <Typography variant="h6" fontWeight="bold">
+            {selectedViolation.name}
+          </Typography>
+        </Box>
+
+        {/* Lớp */}
+        <Box>
+          <Typography variant="subtitle2" color="text.secondary">
+            Lớp
+          </Typography>
+
+          <Typography>
+            {selectedViolation.className}
+          </Typography>
+        </Box>
+
+        {/* Lỗi */}
+        <Box>
+          <Typography variant="subtitle2" color="text.secondary">
+            Nội dung vi phạm
+          </Typography>
+
+          <Typography
+            sx={{
+              whiteSpace: "pre-line",
+              fontWeight: 500,
+            }}
+          >
+            {selectedViolation.description}
+          </Typography>
+        </Box>
+
+        {/* Ngày */}
+        <Box>
+          <Typography variant="subtitle2" color="text.secondary">
+            Ngày vi phạm
+          </Typography>
+
+          <Typography>
+            {dayjs(selectedViolation.time).format(
+              "DD/MM/YYYY HH:mm"
+            )}
+          </Typography>
+        </Box>
+
+        {/* Trạng thái */}
+        <Box>
+          <Typography variant="subtitle2" color="text.secondary">
+            Trạng thái xử lý
+          </Typography>
+
+          <Typography
+            fontWeight="bold"
+            color={
+              selectedViolation.handled
+                ? "success.main"
+                : "error.main"
+            }
+          >
+            {selectedViolation.handled
+              ? "✓ Đã xử lý"
+              : "⚠ Chưa xử lý"}
+          </Typography>
+        </Box>
+
+        {/* Người xử lý */}
+        {selectedViolation.handledBy && (
+          <Box>
+            <Typography
+              variant="subtitle2"
+              color="text.secondary"
+            >
+              Người xử lý
+            </Typography>
+
+            <Typography>
+              {selectedViolation.handledBy}
+            </Typography>
+          </Box>
+        )}
+
+        {/* ============================
+            HÌNH ẢNH VI PHẠM
+        ============================ */}
+        <Box>
+          <Typography
+            variant="h6"
+            fontWeight="bold"
+            sx={{ mb: 2 }}
+          >
+            📷 Hình ảnh vi phạm
+          </Typography>
+
+          {!selectedViolation.images ||
+          selectedViolation.images.length === 0 ? (
+            <Typography color="text.secondary">
+              Chưa có hình ảnh.
+            </Typography>
+          ) : (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "repeat(2, 1fr)",
+                  md: "repeat(3, 1fr)",
+                },
+                gap: 2,
+              }}
+            >
+              {selectedViolation.images.map(
+                (image, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      border: "1px solid #ddd",
+                      borderRadius: 2,
+                      overflow: "hidden",
+                      backgroundColor: "#f5f5f5",
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={image}
+                      alt={`Hình ảnh vi phạm ${index + 1}`}
+                      sx={{
+                        width: "100%",
+                        height: 220,
+                        objectFit: "contain",
+                        display: "block",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => window.open(image, "_blank")}
+                    />
+                  </Box>
+                )
+              )}
+            </Box>
+          )}
+        </Box>
+      </Stack>
+    )}
+  </DialogContent>
+
+  <DialogActions>
+    <Button
+      onClick={() => setDetailDialogOpen(false)}
+      variant="contained"
+    >
+      Đóng
+    </Button>
+  </DialogActions>
+</Dialog>
+      
+      
       {/* ============================
     DIALOG XUẤT EXCEL
 ============================ */}
