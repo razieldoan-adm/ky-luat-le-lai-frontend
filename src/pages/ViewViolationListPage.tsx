@@ -1190,7 +1190,19 @@ disabled={
     </Box>
   )}
 </Box>
+        </Stack>
+      )}
+    </DialogContent>
 
+    <DialogActions>
+      <Button
+        onClick={() => setDetailDialogOpen(false)}
+        variant="contained"
+      >
+        ĐÓNG
+      </Button>
+    </DialogActions>
+  </Dialog>
       
       {/* ============================
     DIALOG XUẤT EXCEL
