@@ -1171,7 +1171,7 @@ const exportConductExcel = async () => {
       ) {
         const row = worksheet.getRow(rowNumber);
 
-        row.eachCell({ includeEmpty: true }, (cell) => {
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
           cell.font = {
             name: "Times New Roman",
             size: 14,
@@ -1179,7 +1179,7 @@ const exportConductExcel = async () => {
 
           cell.alignment = {
             horizontal:
-              cell.column === 2 ? "left" : "center",
+              colNumber === 2 ? "left" : "center",
             vertical: "middle",
             wrapText: true,
           };
