@@ -1017,8 +1017,6 @@ const exportConductExcel = async () => {
 
     // Bắt Excel tính lại công thức khi mở file.
     workbook.calcProperties.fullCalcOnLoad = true;
-    workbook.calcProperties.forceFullCalc = true;
-    workbook.calcProperties.calcMode = "auto";
 
     for (const classItem of gradeClasses) {
       const className = classItem.className;
@@ -1181,7 +1179,7 @@ const exportConductExcel = async () => {
 
           cell.alignment = {
             horizontal:
-              cell.col === 2 ? "left" : "center",
+              cell.column === 2 ? "left" : "center",
             vertical: "middle",
             wrapText: true,
           };
