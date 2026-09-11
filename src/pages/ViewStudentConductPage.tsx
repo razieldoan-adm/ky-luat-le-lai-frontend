@@ -190,12 +190,26 @@ const classificationColor = (
   }
 };
 
+const VIOLATION_HIGHLIGHT_COLOR = "#e8eaf6";
+
 const getConductRowStyle = (
-  classification: string
+  classification: string,
+  deduction: number = 0
 ) => {
   const value = classification
     .trim()
     .toLowerCase();
+
+  // Tốt nhưng có bị trừ điểm → đánh dấu là có vi phạm.
+  // Tất cả mức trừ > 0 dùng đúng một màu.
+  if (value === "tốt") {
+    return deduction > 0
+      ? {
+          backgroundColor:
+            VIOLATION_HIGHLIGHT_COLOR,
+        }
+      : {};
+  }
 
   if (value === "khá") {
     return {
@@ -209,17 +223,42 @@ const getConductRowStyle = (
     };
   }
 
-  if (
-    value === "chưa đạt" ||
-    value === "chưa đạt"
-  ) {
+  if (value === "chưa đạt") {
     return {
       backgroundColor: "#ffcdd2",
     };
   }
 
-  // Tốt → giữ nguyên
   return {};
+};
+
+const getExcelConductFillColor = (
+  classification: string,
+  deduction: number = 0
+): string | undefined => {
+  const value = classification
+    .trim()
+    .toLowerCase();
+
+  if (value === "tốt") {
+    return deduction > 0
+      ? VIOLATION_HIGHLIGHT_COLOR.replace("#", "")
+      : undefined;
+  }
+
+  if (value === "khá") {
+    return "FFF3CD";
+  }
+
+  if (value === "đạt") {
+    return "FFE0B2";
+  }
+
+  if (value === "chưa đạt") {
+    return "FFCDD2";
+  }
+
+  return undefined;
 };
 
 const renderClassification = (
@@ -1424,6 +1463,72 @@ if (worksheet["F2"]) {
       vertical: "center",
     },
   };
+}
+
+// =========================================================
+// MÀU XẾP LOẠI + ĐÁNH DẤU CÓ VI PHẠM KHI XUẤT EXCEL
+// =========================================================
+//
+// Quy tắc:
+// - Tốt + không bị trừ: không tô màu.
+// - Tốt + có bị trừ: một màu highlight duy nhất.
+// - Khá / Đạt / Chưa đạt: mỗi mức một màu riêng.
+// =========================================================
+
+for (
+  let dataIndex = 0;
+  dataIndex < sheetData.length;
+  dataIndex++
+) {
+  const excelRow = dataIndex + 5;
+  const deduction = Number(
+    sheetData[dataIndex]["TRỪ"] ?? 0
+  );
+
+  // Vì CỘNG mặc định 0 khi xuất file nên điểm cuối
+  // ban đầu = 100 - TRỪ.
+  const initialScore =
+    100 - deduction;
+
+  const classification =
+    getWeeklyClassification(
+      initialScore
+    );
+
+  const fillColor =
+    getExcelConductFillColor(
+      classification,
+      deduction
+    );
+
+  if (!fillColor) continue;
+
+  for (
+    let col = 0;
+    col < totalCols;
+    col++
+  ) {
+    const address =
+      XLSX.utils.encode_cell({
+        r: excelRow - 1,
+        c: col,
+      });
+
+    const cell =
+      worksheet[address];
+
+    if (!cell) continue;
+
+    cell.s = {
+      ...(cell.s || {}),
+      fill: {
+        patternType: "solid",
+        fgColor: {
+          rgb: fillColor,
+        },
+      },
+    };
+  }
 }
 
 // =========================================================
@@ -2640,7 +2745,11 @@ const changeViewMode =
   hover
   sx={{
     ...getConductRowStyle(
-      classification
+      classification,
+      Number(
+        record?.totalDeduction ??
+          totalViolation
+      )
     ),
   }}
 >
