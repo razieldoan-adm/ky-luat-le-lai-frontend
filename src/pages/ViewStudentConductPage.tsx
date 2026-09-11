@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import FileDownload from "@mui/icons-material/FileDownload";
-import ExcelJS from "exceljs";
+import * as XLSX from "xlsx-js-style";
 import {
   Alert,
   Box,
@@ -190,13 +190,26 @@ const classificationColor = (
   }
 };
 
+const VIOLATION_HIGHLIGHT_COLOR = "#e8eaf6";
+
 const getConductRowStyle = (
   classification: string,
-  hasViolation = false
+  deduction: number = 0
 ) => {
   const value = classification
     .trim()
     .toLowerCase();
+
+  // Tốt nhưng có bị trừ điểm → đánh dấu là có vi phạm.
+  // Tất cả mức trừ > 0 dùng đúng một màu.
+  if (value === "tốt") {
+    return deduction > 0
+      ? {
+          backgroundColor:
+            VIOLATION_HIGHLIGHT_COLOR,
+        }
+      : {};
+  }
 
   if (value === "khá") {
     return {
@@ -216,15 +229,36 @@ const getConductRowStyle = (
     };
   }
 
-  // Tốt + có điểm trừ → đánh dấu có vi phạm bằng 1 màu thống nhất.
-  if (value === "tốt" && hasViolation) {
-    return {
-      backgroundColor: "#fff59d",
-    };
+  return {};
+};
+
+const getExcelConductFillColor = (
+  classification: string,
+  deduction: number = 0
+): string | undefined => {
+  const value = classification
+    .trim()
+    .toLowerCase();
+
+  if (value === "tốt") {
+    return deduction > 0
+      ? VIOLATION_HIGHLIGHT_COLOR.replace("#", "")
+      : undefined;
   }
 
-  // Tốt + không bị trừ → không màu.
-  return {};
+  if (value === "khá") {
+    return "FFF3CD";
+  }
+
+  if (value === "đạt") {
+    return "FFE0B2";
+  }
+
+  if (value === "chưa đạt") {
+    return "FFCDD2";
+  }
+
+  return undefined;
 };
 
 const renderClassification = (
@@ -276,7 +310,7 @@ const getWeeklyClassification = (
     return "Tốt";
   }
 
-  if (score >= 75) {
+  if (score >= 70) {
     return "Khá";
   }
 
@@ -997,7 +1031,8 @@ const exportConductExcel = async () => {
     return;
   }
 
-  const weekNumber = Number(exportWeek);
+  const weekNumber =
+    Number(exportWeek);
 
   try {
     setLoadingData(true);
@@ -1005,31 +1040,27 @@ const exportConductExcel = async () => {
     const gradeClasses =
       getClassesByGrade(exportGrade);
 
-    // =========================================================
-    // TẠO WORKBOOK EXCELJS
-    // Dùng ExcelJS để Conditional Formatting có thể tự đổi màu
-    // khi người dùng sửa TRỪ / CỘNG / ĐIỂM CUỐI trong Excel.
-    // =========================================================
-    const workbook = new ExcelJS.Workbook();
-
-    workbook.creator = "Hệ thống quản lý hạnh kiểm học sinh";
-    workbook.created = new Date();
-
-    // Bắt Excel tính lại công thức khi mở file.
-    workbook.calcProperties.fullCalcOnLoad = true;
+    // Tạo workbook mới
+    const workbook =
+      XLSX.utils.book_new();
 
     for (const classItem of gradeClasses) {
-      const className = classItem.className;
+      const className =
+        classItem.className;
 
       // -----------------------------------------
       // LẤY HỌC SINH
       // -----------------------------------------
+
       const studentsForExport =
-        await loadStudentsForExport(className);
+        await loadStudentsForExport(
+          className
+        );
 
       // -----------------------------------------
       // LẤY HẠNH KIỂM
       // -----------------------------------------
+
       const weeklyDataForExport =
         await loadWeeklyDataForExport(
           className,
@@ -1039,347 +1070,488 @@ const exportConductExcel = async () => {
       // -----------------------------------------
       // GHÉP DỮ LIỆU
       // -----------------------------------------
+
       const mergedData =
         mergeStudentsWithWeeklyData(
           studentsForExport,
           weeklyDataForExport
         );
-
       console.log(
-        `🔎 CONDUCT ${className}:`,
-        mergedData[0]?.conduct
-      );
+  `🔎 CONDUCT ${className}:`,
+      mergedData[0]?.conduct
+    );
+// -----------------------------------------
+// TẠO DỮ LIỆU SHEET
+// -----------------------------------------
 
-      // -----------------------------------------
-      // TẠO SHEET
-      // -----------------------------------------
-      const worksheet = workbook.addWorksheet(className);
+const sheetData = mergedData.map((item) => {
+  const conduct = item.conduct;
 
-      // =========================================================
-      // TIÊU ĐỀ
-      // =========================================================
-      worksheet.mergeCells("A1:K1");
-      const titleCell = worksheet.getCell("A1");
-      titleCell.value =
-        `BẢNG THEO DÕI ĐIỂM RÈN LUYỆN TUẦN ${weekNumber}`;
+  // ================================
+  // ĐIỂM ĐẦU
+  // ================================
+  const startScore = 100;
 
-      // =========================================================
-      // THÔNG TIN LỚP + KHỐI
-      // =========================================================
-      worksheet.getCell("A2").value = `Lớp: ${className}`;
-      worksheet.getCell("F2").value = `Khối: ${exportGrade}`;
+  // ================================
+  // SỐ LẦN VI PHẠM
+  // ================================
+  const violationCount =
+    conduct?.totalConductViolations ?? 0;
 
-      // =========================================================
-      // HEADER
-      // =========================================================
-      const headers = [
-        "STT",
-        "HỌ VÀ TÊN",
-        "LỚP",
-        "ĐIỂM ĐẦU",
-        "VI PHẠM/LẦN",
-        "TRỪ",
-        "VIỆC TỐT",
-        "CỘNG",
-        "ĐIỂM CUỐI",
-        "XẾP LOẠI",
-        "GHI CHÚ",
-      ];
+  // ================================
+  // ĐIỂM TRỪ
+  // ================================
+  const deduction =
+    conduct?.totalDeduction ?? 0;
 
-      const headerRow = worksheet.getRow(4);
-      headerRow.values = headers;
+  return {
+    "STT": item.stt,
+    "HỌ VÀ TÊN": item.name,
+    "LỚP": item.className,
 
-      // =========================================================
-      // DỮ LIỆU HỌC SINH
-      // =========================================================
-      const dataStartRow = 5;
+    "ĐIỂM ĐẦU": startScore,
 
-      mergedData.forEach((item, index) => {
-        const conduct = item.conduct;
+    "VI PHẠM/LẦN":
+      violationCount,
 
-        const startScore = 100;
+    "TRỪ":
+      deduction,
 
-        const violationCount = Number(
-          conduct?.totalConductViolations ?? 0
-        );
+    // Mặc định 0 để người dùng có thể sửa trực tiếp
+    "VIỆC TỐT": 0,
 
-        const deduction = Number(
-          conduct?.totalDeduction ?? 0
-        );
+    // Mặc định 0
+    "CỘNG": 0,
 
-        const initialFinalScore = Math.max(
-          0,
-          startScore - deduction
-        );
+    // Sẽ thay bằng công thức Excel sau
+    "ĐIỂM CUỐI": null,
 
-        const initialClassification =
-          getWeeklyClassification(initialFinalScore);
+    // Sẽ thay bằng công thức Excel sau
+    "XẾP LOẠI": "",
 
-        const rowNumber = dataStartRow + index;
-        const row = worksheet.getRow(rowNumber);
+    "GHI CHÚ": "",
+  };
+});
 
-        row.getCell(1).value = item.stt;
-        row.getCell(2).value = item.name;
-        row.getCell(3).value = item.className;
-        row.getCell(4).value = startScore;
-        row.getCell(5).value = violationCount;
-        row.getCell(6).value = deduction;
-        row.getCell(7).value = 0;
-        row.getCell(8).value = 0;
 
-        // ĐIỂM CUỐI = ĐIỂM ĐẦU - TRỪ + CỘNG
-        row.getCell(9).value = {
-          formula: `D${rowNumber}-F${rowNumber}+H${rowNumber}`,
-          result: initialFinalScore,
-        };
+// =========================================================
+// TẠO WORKSHEET
+// =========================================================
 
-        // XẾP LOẠI theo ĐIỂM CUỐI
-        row.getCell(10).value = {
-          formula: `IF(I${rowNumber}>=90,"Tốt",IF(I${rowNumber}>=75,"Khá",IF(I${rowNumber}>=50,"Đạt","Chưa đạt")))`,
-          result: initialClassification,
-        };
+const worksheet = XLSX.utils.aoa_to_sheet([]);
 
-        row.getCell(11).value = "";
+// =========================================================
+// TIÊU ĐỀ
+// =========================================================
+
+XLSX.utils.sheet_add_aoa(
+  worksheet,
+  [
+    [
+      `BẢNG THEO DÕI ĐIỂM RÈN LUYỆN TUẦN ${weekNumber}`,
+    ],
+  ],
+  {
+    origin: "A1",
+  }
+);
+
+// =========================================================
+// THÔNG TIN LỚP + KHỐI
+// =========================================================
+
+XLSX.utils.sheet_add_aoa(
+  worksheet,
+  [
+    [
+      `Lớp: ${className}`,
+      "",
+      "",
+      "",
+      "",
+      `Khối: ${exportGrade}`,
+    ],
+  ],
+  {
+    origin: "A2",
+  }
+);
+
+// =========================================================
+// GỘP TIÊU ĐỀ
+// =========================================================
+
+worksheet["!merges"] = [
+  {
+    s: { r: 0, c: 0 },
+    e: { r: 0, c: 10 },
+  },
+];
+
+// =========================================================
+// THÊM DỮ LIỆU HỌC SINH
+// =========================================================
+
+XLSX.utils.sheet_add_json(
+  worksheet,
+  sheetData,
+  {
+    origin: "A4",
+    skipHeader: false,
+  }
+);
+// =========================================================
+// CÔNG THỨC ĐIỂM CUỐI + XẾP LOẠI
+// =========================================================
+
+// Dòng dữ liệu đầu tiên là dòng 5
+// Vì:
+// dòng 1 = tiêu đề
+// dòng 2 = thông tin lớp
+// dòng 3 = trống
+// dòng 4 = tiêu đề cột
+
+for (let row = 5; row < 5 + sheetData.length; row++) {
+
+  // -------------------------------------------------------
+  // ĐIỂM CUỐI
+  // = ĐIỂM ĐẦU - TRỪ + CỘNG
+  // D = ĐIỂM ĐẦU
+  // F = TRỪ
+  // H = CỘNG
+  // -------------------------------------------------------
+
+  worksheet[`I${row}`] = {
+    t: "n",
+    f: `D${row}-F${row}+H${row}`,
+  };
+
+  // -------------------------------------------------------
+  // XẾP LOẠI
+  //
+  // 90 - 100  = Tốt
+  // 75 - 89   = Khá
+  // 50 - 74   = Đạt
+  // 0 - 49    = Chưa đạt
+  // -------------------------------------------------------
+
+  worksheet[`J${row}`] = {
+    t: "s",
+    f: `IF(I${row}>=90,"Tốt",IF(I${row}>=75,"Khá",IF(I${row}>=50,"Đạt","Chưa đạt")))`,
+  };
+}
+
+// =========================================================
+// ĐỘ RỘNG CỘT
+// =========================================================
+
+worksheet["!cols"] = [
+  { wch: 8 },   // A - STT
+  { wch: 30 },  // B - HỌ VÀ TÊN
+  { wch: 10 },  // C - LỚP
+  { wch: 12 },  // D - ĐIỂM ĐẦU
+  { wch: 15 },  // E - VI PHẠM/LẦN
+  { wch: 10 },  // F - TRỪ
+  { wch: 12 },  // G - VIỆC TỐT
+  { wch: 10 },  // H - CỘNG
+  { wch: 12 },  // I - ĐIỂM CUỐI
+  { wch: 14 },  // J - XẾP LOẠI
+  { wch: 25 },  // K - GHI CHÚ
+];
+
+// =========================================================
+// CHIỀU CAO DÒNG
+// =========================================================
+
+worksheet["!rows"] = [];
+
+worksheet["!rows"][0] = {
+  hpt: 28,
+};
+
+worksheet["!rows"][1] = {
+  hpt: 24,
+};
+
+worksheet["!rows"][2] = {
+  hpt: 10,
+};
+
+worksheet["!rows"][3] = {
+  hpt: 38,
+};
+
+for (
+  let row = 4;
+  row < sheetData.length + 4;
+  row++
+) {
+  worksheet["!rows"][row] = {
+    hpt: 24,
+  };
+}
+
+// =========================================================
+// ĐỊNH DẠNG TOÀN BỘ BẢNG
+// =========================================================
+
+const totalRows =
+  sheetData.length + 4;
+
+const totalCols = 11;
+
+for (
+  let row = 0;
+  row < totalRows;
+  row++
+) {
+  for (
+    let col = 0;
+    col < totalCols;
+    col++
+  ) {
+
+    const address =
+      XLSX.utils.encode_cell({
+        r: row,
+        c: col,
       });
 
-      const lastRow = dataStartRow + mergedData.length - 1;
+    const cell =
+      worksheet[address];
 
-      // =========================================================
-      // ĐỘ RỘNG CỘT
-      // =========================================================
-      worksheet.columns = [
-        { width: 8 },
-        { width: 30 },
-        { width: 10 },
-        { width: 12 },
-        { width: 15 },
-        { width: 10 },
-        { width: 12 },
-        { width: 10 },
-        { width: 12 },
-        { width: 14 },
-        { width: 25 },
-      ];
+    if (!cell) continue;
 
-      // =========================================================
-      // FONT / ALIGNMENT / BORDER TOÀN BỘ BẢNG
-      // =========================================================
-      for (
-        let rowNumber = 1;
-        rowNumber <= Math.max(lastRow, 4);
-        rowNumber++
-      ) {
-        const row = worksheet.getRow(rowNumber);
-
-        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-          cell.font = {
-            name: "Times New Roman",
-            size: 14,
-          };
-
-          cell.alignment = {
-            horizontal:
-              colNumber === 2 ? "left" : "center",
-            vertical: "middle",
-            wrapText: true,
-          };
-
-          cell.border = {
-            top: { style: "thin" },
-            bottom: { style: "thin" },
-            left: { style: "thin" },
-            right: { style: "thin" },
-          };
-        });
-      }
-
-      // =========================================================
-      // CHIỀU CAO DÒNG
-      // =========================================================
-      worksheet.getRow(1).height = 28;
-      worksheet.getRow(2).height = 24;
-      worksheet.getRow(3).height = 10;
-      worksheet.getRow(4).height = 38;
-
-      for (
-        let rowNumber = dataStartRow;
-        rowNumber <= lastRow;
-        rowNumber++
-      ) {
-        worksheet.getRow(rowNumber).height = 24;
-      }
-
-      // =========================================================
-      // ĐỊNH DẠNG TIÊU ĐỀ
-      // =========================================================
-      titleCell.font = {
+    cell.s = {
+      font: {
         name: "Times New Roman",
-        size: 14,
-        bold: true,
-      };
-      titleCell.alignment = {
-        horizontal: "center",
-        vertical: "middle",
-      };
-      titleCell.border = {};
+        sz: 14,
+      },
 
-      worksheet.getCell("A2").font = {
-        name: "Times New Roman",
-        size: 14,
-        bold: true,
-      };
-      worksheet.getCell("A2").alignment = {
-        horizontal: "left",
-        vertical: "middle",
-      };
-      worksheet.getCell("A2").border = {};
+      alignment: {
+        horizontal:
+          col === 1
+            ? "left"
+            : "center",
 
-      worksheet.getCell("F2").font = {
-        name: "Times New Roman",
-        size: 14,
-        bold: true,
-      };
-      worksheet.getCell("F2").alignment = {
-        horizontal: "center",
-        vertical: "middle",
-      };
-      worksheet.getCell("F2").border = {};
+        vertical: "center",
 
-      // =========================================================
-      // ĐỊNH DẠNG HEADER DÒNG 4
-      // =========================================================
-      headerRow.eachCell({ includeEmpty: true }, (cell) => {
-        cell.font = {
-          name: "Times New Roman",
-          size: 14,
-          bold: true,
-        };
+        wrapText: true,
+      },
 
-        cell.alignment = {
-          horizontal: "center",
-          vertical: "middle",
-          wrapText: true,
-        };
-
-        cell.border = {
-          top: { style: "thin" },
-          bottom: { style: "thin" },
-          left: { style: "thin" },
-          right: { style: "thin" },
-        };
-      });
-
-      // =========================================================
-      // MÀU XẾP LOẠI ĐỘNG BẰNG CONDITIONAL FORMATTING
-      // =========================================================
-      // Quy tắc:
-      // 1. Tốt + TRỪ = 0  -> không màu
-      // 2. Tốt + TRỪ > 0  -> màu đánh dấu có vi phạm
-      // 3. Khá             -> màu Khá
-      // 4. Đạt             -> màu Đạt
-      // 5. Chưa đạt        -> màu Chưa đạt
-      //
-      // Các màu này được áp dụng cho cả dòng A:K.
-      // Khi sửa CỘNG/TRỪ làm ĐIỂM CUỐI và XẾP LOẠI thay đổi,
-      // Excel sẽ tự cập nhật màu theo điều kiện mới.
-      // =========================================================
-      if (mergedData.length > 0) {
-        worksheet.addConditionalFormatting({
-          ref: `A${dataStartRow}:K${lastRow}`,
-          rules: [
-            {
-              type: "expression",
-              formulae: [
-                `AND($J${dataStartRow}="Tốt",$F${dataStartRow}>0)`,
-              ],
-              style: {
-                fill: {
-                  type: "pattern",
-                  pattern: "solid",
-                  fgColor: { argb: "FFFFF59D" },
-                },
-              },
-              priority: 1,
-            },
-            {
-              type: "expression",
-              formulae: [
-                `$J${dataStartRow}="Khá"`,
-              ],
-              style: {
-                fill: {
-                  type: "pattern",
-                  pattern: "solid",
-                  fgColor: { argb: "FFFFF3CD" },
-                },
-              },
-              priority: 2,
-            },
-            {
-              type: "expression",
-              formulae: [
-                `$J${dataStartRow}="Đạt"`,
-              ],
-              style: {
-                fill: {
-                  type: "pattern",
-                  pattern: "solid",
-                  fgColor: { argb: "FFFFE0B2" },
-                },
-              },
-              priority: 3,
-            },
-            {
-              type: "expression",
-              formulae: [
-                `$J${dataStartRow}="Chưa đạt"`,
-              ],
-              style: {
-                fill: {
-                  type: "pattern",
-                  pattern: "solid",
-                  fgColor: { argb: "FFFFCDD2" },
-                },
-              },
-              priority: 4,
-            },
-          ],
-        });
-      }
-
-      // =========================================================
-      // CỐ ĐỊNH TIÊU ĐỀ KHI CUỘN
-      // =========================================================
-      worksheet.views = [
-        {
-          state: "frozen",
-          ySplit: 4,
+      border: {
+        top: {
+          style: "thin",
         },
-      ];
-    }
+        bottom: {
+          style: "thin",
+        },
+        left: {
+          style: "thin",
+        },
+        right: {
+          style: "thin",
+        },
+      },
+    };
+  }
+}
 
+// =========================================================
+// ĐỊNH DẠNG TIÊU ĐỀ BẢNG - DÒNG 4
+// =========================================================
+
+for (
+  let col = 0;
+  col < totalCols;
+  col++
+) {
+
+  const address =
+    XLSX.utils.encode_cell({
+      r: 3,
+      c: col,
+    });
+
+  const cell =
+    worksheet[address];
+
+  if (!cell) continue;
+
+  cell.s = {
+    font: {
+      name: "Times New Roman",
+      sz: 14,
+      bold: true,
+    },
+
+    alignment: {
+      horizontal: "center",
+      vertical: "center",
+      wrapText: true,
+    },
+
+    border: {
+      top: {
+        style: "thin",
+      },
+      bottom: {
+        style: "thin",
+      },
+      left: {
+        style: "thin",
+      },
+      right: {
+        style: "thin",
+      },
+    },
+  };
+}
+
+// =========================================================
+// TIÊU ĐỀ LỚN A1
+// =========================================================
+
+if (worksheet["A1"]) {
+  worksheet["A1"].s = {
+    font: {
+      name: "Times New Roman",
+      sz: 14,
+      bold: true,
+    },
+
+    alignment: {
+      horizontal: "center",
+      vertical: "center",
+    },
+  };
+}
+
+// =========================================================
+// THÔNG TIN LỚP - A2
+// =========================================================
+
+if (worksheet["A2"]) {
+  worksheet["A2"].s = {
+    font: {
+      name: "Times New Roman",
+      sz: 14,
+      bold: true,
+    },
+
+    alignment: {
+      horizontal: "left",
+      vertical: "center",
+    },
+  };
+}
+
+// =========================================================
+// KHỐI - F2
+// =========================================================
+
+if (worksheet["F2"]) {
+  worksheet["F2"].s = {
+    font: {
+      name: "Times New Roman",
+      sz: 14,
+      bold: true,
+    },
+
+    alignment: {
+      horizontal: "center",
+      vertical: "center",
+    },
+  };
+}
+
+// =========================================================
+// MÀU XẾP LOẠI + ĐÁNH DẤU CÓ VI PHẠM KHI XUẤT EXCEL
+// =========================================================
+//
+// Quy tắc:
+// - Tốt + không bị trừ: không tô màu.
+// - Tốt + có bị trừ: một màu highlight duy nhất.
+// - Khá / Đạt / Chưa đạt: mỗi mức một màu riêng.
+// =========================================================
+
+for (
+  let dataIndex = 0;
+  dataIndex < sheetData.length;
+  dataIndex++
+) {
+  const excelRow = dataIndex + 5;
+  const deduction = Number(
+    sheetData[dataIndex]["TRỪ"] ?? 0
+  );
+
+  // Vì CỘNG mặc định 0 khi xuất file nên điểm cuối
+  // ban đầu = 100 - TRỪ.
+  const initialScore =
+    100 - deduction;
+
+  const classification =
+    getWeeklyClassification(
+      initialScore
+    );
+
+  const fillColor =
+    getExcelConductFillColor(
+      classification,
+      deduction
+    );
+
+  if (!fillColor) continue;
+
+  for (
+    let col = 0;
+    col < totalCols;
+    col++
+  ) {
+    const address =
+      XLSX.utils.encode_cell({
+        r: excelRow - 1,
+        c: col,
+      });
+
+    const cell =
+      worksheet[address];
+
+    if (!cell) continue;
+
+    cell.s = {
+      ...(cell.s || {}),
+      fill: {
+        patternType: "solid",
+        fgColor: {
+          rgb: fillColor,
+        },
+      },
+    };
+  }
+}
+
+// =========================================================
+// THÊM SHEET
+// =========================================================
+
+XLSX.utils.book_append_sheet(
+  workbook,
+  worksheet,
+  className
+);
+    }
     // -----------------------------------------
     // TẢI FILE
     // -----------------------------------------
+
     const fileName =
       `HanhKiem_Khoi${exportGrade}_Tuan${weekNumber}.xlsx`;
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob(
-      [buffer],
-      {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      }
+    XLSX.writeFile(
+      workbook,
+      fileName
     );
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
 
     setSnackbar({
       open: true,
@@ -1389,6 +1561,7 @@ const exportConductExcel = async () => {
     });
 
     setExportDialogOpen(false);
+
   } catch (error) {
     console.error(
       "❌ LỖI XUẤT EXCEL:",
@@ -2573,7 +2746,10 @@ const changeViewMode =
   sx={{
     ...getConductRowStyle(
       classification,
-      totalViolation > 0
+      Number(
+        record?.totalDeduction ??
+          totalViolation
+      )
     ),
   }}
 >
