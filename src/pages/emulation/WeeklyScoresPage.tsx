@@ -276,7 +276,7 @@ useEffect(() => {
             (item.violationScore ?? 0) +
             (item.hygieneScore ?? 0) +
             (item.lineUpScore ?? 0));
-        const total = discipline + (item.bonusScore ?? 0) + (item.academicScore ?? 0);
+        const total = discipline + (item.bonusScore ?? 0) + (item.academicScore ?? 30);
         return { ...item, totalViolation: discipline, totalScore: total };
       });
 
@@ -1156,102 +1156,47 @@ const handleExport = async () => {
         });
       }
     );
-        // =====================================================
-        // STYLE DÒNG THEO KHỐI + HẠNG
-        // =====================================================
-        const gradeColor =
-          gradeColors[row.grade] ??
-          "FFFFFF";
+    // =====================================================
+// STYLE DÒNG THEO KHỐI + HẠNG
+// =====================================================
+const gradeColor =
+  gradeColors[row.grade] ??
+  "FFFFFF";
 
-        const rankColor =
-          rankColors[row.rank];
+const rankColor =
+  rankColors[row.rank];
 
-        const rowFill =
-          rankColor ?? gradeColor;
+const rowFill =
+  rankColor ?? gradeColor;
 
-        for (let c = 0; c < 12; c++) {
-          const cell =
-            XLSX.utils.encode_cell({
-              r: excelRow - 1,
-              c,
-            });
+for (let c = 0; c < 12; c++) {
+  ...
+}
 
-          if (!worksheet[cell]) {
-            worksheet[cell] = {
-              t: "s",
-              v: "",
-            };
-          }
+// =====================================================
+// LÀM NỔI BẬT RIÊNG Ô XẾP HẠNG
+// =====================================================
 
-          worksheet[cell].s = {
-            ...baseCellStyle,
+if (rankColor) {
+  ...
+}
 
-            fill: {
-              patternType: "solid",
-              fgColor: {
-                rgb: rowFill,
-              },
-            },
+// =====================================================
+// Định dạng số
+// =====================================================
 
-            // Hạng 1-2-3 in đậm
-            ...(row.rank <= 3
-              ? {
-                  font: {
-                    name: "Times New Roman",
-                    sz: 12,
-                    bold: true,
-                  },
-                }
-              : {}),
-          };
-        }
-
-        // =====================================================
-        // LÀM NỔI BẬT RIÊNG Ô XẾP HẠNG
-        // =====================================================
-        if (rankColor) {
-          worksheet[`L${excelRow}`].s = {
-            ...baseCellStyle,
-            font: {
-              name: "Times New Roman",
-              sz: 13,
-              bold: true,
-            },
-            fill: {
-              patternType: "solid",
-              fgColor: {
-                rgb: rankColor,
-              },
-            },
-            border: {
-              top: { style: "medium" },
-              bottom: { style: "medium" },
-              left: { style: "medium" },
-              right: { style: "medium" },
-            },
-          };
-        }
-
-        // =====================================================
-        // Định dạng số
-        // =====================================================
-        [
-          "C",
-          "D",
-          "E",
-          "F",
-          "G",
-          "H",
-          "I",
-          "J",
-        ].forEach((col) => {
-          if (worksheet[`${col}${excelRow}`]) {
-            worksheet[`${col}${excelRow}`].z =
-              "0.0";
-          }
-        });
-      }
-    );
+[
+  "C",
+  "D",
+  "E",
+  "F",
+  "G",
+  "H",
+  "I",
+  "J",
+].forEach((col) => {
+  ...
+});
 
     // =========================================================
     // 16. ĐỘ RỘNG CỘT
@@ -1378,7 +1323,7 @@ const handleExport = async () => {
                   <TableCell align="center">
                     <TextField
                       type="number"
-                      value={row.academicScore ?? 0}
+                      value={row.academicScore ?? 30}
                       size="small"
                       onChange={(e) =>
                         handleChangeScore(row.className, "academicScore", Number(e.target.value))
