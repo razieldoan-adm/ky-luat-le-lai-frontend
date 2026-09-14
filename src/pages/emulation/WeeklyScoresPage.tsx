@@ -788,13 +788,6 @@ exportRows.push(...gradeClasses);
       "9": "FCE4EC", // hồng nhạt
     };
 
-    // Hạng 1/2/3 tô toàn bộ dòng A:L.
-    const rankFill: Record<number, string> = {
-      1: "FFFF00", // vàng
-      2: "C6E0B4", // xanh lá
-      3: "F4B183", // cam
-    };
-
     // =========================================================
     // 13. STYLE TIÊU ĐỀ
     // =========================================================
@@ -904,20 +897,22 @@ exportRows.push(...gradeClasses);
             `+C${excelRow}` +
             `+D${excelRow}`,
         };
-
+        
         // -----------------------------------------------------
         // K = Xếp loại
+        // Nề nếp < 50 VÀ Tổng < 60 → KHÔNG ĐẠT
         // -----------------------------------------------------
         worksheet[`K${excelRow}`] = {
           t: "s",
           f:
+            `IF(AND(I${excelRow}<50,J${excelRow}<60),` +
+            `"KHÔNG ĐẠT",` +
             `IF(AND(J${excelRow}>=110,I${excelRow}>=80),` +
             `"TỐT",` +
-            `IF(AND(J${excelRow}>=90,J${excelRow}<110,` +
-            `I${excelRow}>=60,I${excelRow}<80),` +
+            `IF(AND(J${excelRow}>=90,I${excelRow}>=60),` +
             `"KHÁ",` +
-            `IF(AND(J${excelRow}<90,I${excelRow}<60),` +
-            `"ĐẠT","")))`,
+            `IF(AND(J${excelRow}>=60,I${excelRow}>=50),` +
+            `"ĐẠT","KHÔNG ĐẠT"))))`,
         };
 
         // -----------------------------------------------------
@@ -971,16 +966,7 @@ exportRows.push(...gradeClasses);
         const gradeBackground =
           gradeFill[row.grade] ?? "FFFFFF";
 
-        const isTop3 =
-          row.rank === 1 ||
-          row.rank === 2 ||
-          row.rank === 3;
 
-        // Top 3 dùng màu highlight; các hạng còn lại dùng màu khối.
-        const rowBackground =
-          isTop3
-            ? (rankFill[row.rank] ?? gradeBackground)
-            : gradeBackground;
 
         // Đường viền đậm ở dòng đầu của mỗi khối.
         const previousRow =
