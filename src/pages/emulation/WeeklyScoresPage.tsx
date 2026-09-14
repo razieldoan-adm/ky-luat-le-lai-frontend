@@ -539,7 +539,7 @@ const handleExport = async () => {
           const score = row.score;
 
           const academic =
-            score?.academicScore ?? 0;
+            score?.academicScore ?? 30;
 
           const bonus =
             score?.bonusScore ?? 0;
@@ -807,58 +807,116 @@ const handleExport = async () => {
       border: thinBorder,
     };
 
+        // =========================================================
+    // 11. MÀU NỀN THEO KHỐI
     // =========================================================
-    // 11. MÀU NHẠT RIÊNG CHO 4 KHỐI
+    // Chỉ dùng 2 màu:
+    // Khối 6: xanh nhạt
+    // Khối 7: trắng
+    // Khối 8: xanh nhạt
+    // Khối 9: trắng
+    //
+    // Mục tiêu: nhìn vào là nhận ra ngay từng khối,
+    // nhưng bảng vẫn sạch và dễ đọc.
     // =========================================================
-    const gradeColors: Record<
-      string,
-      string
-    > = {
-      "6": "EAF3FF", // xanh dương nhạt
-      "7": "EDF8ED", // xanh lá nhạt
-      "8": "FFF8E1", // vàng nhạt
-      "9": "F3EFFF", // tím nhạt
+
+    const gradeFill: Record<string, string> = {
+      "6": "EAF3F8",
+      "7": "FFFFFF",
+      "8": "EAF3F8",
+      "9": "FFFFFF",
     };
 
     // =========================================================
     // 12. MÀU HIGHLIGHT HẠNG 1 - 2 - 3
     // =========================================================
-    const rankColors: Record<
-      number,
-      string
-    > = {
-      1: "FFD966",
-      2: "D9EAD3",
-      3: "F4CCCC",
+    // Chỉ ô Xếp hạng được nhấn mạnh.
+    // Không tô vàng cả dòng.
+    // =========================================================
+
+    const rankFill: Record<number, string> = {
+      1: "FFF2CC",
+      2: "E2F0D9",
+      3: "FCE4D6",
     };
 
     // =========================================================
     // 13. STYLE TIÊU ĐỀ
     // =========================================================
-    worksheet["A1"].s = titleStyle;
-    worksheet["A3"].s = mainTitleStyle;
+
+    worksheet["A1"].s = {
+      font: {
+        name: "Times New Roman",
+        sz: 16,
+        bold: true,
+      },
+      alignment: {
+        horizontal: "left",
+        vertical: "center",
+      },
+    };
+
+    worksheet["A3"].s = {
+      font: {
+        name: "Times New Roman",
+        sz: 16,
+        bold: true,
+      },
+      alignment: {
+        horizontal: "center",
+        vertical: "center",
+      },
+    };
 
     // =========================================================
     // 14. STYLE HEADER 2 TẦNG
     // =========================================================
+
     for (let r = 4; r <= 5; r++) {
       for (let c = 0; c < 12; c++) {
-        const cell =
-          XLSX.utils.encode_cell({
-            r,
-            c,
-          });
+        const cell = XLSX.utils.encode_cell({
+          r,
+          c,
+        });
 
         if (worksheet[cell]) {
-          worksheet[cell].s = headerStyle;
+          worksheet[cell].s = {
+            font: {
+              name: "Times New Roman",
+              sz: 12,
+              bold: true,
+            },
+
+            alignment: {
+              horizontal: "center",
+              vertical: "center",
+              wrapText: true,
+            },
+
+            border: {
+              top: { style: "thin" },
+              bottom: { style: "thin" },
+              left: { style: "thin" },
+              right: { style: "thin" },
+            },
+
+            fill: {
+              patternType: "solid",
+              fgColor: {
+                rgb: "D9E2F3",
+              },
+            },
+          };
         }
       }
     }
 
     // =========================================================
-    // 15. CÔNG THỨC EXCEL
+    // 15. CÔNG THỨC + ĐỊNH DẠNG TỪNG DÒNG
     // =========================================================
+
     const firstDataRow = 7;
+
     const lastDataRow =
       firstDataRow +
       exportRows.length -
@@ -869,7 +927,9 @@ const handleExport = async () => {
         const excelRow =
           firstDataRow + index;
 
+        // -----------------------------------------------------
         // I = Tổng nề nếp
+        // -----------------------------------------------------
         worksheet[`I${excelRow}`] = {
           t: "n",
           f:
@@ -877,20 +937,22 @@ const handleExport = async () => {
             `+F${excelRow}` +
             `+G${excelRow}` +
             `+H${excelRow}))`,
-          s: baseCellStyle,
         };
 
+        // -----------------------------------------------------
         // J = Tổng thi đua
+        // -----------------------------------------------------
         worksheet[`J${excelRow}`] = {
           t: "n",
           f:
             `I${excelRow}` +
             `+C${excelRow}` +
             `+D${excelRow}`,
-          s: baseCellStyle,
         };
 
+        // -----------------------------------------------------
         // K = Xếp loại
+        // -----------------------------------------------------
         worksheet[`K${excelRow}`] = {
           t: "s",
           f:
@@ -901,10 +963,11 @@ const handleExport = async () => {
             `"KHÁ",` +
             `IF(AND(J${excelRow}<90,I${excelRow}<60),` +
             `"ĐẠT","")))`,
-          s: baseCellStyle,
         };
 
+        // -----------------------------------------------------
         // L = Xếp hạng riêng theo khối
+        // -----------------------------------------------------
         worksheet[`L${excelRow}`] = {
           t: "n",
           f:
@@ -944,9 +1007,155 @@ const handleExport = async () => {
             `$K$${firstDataRow}:$K$${lastDataRow},"ĐẠT",` +
             `$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow}` +
             `)+1)))`,
-          s: baseCellStyle,
         };
 
+        // =====================================================
+        // STYLE DÒNG
+        // =====================================================
+
+        const background =
+          gradeFill[row.grade] ?? "FFFFFF";
+
+        const isTop3 =
+          row.rank === 1 ||
+          row.rank === 2 ||
+          row.rank === 3;
+
+        // Kiểm tra đây có phải dòng đầu tiên
+        // của một khối hay không.
+        const previousRow =
+          index > 0
+            ? exportRows[index - 1]
+            : null;
+
+        const isGradeStart =
+          !previousRow ||
+          previousRow.grade !== row.grade;
+
+        for (let c = 0; c < 12; c++) {
+          const cell =
+            XLSX.utils.encode_cell({
+              r: excelRow - 1,
+              c,
+            });
+
+          if (!worksheet[cell]) {
+            worksheet[cell] = {
+              t: "s",
+              v: "",
+            };
+          }
+
+          worksheet[cell].s = {
+            font: {
+              name: "Times New Roman",
+              sz: 12,
+
+              // CHỈ top 3 mới đậm
+              bold: isTop3,
+            },
+
+            alignment: {
+              horizontal: "center",
+              vertical: "center",
+            },
+
+            fill: {
+              patternType: "solid",
+              fgColor: {
+                rgb: background,
+              },
+            },
+
+            border: {
+              top: {
+                // Đường phân cách giữa các khối
+                style: isGradeStart
+                  ? "medium"
+                  : "thin",
+              },
+
+              bottom: {
+                style: "thin",
+              },
+
+              left: {
+                style: "thin",
+              },
+
+              right: {
+                style: "thin",
+              },
+            },
+          };
+        }
+
+        // =====================================================
+        // HIGHLIGHT HẠNG 1 - 2 - 3
+        // =====================================================
+        // Chỉ tô ô XẾP HẠNG, không tô cả dòng.
+        // =====================================================
+
+        if (isTop3) {
+          worksheet[`L${excelRow}`].s = {
+            font: {
+              name: "Times New Roman",
+              sz: 13,
+              bold: true,
+            },
+
+            alignment: {
+              horizontal: "center",
+              vertical: "center",
+            },
+
+            fill: {
+              patternType: "solid",
+              fgColor: {
+                rgb:
+                  rankFill[row.rank] ??
+                  background,
+              },
+            },
+
+            border: {
+              top: {
+                style: "medium",
+              },
+              bottom: {
+                style: "medium",
+              },
+              left: {
+                style: "medium",
+              },
+              right: {
+                style: "medium",
+              },
+            },
+          };
+        }
+
+        // =====================================================
+        // ĐỊNH DẠNG SỐ
+        // =====================================================
+
+        [
+          "C",
+          "D",
+          "E",
+          "F",
+          "G",
+          "H",
+          "I",
+          "J",
+        ].forEach((col) => {
+          if (worksheet[`${col}${excelRow}`]) {
+            worksheet[`${col}${excelRow}`].z =
+              "0.0";
+          }
+        });
+      }
+    );
         // =====================================================
         // STYLE DÒNG THEO KHỐI + HẠNG
         // =====================================================
