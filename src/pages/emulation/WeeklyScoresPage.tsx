@@ -643,56 +643,163 @@ gradeClasses.forEach((item: any) => {
 exportRows.push(...gradeClasses);
     });
 
+      // =========================================================
+    // 7. TẠO FILE EXCEL BẰNG EXCELJS
     // =========================================================
-    // 7. TẠO HEADER
+
+    const workbook = new ExcelJS.Workbook();
+
+    // Cho Excel/WPS tự tính lại công thức khi mở file
+    workbook.calcProperties.fullCalcOnLoad = true;
+    workbook.calcProperties.forceFullCalc = true;
+    workbook.calcProperties.calcMode = "auto";
+
+    const worksheet = workbook.addWorksheet(
+      `Thi đua tuần ${selectedWeek}`
+    );
+
     // =========================================================
-    const data: (
-      | string
-      | number
-      | null
-    )[][] = [
-      ["Liên đội THCS Lê Lai"],
-      [],
-      [
-        `BẢNG ĐIỂM THI ĐUA TUẦN ${selectedWeek} - NĂM HỌC: ${selectedAcademicYear}`,
-      ],
-      [],
-      [
-        "STT",
-        "Lớp",
-        "Học tập",
-        "Khen thưởng",
-        "Nề nếp",
-        null,
-        null,
-        null,
-        "Tổng\nnề nếp",
-        "Tổng",
-        "Xếp loại",
-        "Xếp hạng",
-      ],
-      [
-        null,
-        null,
-        null,
-        null,
-        "Vi phạm",
-        "Xếp hàng",
-        "Chuyên cần",
-        "Vệ sinh",
-        null,
-        null,
-        null,
-        null,
-      ],
+    // 8. TẠO HEADER
+    // =========================================================
+
+    worksheet.getCell("A1").value =
+      "Liên đội THCS Lê Lai";
+
+    worksheet.getCell("A3").value =
+      `BẢNG ĐIỂM THI ĐUA TUẦN ${selectedWeek} - NĂM HỌC: ${selectedAcademicYear}`;
+
+    worksheet.getRow(5).values = [
+      "STT",
+      "Lớp",
+      "Học tập",
+      "Khen thưởng",
+      "Nề nếp",
+      null,
+      null,
+      null,
+      "Tổng\nnề nếp",
+      "Tổng",
+      "Xếp loại",
+      "Xếp hạng",
+    ];
+
+    worksheet.getRow(6).values = [
+      null,
+      null,
+      null,
+      null,
+      "Vi phạm",
+      "Xếp hàng",
+      "Chuyên cần",
+      "Vệ sinh",
+      null,
+      null,
+      null,
+      null,
     ];
 
     // =========================================================
-    // 8. THÊM CÁC DÒNG DỮ LIỆU
+    // 9. MERGE HEADER
     // =========================================================
+
+    worksheet.mergeCells("A1:L1");
+    worksheet.mergeCells("A3:L3");
+
+    worksheet.mergeCells("E5:H5");
+
+    worksheet.mergeCells("A5:A6");
+    worksheet.mergeCells("B5:B6");
+    worksheet.mergeCells("C5:C6");
+    worksheet.mergeCells("D5:D6");
+    worksheet.mergeCells("I5:I6");
+    worksheet.mergeCells("J5:J6");
+    worksheet.mergeCells("K5:K6");
+    worksheet.mergeCells("L5:L6");
+
+    // =========================================================
+    // 10. STYLE TIÊU ĐỀ
+    // =========================================================
+
+    worksheet.getCell("A1").font = {
+      name: "Times New Roman",
+      size: 16,
+      bold: true,
+    };
+
+    worksheet.getCell("A1").alignment = {
+      horizontal: "left",
+      vertical: "middle",
+    };
+
+    worksheet.getCell("A3").font = {
+      name: "Times New Roman",
+      size: 16,
+      bold: true,
+    };
+
+    worksheet.getCell("A3").alignment = {
+      horizontal: "center",
+      vertical: "middle",
+    };
+
+    // =========================================================
+    // 11. STYLE HEADER 2 TẦNG
+    // =========================================================
+
+    for (let rowNumber = 5; rowNumber <= 6; rowNumber++) {
+      const row = worksheet.getRow(rowNumber);
+
+      for (let columnNumber = 1; columnNumber <= 12; columnNumber++) {
+        const cell = row.getCell(columnNumber);
+
+        cell.font = {
+          name: "Times New Roman",
+          size: 12,
+          bold: true,
+        };
+
+        cell.alignment = {
+          horizontal: "center",
+          vertical: "middle",
+          wrapText: true,
+        };
+
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: "FFD9E2F3",
+          },
+        };
+
+        cell.border = {
+          top: {
+            style: "thin",
+          },
+          bottom: {
+            style: "thin",
+          },
+          left: {
+            style: "thin",
+          },
+          right: {
+            style: "thin",
+          },
+        };
+      }
+    }
+
+    // =========================================================
+    // 12. DÒNG DỮ LIỆU
+    // =========================================================
+
+    const firstDataRow = 7;
+
     exportRows.forEach(
       (row: any, index: number) => {
-        data.push([
+        const excelRow = firstDataRow + index;
+
+        const excelRowData = worksheet.addRow([
           index + 1,
           row.className,
           row.academic,
@@ -704,13 +811,290 @@ exportRows.push(...gradeClasses);
           null,
           null,
           null,
-          null,
+          row.rank,
         ]);
+
+        // =====================================================
+        // I = TỔNG NỀ NẾP
+        // =====================================================
+
+        worksheet.getCell(`I${excelRow}`).value = {
+          formula:
+            `MAX(0,100-(E${excelRow}+F${excelRow}+G${excelRow}+H${excelRow}))`,
+        };
+
+        // =====================================================
+        // J = TỔNG THI ĐUA
+        // =====================================================
+
+        worksheet.getCell(`J${excelRow}`).value = {
+          formula:
+            `I${excelRow}+C${excelRow}+D${excelRow}`,
+        };
+
+        // =====================================================
+        // K = XẾP LOẠI
+        //
+        // Nề nếp < 50 VÀ Tổng < 60
+        // → KHÔNG ĐẠT
+        // =====================================================
+
+        worksheet.getCell(`K${excelRow}`).value = {
+          formula:
+            `IF(AND(I${excelRow}<50,J${excelRow}<60),"KHÔNG ĐẠT",` +
+            `IF(AND(J${excelRow}>=110,I${excelRow}>=80),"TỐT",` +
+            `IF(AND(J${excelRow}>=90,I${excelRow}>=60),"KHÁ",` +
+            `IF(AND(J${excelRow}>=60,I${excelRow}>=50),"ĐẠT","KHÔNG ĐẠT"))))`,
+        };
+
+        // =====================================================
+        // STYLE DÒNG
+        //
+        // KHÔNG TÔ MÀU NỀN Ở ĐÂY.
+        // MÀU KHỐI SẼ DO CONDITIONAL FORMATTING.
+        // =====================================================
+
+        const previousRow =
+          index > 0
+            ? exportRows[index - 1]
+            : null;
+
+        const isGradeStart =
+          !previousRow ||
+          previousRow.grade !== row.grade;
+
+        for (
+          let columnNumber = 1;
+          columnNumber <= 12;
+          columnNumber++
+        ) {
+          const cell =
+            excelRowData.getCell(columnNumber);
+
+          cell.font = {
+            name: "Times New Roman",
+            size: 12,
+            bold: false,
+          };
+
+          cell.alignment = {
+            horizontal: "center",
+            vertical: "center",
+          };
+
+          cell.border = {
+            top: {
+              style: isGradeStart
+                ? "medium"
+                : "thin",
+            },
+            bottom: {
+              style: "thin",
+            },
+            left: {
+              style: "thin",
+            },
+            right: {
+              style: "thin",
+            },
+          };
+        }
+
+        // =====================================================
+        // ĐỊNH DẠNG SỐ
+        // =====================================================
+
+        [
+          "C",
+          "D",
+          "E",
+          "F",
+          "G",
+          "H",
+          "I",
+          "J",
+        ].forEach((column) => {
+          worksheet.getCell(
+            `${column}${excelRow}`
+          ).numFmt = "0.0";
+        });
       }
     );
 
-    const worksheet =
-      XLSX.utils.aoa_to_sheet(data);
+    const lastDataRow =
+      firstDataRow +
+      exportRows.length -
+      1;
+
+    // =========================================================
+    // 13. CONDITIONAL FORMATTING THEO KHỐI
+    //
+    // MÀU ĐỘNG - KHÔNG PHẢI MÀU TĨNH.
+    //
+    // Khối 6 → vàng nhạt
+    // Khối 7 → xanh dương nhạt
+    // Khối 8 → xanh lá nhạt
+    // Khối 9 → hồng nhạt
+    // =========================================================
+
+    worksheet.addConditionalFormatting({
+      ref: `A${firstDataRow}:L${lastDataRow}`,
+      rules: [
+        {
+          type: "expression",
+          formulae: [
+            `LEFT($B${firstDataRow},1)="6"`,
+          ],
+          style: {
+            fill: {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: {
+                argb: "FFFFF2CC",
+              },
+            },
+          },
+        },
+        {
+          type: "expression",
+          formulae: [
+            `LEFT($B${firstDataRow},1)="7"`,
+          ],
+          style: {
+            fill: {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: {
+                argb: "FFDDEBF7",
+              },
+            },
+          },
+        },
+        {
+          type: "expression",
+          formulae: [
+            `LEFT($B${firstDataRow},1)="8"`,
+          ],
+          style: {
+            fill: {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: {
+                argb: "FFE2F0D9",
+              },
+            },
+          },
+        },
+        {
+          type: "expression",
+          formulae: [
+            `LEFT($B${firstDataRow},1)="9"`,
+          ],
+          style: {
+            fill: {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: {
+                argb: "FFFCE4EC",
+              },
+            },
+          },
+        },
+      ],
+    });
+
+    // =========================================================
+    // 14. ĐỘ RỘNG CỘT
+    // =========================================================
+
+    worksheet.columns = [
+      { width: 7 },
+      { width: 10 },
+      { width: 12 },
+      { width: 14 },
+      { width: 11 },
+      { width: 12 },
+      { width: 14 },
+      { width: 11 },
+      { width: 14 },
+      { width: 12 },
+      { width: 12 },
+      { width: 12 },
+    ];
+
+    // =========================================================
+    // 15. CHIỀU CAO DÒNG
+    // =========================================================
+
+    worksheet.getRow(1).height = 25;
+    worksheet.getRow(2).height = 10;
+    worksheet.getRow(3).height = 30;
+    worksheet.getRow(4).height = 10;
+    worksheet.getRow(5).height = 32;
+    worksheet.getRow(6).height = 30;
+
+    // =========================================================
+    // 16. CẤU HÌNH IN
+    // =========================================================
+
+    worksheet.pageSetup = {
+      orientation: "landscape",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+    };
+
+    worksheet.printOptions = {
+      horizontalCentered: true,
+      verticalCentered: false,
+    };
+
+    // =========================================================
+    // 17. TẠO VÀ TẢI FILE
+    // =========================================================
+
+    const buffer =
+      await workbook.xlsx.writeBuffer();
+
+    const blob = new Blob(
+      [buffer],
+      {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }
+    );
+
+    const url =
+      window.URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href = url;
+
+    link.download =
+      `Tong_Hop_Thi_Dua_Tuan_${selectedWeek}_${selectedAcademicYear}.xlsx`;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    window.URL.revokeObjectURL(url);
+
+    alert("✅ Đã xuất Excel thành công!");
+  } catch (error) {
+    console.error(
+      "❌ Lỗi xuất Excel:",
+      error
+    );
+
+    alert(
+      "❌ Không thể xuất Excel. Vui lòng thử lại."
+    );
+  }
+};
 
     // =========================================================
     // 9. MERGE HEADER
@@ -762,31 +1146,8 @@ exportRows.push(...gradeClasses);
       },
     ];
 
-    // =========================================================
-    // 10. STYLE CƠ BẢN
-    // =========================================================
 
-    
-    
-    // =========================================================
-    // 11. MÀU NỀN THEO KHỐI
-    // =========================================================
-    // Chỉ dùng 2 màu:
-    // Khối 6: xanh nhạt
-    // Khối 7: trắng
-    // Khối 8: xanh nhạt
-    // Khối 9: trắng
-    //
-    // Mục tiêu: nhìn vào là nhận ra ngay từng khối,
-    // nhưng bảng vẫn sạch và dễ đọc.
-    // =========================================================
 
-    const gradeFill: Record<string, string> = {
-      "6": "FFF2CC", // vàng nhạt
-      "7": "DDEBF7", // xanh dương nhạt
-      "8": "E2F0D9", // xanh lá nhạt
-      "9": "FCE4EC", // hồng nhạt
-    };
 
     // =========================================================
     // 13. STYLE TIÊU ĐỀ
