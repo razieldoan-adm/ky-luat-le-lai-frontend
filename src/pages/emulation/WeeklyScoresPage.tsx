@@ -346,7 +346,7 @@ useEffect(() => {
         grade: s.grade,
         academicYear: selectedAcademicYear,
         weekNumber: s.weekNumber || selectedWeek,
-        academicScore: s.academicScore ?? 0,
+        academicScore: s.academicScore ?? 30,
         bonusScore: s.bonusScore ?? 0, // ✅ đổi rewardScore → bonusScore
         hygieneScore: s.hygieneScore ?? 0,
         lineUpScore: s.lineUpScore ?? 0, // ✅ đổi lineUpScore → lineupScore
@@ -952,130 +952,71 @@ const handleExport = async () => {
         };
 
         // =====================================================
-        // STYLE DÒNG
-        // =====================================================
+// STYLE DÒNG THEO KHỐI + HẠNG
+// =====================================================
 
-        const background =
-          rankFill[row.rank] ??
-          gradeFill[row.grade] ??
-          "FFFFFF";
-        
-        const isTop3 =
-          row.rank === 1 ||
-          row.rank === 2 ||
-          row.rank === 3;
+const gradeBackground =
+  gradeFill[row.grade] ?? "FFFFFF";
 
-        // Kiểm tra đây có phải dòng đầu tiên
-        // của một khối hay không.
-        const previousRow =
-          index > 0
-            ? exportRows[index - 1]
-            : null;
+const isTop3 =
+  row.rank === 1 ||
+  row.rank === 2 ||
+  row.rank === 3;
 
-        const isGradeStart =
-          !previousRow ||
-          previousRow.grade !== row.grade;
+// Nếu là hạng 1/2/3 thì màu thay đổi theo đúng hạng
+// Nếu không phải top 3 thì giữ màu của khối
+const rowBackground =
+  isTop3
+    ? rankFill[row.rank] ?? gradeBackground
+    : gradeBackground;
 
-        for (let c = 0; c < 12; c++) {
-          const cell =
-            XLSX.utils.encode_cell({
-              r: excelRow - 1,
-              c,
-            });
+for (let c = 0; c < 12; c++) {
+  const cell =
+    XLSX.utils.encode_cell({
+      r: excelRow - 1,
+      c,
+    });
 
-          if (!worksheet[cell]) {
-            worksheet[cell] = {
-              t: "s",
-              v: "",
-            };
-          }
+  if (!worksheet[cell]) {
+    worksheet[cell] = {
+      t: "s",
+      v: "",
+    };
+  }
 
-          worksheet[cell].s = {
-            font: {
-              name: "Times New Roman",
-              sz: 12,
+  worksheet[cell].s = {
+    font: {
+      name: "Times New Roman",
+      sz: 12,
+      bold: isTop3,
+    },
 
-              // CHỈ top 3 mới đậm
-              bold: isTop3,
-            },
+    alignment: {
+      horizontal: "center",
+      vertical: "center",
+    },
 
-            alignment: {
-              horizontal: "center",
-              vertical: "center",
-            },
+    fill: {
+      patternType: "solid",
+      fgColor: {
+        rgb: rowBackground,
+      },
+    },
 
-            fill: {
-              patternType: "solid",
-              fgColor: {
-                rgb: background,
-              },
-            },
+    border: {
+      top: { style: "thin" },
+      bottom: { style: "thin" },
+      left: { style: "thin" },
+      right: { style: "thin" },
+    },
+  };
+}
 
-            border: {
-              top: {
-                // Đường phân cách giữa các khối
-                style: isGradeStart
-                  ? "medium"
-                  : "thin",
-              },
+// =====================================================
+// Định dạng số
+// =====================================================
 
-              bottom: {
-                style: "thin",
-              },
-
-              left: {
-                style: "thin",
-              },
-
-              right: {
-                style: "thin",
-              },
-            },
-          };
-        }
-
-        // =====================================================
-        // HIGHLIGHT HẠNG 1 - 2 - 3
-        // =====================================================
-        // Chỉ tô ô XẾP HẠNG, không tô cả dòng.
-        // =====================================================
-
-        if (isTop3) {
-          worksheet[`L${excelRow}`].s = {
-            font: {
-              name: "Times New Roman",
-              sz: 13,
-              bold: true,
-            },
-        
-            alignment: {
-              horizontal: "center",
-              vertical: "center",
-            },
-        
-            fill: {
-              patternType: "solid",
-              fgColor: {
-                rgb: rankFill[row.rank] ?? background,
-              },
-            },
-        
-            border: {
-              top: {
-                style: "thin",
-              },
-              bottom: {
-                style: "thin",
-              },
-              left: {
-                style: "thin",
-              },
-              right: {
-                style: "thin",
-              },
-            },
-          };
-        }
+       
 
         // =====================================================
         // ĐỊNH DẠNG SỐ
