@@ -957,76 +957,140 @@ for (
     // Khối 9 → hồng nhạt
     // =========================================================
 
-    worksheet.addConditionalFormatting({
-      ref: `A${firstDataRow}:L${lastDataRow}`,
-      rules: [
-        {
-          type: "expression",
-          priority: 1,
-          formulae: [
-            `LEFT($B${firstDataRow},1)="6"`,
-          ],
-          style: {
-            fill: {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: {
-                argb: "FFFFF2CC",
-              },
-            },
-          },
-        },
-        {
-          type: "expression",
-          priority: 2,
-          formulae: [
-            `LEFT($B${firstDataRow},1)="7"`,
-          ],
-          style: {
-            fill: {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: {
-                argb: "FFDDEBF7",
-              },
-            },
-          },
-        },
-        {
-          type: "expression",
-          priority: 3,
-          formulae: [
-            `LEFT($B${firstDataRow},1)="8"`,
-          ],
-          style: {
-            fill: {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: {
-                argb: "FFE2F0D9",
-              },
-            },
-          },
-        },
-        {
-          type: "expression",
-          priority: 4,
-          formulae: [
-            `LEFT($B${firstDataRow},1)="9"`,
-          ],
-          style: {
-            fill: {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: {
-                argb: "FFFCE4EC",
-              },
-            },
-          },
-        },
-      ],
-    });
+    // =========================================================
+// 13. CONDITIONAL FORMATTING
+// =========================================================
+// A:K → màu theo khối
+// L   → màu theo xếp hạng
+// =========================================================
 
+// ---------------------------------------------------------
+// 13.1. MÀU THEO KHỐI
+// ---------------------------------------------------------
+
+worksheet.addConditionalFormatting({
+  ref: `A${firstDataRow}:K${lastDataRow}`,
+  rules: [
+    {
+      type: "expression",
+      priority: 1,
+      formulae: [`LEFT($B${firstDataRow},1)="6"`],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: "FFFFF2CC",
+          },
+        },
+      },
+    },
+    {
+      type: "expression",
+      priority: 2,
+      formulae: [`LEFT($B${firstDataRow},1)="7"`],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: "FFDDEBF7",
+          },
+        },
+      },
+    },
+    {
+      type: "expression",
+      priority: 3,
+      formulae: [`LEFT($B${firstDataRow},1)="8"`],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: "FFE2F0D9",
+          },
+        },
+      },
+    },
+    {
+      type: "expression",
+      priority: 4,
+      formulae: [`LEFT($B${firstDataRow},1)="9"`],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: "FFFCE4EC",
+          },
+        },
+      },
+    },
+  ],
+});
+
+// ---------------------------------------------------------
+// 13.2. MÀU THEO XẾP HẠNG
+// Chỉ áp dụng cho cột L
+// ---------------------------------------------------------
+
+worksheet.addConditionalFormatting({
+  ref: `L${firstDataRow}:L${lastDataRow}`,
+  rules: [
+    {
+      type: "expression",
+      priority: 1,
+      formulae: [`$L${firstDataRow}=1`],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: "FFFFD966",
+          },
+        },
+        font: {
+          bold: true,
+        },
+      },
+    },
+    {
+      type: "expression",
+      priority: 2,
+      formulae: [`$L${firstDataRow}=2`],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: "FFD9E1F2",
+          },
+        },
+        font: {
+          bold: true,
+        },
+      },
+    },
+    {
+      type: "expression",
+      priority: 3,
+      formulae: [`$L${firstDataRow}=3`],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: "FFF4B183",
+          },
+        },
+        font: {
+          bold: true,
+        },
+      },
+    },
+  ],
+});
     // =========================================================
     // 14. ĐỘ RỘNG CỘT
     // =========================================================
