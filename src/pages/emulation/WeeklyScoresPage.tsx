@@ -648,12 +648,9 @@ exportRows.push(...gradeClasses);
     // =========================================================
 
     const workbook = new ExcelJS.Workbook();
-
-    // Cho Excel/WPS tự tính lại công thức khi mở file
+    
     workbook.calcProperties.fullCalcOnLoad = true;
-    workbook.calcProperties.forceFullCalc = true;
-    workbook.calcProperties.calcMode = "auto";
-
+    
     const worksheet = workbook.addWorksheet(
       `Thi đua tuần ${selectedWeek}`
     );
@@ -879,7 +876,7 @@ exportRows.push(...gradeClasses);
 
           cell.alignment = {
             horizontal: "center",
-            vertical: "center",
+            vertical: "middle",
           };
 
           cell.border = {
@@ -942,6 +939,7 @@ exportRows.push(...gradeClasses);
       rules: [
         {
           type: "expression",
+          priority: 1,
           formulae: [
             `LEFT($B${firstDataRow},1)="6"`,
           ],
@@ -957,6 +955,7 @@ exportRows.push(...gradeClasses);
         },
         {
           type: "expression",
+          priority: 2,
           formulae: [
             `LEFT($B${firstDataRow},1)="7"`,
           ],
@@ -972,6 +971,7 @@ exportRows.push(...gradeClasses);
         },
         {
           type: "expression",
+          priority: 3,
           formulae: [
             `LEFT($B${firstDataRow},1)="8"`,
           ],
@@ -987,6 +987,7 @@ exportRows.push(...gradeClasses);
         },
         {
           type: "expression",
+          priority: 4,
           formulae: [
             `LEFT($B${firstDataRow},1)="9"`,
           ],
@@ -1042,11 +1043,6 @@ exportRows.push(...gradeClasses);
       fitToPage: true,
       fitToWidth: 1,
       fitToHeight: 0,
-    };
-
-    worksheet.printOptions = {
-      horizontalCentered: true,
-      verticalCentered: false,
     };
 
     // =========================================================
