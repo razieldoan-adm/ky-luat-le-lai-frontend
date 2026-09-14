@@ -641,8 +641,8 @@ gradeClasses.forEach((item: any) => {
 });
 
 exportRows.push(...gradeClasses);
+    });
 
-});
     // =========================================================
     // 7. TẠO HEADER
     // =========================================================
@@ -782,23 +782,17 @@ exportRows.push(...gradeClasses);
     // =========================================================
 
     const gradeFill: Record<string, string> = {
-      "6": "EAF3F8",
-      "7": "FFFFFF",
-      "8": "EAF3F8",
-      "9": "FFFFFF",
+      "6": "FFF2CC", // vàng nhạt
+      "7": "DDEBF7", // xanh dương nhạt
+      "8": "E2F0D9", // xanh lá nhạt
+      "9": "FCE4EC", // hồng nhạt
     };
 
-    // =========================================================
-    // 12. MÀU HIGHLIGHT HẠNG 1 - 2 - 3
-    // =========================================================
-    // Chỉ ô Xếp hạng được nhấn mạnh.
-    // Không tô vàng cả dòng.
-    // =========================================================
-
+    // Hạng 1/2/3 tô toàn bộ dòng A:L.
     const rankFill: Record<number, string> = {
-      1: "FFF2CC",
-      2: "E2F0D9",
-      3: "FCE4D6",
+      1: "FFFF00", // vàng
+      2: "C6E0B4", // xanh lá
+      3: "F4B183", // cam
     };
 
     // =========================================================
@@ -971,69 +965,75 @@ exportRows.push(...gradeClasses);
         };
 
         // =====================================================
-// STYLE DÒNG THEO KHỐI + HẠNG
-// =====================================================
+        // STYLE DÒNG THEO KHỐI + HẠNG
+        // =====================================================
 
-const gradeBackground =
-  gradeFill[row.grade] ?? "FFFFFF";
+        const gradeBackground =
+          gradeFill[row.grade] ?? "FFFFFF";
 
-const isTop3 =
-  row.rank === 1 ||
-  row.rank === 2 ||
-  row.rank === 3;
+        const isTop3 =
+          row.rank === 1 ||
+          row.rank === 2 ||
+          row.rank === 3;
 
-// Nếu là hạng 1/2/3 thì màu thay đổi theo đúng hạng
-// Nếu không phải top 3 thì giữ màu của khối
-const rowBackground =
-  isTop3
-    ? rankFill[row.rank] ?? gradeBackground
-    : gradeBackground;
+        // Top 3 dùng màu highlight; các hạng còn lại dùng màu khối.
+        const rowBackground =
+          isTop3
+            ? (rankFill[row.rank] ?? gradeBackground)
+            : gradeBackground;
 
-for (let c = 0; c < 12; c++) {
-  const cell =
-    XLSX.utils.encode_cell({
-      r: excelRow - 1,
-      c,
-    });
+        // Đường viền đậm ở dòng đầu của mỗi khối.
+        const previousRow =
+          index > 0 ? exportRows[index - 1] : null;
 
-  if (!worksheet[cell]) {
-    worksheet[cell] = {
-      t: "s",
-      v: "",
-    };
-  }
+        const isGradeStart =
+          !previousRow ||
+          previousRow.grade !== row.grade;
 
-  worksheet[cell].s = {
-    font: {
-      name: "Times New Roman",
-      sz: 12,
-      bold: isTop3,
-    },
+        for (let c = 0; c < 12; c++) {
+          const cell =
+            XLSX.utils.encode_cell({
+              r: excelRow - 1,
+              c,
+            });
 
-    alignment: {
-      horizontal: "center",
-      vertical: "center",
-    },
+          if (!worksheet[cell]) {
+            worksheet[cell] = {
+              t: "s",
+              v: "",
+            };
+          }
 
-    fill: {
-      patternType: "solid",
-      fgColor: {
-        rgb: rowBackground,
-      },
-    },
+          worksheet[cell].s = {
+            font: {
+              name: "Times New Roman",
+              sz: 12,
+              bold: isTop3,
+            },
+            alignment: {
+              horizontal: "center",
+              vertical: "center",
+            },
+            fill: {
+              patternType: "solid",
+              fgColor: {
+                rgb: rowBackground,
+              },
+            },
+            border: {
+              top: {
+                style: isGradeStart ? "medium" : "thin",
+              },
+              bottom: { style: "thin" },
+              left: { style: "thin" },
+              right: { style: "thin" },
+            },
+          };
+        }
 
-    border: {
-      top: { style: "thin" },
-      bottom: { style: "thin" },
-      left: { style: "thin" },
-      right: { style: "thin" },
-    },
-  };
-}
-
-// =====================================================
-// Định dạng số
-// =====================================================
+        // =====================================================
+        // Định dạng số
+        // =====================================================
 
        
 
