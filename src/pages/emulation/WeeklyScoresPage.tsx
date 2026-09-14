@@ -845,40 +845,63 @@ exportRows.push(...gradeClasses);
         };
 
         // =====================================================
-        // STYLE DÒNG
-        //
-        // KHÔNG TÔ MÀU NỀN Ở ĐÂY.
-        // MÀU KHỐI SẼ DO CONDITIONAL FORMATTING.
-        // =====================================================
+// STYLE DÒNG
+// =====================================================
 
-        const previousRow =
-          index > 0
-            ? exportRows[index - 1]
-            : null;
+const previousRow =
+  index > 0
+    ? exportRows[index - 1]
+    : null;
 
-        const isGradeStart =
-          !previousRow ||
-          previousRow.grade !== row.grade;
+const isGradeStart =
+  !previousRow ||
+  previousRow.grade !== row.grade;
 
-        for (
-          let columnNumber = 1;
-          columnNumber <= 12;
-          columnNumber++
-        ) {
-          const cell =
-            excelRowData.getCell(columnNumber);
+// Màu nền mặc định theo khối
+const gradeFillColors: Record<string, string> = {
+  "6": "FFFFF2CC", // Vàng nhạt
+  "7": "FFDDEBF7", // Xanh dương nhạt
+  "8": "FFE2F0D9", // Xanh lá nhạt
+  "9": "FFFCE4EC", // Hồng nhạt
+};
 
-          cell.font = {
-            name: "Times New Roman",
-            size: 12,
-            bold: false,
-          };
+const gradeColor =
+  gradeFillColors[row.grade] ?? "FFFFFFFF";
 
-          cell.alignment = {
-            horizontal: "center",
-            vertical: "middle",
-          };
+for (
+  let columnNumber = 1;
+  columnNumber <= 12;
+  columnNumber++
+) {
+  const cell =
+    excelRowData.getCell(columnNumber);
 
+  cell.font = {
+    name: "Times New Roman",
+    size: 12,
+    bold: false,
+  };
+
+  cell.alignment = {
+    horizontal: "center",
+    vertical: "middle",
+  };
+
+  // ===================================================
+  // TÔ MÀU TOÀN BỘ DÒNG THEO KHỐI
+  // ===================================================
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: {
+      argb: gradeColor,
+    },
+  };
+
+          // ===================================================
+          // VIỀN
+          // Đầu mỗi khối dùng viền trên đậm
+          // ===================================================
           cell.border = {
             top: {
               style: isGradeStart
@@ -896,7 +919,7 @@ exportRows.push(...gradeClasses);
             },
           };
         }
-
+        
         // =====================================================
         // ĐỊNH DẠNG SỐ
         // =====================================================
