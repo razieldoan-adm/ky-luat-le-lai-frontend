@@ -589,40 +589,59 @@ const handleExport = async () => {
           };
         });
 
-      // =======================================================
-      // 6. XẾP HẠNG RIÊNG TỪNG KHỐI
-      // =======================================================
-      gradeClasses.sort(
-        (a: any, b: any) =>
-          b.total - a.total ||
-          a.className.localeCompare(
-            b.className,
-            undefined,
-            { numeric: true }
-          )
-      );
+     // =======================================================
+// 6. XẾP HẠNG RIÊNG TỪNG KHỐI
+//    - TÍNH HẠNG THEO ĐIỂM
+//    - NHƯNG KHÔNG ĐỔI THỨ TỰ LỚP
+// =======================================================
 
-      let currentRank = 1;
+// Tạo bản sao để xếp hạng
+const rankedClasses = [...gradeClasses];
 
-      gradeClasses.forEach(
-        (item: any, index: number) => {
-          if (
-            index > 0 &&
-            item.total ===
-              gradeClasses[index - 1].total
-          ) {
-            item.rank =
-              gradeClasses[index - 1].rank;
-          } else {
-            item.rank = currentRank;
-          }
+rankedClasses.sort(
+  (a: any, b: any) =>
+    b.total - a.total ||
+    a.className.localeCompare(
+      b.className,
+      undefined,
+      { numeric: true }
+    )
+);
 
-          currentRank++;
-        }
-      );
+let currentRank = 1;
 
-      exportRows.push(...gradeClasses);
-    });
+rankedClasses.forEach(
+  (item: any, index: number) => {
+    if (
+      index > 0 &&
+      item.total ===
+        rankedClasses[index - 1].total
+    ) {
+      item.rank =
+        rankedClasses[index - 1].rank;
+    } else {
+      item.rank = currentRank;
+    }
+
+    currentRank++;
+  }
+);
+
+// Lấy hạng theo tên lớp
+const rankMap = new Map<string, number>();
+
+rankedClasses.forEach((item: any) => {
+  rankMap.set(item.className, item.rank);
+});
+
+// GIỮ NGUYÊN THỨ TỰ LỚP BAN ĐẦU
+gradeClasses.forEach((item: any) => {
+  item.rank =
+    rankMap.get(item.className) ?? 0;
+});
+
+exportRows.push(...gradeClasses);
+
 
     // =========================================================
     // 7. TẠO HEADER
