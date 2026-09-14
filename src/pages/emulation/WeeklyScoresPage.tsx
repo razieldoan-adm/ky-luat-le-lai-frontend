@@ -753,61 +753,7 @@ const handleExport = async () => {
       right: { style: "thin" },
     };
 
-    const titleStyle = {
-      font: {
-        name: "Times New Roman",
-        sz: 16,
-        bold: true,
-      },
-      alignment: {
-        horizontal: "left",
-        vertical: "center",
-      },
-    };
-
-    const mainTitleStyle = {
-      font: {
-        name: "Times New Roman",
-        sz: 16,
-        bold: true,
-      },
-      alignment: {
-        horizontal: "center",
-        vertical: "center",
-      },
-    };
-
-    const headerStyle = {
-      font: {
-        name: "Times New Roman",
-        sz: 12,
-        bold: true,
-      },
-      alignment: {
-        horizontal: "center",
-        vertical: "center",
-        wrapText: true,
-      },
-      border: thinBorder,
-      fill: {
-        patternType: "solid",
-        fgColor: { rgb: "D9E2F3" },
-      },
-    };
-
-    const baseCellStyle = {
-      font: {
-        name: "Times New Roman",
-        sz: 12,
-      },
-      alignment: {
-        horizontal: "center",
-        vertical: "center",
-      },
-      border: thinBorder,
-    };
-
-        // =========================================================
+    // =========================================================
     // 11. MÀU NỀN THEO KHỐI
     // =========================================================
     // Chỉ dùng 2 màu:
