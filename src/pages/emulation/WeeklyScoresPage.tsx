@@ -960,22 +960,21 @@ exportRows.push(...gradeClasses);
         };
 
         // =====================================================
-        // STYLE DÒNG THEO KHỐI + HẠNG
+        // STYLE DÒNG THEO KHỐI
+        // Chưa áp dụng màu theo hạng
         // =====================================================
-
-        const gradeBackground =
+        
+        const background =
           gradeFill[row.grade] ?? "FFFFFF";
-
-
-
-        // Đường viền đậm ở dòng đầu của mỗi khối.
+        
+        // Đường viền đậm ở dòng đầu của mỗi khối
         const previousRow =
           index > 0 ? exportRows[index - 1] : null;
-
+        
         const isGradeStart =
           !previousRow ||
           previousRow.grade !== row.grade;
-
+        
         for (let c = 0; c < 12; c++) {
           const cell =
             XLSX.utils.encode_cell({
@@ -994,7 +993,7 @@ exportRows.push(...gradeClasses);
             font: {
               name: "Times New Roman",
               sz: 12,
-              bold: isTop3,
+              bold: false,
             },
             alignment: {
               horizontal: "center",
@@ -1003,7 +1002,7 @@ exportRows.push(...gradeClasses);
             fill: {
               patternType: "solid",
               fgColor: {
-                rgb: rowBackground,
+                rgb: background,
               },
             },
             border: {
