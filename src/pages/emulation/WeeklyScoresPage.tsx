@@ -956,8 +956,10 @@ const handleExport = async () => {
         // =====================================================
 
         const background =
-          gradeFill[row.grade] ?? "FFFFFF";
-
+          rankFill[row.rank] ??
+          gradeFill[row.grade] ??
+          "FFFFFF";
+        
         const isTop3 =
           row.rank === 1 ||
           row.rank === 2 ||
@@ -1045,33 +1047,31 @@ const handleExport = async () => {
               sz: 13,
               bold: true,
             },
-
+        
             alignment: {
               horizontal: "center",
               vertical: "center",
             },
-
+        
             fill: {
               patternType: "solid",
               fgColor: {
-                rgb:
-                  rankFill[row.rank] ??
-                  background,
+                rgb: rankFill[row.rank] ?? background,
               },
             },
-
+        
             border: {
               top: {
-                style: "medium",
+                style: "thin",
               },
               bottom: {
-                style: "medium",
+                style: "thin",
               },
               left: {
-                style: "medium",
+                style: "thin",
               },
               right: {
-                style: "medium",
+                style: "thin",
               },
             },
           };
