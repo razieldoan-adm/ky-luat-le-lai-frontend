@@ -4,7 +4,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
 } from "@mui/material";
 import api from "../../api/api";
-import * as XLSX from "xlsx-js-style";
+import ExcelJS from "exceljs";
 
 interface ClassWeeklyScore {
   _id?: string;
