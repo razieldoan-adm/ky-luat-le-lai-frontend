@@ -434,101 +434,209 @@ useEffect(() => {
 
   // --- Xuất Excel tổng hợp 4 khối
   // Bấm 1 lần -> tạo và tải file ngay, không mở dialog.
-  const handleExport = async () => {
-    if (!selectedAcademicYear || !selectedWeek) {
-      alert("❌ Chưa chọn năm học hoặc tuần để xuất Excel.");
+ // --- Xuất Excel tổng hợp 4 khối ---
+const handleExport = async () => {
+  if (!selectedAcademicYear || !selectedWeek) {
+    alert("❌ Chưa chọn năm học hoặc tuần để xuất Excel.");
+    return;
+  }
+
+  try {
+    // =========================================================
+    // 1. LẤY DANH SÁCH LỚP CHÍNH THỨC CÓ GVCN
+    // =========================================================
+    const classRes = await api.get("/api/classes/with-teacher");
+
+    const classList = Array.isArray(classRes.data)
+      ? classRes.data
+      : Array.isArray(classRes.data?.classes)
+      ? classRes.data.classes
+      : [];
+
+    if (!classList.length) {
+      alert("❌ Không lấy được danh sách lớp có GVCN.");
       return;
     }
 
-    try {
-      // Lấy DANH SÁCH LỚP CHÍNH THỨC từ hệ thống trước.
-      // Không dùng scores làm danh sách lớp vì scores chỉ là dữ liệu điểm
-      // và có thể thiếu lớp chưa có bản ghi điểm tuần.
-      const classRes = await api.get("/api/classes/with-teacher");
-      const classList = Array.isArray(classRes.data)
-        ? classRes.data
-        : Array.isArray(classRes.data?.classes)
-        ? classRes.data.classes
-        : [];
+    // =========================================================
+    // 2. HÀM CHUẨN HÓA TÊN LỚP
+    // =========================================================
+    const normalizeClassName = (value: unknown) =>
+      String(value ?? "").trim().toUpperCase();
 
-      if (!classList.length) {
-        alert("❌ Không lấy được danh sách lớp có GVCN.");
-        return;
+    const getGrade = (item: any) => {
+      const directGrade = String(item?.grade ?? "").trim();
+
+      if (["6", "7", "8", "9"].includes(directGrade)) {
+        return directGrade;
       }
 
-      const normalizeClassName = (value: unknown) =>
-        String(value ?? "").trim().toUpperCase();
-
-      const getGrade = (item: any) => {
-        const directGrade = String(item?.grade ?? "").trim();
-        if (["6", "7", "8", "9"].includes(directGrade)) return directGrade;
-
-        const className = normalizeClassName(
-          item?.className ?? item?.name ?? item?.class?.className
-        );
-        return className.match(/^[6789]/)?.[0] ?? "";
-      };
-
-      // Ghép danh sách lớp chính thức với điểm tuần.
-      // Lớp chưa có dữ liệu tuần vẫn được xuất, các khoản điểm = 0.
-      const scoreMap = new Map(
-        scores.map((s) => [normalizeClassName(s.className), s])
+      const className = normalizeClassName(
+        item?.className ??
+          item?.name ??
+          item?.class?.className
       );
 
-      const mergedClasses = classList
-        .map((c: any) => {
-          const className = String(
-            c?.className ?? c?.name ?? c?.class?.className ?? ""
-          ).trim();
-          const grade = getGrade(c);
-          const score = scoreMap.get(normalizeClassName(className));
+      return className.match(/^[6789]/)?.[0] ?? "";
+    };
+
+    // =========================================================
+    // 3. MAP ĐIỂM THEO LỚP
+    // =========================================================
+    const scoreMap = new Map(
+      scores.map((s) => [
+        normalizeClassName(s.className),
+        s,
+      ])
+    );
+
+    // =========================================================
+    // 4. GHÉP DANH SÁCH LỚP + ĐIỂM
+    // =========================================================
+    const mergedClasses = classList
+      .map((c: any) => {
+        const className = String(
+          c?.className ??
+            c?.name ??
+            c?.class?.className ??
+            ""
+        ).trim();
+
+        const grade = getGrade(c);
+
+        const score = scoreMap.get(
+          normalizeClassName(className)
+        );
+
+        return {
+          className,
+          grade,
+          score,
+        };
+      })
+      .filter(
+        (c: any) =>
+          ["6", "7", "8", "9"].includes(c.grade) &&
+          c.className
+      );
+
+    if (!mergedClasses.length) {
+      alert("❌ Không tìm thấy lớp khối 6-9 có GVCN.");
+      return;
+    }
+
+    // =========================================================
+    // 5. TẠO DỮ LIỆU XUẤT
+    // =========================================================
+    const grades = ["6", "7", "8", "9"];
+
+    const exportRows: any[] = [];
+
+    grades.forEach((grade) => {
+      const gradeClasses = mergedClasses
+        .filter((c: any) => c.grade === grade)
+        .map((row: any) => {
+          const score = row.score;
+
+          const academic =
+            score?.academicScore ?? 0;
+
+          const bonus =
+            score?.bonusScore ?? 0;
+
+          const violation =
+            score?.violationScore ?? 0;
+
+          const lineUp =
+            score?.lineUpScore ?? 0;
+
+          // Trong Excel đang sử dụng chuyên cần * 5
+          const attendance =
+            (score?.attendanceScore ?? 0) * 5;
+
+          const hygiene =
+            score?.hygieneScore ?? 0;
+
+          // Tính giống công thức Excel
+          const discipline = Math.max(
+            0,
+            100 -
+              (
+                violation +
+                lineUp +
+                attendance +
+                hygiene
+              )
+          );
+
+          const total =
+            discipline +
+            academic +
+            bonus;
 
           return {
-            className,
+            className: row.className,
             grade,
-            score,
+            academic,
+            bonus,
+            violation,
+            lineUp,
+            attendance,
+            hygiene,
+            discipline,
+            total,
+            rank: 0,
           };
-        })
-        .filter((c: any) => ["6", "7", "8", "9"].includes(c.grade) && c.className);
+        });
 
-      if (!mergedClasses.length) {
-        alert("❌ Không tìm thấy lớp khối 6-9 có GVCN.");
-        return;
-      }
-
-      // Toàn bộ khối 6 -> 7 -> 8 -> 9 theo danh sách lớp chính thức.
-      const allScores = ["6", "7", "8", "9"].flatMap((grade) =>
-        mergedClasses
-          .filter((c: any) => c.grade === grade)
-          .sort((a: any, b: any) =>
-            a.className.localeCompare(b.className, undefined, {
-              numeric: true,
-            })
+      // =======================================================
+      // 6. XẾP HẠNG RIÊNG TỪNG KHỐI
+      // =======================================================
+      gradeClasses.sort(
+        (a: any, b: any) =>
+          b.total - a.total ||
+          a.className.localeCompare(
+            b.className,
+            undefined,
+            { numeric: true }
           )
       );
 
-    const rows = allScores.map((row: any, index: number) => {
-      const score = row.score;
+      let currentRank = 1;
 
-      return {
-        stt: index + 1,
-        className: row.className,
-        grade: row.grade,
-        academic: score?.academicScore ?? 0,
-        bonus: score?.bonusScore ?? 0,
-        violation: score?.violationScore ?? 0,
-        lineUp: score?.lineUpScore ?? 0,
-        attendance: (score?.attendanceScore ?? 0) * 5,
-        hygiene: score?.hygieneScore ?? 0,
-      };
+      gradeClasses.forEach(
+        (item: any, index: number) => {
+          if (
+            index > 0 &&
+            item.total ===
+              gradeClasses[index - 1].total
+          ) {
+            item.rank =
+              gradeClasses[index - 1].rank;
+          } else {
+            item.rank = currentRank;
+          }
+
+          currentRank++;
+        }
+      );
+
+      exportRows.push(...gradeClasses);
     });
 
-    // Header 2 tầng giống mẫu:
-    // E:H = nhóm "Nề nếp".
-    const data: (string | number | null)[][] = [
+    // =========================================================
+    // 7. TẠO HEADER
+    // =========================================================
+    const data: (
+      | string
+      | number
+      | null
+    )[][] = [
       ["Liên đội THCS Lê Lai"],
       [],
-      [`BẢNG ĐIỂM THI ĐUA TUẦN ${selectedWeek} - NĂM HỌC: 2026-2027`],
+      [
+        `BẢNG ĐIỂM THI ĐUA TUẦN ${selectedWeek} - NĂM HỌC: ${selectedAcademicYear}`,
+      ],
       [],
       [
         "STT",
@@ -560,39 +668,84 @@ useEffect(() => {
       ],
     ];
 
-    rows.forEach((row) => {
-      data.push([
-        row.stt,
-        row.className,
-        row.academic,
-        row.bonus,
-        row.violation,
-        row.lineUp,
-        row.attendance,
-        row.hygiene,
-        null, // I: công thức
-        null, // J: công thức
-        null, // K: công thức
-        null, // L: công thức
-      ]);
-    });
+    // =========================================================
+    // 8. THÊM CÁC DÒNG DỮ LIỆU
+    // =========================================================
+    exportRows.forEach(
+      (row: any, index: number) => {
+        data.push([
+          index + 1,
+          row.className,
+          row.academic,
+          row.bonus,
+          row.violation,
+          row.lineUp,
+          row.attendance,
+          row.hygiene,
+          null,
+          null,
+          null,
+          null,
+        ]);
+      }
+    );
 
-    const worksheet = XLSX.utils.aoa_to_sheet(data);
+    const worksheet =
+      XLSX.utils.aoa_to_sheet(data);
 
+    // =========================================================
+    // 9. MERGE HEADER
+    // =========================================================
     worksheet["!merges"] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 11 } },
-      { s: { r: 2, c: 0 }, e: { r: 2, c: 11 } },
-      { s: { r: 4, c: 4 }, e: { r: 4, c: 7 } },
-      { s: { r: 4, c: 0 }, e: { r: 5, c: 0 } },
-      { s: { r: 4, c: 1 }, e: { r: 5, c: 1 } },
-      { s: { r: 4, c: 2 }, e: { r: 5, c: 2 } },
-      { s: { r: 4, c: 3 }, e: { r: 5, c: 3 } },
-      { s: { r: 4, c: 8 }, e: { r: 5, c: 8 } },
-      { s: { r: 4, c: 9 }, e: { r: 5, c: 9 } },
-      { s: { r: 4, c: 10 }, e: { r: 5, c: 10 } },
-      { s: { r: 4, c: 11 }, e: { r: 5, c: 11 } },
+      {
+        s: { r: 0, c: 0 },
+        e: { r: 0, c: 11 },
+      },
+      {
+        s: { r: 2, c: 0 },
+        e: { r: 2, c: 11 },
+      },
+      {
+        s: { r: 4, c: 4 },
+        e: { r: 4, c: 7 },
+      },
+      {
+        s: { r: 4, c: 0 },
+        e: { r: 5, c: 0 },
+      },
+      {
+        s: { r: 4, c: 1 },
+        e: { r: 5, c: 1 },
+      },
+      {
+        s: { r: 4, c: 2 },
+        e: { r: 5, c: 2 },
+      },
+      {
+        s: { r: 4, c: 3 },
+        e: { r: 5, c: 3 },
+      },
+      {
+        s: { r: 4, c: 8 },
+        e: { r: 5, c: 8 },
+      },
+      {
+        s: { r: 4, c: 9 },
+        e: { r: 5, c: 9 },
+      },
+      {
+        s: { r: 4, c: 10 },
+        e: { r: 5, c: 10 },
+      },
+      {
+        s: { r: 4, c: 11 },
+        e: { r: 5, c: 11 },
+      },
     ];
 
+    // =========================================================
+    // 10. STYLE CƠ BẢN
+    // =========================================================
     const thinBorder = {
       top: { style: "thin" },
       bottom: { style: "thin" },
@@ -601,136 +754,317 @@ useEffect(() => {
     };
 
     const titleStyle = {
-      font: { name: "Times New Roman", sz: 16, bold: true },
-      alignment: { horizontal: "left", vertical: "center" },
+      font: {
+        name: "Times New Roman",
+        sz: 16,
+        bold: true,
+      },
+      alignment: {
+        horizontal: "left",
+        vertical: "center",
+      },
     };
 
     const mainTitleStyle = {
-      font: { name: "Times New Roman", sz: 16, bold: true },
-      alignment: { horizontal: "center", vertical: "center" },
+      font: {
+        name: "Times New Roman",
+        sz: 16,
+        bold: true,
+      },
+      alignment: {
+        horizontal: "center",
+        vertical: "center",
+      },
     };
 
     const headerStyle = {
-      font: { name: "Times New Roman", sz: 12, bold: true },
+      font: {
+        name: "Times New Roman",
+        sz: 12,
+        bold: true,
+      },
       alignment: {
         horizontal: "center",
         vertical: "center",
         wrapText: true,
       },
       border: thinBorder,
+      fill: {
+        patternType: "solid",
+        fgColor: { rgb: "D9E2F3" },
+      },
     };
 
-    const cellStyle = {
-      font: { name: "Times New Roman", sz: 12 },
-      alignment: { horizontal: "center", vertical: "center" },
+    const baseCellStyle = {
+      font: {
+        name: "Times New Roman",
+        sz: 12,
+      },
+      alignment: {
+        horizontal: "center",
+        vertical: "center",
+      },
       border: thinBorder,
     };
 
+    // =========================================================
+    // 11. MÀU NHẠT RIÊNG CHO 4 KHỐI
+    // =========================================================
+    const gradeColors: Record<
+      string,
+      string
+    > = {
+      "6": "EAF3FF", // xanh dương nhạt
+      "7": "EDF8ED", // xanh lá nhạt
+      "8": "FFF8E1", // vàng nhạt
+      "9": "F3EFFF", // tím nhạt
+    };
+
+    // =========================================================
+    // 12. MÀU HIGHLIGHT HẠNG 1 - 2 - 3
+    // =========================================================
+    const rankColors: Record<
+      number,
+      string
+    > = {
+      1: "FFD966",
+      2: "D9EAD3",
+      3: "F4CCCC",
+    };
+
+    // =========================================================
+    // 13. STYLE TIÊU ĐỀ
+    // =========================================================
     worksheet["A1"].s = titleStyle;
     worksheet["A3"].s = mainTitleStyle;
 
-    // Header 2 tầng.
+    // =========================================================
+    // 14. STYLE HEADER 2 TẦNG
+    // =========================================================
     for (let r = 4; r <= 5; r++) {
       for (let c = 0; c < 12; c++) {
-        const cell = XLSX.utils.encode_cell({ r, c });
-        if (worksheet[cell]) worksheet[cell].s = headerStyle;
-      }
-    }
+        const cell =
+          XLSX.utils.encode_cell({
+            r,
+            c,
+          });
 
-    const firstDataRow = 7; // Excel row 7
-    const lastDataRow = firstDataRow + rows.length - 1;
-
-    rows.forEach((_, index) => {
-      const excelRow = firstDataRow + index;
-
-      // I = 100 - (Vi phạm + Xếp hàng + Chuyên cần + Vệ sinh)
-      worksheet[`I${excelRow}`] = {
-        t: "n",
-        f: `MAX(0,100-(E${excelRow}+F${excelRow}+G${excelRow}+H${excelRow}))`,
-        s: cellStyle,
-      };
-
-      // J = Nề nếp + Học tập + Khen thưởng
-      worksheet[`J${excelRow}`] = {
-        t: "n",
-        f: `I${excelRow}+C${excelRow}+D${excelRow}`,
-        s: cellStyle,
-      };
-
-      // K = Xếp loại.
-      // Theo đúng điều kiện người dùng đã chốt:
-      // TỐT: Tổng >= 100 và Nề nếp >= 85
-      // KHÁ: Tổng 80-99 và Nề nếp 60-79
-      // ĐẠT: Tổng < 60
-      // Các khoảng chưa được quy định giữ trống.
-      worksheet[`K${excelRow}`] = {
-        t: "s",
-        f: `IF(AND(J${excelRow}>=110,I${excelRow}>=80),"TỐT",IF(AND(J${excelRow}>=90,J${excelRow}<110,I${excelRow}>=60,I${excelRow}<80),"KHÁ",IF(AND(J${excelRow}<90,I${excelRow}<60),"ĐẠT","")))`,
-        s: cellStyle,
-      };
-
-      // L = xếp hạng toàn trường, ưu tiên TỐT -> KHÁ -> ĐẠT.
-      // Trong cùng loại: Tổng thi đua cao hơn đứng trước.
-      worksheet[`L${excelRow}`] = {
-        t: "n",
-        // Xếp hạng RIÊNG THEO KHỐI:
-        // TỐT -> KHÁ -> ĐẠT.
-        // Trong cùng loại: Tổng thi đua cao hơn đứng trước.
-        // Bằng điểm: đồng hạng.
-        f:
-          `IF(K${excelRow}="","",` +
-          `IF(K${excelRow}="TỐT",` +
-          `COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"TỐT",$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow})+1,` +
-          `IF(K${excelRow}="KHÁ",` +
-          `COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"TỐT")` +
-          `+COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"KHÁ",$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow})+1,` +
-          `COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"TỐT")` +
-          `+COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"KHÁ")` +
-          `+COUNTIFS($B$${firstDataRow}:$B$${lastDataRow},LEFT(B${excelRow},1)&"*",$K$${firstDataRow}:$K$${lastDataRow},"ĐẠT",$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow})+1)))`,
-        s: cellStyle,
-      };
-    });
-
-    // Style toàn bộ dữ liệu.
-    for (let r = firstDataRow - 1; r <= lastDataRow - 1; r++) {
-      for (let c = 0; c < 12; c++) {
-        const cell = XLSX.utils.encode_cell({ r, c });
         if (worksheet[cell]) {
-          worksheet[cell].s = cellStyle;
+          worksheet[cell].s = headerStyle;
         }
       }
     }
 
-    // Công thức cần style lại sau vòng trên.
-    for (let r = firstDataRow; r <= lastDataRow; r++) {
-      ["I", "J", "K", "L"].forEach((col) => {
-        if (worksheet[`${col}${r}`]) {
-          worksheet[`${col}${r}`].s = cellStyle;
-        }
-      });
+    // =========================================================
+    // 15. CÔNG THỨC EXCEL
+    // =========================================================
+    const firstDataRow = 7;
+    const lastDataRow =
+      firstDataRow +
+      exportRows.length -
+      1;
 
-      ["C", "D", "E", "F", "G", "H", "I", "J"].forEach((col) => {
-        if (worksheet[`${col}${r}`]) {
-          worksheet[`${col}${r}`].z = "0.0";
-        }
-      });
-    }
+    exportRows.forEach(
+      (row: any, index: number) => {
+        const excelRow =
+          firstDataRow + index;
 
+        // I = Tổng nề nếp
+        worksheet[`I${excelRow}`] = {
+          t: "n",
+          f:
+            `MAX(0,100-(E${excelRow}` +
+            `+F${excelRow}` +
+            `+G${excelRow}` +
+            `+H${excelRow}))`,
+          s: baseCellStyle,
+        };
+
+        // J = Tổng thi đua
+        worksheet[`J${excelRow}`] = {
+          t: "n",
+          f:
+            `I${excelRow}` +
+            `+C${excelRow}` +
+            `+D${excelRow}`,
+          s: baseCellStyle,
+        };
+
+        // K = Xếp loại
+        worksheet[`K${excelRow}`] = {
+          t: "s",
+          f:
+            `IF(AND(J${excelRow}>=110,I${excelRow}>=80),` +
+            `"TỐT",` +
+            `IF(AND(J${excelRow}>=90,J${excelRow}<110,` +
+            `I${excelRow}>=60,I${excelRow}<80),` +
+            `"KHÁ",` +
+            `IF(AND(J${excelRow}<90,I${excelRow}<60),` +
+            `"ĐẠT","")))`,
+          s: baseCellStyle,
+        };
+
+        // L = Xếp hạng riêng theo khối
+        worksheet[`L${excelRow}`] = {
+          t: "n",
+          f:
+            `IF(K${excelRow}="","",` +
+            `IF(K${excelRow}="TỐT",` +
+            `COUNTIFS(` +
+            `$B$${firstDataRow}:$B$${lastDataRow},` +
+            `LEFT(B${excelRow},1)&"*",` +
+            `$K$${firstDataRow}:$K$${lastDataRow},"TỐT",` +
+            `$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow}` +
+            `)+1,` +
+            `IF(K${excelRow}="KHÁ",` +
+            `COUNTIFS(` +
+            `$B$${firstDataRow}:$B$${lastDataRow},` +
+            `LEFT(B${excelRow},1)&"*",` +
+            `$K$${firstDataRow}:$K$${lastDataRow},"TỐT"` +
+            `)+` +
+            `COUNTIFS(` +
+            `$B$${firstDataRow}:$B$${lastDataRow},` +
+            `LEFT(B${excelRow},1)&"*",` +
+            `$K$${firstDataRow}:$K$${lastDataRow},"KHÁ",` +
+            `$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow}` +
+            `)+1,` +
+            `COUNTIFS(` +
+            `$B$${firstDataRow}:$B$${lastDataRow},` +
+            `LEFT(B${excelRow},1)&"*",` +
+            `$K$${firstDataRow}:$K$${lastDataRow},"TỐT"` +
+            `)+` +
+            `COUNTIFS(` +
+            `$B$${firstDataRow}:$B$${lastDataRow},` +
+            `LEFT(B${excelRow},1)&"*",` +
+            `$K$${firstDataRow}:$K$${lastDataRow},"KHÁ"` +
+            `)+` +
+            `COUNTIFS(` +
+            `$B$${firstDataRow}:$B$${lastDataRow},` +
+            `LEFT(B${excelRow},1)&"*",` +
+            `$K$${firstDataRow}:$K$${lastDataRow},"ĐẠT",` +
+            `$J$${firstDataRow}:$J$${lastDataRow},">"&J${excelRow}` +
+            `)+1)))`,
+          s: baseCellStyle,
+        };
+
+        // =====================================================
+        // STYLE DÒNG THEO KHỐI + HẠNG
+        // =====================================================
+        const gradeColor =
+          gradeColors[row.grade] ??
+          "FFFFFF";
+
+        const rankColor =
+          rankColors[row.rank];
+
+        const rowFill =
+          rankColor ?? gradeColor;
+
+        for (let c = 0; c < 12; c++) {
+          const cell =
+            XLSX.utils.encode_cell({
+              r: excelRow - 1,
+              c,
+            });
+
+          if (!worksheet[cell]) {
+            worksheet[cell] = {
+              t: "s",
+              v: "",
+            };
+          }
+
+          worksheet[cell].s = {
+            ...baseCellStyle,
+
+            fill: {
+              patternType: "solid",
+              fgColor: {
+                rgb: rowFill,
+              },
+            },
+
+            // Hạng 1-2-3 in đậm
+            ...(row.rank <= 3
+              ? {
+                  font: {
+                    name: "Times New Roman",
+                    sz: 12,
+                    bold: true,
+                  },
+                }
+              : {}),
+          };
+        }
+
+        // =====================================================
+        // LÀM NỔI BẬT RIÊNG Ô XẾP HẠNG
+        // =====================================================
+        if (rankColor) {
+          worksheet[`L${excelRow}`].s = {
+            ...baseCellStyle,
+            font: {
+              name: "Times New Roman",
+              sz: 13,
+              bold: true,
+            },
+            fill: {
+              patternType: "solid",
+              fgColor: {
+                rgb: rankColor,
+              },
+            },
+            border: {
+              top: { style: "medium" },
+              bottom: { style: "medium" },
+              left: { style: "medium" },
+              right: { style: "medium" },
+            },
+          };
+        }
+
+        // =====================================================
+        // Định dạng số
+        // =====================================================
+        [
+          "C",
+          "D",
+          "E",
+          "F",
+          "G",
+          "H",
+          "I",
+          "J",
+        ].forEach((col) => {
+          if (worksheet[`${col}${excelRow}`]) {
+            worksheet[`${col}${excelRow}`].z =
+              "0.0";
+          }
+        });
+      }
+    );
+
+    // =========================================================
+    // 16. ĐỘ RỘNG CỘT
+    // =========================================================
     worksheet["!cols"] = [
-      { wch: 7 },  // STT
-      { wch: 10 }, // Lớp
-      { wch: 12 }, // Học tập
-      { wch: 14 }, // Khen thưởng
-      { wch: 11 }, // Vi phạm
-      { wch: 12 }, // Xếp hàng
-      { wch: 14 }, // Chuyên cần
-      { wch: 11 }, // Vệ sinh
-      { wch: 14 }, // Tổng nề nếp
-      { wch: 11 }, // Tổng
-      { wch: 12 }, // Xếp loại
-      { wch: 12 }, // Xếp hạng
+      { wch: 7 },   // STT
+      { wch: 10 },  // Lớp
+      { wch: 12 },  // Học tập
+      { wch: 14 },  // Khen thưởng
+      { wch: 11 },  // Vi phạm
+      { wch: 12 },  // Xếp hàng
+      { wch: 14 },  // Chuyên cần
+      { wch: 11 },  // Vệ sinh
+      { wch: 14 },  // Tổng nề nếp
+      { wch: 12 },  // Tổng
+      { wch: 12 },  // Xếp loại
+      { wch: 12 },  // Xếp hạng
     ];
 
+    // =========================================================
+    // 17. CHIỀU CAO DÒNG
+    // =========================================================
     worksheet["!rows"] = [
       { hpt: 25 },
       { hpt: 10 },
@@ -740,6 +1074,9 @@ useEffect(() => {
       { hpt: 30 },
     ];
 
+    // =========================================================
+    // 18. CẤU HÌNH IN
+    // =========================================================
     worksheet["!pageSetup"] = {
       orientation: "landscape",
       fitToWidth: 1,
@@ -751,7 +1088,11 @@ useEffect(() => {
       verticalCentered: false,
     };
 
-    const workbook = XLSX.utils.book_new();
+    // =========================================================
+    // 19. TẠO FILE
+    // =========================================================
+    const workbook =
+      XLSX.utils.book_new();
 
     XLSX.utils.book_append_sheet(
       workbook,
@@ -761,13 +1102,19 @@ useEffect(() => {
 
     XLSX.writeFile(
       workbook,
-      `Tong_Hop_Thi_Dua_Tuan_${selectedWeek}_2026-2027.xlsx`
+      `Tong_Hop_Thi_Dua_Tuan_${selectedWeek}_${selectedAcademicYear}.xlsx`
     );
-    } catch (error) {
-      console.error("❌ Lỗi xuất Excel:", error);
-      alert("❌ Không thể xuất Excel. Vui lòng thử lại.");
-    }
-  };
+  } catch (error) {
+    console.error(
+      "❌ Lỗi xuất Excel:",
+      error
+    );
+
+    alert(
+      "❌ Không thể xuất Excel. Vui lòng thử lại."
+    );
+  }
+}; 
 
   // =========================================================
   // PHẦN SỐ 9 TRỞ XUỐNG: thêm tại đây
