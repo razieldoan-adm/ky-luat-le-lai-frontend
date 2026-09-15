@@ -99,7 +99,10 @@ export const AuthProvider: React.FC<{
       setUser(null);
       setToken(null);
       setLoading(false);
-
+      sessionStorage.setItem(
+        "sessionExpiredMessage",
+        "Phiên đăng nhập của bạn đã hết hạn do đã sang ngày mới. Vui lòng đăng nhập lại."
+      );
       if (window.location.pathname !== "/login") {
         window.location.href = "/login";
       }
