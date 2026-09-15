@@ -1,4 +1,4 @@
-
+```tsx
 import React, {
   createContext,
   useContext,
@@ -19,13 +19,17 @@ interface AuthContextType {
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(
+  undefined
+);
+
+const LOGIN_DATE_KEY = "loginDate";
 
 // ======================================================
 // LẤY NGÀY HIỆN TẠI THEO GIỜ VIỆT NAM
 // Format: YYYY-MM-DD
 // ======================================================
-const getVietnamDate = () => {
+const getVietnamDate = (): string => {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Ho_Chi_Minh",
     year: "numeric",
@@ -33,8 +37,6 @@ const getVietnamDate = () => {
     day: "2-digit"
   }).format(new Date());
 };
-
-const LOGIN_DATE_KEY = "loginDate";
 
 export const AuthProvider: React.FC<{
   children: React.ReactNode;
@@ -44,7 +46,7 @@ export const AuthProvider: React.FC<{
   const [loading, setLoading] = useState(true);
 
   // ======================================================
-  // LOGOUT HOÀN TOÀN
+  // LOGOUT
   // ======================================================
   const logout = () => {
     setUser(null);
@@ -56,50 +58,15 @@ export const AuthProvider: React.FC<{
   };
 
   // ======================================================
-  // KIỂM TRA PHIÊN ĐĂNG NHẬP THEO NGÀY
-  // ======================================================
-  const checkLoginDate = () => {
-    const storedLoginDate =
-      localStorage.getItem(LOGIN_DATE_KEY);
-
-    // Không có ngày đăng nhập
-    if (!storedLoginDate) {
-      return false;
-    }
-
-    const today = getVietnamDate();
-
-    // Khác ngày => phiên đã hết hạn
-    if (storedLoginDate !== today) {
-      console.log(
-        "Phiên đăng nhập đã hết hạn:",
-        storedLoginDate,
-        "=>",
-        today
-      );
-
-      logout();
-
-      return false;
-    }
-
-    return true;
-  };
-
-  // ======================================================
-  // KHỞI TẠO AUTH
+  // KHỞI TẠO VÀ KIỂM TRA PHIÊN
   // ======================================================
   useEffect(() => {
-    const storedUser =
-      localStorage.getItem("user");
-
-    const storedToken =
-      localStorage.getItem("token");
-
+    const storedUser = localStorage.getItem("user");
+    const storedToken = localStorage.getItem("token");
     const storedLoginDate =
       localStorage.getItem(LOGIN_DATE_KEY);
 
-    // Không có thông tin đăng nhập
+    // Không có phiên đăng nhập
     if (
       !storedUser ||
       storedUser === "undefined" ||
@@ -112,14 +79,14 @@ export const AuthProvider: React.FC<{
       return;
     }
 
-    // ==================================================
-    // KIỂM TRA NGÀY ĐĂNG NHẬP
-    // ==================================================
     const today = getVietnamDate();
 
+    // ====================================================
+    // ĐÃ QUA NGÀY MỚI -> HẾT PHIÊN
+    // ====================================================
     if (storedLoginDate !== today) {
       console.log(
-        "Phiên cũ đã hết hạn:",
+        "Phiên đăng nhập đã hết hạn:",
         storedLoginDate,
         "=>",
         today
@@ -133,7 +100,6 @@ export const AuthProvider: React.FC<{
       setToken(null);
       setLoading(false);
 
-      // Đưa về login
       if (window.location.pathname !== "/login") {
         window.location.href = "/login";
       }
@@ -141,17 +107,16 @@ export const AuthProvider: React.FC<{
       return;
     }
 
-    // ==================================================
-    // KHÔI PHỤC PHIÊN HIỆN TẠI
-    // ==================================================
+    // ====================================================
+    // KHÔI PHỤC PHIÊN
+    // ====================================================
     try {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+
+      setUser(parsedUser);
       setToken(storedToken);
     } catch (err) {
-      console.error(
-        "Lỗi parse user:",
-        err
-      );
+      console.error("Lỗi parse user:", err);
 
       localStorage.removeItem("user");
       localStorage.removeItem("token");
@@ -163,39 +128,53 @@ export const AuthProvider: React.FC<{
 
     setLoading(false);
 
-    // ==================================================
-    // KIỂM TRA MỖI 30 GIÂY
-    // Để khi đang mở trang qua 00:00
-    // hệ thống tự logout
-    // ==================================================
-    const interval = setInterval(() => {
-      const valid = checkLoginDate();
+    // ====================================================
+    // KIỂM TRA ĐỊNH KỲ
+    // Nếu đang mở trang qua 00:00 thì tự logout
+    // ====================================================
+    const interval = window.setInterval(() => {
+      const currentLoginDate =
+        localStorage.getItem(LOGIN_DATE_KEY);
 
-      if (!valid) {
-        if (
-          window.location.pathname !== "/login"
-        ) {
+      const currentToday = getVietnamDate();
+
+      if (
+        currentLoginDate &&
+        currentLoginDate !== currentToday
+      ) {
+        console.log(
+          "Đã sang ngày mới, tự động đăng xuất."
+        );
+
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        localStorage.removeItem(LOGIN_DATE_KEY);
+
+        setUser(null);
+        setToken(null);
+
+        if (window.location.pathname !== "/login") {
           window.location.href = "/login";
         }
       }
     }, 30 * 1000);
 
     return () => {
-      clearInterval(interval);
+      window.clearInterval(interval);
     };
   }, []);
 
   // ======================================================
-  // ĐĂNG NHẬP
+  // LOGIN
   // ======================================================
   const login = (
     userData: User,
-    token: string
+    newToken: string
   ) => {
     const today = getVietnamDate();
 
     setUser(userData);
-    setToken(token);
+    setToken(newToken);
 
     localStorage.setItem(
       "user",
@@ -204,7 +183,7 @@ export const AuthProvider: React.FC<{
 
     localStorage.setItem(
       "token",
-      token
+      newToken
     );
 
     // Lưu ngày đăng nhập
@@ -235,8 +214,7 @@ export const AuthProvider: React.FC<{
 };
 
 export const useAuth = () => {
-  const context =
-    useContext(AuthContext);
+  const context = useContext(AuthContext);
 
   if (!context) {
     throw new Error(
