@@ -1,4 +1,4 @@
-```tsx
+
 import React, {
   createContext,
   useContext,
@@ -224,4 +224,4 @@ export const useAuth = () => {
 
   return context;
 };
-```
+
