@@ -321,6 +321,38 @@ const getWeeklyClassification = (
   return "Chưa đạt";
 };
 
+const lowerClassificationOneLevel = (
+  classification: string
+): string => {
+  switch (classification) {
+    case "Tốt":
+      return "Khá";
+
+    case "Khá":
+      return "Đạt";
+
+    case "Đạt":
+      return "Chưa đạt";
+
+    case "Chưa đạt":
+      return "Chưa đạt";
+
+    default:
+      return classification;
+  }
+};
+const getFinalWeeklyClassification = (
+  score: number,
+  hasSeriousViolation: boolean
+): string => {
+  const classification = getWeeklyClassification(score);
+
+  if (hasSeriousViolation) {
+    return lowerClassificationOneLevel(classification);
+  }
+
+  return classification;
+};
 const monthStart = (
   month: number,
   year: number
@@ -1490,10 +1522,16 @@ for (
   const initialScore =
     100 - deduction;
 
-  const classification =
-    getWeeklyClassification(
-      initialScore
-    );
+  const hasSeriousViolation =
+  Number(
+    conduct?.groupViolations?.S1 ?? 0
+  ) > 0;
+
+const classification =
+  getFinalWeeklyClassification(
+    initialScore,
+    hasSeriousViolation
+  );
 
   const fillColor =
     getExcelConductFillColor(
@@ -1502,7 +1540,6 @@ for (
     );
 
   if (!fillColor) continue;
-
   for (
     let col = 0;
     col < totalCols;
@@ -2724,10 +2761,17 @@ const changeViewMode =
                   const score =
                     record?.finalScore ??
                     100;
-
+                  
+                  // Có ít nhất 1 lỗi nghiêm trọng nhóm S1
+                  const hasSeriousViolation =
+                    Number(
+                      record?.groupViolations?.S1 ?? 0
+                    ) > 0;
+                  
                   const classification =
-                    getWeeklyClassification(
-                      score
+                    getFinalWeeklyClassification(
+                      score,
+                      hasSeriousViolation
                     );
 
                   const totalViolation =
@@ -3096,12 +3140,17 @@ const changeViewMode =
 
                           const score =
                             record?.finalScore;
-
+                          
+                          const hasSeriousViolation =
+                            Number(
+                              record?.groupViolations?.S1 ?? 0
+                            ) > 0;
+                          
                           const classification =
-                            score !==
-                            undefined
-                              ? getWeeklyClassification(
-                                  score
+                            score !== undefined
+                              ? getFinalWeeklyClassification(
+                                  score,
+                                  hasSeriousViolation
                                 )
                               : undefined;
 
