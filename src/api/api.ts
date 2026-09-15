@@ -43,15 +43,14 @@ const isLoginExpired = () => {
 const forceLogout = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
-  localStorage.removeItem(LOGIN_DATE_KEY);
+  localStorage.removeItem("loginDate");
 
-  if (
-    window.location.pathname !== "/login"
-  ) {
-    alert(
-      "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
-    );
+  sessionStorage.setItem(
+    "sessionExpiredMessage",
+    "Phiên đăng nhập của bạn đã hết hạn do đã sang ngày mới. Vui lòng đăng nhập lại."
+  );
 
+  if (window.location.pathname !== "/login") {
     window.location.href = "/login";
   }
 };
