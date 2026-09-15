@@ -1524,7 +1524,7 @@ for (
 
   const hasSeriousViolation =
   Number(
-    conduct?.groupViolations?.S1 ?? 0
+    mergedData[dataIndex]?.conduct?.groupViolations?.S1 ?? 0
   ) > 0;
 
 const classification =
