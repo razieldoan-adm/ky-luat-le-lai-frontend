@@ -6,55 +6,6 @@ console.log(
   import.meta.env.VITE_BACKEND_URL
 );
 
-const LOGIN_DATE_KEY = "loginDate";
-
-// ======================================================
-// LẤY NGÀY HIỆN TẠI THEO GIỜ VIỆT NAM
-// Format: YYYY-MM-DD
-// ======================================================
-const getVietnamDate = () => {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date());
-};
-
-// ======================================================
-// KIỂM TRA PHIÊN THEO NGÀY
-// ======================================================
-const isLoginExpired = () => {
-  const loginDate =
-    localStorage.getItem(LOGIN_DATE_KEY);
-
-  if (!loginDate) {
-    return true;
-  }
-
-  const today = getVietnamDate();
-
-  return loginDate !== today;
-};
-
-// ======================================================
-// XÓA PHIÊN ĐĂNG NHẬP
-// ======================================================
-const forceLogout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  localStorage.removeItem("loginDate");
-
-  sessionStorage.setItem(
-    "sessionExpiredMessage",
-    "Phiên đăng nhập của bạn đã hết hạn do đã sang ngày mới. Vui lòng đăng nhập lại."
-  );
-
-  if (window.location.pathname !== "/login") {
-    window.location.href = "/login";
-  }
-};
-
 // ======================================================
 // AXIOS INSTANCE
 // ======================================================
@@ -63,35 +14,14 @@ const instance = axios.create({
 });
 
 // ======================================================
-// TỰ ĐỘNG GẮN JWT TOKEN
-// + KIỂM TRA NGÀY ĐĂNG NHẬP
+// TỰ ĐỘNG GẮN JWT TOKEN NẾU ĐANG ĐĂNG NHẬP
+//
+// Nếu không có token:
+// -> request vẫn được gửi bình thường
+// -> phục vụ các trang xem không cần đăng nhập
 // ======================================================
 instance.interceptors.request.use(
   (config) => {
-    // Nếu đang ở trang login
-    // không cần kiểm tra phiên
-    if (
-      window.location.pathname === "/login"
-    ) {
-      return config;
-    }
-
-    // ==================================================
-    // KIỂM TRA ĐÃ QUA NGÀY MỚI CHƯA
-    // ==================================================
-    if (isLoginExpired()) {
-      forceLogout();
-
-      return Promise.reject(
-        new axios.Cancel(
-          "Phiên đăng nhập đã hết hạn"
-        )
-      );
-    }
-
-    // ==================================================
-    // GẮN TOKEN
-    // ==================================================
     const token =
       localStorage.getItem("token");
 
@@ -109,7 +39,27 @@ instance.interceptors.request.use(
 );
 
 // ======================================================
-// XỬ LÝ TOKEN KHÔNG HỢP LỆ / HẾT HẠN
+// XÓA PHIÊN ĐĂNG NHẬP
+// ======================================================
+const forceLogout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  localStorage.removeItem("loginDate");
+
+  sessionStorage.setItem(
+    "sessionExpiredMessage",
+    "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+  );
+
+  if (
+    window.location.pathname !== "/login"
+  ) {
+    window.location.href = "/login";
+  }
+};
+
+// ======================================================
+// XỬ LÝ RESPONSE
 // ======================================================
 instance.interceptors.response.use(
   (response) => {
@@ -120,12 +70,20 @@ instance.interceptors.response.use(
     const status =
       error.response?.status;
 
+    const token =
+      localStorage.getItem("token");
+
     // ==================================================
-    // 401 / 403
+    // CHỈ XỬ LÝ 401 / 403 NẾU NGƯỜI DÙNG
+    // ĐANG CÓ PHIÊN ĐĂNG NHẬP
+    //
+    // API công khai không có token:
+    // -> KHÔNG redirect về login
     // ==================================================
     if (
-      status === 401 ||
-      status === 403
+      (status === 401 ||
+        status === 403) &&
+      token
     ) {
       const currentPath =
         window.location.pathname;
