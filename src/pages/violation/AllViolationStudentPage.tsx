@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent } from 'react';
 import {
   Box,
   Typography,
@@ -38,6 +38,10 @@ interface Violation {
   handlingMethod: string;
   handled?: boolean;
   handledBy?: string;
+  images?: {
+    fileId: string;
+    url: string;
+  }[];
   weekNumber?: number;
 }
 
@@ -66,6 +70,17 @@ export default function AllViolationStudentPage() {
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [violationBeingEdited, setViolationBeingEdited] = useState<Violation | null>(null);
+
+  // 📷 Thêm hình ảnh
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [detailImageUrls, setDetailImageUrls] = useState<Record<string, string>>({});
+  const [loadingDetailImages, setLoadingDetailImages] = useState(false);
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [imageViolation, setImageViolation] = useState<Violation | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -261,6 +276,212 @@ export default function AllViolationStudentPage() {
     } catch (err) {
       console.error('Lỗi khi cập nhật người xử lý:', err);
       setSnackbar({ open: true, message: 'Lỗi khi xử lý vi phạm', severity: 'error' });
+    }
+  };
+
+  // 📷 Tải và hiển thị ảnh hiện có
+  const loadDetailImages = async (violation: Violation) => {
+    if (!violation.images || violation.images.length === 0) {
+      setDetailImageUrls({});
+      return;
+    }
+
+    try {
+      setLoadingDetailImages(true);
+      const imageEntries = await Promise.all(
+        violation.images.map(async (image) => {
+          try {
+            const response = await api.get(image.url, { responseType: 'blob' });
+            return {
+              fileId: image.fileId,
+              url: URL.createObjectURL(response.data),
+            };
+          } catch (error) {
+            console.error('❌ Không thể tải hình ảnh:', image.fileId, error);
+            return null;
+          }
+        })
+      );
+
+      const imageMap: Record<string, string> = {};
+      imageEntries.forEach((item) => {
+        if (item) imageMap[item.fileId] = item.url;
+      });
+      setDetailImageUrls(imageMap);
+    } catch (error) {
+      console.error('❌ loadDetailImages:', error);
+      setSnackbar({ open: true, message: 'Không thể tải hình ảnh.', severity: 'error' });
+    } finally {
+      setLoadingDetailImages(false);
+    }
+  };
+
+  const openImageDialog = async (violation: Violation) => {
+    setImageViolation(violation);
+    setImageFiles([]);
+    setImagePreviews([]);
+    setDetailImageUrls({});
+    setImageDialogOpen(true);
+    await loadDetailImages(violation);
+  };
+
+  // 📷 Nén ảnh giống trang chi tiết
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const maxSize = 1280;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxSize || height > maxSize) {
+          if (width > height) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          } else {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Không thể xử lý hình ảnh.'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error('Không thể nén hình ảnh.'));
+            return;
+          }
+          const fileName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+          resolve(new File([blob], fileName, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          }));
+        }, 'image/jpeg', 0.7);
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Không thể đọc hình ảnh.'));
+      };
+      img.src = objectUrl;
+    });
+  };
+
+  const handleSelectImages = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (files.length === 0) return;
+
+    try {
+      if (imageFiles.length + files.length > 5) {
+        setSnackbar({
+          open: true,
+          message: `Tối đa 5 hình ảnh. Hiện đã có ${imageFiles.length} hình.`,
+          severity: 'error',
+        });
+        return;
+      }
+
+      const validFiles = files.filter((file) =>
+        file.type.startsWith('image/') && file.size <= 10 * 1024 * 1024
+      );
+
+      if (validFiles.length === 0) {
+        setSnackbar({ open: true, message: 'Không có hình ảnh hợp lệ.', severity: 'error' });
+        return;
+      }
+
+      const compressedFiles = await Promise.all(validFiles.map(compressImage));
+      setImageFiles((prev) => [...prev, ...compressedFiles]);
+      setImagePreviews((prev) => [
+        ...prev,
+        ...compressedFiles.map((file) => URL.createObjectURL(file)),
+      ]);
+    } catch (error) {
+      console.error('❌ Lỗi nén hình ảnh:', error);
+      setSnackbar({ open: true, message: 'Không thể xử lý hình ảnh.', severity: 'error' });
+    }
+  };
+
+  const handleUploadImages = async () => {
+    if (!imageViolation || imageFiles.length === 0) return;
+
+    const currentImageCount = imageViolation.images?.length || 0;
+    if (currentImageCount + imageFiles.length > 20) {
+      setSnackbar({
+        open: true,
+        message: `Vi phạm này đã có ${currentImageCount} ảnh. Tối đa 20 ảnh.`,
+        severity: 'error',
+      });
+      return;
+    }
+
+    try {
+      setUploadingImages(true);
+      const formData = new FormData();
+      imageFiles.forEach((file) => formData.append('images', file));
+
+      const res = await api.post(
+        `/api/violations/${imageViolation._id}/images`,
+        formData
+      );
+
+      const updatedImages = res.data?.images || [];
+      const updatedItem = { ...imageViolation, images: updatedImages };
+      setImageViolation(updatedItem);
+      setViolations((prev) =>
+        prev.map((v) => (v._id === imageViolation._id ? { ...v, images: updatedImages } : v))
+      );
+
+      await loadDetailImages(updatedItem);
+      imagePreviews.forEach((url) => URL.revokeObjectURL(url));
+      setImageFiles([]);
+      setImagePreviews([]);
+      setSnackbar({ open: true, message: 'Đã thêm hình ảnh thành công.', severity: 'success' });
+    } catch (error) {
+      console.error('Lỗi upload hình ảnh:', error);
+      setSnackbar({ open: true, message: 'Không thể upload hình ảnh.', severity: 'error' });
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const handleDeleteImage = async (fileId: string) => {
+    if (!imageViolation) return;
+    if (!window.confirm('Bạn có chắc muốn xóa hình ảnh này không?')) return;
+
+    try {
+      await api.delete(`/api/violations/${imageViolation._id}/images/${fileId}`);
+      if (detailImageUrls[fileId]) URL.revokeObjectURL(detailImageUrls[fileId]);
+
+      const updatedImages = (imageViolation.images || []).filter(
+        (image) => image.fileId !== fileId
+      );
+      const updatedItem = { ...imageViolation, images: updatedImages };
+      setImageViolation(updatedItem);
+      setDetailImageUrls((prev) => {
+        const next = { ...prev };
+        delete next[fileId];
+        return next;
+      });
+      setViolations((prev) =>
+        prev.map((v) => (v._id === imageViolation._id ? { ...v, images: updatedImages } : v))
+      );
+      setSnackbar({ open: true, message: 'Đã xóa hình ảnh.', severity: 'success' });
+    } catch (error) {
+      console.error('❌ Lỗi xóa hình ảnh:', error);
+      setSnackbar({ open: true, message: 'Không thể xóa hình ảnh.', severity: 'error' });
     }
   };
 
@@ -471,6 +692,15 @@ export default function AllViolationStudentPage() {
       Sửa
     </Button>
 
+    {/* Nút thêm hình ảnh */}
+    <Button
+      variant="outlined"
+      size="small"
+      onClick={() => openImageDialog(v)}
+    >
+      📷 Thêm hình
+    </Button>
+
     {/* Nút GVCN xử lý */}
     <Button
       variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
@@ -532,6 +762,128 @@ export default function AllViolationStudentPage() {
           <Button onClick={() => setEditDialogOpen(false)}>Huỷ</Button>
           <Button variant="contained" onClick={handleSaveEdit}>
             Lưu
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={imageDialogOpen}
+        onClose={() => {
+          imagePreviews.forEach((url) => URL.revokeObjectURL(url));
+          setImagePreviews([]);
+          setImageFiles([]);
+          Object.values(detailImageUrls).forEach((url) => URL.revokeObjectURL(url));
+          setDetailImageUrls({});
+          setImageDialogOpen(false);
+        }}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>
+          Thêm hình ảnh — {imageViolation?.name} ({imageViolation?.className})
+        </DialogTitle>
+        <DialogContent dividers>
+          {imageViolation && (
+            <Stack spacing={2}>
+              <Typography fontWeight={600}>
+                {imageViolation.description}
+              </Typography>
+
+              <Typography variant="h6">Hình ảnh hiện có</Typography>
+              {(!imageViolation.images || imageViolation.images.length === 0) ? (
+                <Typography color="text.secondary">Chưa có hình ảnh.</Typography>
+              ) : (
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+                  {imageViolation.images.map((image) => (
+                    <Box key={image.fileId} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+                      {loadingDetailImages ? (
+                        <Box sx={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Typography color="text.secondary">Đang tải hình ảnh...</Typography>
+                        </Box>
+                      ) : detailImageUrls[image.fileId] ? (
+                        <>
+                          <img
+                            src={detailImageUrls[image.fileId]}
+                            alt="Hình ảnh vi phạm"
+                            style={{ width: '100%', height: 'auto', maxHeight: 500, objectFit: 'contain', display: 'block' }}
+                          />
+                          <Box sx={{ p: 1 }}>
+                            <Button fullWidth size="small" color="error" variant="outlined" onClick={() => handleDeleteImage(image.fileId)}>
+                              Xóa hình
+                            </Button>
+                          </Box>
+                        </>
+                      ) : (
+                        <Box sx={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Typography color="text.secondary">Không thể tải hình ảnh</Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+              )}
+
+              <Box>
+                <Typography variant="h6" gutterBottom>Thêm hình ảnh</Typography>
+
+                <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleSelectImages} />
+                <input ref={galleryInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleSelectImages} />
+
+                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                  <Button variant="outlined" onClick={() => cameraInputRef.current?.click()}>
+                    📷 Chụp ảnh
+                  </Button>
+                  <Button variant="outlined" onClick={() => galleryInputRef.current?.click()}>
+                    🖼️ Chọn ảnh
+                  </Button>
+                </Stack>
+
+                {imageFiles.length > 0 && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    Đã chọn {imageFiles.length} hình ảnh
+                  </Typography>
+                )}
+
+                <Button variant="contained" sx={{ mt: 2 }} onClick={handleUploadImages} disabled={uploadingImages || imageFiles.length === 0}>
+                  {uploadingImages ? 'Đang tải lên...' : 'Tải hình lên'}
+                </Button>
+
+                {imagePreviews.length > 0 && (
+                  <Stack direction="row" spacing={1} sx={{ mt: 2, flexWrap: 'wrap', gap: 1 }}>
+                    {imagePreviews.map((url, index) => (
+                      <Box key={url} sx={{ position: 'relative', width: 100, height: 100, borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+                        <img src={url} alt={`Ảnh ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        <Button
+                          size="small"
+                          color="error"
+                          variant="contained"
+                          onClick={() => {
+                            URL.revokeObjectURL(url);
+                            setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+                            setImageFiles((prev) => prev.filter((_, i) => i !== index));
+                          }}
+                          sx={{ position: 'absolute', right: 2, top: 2, minWidth: 28, width: 28, height: 28, p: 0, fontSize: 16 }}
+                        >
+                          ×
+                        </Button>
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            imagePreviews.forEach((url) => URL.revokeObjectURL(url));
+            setImagePreviews([]);
+            setImageFiles([]);
+            Object.values(detailImageUrls).forEach((url) => URL.revokeObjectURL(url));
+            setDetailImageUrls({});
+            setImageDialogOpen(false);
+          }}>
+            Đóng
           </Button>
         </DialogActions>
       </Dialog>
