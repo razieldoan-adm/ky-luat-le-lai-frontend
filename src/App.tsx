@@ -41,6 +41,9 @@ import EnterViolationScoresPage from './pages/emulation/ClassViolationScoresPage
 import EnterClassAttendanceSummaryPage from './pages/emulation/ClassAttendanceSummaryPage';
 import EnterClassLineUpSummaryPage from './pages/emulation/ClassLineUpSummaryPage';
 import WeeklyScoresPage from './pages/emulation/WeeklyScoresPage';
+{/* Public pages for Google OAuth */}
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
 
 function AppContent() {
   return (
@@ -49,8 +52,12 @@ function AppContent() {
 
       <Routes>
         {/* Login route (full page, no header/sidebar) */}
+        
         <Route path="/login" element={<LoginPage />} />
-
+        {/* Public pages for Google OAuth */}
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+        
         {/* Admin routes (AdminLayout renders header/sidebar internally) */}
         <Route
           path="/admin/*"
