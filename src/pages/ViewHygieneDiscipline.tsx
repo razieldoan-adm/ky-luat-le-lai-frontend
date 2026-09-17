@@ -17,6 +17,11 @@ import {
   Button,
   Snackbar,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
+  CircularProgress,
 } from "@mui/material";
 import api from "../api/api";
 import dayjs from "dayjs";
@@ -30,6 +35,10 @@ interface Record {
   recorder?: string;
   scoreChange?: number;
   note?: string;
+  images?: {
+    fileId: string;
+    url: string;
+  }[];
 }
 
 interface Absence {
@@ -65,6 +74,13 @@ export default function ViewHygieneDisciplinePage() {
     message: "",
     severity: "info" as "info" | "success" | "error" | "warning",
   });
+
+  // Chỉ xem ảnh của lỗi xếp hàng — không thêm/xóa ảnh tại trang này
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [imageRecord, setImageRecord] = useState<Record | null>(null);
+  const [imageUrls, setImageUrls] = useState<{ [fileId: string]: string }>({});
+  const [loadingImages, setLoadingImages] = useState(false);
+
 
 useEffect(() => {
   loadWeeks();
@@ -181,6 +197,55 @@ const loadAbsences = async (weekNumber?: number, className?: string) => {
     loadClasses();
   }, []);
 
+  const loadImageUrls = async (record: Record) => {
+    if (!record.images?.length) {
+      setImageUrls({});
+      return;
+    }
+
+    setLoadingImages(true);
+
+    try {
+      const urls: { [fileId: string]: string } = {};
+
+      await Promise.all(
+        record.images.map(async (image) => {
+          try {
+            const res = await api.get(
+              `/api/class-lineup-summaries/${record._id}/images/${image.fileId}`,
+              { responseType: "blob" }
+            );
+
+            urls[image.fileId] = URL.createObjectURL(res.data);
+          } catch (err) {
+            console.error("Lỗi khi tải ảnh:", err);
+          }
+        })
+      );
+
+      setImageUrls(urls);
+    } catch (err) {
+      console.error("Lỗi khi tải hình ảnh:", err);
+      setImageUrls({});
+    } finally {
+      setLoadingImages(false);
+    }
+  };
+
+  const handleViewImages = async (record: Record) => {
+    setImageRecord(record);
+    setImageDialogOpen(true);
+    setImageUrls({});
+    await loadImageUrls(record);
+  };
+
+  const handleCloseImageDialog = () => {
+    Object.values(imageUrls).forEach((url) => URL.revokeObjectURL(url));
+    setImageUrls({});
+    setImageRecord(null);
+    setImageDialogOpen(false);
+  };
+
   const handleWeekChange = (e: any) => {
     const value = e.target.value;
     setSelectedWeek(value);
@@ -286,19 +351,20 @@ const loadAbsences = async (weekNumber?: number, className?: string) => {
               <TableCell>Thời gian</TableCell>
               <TableCell align="center">Điểm trừ</TableCell>
               <TableCell>Ghi chú</TableCell>
+              <TableCell align="center">Hình ảnh</TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={9} align="center">
                   Đang tải...
                 </TableCell>
               </TableRow>
             ) : records.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={9} align="center">
                   Không có dữ liệu
                 </TableCell>
               </TableRow>
@@ -319,6 +385,19 @@ const loadAbsences = async (weekNumber?: number, className?: string) => {
                     -{Math.abs(r.scoreChange ?? 10)}
                   </TableCell>
                   <TableCell>{r.note || "-"}</TableCell>
+                  <TableCell align="center">
+                    {r.images?.length ? (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => handleViewImages(r)}
+                      >
+                        📷 Xem ảnh ({r.images.length})
+                      </Button>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -387,6 +466,114 @@ const loadAbsences = async (weekNumber?: number, className?: string) => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* =====================================================
+          DIALOG XEM ẢNH LỖI XẾP HÀNG
+          Chỉ xem — không có thêm/xóa ảnh
+      ===================================================== */}
+      <Dialog
+        open={imageDialogOpen}
+        onClose={handleCloseImageDialog}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>
+          📷 Hình ảnh vi phạm xếp hàng
+          {imageRecord?.studentName
+            ? ` — ${imageRecord.studentName}`
+            : ""}
+        </DialogTitle>
+
+        <DialogContent dividers>
+          {loadingImages ? (
+            <Box
+              sx={{
+                minHeight: 180,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <CircularProgress />
+            </Box>
+          ) : !imageRecord?.images?.length ? (
+            <Typography
+              color="text.secondary"
+              textAlign="center"
+              sx={{ py: 5 }}
+            >
+              Chưa có hình ảnh.
+            </Typography>
+          ) : (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "repeat(2, 1fr)",
+                },
+                gap: 2,
+              }}
+            >
+              {imageRecord.images.map((image) => (
+                <Box
+                  key={image.fileId}
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    overflow: "hidden",
+                    backgroundColor: "#f5f5f5",
+                  }}
+                >
+                  {imageUrls[image.fileId] ? (
+                    <Box
+                      component="img"
+                      src={imageUrls[image.fileId]}
+                      alt="Hình ảnh vi phạm xếp hàng"
+                      sx={{
+                        display: "block",
+                        width: "100%",
+                        maxHeight: 500,
+                        objectFit: "contain",
+                      }}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        minHeight: 180,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        p: 2,
+                      }}
+                    >
+                      <Typography color="text.secondary">
+                        Không tải được hình ảnh.
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "flex-end",
+            p: 1.5,
+          }}
+        >
+          <Button
+            variant="contained"
+            onClick={handleCloseImageDialog}
+          >
+            Đóng
+          </Button>
+        </Box>
+      </Dialog>
 
       <Snackbar
         open={snackbar.open}
