@@ -445,7 +445,7 @@ export default function RecordClassLineUpSummaryPage() {
         formData
       );
 
-      const updatedRecord: Record =
+      const updatedRecord: LineUpRecord =
         res.data?.record || {
           ...detailItem,
           images: res.data?.images || detailItem.images || [],
