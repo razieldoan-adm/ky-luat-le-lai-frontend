@@ -35,7 +35,7 @@ interface StudentSuggestion {
   className?: string;
 }
 
-interface Record {
+interface LineUpRecord {
   _id: string;
   className: string;
   studentName?: string;
@@ -67,14 +67,14 @@ export default function RecordClassLineUpSummaryPage() {
   const [recorder] = useState("Th.Huy"); // tạm thời mặc định
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState("");
-  const [records, setRecords] = useState<Record[]>([]);
+  const [records, setRecords] = useState<LineUpRecord[]>([]);
   const [loading, setLoading] = useState(false);
 
   // 📷 Hình ảnh vi phạm xếp hàng
-  const [detailItem, setDetailItem] = useState<Record | null>(null);
+  const [detailItem, setDetailItem] = useState<LineUpRecord | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [detailImageUrls, setDetailImageUrls] = useState<Record<string, string>>({});
+  const [detailImageUrls, setDetailImageUrls] = useState<{ [fileId: string]: string }>({});
   const [uploadingImages, setUploadingImages] = useState(false);
   const [loadingDetailImages, setLoadingDetailImages] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -241,7 +241,7 @@ export default function RecordClassLineUpSummaryPage() {
   // 📷 HÌNH ẢNH VI PHẠM XẾP HÀNG
   // ============================================================
 
-  const loadDetailImages = async (record: Record) => {
+  const loadDetailImages = async (record: LineUpRecord) => {
     if (!record.images || record.images.length === 0) {
       setDetailImageUrls({});
       return;
@@ -250,7 +250,7 @@ export default function RecordClassLineUpSummaryPage() {
     setLoadingDetailImages(true);
 
     try {
-      const urls: Record<string, string> = {};
+      const urls: { [fileId: string]: string } = {};
 
       for (const image of record.images) {
         try {
@@ -270,7 +270,7 @@ export default function RecordClassLineUpSummaryPage() {
     }
   };
 
-  const openDetailDialog = (record: Record) => {
+  const openDetailDialog = (record: LineUpRecord) => {
     // Giải phóng preview cũ
     imagePreviews.forEach((url) => URL.revokeObjectURL(url));
 
