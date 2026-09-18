@@ -948,23 +948,78 @@ const openDetailDialog = async (v: Violation) => {
 // 📷 GIẢM DUNG LƯỢNG HÌNH ẢNH
 // Hỗ trợ JPG / PNG / WEBP / HEIC / HEIF
 // ==========================================================
-const compressImage = async (
+
+  const compressImage = async (
   file: File
 ): Promise<File> => {
-  let inputFile = file;
+  const TEN_MB = 10 * 1024 * 1024;
 
   const isHEIC =
     file.type === "image/heic" ||
     file.type === "image/heif" ||
     /\.(heic|heif)$/i.test(file.name);
 
-  // HEIC / HEIF → JPEG
+  // ========================================================
+  // ẢNH <= 10 MB
+  // ========================================================
+
+  if (file.size <= TEN_MB) {
+
+    // JPG/JPEG/PNG/WEBP:
+    // giữ nguyên, không nén
+    if (!isHEIC) {
+      return file;
+    }
+
+    // HEIC/HEIF:
+    // chỉ chuyển sang JPG, KHÔNG nén
+    try {
+      const converted = await heic2any({
+        blob: file,
+        toType: "image/jpeg",
+        quality: 1,
+      });
+
+      const convertedBlob = Array.isArray(converted)
+        ? converted[0]
+        : converted;
+
+      return new File(
+        [convertedBlob],
+        file.name.replace(
+          /\.(heic|heif)$/i,
+          ".jpg"
+        ),
+        {
+          type: "image/jpeg",
+          lastModified: Date.now(),
+        }
+      );
+    } catch (error) {
+      console.error(
+        "❌ Lỗi chuyển HEIC:",
+        error
+      );
+
+      throw new Error(
+        "Không thể chuyển ảnh HEIC sang JPEG."
+      );
+    }
+  }
+
+  // ========================================================
+  // ẢNH > 10 MB → MỚI NÉN
+  // ========================================================
+
+  let inputFile = file;
+
+  // HEIC > 10 MB → chuyển sang JPG trước
   if (isHEIC) {
     try {
       const converted = await heic2any({
         blob: file,
         toType: "image/jpeg",
-        quality: 0.65,
+        quality: 0.85,
       });
 
       const convertedBlob = Array.isArray(converted)
@@ -1030,6 +1085,7 @@ const compressImage = async (
 
   if (!ctx) {
     bitmap.close();
+
     throw new Error(
       "Không thể tạo canvas."
     );
