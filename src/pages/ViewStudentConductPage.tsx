@@ -160,7 +160,7 @@ const normalizeName = (
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/Ä‘/g, "d");
+    .replace(/đ/g, "d");
 
 const normalizeClass = (
   className: string | null | undefined
@@ -173,16 +173,16 @@ const classificationColor = (
   classification?: string
 ): string | undefined => {
   switch (classification) {
-    case "Tá»‘t":
+    case "Tốt":
       return "#2e7d32";
 
-    case "KhÃ¡":
+    case "Khá":
       return "#1565c0";
 
-    case "Äáº¡t":
+    case "Đạt":
       return "#ed6c02";
 
-    case "ChÆ°a Ä‘áº¡t":
+    case "Chưa đạt":
       return "#d32f2f";
 
     default:
@@ -200,9 +200,9 @@ const getConductRowStyle = (
     .trim()
     .toLowerCase();
 
-  // Tá»‘t nhÆ°ng cÃ³ bá»‹ trá»« Ä‘iá»ƒm â†’ Ä‘Ã¡nh dáº¥u lÃ  cÃ³ vi pháº¡m.
-  // Táº¥t cáº£ má»©c trá»« > 0 dÃ¹ng Ä‘Ãºng má»™t mÃ u.
-  if (value === "tá»‘t") {
+  // Tốt nhưng có bị trừ điểm → đánh dấu là có vi phạm.
+  // Tất cả mức trừ > 0 dùng đúng một màu.
+  if (value === "tốt") {
     return deduction > 0
       ? {
           backgroundColor:
@@ -211,19 +211,19 @@ const getConductRowStyle = (
       : {};
   }
 
-  if (value === "khÃ¡") {
+  if (value === "khá") {
     return {
       backgroundColor: "#fff3cd",
     };
   }
 
-  if (value === "Ä‘áº¡t") {
+  if (value === "đạt") {
     return {
       backgroundColor: "#ffe0b2",
     };
   }
 
-  if (value === "chÆ°a Ä‘áº¡t") {
+  if (value === "chưa đạt") {
     return {
       backgroundColor: "#ffcdd2",
     };
@@ -240,21 +240,21 @@ const getExcelConductFillColor = (
     .trim()
     .toLowerCase();
 
-  if (value === "tá»‘t") {
+  if (value === "tốt") {
     return deduction > 0
       ? VIOLATION_HIGHLIGHT_COLOR.replace("#", "")
       : undefined;
   }
 
-  if (value === "khÃ¡") {
+  if (value === "khá") {
     return "FFF3CD";
   }
 
-  if (value === "Ä‘áº¡t") {
+  if (value === "đạt") {
     return "FFE0B2";
   }
 
-  if (value === "chÆ°a Ä‘áº¡t") {
+  if (value === "chưa đạt") {
     return "FFCDD2";
   }
 
@@ -307,35 +307,35 @@ const getWeeklyClassification = (
   score: number
 ): string => {
   if (score >= 90) {
-    return "Tá»‘t";
+    return "Tốt";
   }
 
   if (score >= 70) {
-    return "KhÃ¡";
+    return "Khá";
   }
 
   if (score >= 50) {
-    return "Äáº¡t";
+    return "Đạt";
   }
 
-  return "ChÆ°a Ä‘áº¡t";
+  return "Chưa đạt";
 };
 
 const lowerClassificationOneLevel = (
   classification: string
 ): string => {
   switch (classification) {
-    case "Tá»‘t":
-      return "KhÃ¡";
+    case "Tốt":
+      return "Khá";
 
-    case "KhÃ¡":
-      return "Äáº¡t";
+    case "Khá":
+      return "Đạt";
 
-    case "Äáº¡t":
-      return "ChÆ°a Ä‘áº¡t";
+    case "Đạt":
+      return "Chưa đạt";
 
-    case "ChÆ°a Ä‘áº¡t":
-      return "ChÆ°a Ä‘áº¡t";
+    case "Chưa đạt":
+      return "Chưa đạt";
 
     default:
       return classification;
@@ -365,7 +365,6 @@ const hasSeriousViolationGroup = (
       Number(count ?? 0) > 0
   );
 };
-
 const monthStart = (
   month: number,
   year: number
@@ -628,7 +627,7 @@ const getClassesByGrade = (grade: string) => {
         setStudyWeeks(list);
 
         // ---------------------------------------------
-        // Láº¤Y TUáº¦N HIá»†N Táº I
+        // LẤY TUẦN HIỆN TẠI
         // ---------------------------------------------
 
         try {
@@ -666,7 +665,7 @@ const getClassesByGrade = (grade: string) => {
         }
       } catch (error) {
         console.error(
-          "Lá»—i táº£i danh sÃ¡ch tuáº§n:",
+          "Lỗi tải danh sách tuần:",
           error
         );
 
@@ -675,7 +674,7 @@ const getClassesByGrade = (grade: string) => {
         setSnackbar({
           open: true,
           message:
-            "KhÃ´ng thá»ƒ táº£i danh sÃ¡ch tuáº§n há»c",
+            "Không thể tải danh sách tuần học",
           severity: "error",
         });
       } finally {
@@ -759,7 +758,7 @@ const getClassesByGrade = (grade: string) => {
         setClasses(list);
       } catch (error) {
         console.error(
-          "Lá»—i táº£i danh sÃ¡ch lá»›p:",
+          "Lỗi tải danh sách lớp:",
           error
         );
 
@@ -768,7 +767,7 @@ const getClassesByGrade = (grade: string) => {
         setSnackbar({
           open: true,
           message:
-            "KhÃ´ng thá»ƒ táº£i danh sÃ¡ch lá»›p",
+            "Không thể tải danh sách lớp",
           severity: "error",
         });
       } finally {
@@ -776,7 +775,7 @@ const getClassesByGrade = (grade: string) => {
       }
     }, []);
   // =========================================================
-  // DIALOG XUáº¤T EXCEL
+  // DIALOG XUẤT EXCEL
   // =========================================================
 
 const openExportDialog = () => {
@@ -898,7 +897,7 @@ const openExportDialog = () => {
     }
   );
 
-  // Náº¿u trÃ¹ng tÃªn â†’ xÃ©t toÃ n bá»™ há» tÃªn
+  // Nếu trùng tên → xét toàn bộ họ tên
   if (compareName !== 0) {
     return compareName;
   }
@@ -915,7 +914,7 @@ const openExportDialog = () => {
         setStudents(result);
       } catch (error) {
         console.error(
-          "Lá»—i táº£i há»c sinh:",
+          "Lỗi tải học sinh:",
           error
         );
 
@@ -924,7 +923,7 @@ const openExportDialog = () => {
         setSnackbar({
           open: true,
           message:
-            `KhÃ´ng thá»ƒ táº£i há»c sinh lá»›p ${selectedClass}`,
+            `Không thể tải học sinh lớp ${selectedClass}`,
           severity: "error",
         });
       } finally {
@@ -932,7 +931,7 @@ const openExportDialog = () => {
       }
     }, [selectedClass]);
 // =========================================================
-// Láº¤Y DANH SÃCH Há»ŒC SINH 1 Lá»šP - DÃ™NG KHI XUáº¤T EXCEL
+// LẤY DANH SÁCH HỌC SINH 1 LỚP - DÙNG KHI XUẤT EXCEL
 // =========================================================
 
 const loadStudentsForExport = async (
@@ -1027,7 +1026,7 @@ const loadStudentsForExport = async (
     });
   } catch (error) {
     console.error(
-      `âŒ Lá»—i táº£i há»c sinh lá»›p ${className}:`,
+      `❌ Lỗi tải học sinh lớp ${className}:`,
       error
     );
 
@@ -1035,7 +1034,7 @@ const loadStudentsForExport = async (
   }
 };
   // =========================================================
-// GHÃ‰P DANH SÃCH Há»ŒC SINH + Dá»® LIá»†U Háº NH KIá»‚M TUáº¦N
+// GHÉP DANH SÁCH HỌC SINH + DỮ LIỆU HẠNH KIỂM TUẦN
 // =========================================================
 
 const mergeStudentsWithWeeklyData = (
@@ -1052,6 +1051,7 @@ const mergeStudentsWithWeeklyData = (
             normalizeClass(item.className) ===
               normalizeClass(student.className)
         );
+
       return {
         stt: index + 1,
 
@@ -1066,7 +1066,7 @@ const mergeStudentsWithWeeklyData = (
   );
 };
   // =========================================================
-// XUáº¤T EXCEL THEO KHá»I - Má»–I Lá»šP 1 SHEET
+// XUẤT EXCEL THEO KHỐI - MỖI LỚP 1 SHEET
 // =========================================================
 
 const exportConductExcel = async () => {
@@ -1086,7 +1086,7 @@ const exportConductExcel = async () => {
     const gradeClasses =
       getClassesByGrade(exportGrade);
 
-    // Táº¡o workbook má»›i
+    // Tạo workbook mới
     const workbook =
       XLSX.utils.book_new();
 
@@ -1095,7 +1095,7 @@ const exportConductExcel = async () => {
         classItem.className;
 
       // -----------------------------------------
-      // Láº¤Y Há»ŒC SINH
+      // LẤY HỌC SINH
       // -----------------------------------------
 
       const studentsForExport =
@@ -1104,7 +1104,7 @@ const exportConductExcel = async () => {
         );
 
       // -----------------------------------------
-      // Láº¤Y Háº NH KIá»‚M
+      // LẤY HẠNH KIỂM
       // -----------------------------------------
 
       const weeklyDataForExport =
@@ -1114,7 +1114,7 @@ const exportConductExcel = async () => {
         );
 
       // -----------------------------------------
-      // GHÃ‰P Dá»® LIá»†U
+      // GHÉP DỮ LIỆU
       // -----------------------------------------
 
       const mergedData =
@@ -1123,59 +1123,59 @@ const exportConductExcel = async () => {
           weeklyDataForExport
         );
       console.log(
-  `ðŸ”Ž CONDUCT ${className}:`,
+  `🔎 CONDUCT ${className}:`,
       mergedData[0]?.conduct
     );
 // -----------------------------------------
-// Táº O Dá»® LIá»†U SHEET
+// TẠO DỮ LIỆU SHEET
 // -----------------------------------------
 
 const sheetData = mergedData.map((item) => {
   const conduct = item.conduct;
 
   // ================================
-  // ÄIá»‚M Äáº¦U
+  // ĐIỂM ĐẦU
   // ================================
   const startScore = 100;
 
   // ================================
-  // Sá» Láº¦N VI PHáº M
+  // SỐ LẦN VI PHẠM
   // ================================
   const violationCount =
     conduct?.totalConductViolations ?? 0;
 
   // ================================
-  // ÄIá»‚M TRá»ª
+  // ĐIỂM TRỪ
   // ================================
   const deduction =
     conduct?.totalDeduction ?? 0;
 
   return {
     "STT": item.stt,
-    "Há»Œ VÃ€ TÃŠN": item.name,
-    "Lá»šP": item.className,
+    "HỌ VÀ TÊN": item.name,
+    "LỚP": item.className,
 
-    "ÄIá»‚M Äáº¦U": startScore,
+    "ĐIỂM ĐẦU": startScore,
 
-    "VI PHáº M/Láº¦N":
+    "VI PHẠM/LẦN":
       violationCount,
 
-    "TRá»ª":
+    "TRỪ":
       deduction,
 
-    // Máº·c Ä‘á»‹nh 0 Ä‘á»ƒ ngÆ°á»i dÃ¹ng cÃ³ thá»ƒ sá»­a trá»±c tiáº¿p
-    "VIá»†C Tá»T": 0,
+    // Mặc định 0 để người dùng có thể sửa trực tiếp
+    "VIỆC TỐT": 0,
 
-    // Máº·c Ä‘á»‹nh 0
-    "Cá»˜NG": 0,
+    // Mặc định 0
+    "CỘNG": 0,
 
-    // Sáº½ thay báº±ng cÃ´ng thá»©c Excel sau
-    "ÄIá»‚M CUá»I": null,
+    // Sẽ thay bằng công thức Excel sau
+    "ĐIỂM CUỐI": null,
 
-    // Sáº½ thay báº±ng cÃ´ng thá»©c Excel sau
-    "Xáº¾P LOáº I": "",
+    // Sẽ thay bằng công thức Excel sau
+    "XẾP LOẠI": "",
 
-    "GHI CHÃš": "",
+    "GHI CHÚ": "",
 
     "S": 0,
   };
@@ -1183,20 +1183,20 @@ const sheetData = mergedData.map((item) => {
 
 
 // =========================================================
-// Táº O WORKSHEET
+// TẠO WORKSHEET
 // =========================================================
 
 const worksheet = XLSX.utils.aoa_to_sheet([]);
 
 // =========================================================
-// TIÃŠU Äá»€
+// TIÊU ĐỀ
 // =========================================================
 
 XLSX.utils.sheet_add_aoa(
   worksheet,
   [
     [
-      `Báº¢NG THEO DÃ•I ÄIá»‚M RÃˆN LUYá»†N TUáº¦N ${weekNumber}`,
+      `BẢNG THEO DÕI ĐIỂM RÈN LUYỆN TUẦN ${weekNumber}`,
     ],
   ],
   {
@@ -1205,19 +1205,19 @@ XLSX.utils.sheet_add_aoa(
 );
 
 // =========================================================
-// THÃ”NG TIN Lá»šP + KHá»I
+// THÔNG TIN LỚP + KHỐI
 // =========================================================
 
 XLSX.utils.sheet_add_aoa(
   worksheet,
   [
     [
-      `Lá»›p: ${className}`,
+      `Lớp: ${className}`,
       "",
       "",
       "",
       "",
-      `Khá»‘i: ${exportGrade}`,
+      `Khối: ${exportGrade}`,
     ],
   ],
   {
@@ -1226,7 +1226,7 @@ XLSX.utils.sheet_add_aoa(
 );
 
 // =========================================================
-// Gá»˜P TIÃŠU Äá»€
+// GỘP TIÊU ĐỀ
 // =========================================================
 
 worksheet["!merges"] = [
@@ -1237,7 +1237,7 @@ worksheet["!merges"] = [
 ];
 
 // =========================================================
-// THÃŠM Dá»® LIá»†U Há»ŒC SINH
+// THÊM DỮ LIỆU HỌC SINH
 // =========================================================
 
 XLSX.utils.sheet_add_json(
@@ -1249,37 +1249,17 @@ XLSX.utils.sheet_add_json(
   }
 );
 // =========================================================
-// CÃ”NG THá»¨C ÄIá»‚M CUá»I + Xáº¾P LOáº I
+// CÔNG THỨC ĐIỂM CUỐI + XẾP LOẠI
 // =========================================================
 
-// DÃ²ng dá»¯ liá»‡u Ä‘áº§u tiÃªn lÃ  dÃ²ng 5
-// VÃ¬:
-// dÃ²ng 1 = tiÃªu Ä‘á»
-// dÃ²ng 2 = thÃ´ng tin lá»›p
-// dÃ²ng 3 = trá»‘ng
-// dÃ²ng 4 = tiÃªu Ä‘á» cá»™t
+// Dòng dữ liệu đầu tiên là dòng 5
+// Vì:
+// dòng 1 = tiêu đề
+// dòng 2 = thông tin lớp
+// dòng 3 = trống
+// dòng 4 = tiêu đề cột
 
 for (let row = 5; row < 5 + sheetData.length; row++) {
-
-  // -------------------------------------------------------
-  // ÄIá»‚M CUá»I
-  // = ÄIá»‚M Äáº¦U - TRá»ª + Cá»˜NG
-  // D = ÄIá»‚M Äáº¦U
-  // F = TRá»ª
-  // H = Cá»˜NG
-  // -------------------------------------------------------
-
-  // -------------------------------------------------------
-  // Xáº¾P LOáº I
-  //
-  // 90 - 100  = Tá»‘t
-  // 70 - 89   = KhÃ¡
-  // 50 - 69   = Äáº¡t
-  // 0 - 49    = ChÆ°a Ä‘áº¡t
-  // -------------------------------------------------------
-
-  // LÆ°u Ã½: cá»™t L Ä‘Æ°á»£c táº¡o á»Ÿ Ä‘Ã¢y trong Ä‘Ãºng vÃ²ng láº·p
-  // Ä‘á»ƒ dataIndex khÃ´ng bá»‹ sá»­ dá»¥ng ngoÃ i pháº¡m vi.
   const dataIndex = row - 5;
 
   const hasSeriousViolation =
@@ -1287,47 +1267,43 @@ for (let row = 5; row < 5 + sheetData.length; row++) {
       mergedData[dataIndex]?.conduct?.groupViolations
     );
 
-  // Cá»™t L: 1 = cÃ³ lá»—i nhÃ³m S, 0 = khÃ´ng cÃ³
   worksheet[`L${row}`] = {
     t: "n",
     v: hasSeriousViolation ? 1 : 0,
   };
 
-  // Cá»™t I: ÄIá»‚M CUá»I
   worksheet[`I${row}`] = {
     t: "n",
     f: `D${row}-F${row}+H${row}`,
   };
 
-  // Cá»™t J: Xáº¾P LOáº I
-  // CÃ³ lá»—i nhÃ³m S thÃ¬ háº¡ Ä‘Ãºng 1 báº­c.
   worksheet[`J${row}`] = {
     t: "s",
-    f: `IF(I${row}>=90,IF(L${row}=1,"KhÃ¡","Tá»‘t"),IF(I${row}>=70,IF(L${row}=1,"Äáº¡t","KhÃ¡"),IF(I${row}>=50,IF(L${row}=1,"ChÆ°a Ä‘áº¡t","Äáº¡t"),"ChÆ°a Ä‘áº¡t")))`,
+    f: `IF(I${row}>=90,IF(L${row}=1,"Khá","Tốt"),IF(I${row}>=70,IF(L${row}=1,"Đạt","Khá"),IF(I${row}>=50,IF(L${row}=1,"Chưa đạt","Đạt"),"Chưa đạt")))`,
   };
 }
 
 // =========================================================
-// Äá»˜ Rá»˜NG Cá»˜T
+// ĐỘ RỘNG CỘT
 // =========================================================
 
 worksheet["!cols"] = [
   { wch: 8 },   // A - STT
-  { wch: 30 },  // B - Há»Œ VÃ€ TÃŠN
-  { wch: 10 },  // C - Lá»šP
-  { wch: 12 },  // D - ÄIá»‚M Äáº¦U
-  { wch: 15 },  // E - VI PHáº M/Láº¦N
-  { wch: 10 },  // F - TRá»ª
-  { wch: 12 },  // G - VIá»†C Tá»T
-  { wch: 10 },  // H - Cá»˜NG
-  { wch: 12 },  // I - ÄIá»‚M CUá»I
-  { wch: 14 },  // J - Xáº¾P LOáº I
-  { wch: 25 },  // K - GHI CHÃš
-  { wch: 8, hidden: true }, // L - S (cá»™t ká»¹ thuáº­t)
+  { wch: 30 },  // B - HỌ VÀ TÊN
+  { wch: 10 },  // C - LỚP
+  { wch: 12 },  // D - ĐIỂM ĐẦU
+  { wch: 15 },  // E - VI PHẠM/LẦN
+  { wch: 10 },  // F - TRỪ
+  { wch: 12 },  // G - VIỆC TỐT
+  { wch: 10 },  // H - CỘNG
+  { wch: 12 },  // I - ĐIỂM CUỐI
+  { wch: 14 },  // J - XẾP LOẠI
+  { wch: 25 },  // K - GHI CHÚ
+  { wch: 8, hidden: true }, // L - S
 ];
 
 // =========================================================
-// CHIá»€U CAO DÃ’NG
+// CHIỀU CAO DÒNG
 // =========================================================
 
 worksheet["!rows"] = [];
@@ -1359,7 +1335,7 @@ for (
 }
 
 // =========================================================
-// Äá»ŠNH Dáº NG TOÃ€N Bá»˜ Báº¢NG
+// ĐỊNH DẠNG TOÀN BỘ BẢNG
 // =========================================================
 
 const totalRows =
@@ -1425,7 +1401,7 @@ for (
 }
 
 // =========================================================
-// Äá»ŠNH Dáº NG TIÃŠU Äá»€ Báº¢NG - DÃ’NG 4
+// ĐỊNH DẠNG TIÊU ĐỀ BẢNG - DÒNG 4
 // =========================================================
 
 for (
@@ -1476,7 +1452,7 @@ for (
 }
 
 // =========================================================
-// TIÃŠU Äá»€ Lá»šN A1
+// TIÊU ĐỀ LỚN A1
 // =========================================================
 
 if (worksheet["A1"]) {
@@ -1495,7 +1471,7 @@ if (worksheet["A1"]) {
 }
 
 // =========================================================
-// THÃ”NG TIN Lá»šP - A2
+// THÔNG TIN LỚP - A2
 // =========================================================
 
 if (worksheet["A2"]) {
@@ -1514,7 +1490,7 @@ if (worksheet["A2"]) {
 }
 
 // =========================================================
-// KHá»I - F2
+// KHỐI - F2
 // =========================================================
 
 if (worksheet["F2"]) {
@@ -1533,13 +1509,13 @@ if (worksheet["F2"]) {
 }
 
 // =========================================================
-// MÃ€U Xáº¾P LOáº I + ÄÃNH Dáº¤U CÃ“ VI PHáº M KHI XUáº¤T EXCEL
+// MÀU XẾP LOẠI + ĐÁNH DẤU CÓ VI PHẠM KHI XUẤT EXCEL
 // =========================================================
 //
-// Quy táº¯c:
-// - Tá»‘t + khÃ´ng bá»‹ trá»«: khÃ´ng tÃ´ mÃ u.
-// - Tá»‘t + cÃ³ bá»‹ trá»«: má»™t mÃ u highlight duy nháº¥t.
-// - KhÃ¡ / Äáº¡t / ChÆ°a Ä‘áº¡t: má»—i má»©c má»™t mÃ u riÃªng.
+// Quy tắc:
+// - Tốt + không bị trừ: không tô màu.
+// - Tốt + có bị trừ: một màu highlight duy nhất.
+// - Khá / Đạt / Chưa đạt: mỗi mức một màu riêng.
 // =========================================================
 
 for (
@@ -1548,26 +1524,22 @@ for (
   dataIndex++
 ) {
   const excelRow = dataIndex + 5;
-
   const deduction = Number(
-    sheetData[dataIndex]["TRá»ª"] ?? 0
+    sheetData[dataIndex]["TRỪ"] ?? 0
   );
 
   const bonus = Number(
-    sheetData[dataIndex]["Cá»˜NG"] ?? 0
+    sheetData[dataIndex]["CỘNG"] ?? 0
   );
 
-  // Äiá»ƒm cuá»‘i thá»±c táº¿ = ÄIá»‚M Äáº¦U - TRá»ª + Cá»˜NG
   const finalScore =
     100 - deduction + bonus;
 
-  // CÃ³ Ã­t nháº¥t 1 lá»—i nhÃ³m S thÃ¬ háº¡ 1 báº­c
   const hasSeriousViolation =
     hasSeriousViolationGroup(
       mergedData[dataIndex]?.conduct?.groupViolations
     );
 
-  // Xáº¿p loáº¡i pháº£i giá»‘ng Ä‘Ãºng quy táº¯c trÃªn web
   const classification =
     getFinalWeeklyClassification(
       finalScore,
@@ -1581,7 +1553,6 @@ for (
     );
 
   if (!fillColor) continue;
-
   for (
     let col = 0;
     col < totalCols;
@@ -1611,7 +1582,7 @@ for (
 }
 
 // =========================================================
-// THÃŠM SHEET
+// THÊM SHEET
 // =========================================================
 
 XLSX.utils.book_append_sheet(
@@ -1621,7 +1592,7 @@ XLSX.utils.book_append_sheet(
 );
     }
     // -----------------------------------------
-    // Táº¢I FILE
+    // TẢI FILE
     // -----------------------------------------
 
     const fileName =
@@ -1635,7 +1606,7 @@ XLSX.utils.book_append_sheet(
     setSnackbar({
       open: true,
       message:
-        `ÄÃ£ xuáº¥t Excel khá»‘i ${exportGrade}, tuáº§n ${weekNumber}`,
+        `Đã xuất Excel khối ${exportGrade}, tuần ${weekNumber}`,
       severity: "success",
     });
 
@@ -1643,14 +1614,14 @@ XLSX.utils.book_append_sheet(
 
   } catch (error) {
     console.error(
-      "âŒ Lá»–I XUáº¤T EXCEL:",
+      "❌ LỖI XUẤT EXCEL:",
       error
     );
 
     setSnackbar({
       open: true,
       message:
-        "KhÃ´ng thá»ƒ xuáº¥t file Excel.",
+        "Không thể xuất file Excel.",
       severity: "error",
     });
   } finally {
@@ -1710,7 +1681,7 @@ XLSX.utils.book_append_sheet(
         );
       } catch (error) {
         console.error(
-          "Lá»—i táº£i Ä‘iá»ƒm háº¡nh kiá»ƒm tuáº§n:",
+          "Lỗi tải điểm hạnh kiểm tuần:",
           error
         );
 
@@ -1719,7 +1690,7 @@ XLSX.utils.book_append_sheet(
         setSnackbar({
           open: true,
           message:
-            "KhÃ´ng thá»ƒ táº£i dá»¯ liá»‡u háº¡nh kiá»ƒm tuáº§n",
+            "Không thể tải dữ liệu hạnh kiểm tuần",
           severity: "error",
         });
       } finally {
@@ -1730,14 +1701,14 @@ XLSX.utils.book_append_sheet(
       selectedWeek,
     ]);
   // =========================================================
-// FINALIZE TOÃ€N TRÆ¯á»œNG THEO TUáº¦N
+// FINALIZE TOÀN TRƯỜNG THEO TUẦN
 // =========================================================
 
 const handleFinalizeWeek = async () => {
   if (selectedWeek === "") {
     setSnackbar({
       open: true,
-      message: "Vui lÃ²ng chá»n tuáº§n trÆ°á»›c khi duyá»‡t",
+      message: "Vui lòng chọn tuần trước khi duyệt",
       severity: "warning",
     });
 
@@ -1745,7 +1716,7 @@ const handleFinalizeWeek = async () => {
   }
 
   const confirmed = window.confirm(
-    `Báº¡n cÃ³ cháº¯c muá»‘n duyá»‡t Ä‘iá»ƒm rÃ¨n luyá»‡n TOÃ€N TRÆ¯á»œNG cá»§a tuáº§n ${selectedWeek} khÃ´ng?`
+    `Bạn có chắc muốn duyệt điểm rèn luyện TOÀN TRƯỜNG của tuần ${selectedWeek} không?`
   );
 
   if (!confirmed) {
@@ -1764,7 +1735,7 @@ const handleFinalizeWeek = async () => {
     );
 
     console.log(
-      "âœ… Káº¾T QUáº¢ DUYá»†T TOÃ€N TRÆ¯á»œNG:",
+      "✅ KẾT QUẢ DUYỆT TOÀN TRƯỜNG:",
       res.data
     );
 
@@ -1772,16 +1743,16 @@ const handleFinalizeWeek = async () => {
       open: true,
       message:
         res.data?.message ||
-        `ÄÃ£ duyá»‡t rÃ¨n luyá»‡n toÃ n trÆ°á»ng tuáº§n ${selectedWeek}`,
+        `Đã duyệt rèn luyện toàn trường tuần ${selectedWeek}`,
       severity: "success",
     });
 
-    // Táº£i láº¡i dá»¯ liá»‡u lá»›p Ä‘ang xem
+    // Tải lại dữ liệu lớp đang xem
     await loadWeeklyData();
 
   } catch (error: any) {
     console.error(
-      "âŒ Lá»—i duyá»‡t rÃ¨n luyá»‡n toÃ n trÆ°á»ng:",
+      "❌ Lỗi duyệt rèn luyện toàn trường:",
       error
     );
      const status = error?.response?.status;
@@ -1790,7 +1761,7 @@ const handleFinalizeWeek = async () => {
     setSnackbar({
       open: true,
       message:
-        "Báº¡n khÃ´ng pháº£i QTV, khÃ´ng cÃ³ quyá»n duyá»‡t.",
+        "Bạn không phải QTV, không có quyền duyệt.",
       severity: "warning",
     });
 
@@ -1800,7 +1771,7 @@ const handleFinalizeWeek = async () => {
       open: true,
       message:
         error?.response?.data?.message ||
-        "KhÃ´ng thá»ƒ duyá»‡t rÃ¨n luyá»‡n toÃ n trÆ°á»ng",
+        "Không thể duyệt rèn luyện toàn trường",
       severity: "error",
     });
   } finally {
@@ -1808,7 +1779,7 @@ const handleFinalizeWeek = async () => {
   }
 };
   // =========================================================
-// Láº¤Y Dá»® LIá»†U Háº NH KIá»‚M TUáº¦N CHO 1 Lá»šP - DÃ™NG KHI XUáº¤T EXCEL
+// LẤY DỮ LIỆU HẠNH KIỂM TUẦN CHO 1 LỚP - DÙNG KHI XUẤT EXCEL
 // =========================================================
 
 const loadWeeklyDataForExport = async (
@@ -1832,7 +1803,7 @@ const loadWeeklyDataForExport = async (
       : [];
   } catch (error) {
     console.error(
-      `âŒ Lá»—i táº£i dá»¯ liá»‡u lá»›p ${className}, tuáº§n ${weekNumber}:`,
+      `❌ Lỗi tải dữ liệu lớp ${className}, tuần ${weekNumber}:`,
       error
     );
 
@@ -1856,7 +1827,7 @@ const loadWeeklyDataForExport = async (
 
       try {
         // ---------------------------------------------
-        // 1. API THÃNG
+        // 1. API THÁNG
         // ---------------------------------------------
 
         const monthlyRes =
@@ -1888,7 +1859,7 @@ const loadWeeklyDataForExport = async (
         );
 
         // ---------------------------------------------
-        // 2. XÃC Äá»ŠNH CÃC TUáº¦N TRONG THÃNG
+        // 2. XÁC ĐỊNH CÁC TUẦN TRONG THÁNG
         // ---------------------------------------------
 
         let monthWeeks =
@@ -1903,8 +1874,8 @@ const loadWeeklyDataForExport = async (
 
         // ---------------------------------------------
         // FALLBACK:
-        // Náº¿u study-week khÃ´ng cÃ³ start/end thÃ¬
-        // láº¥y weekNumbers tá»« dá»¯ liá»‡u thÃ¡ng.
+        // Nếu study-week không có start/end thì
+        // lấy weekNumbers từ dữ liệu tháng.
         // ---------------------------------------------
 
         if (
@@ -1953,11 +1924,11 @@ const loadWeeklyDataForExport = async (
         }
 
         // ---------------------------------------------
-        // 3. Gá»ŒI API TUáº¦N CHO Tá»ªNG TUáº¦N
+        // 3. GỌI API TUẦN CHO TỪNG TUẦN
         //
-        // Má»¥c Ä‘Ã­ch:
-        // Tuáº§n 1 -> Äiá»ƒm + Xáº¿p loáº¡i
-        // Tuáº§n 2 -> Äiá»ƒm + Xáº¿p loáº¡i
+        // Mục đích:
+        // Tuần 1 -> Điểm + Xếp loại
+        // Tuần 2 -> Điểm + Xếp loại
         // ...
         // ---------------------------------------------
 
@@ -1990,7 +1961,7 @@ const loadWeeklyDataForExport = async (
                     : [];
                 } catch (error) {
                   console.error(
-                    `Lá»—i táº£i rÃ¨n luyá»‡n tuáº§n ${week.weekNumber}:`,
+                    `Lỗi tải rèn luyện tuần ${week.weekNumber}:`,
                     error
                   );
 
@@ -2008,7 +1979,7 @@ const loadWeeklyDataForExport = async (
         );
       } catch (error) {
         console.error(
-          "Lá»—i táº£i dá»¯ liá»‡u rÃ¨n luyá»‡n thÃ¡ng:",
+          "Lỗi tải dữ liệu rèn luyện tháng:",
           error
         );
 
@@ -2018,7 +1989,7 @@ const loadWeeklyDataForExport = async (
         setSnackbar({
           open: true,
           message:
-            "KhÃ´ng thá»ƒ táº£i dá»¯ liá»‡u rÃ¨n luyá»‡n thÃ¡ng",
+            "Không thể tải dữ liệu rèn luyện tháng",
           severity: "error",
         });
       } finally {
@@ -2063,7 +2034,7 @@ const loadWeeklyDataForExport = async (
         );
       } catch (error) {
         console.error(
-          "Lá»—i táº£i háº¡nh kiá»ƒm nÄƒm:",
+          "Lỗi tải hạnh kiểm năm:",
           error
         );
 
@@ -2072,7 +2043,7 @@ const loadWeeklyDataForExport = async (
         setSnackbar({
           open: true,
           message:
-            "KhÃ´ng thá»ƒ táº£i dá»¯ liá»‡u háº¡nh kiá»ƒm nÄƒm",
+            "Không thể tải dữ liệu hạnh kiểm năm",
           severity: "error",
         });
       } finally {
@@ -2093,7 +2064,7 @@ const loadWeeklyDataForExport = async (
         setSnackbar({
           open: true,
           message:
-            "Vui lÃ²ng chá»n lá»›p",
+            "Vui lòng chọn lớp",
           severity: "warning",
         });
 
@@ -2107,7 +2078,7 @@ const loadWeeklyDataForExport = async (
         setSnackbar({
           open: true,
           message:
-            "Vui lÃ²ng chá»n tuáº§n",
+            "Vui lòng chọn tuần",
           severity: "warning",
         });
 
@@ -2121,7 +2092,7 @@ const loadWeeklyDataForExport = async (
         setSnackbar({
           open: true,
           message:
-            "Vui lÃ²ng chá»n thÃ¡ng há»c",
+            "Vui lòng chọn tháng học",
           severity: "warning",
         });
 
@@ -2156,10 +2127,10 @@ setHasLoadedData(true);
 
 const changeViewMode =
   (mode: ViewMode) => {
-    // Äá»•i cháº¿ Ä‘á»™ xem -> luÃ´n trá»Ÿ vá» tráº¡ng thÃ¡i trá»‘ng
+    // Đổi chế độ xem -> luôn trở về trạng thái trống
     setViewMode(mode);
 
-    // XÃ“A TOÃ€N Bá»˜ Dá»® LIá»†U ÄANG HIá»‚N THá»Š
+    // XÓA TOÀN BỘ DỮ LIỆU ĐANG HIỂN THỊ
     setHasLoadedData(false);
 
     setStudents([]);
@@ -2169,8 +2140,8 @@ const changeViewMode =
     setMonthlyWeeklyData([]);
     setAnnualData([]);
 
-    // KhÃ´ng tá»± Ä‘á»™ng táº£i láº¡i dá»¯ liá»‡u
-    // Pháº£i báº¥m "XEM Dá»® LIá»†U"
+    // Không tự động tải lại dữ liệu
+    // Phải bấm "XEM DỮ LIỆU"
     if (mode === "month") {
       setSelectedMonthKey(
         `${SCHOOL_MONTHS[0].month}-${SCHOOL_MONTHS[0].year}`
@@ -2508,7 +2479,7 @@ const changeViewMode =
             mb: 0.8,
           }}
         >
-          ChÃº thÃ­ch nhÃ³m vi pháº¡m
+          Chú thích nhóm vi phạm
         </Typography>
 
         <Box
@@ -2524,36 +2495,36 @@ const changeViewMode =
         >
           <Typography variant="body2">
             <strong>N1:</strong>{" "}
-            ChuyÃªn cáº§n, Ä‘á»“ng phá»¥c,
-            tÃ¡c phong
+            Chuyên cần, đồng phục,
+            tác phong
           </Typography>
 
           <Typography variant="body2">
             <strong>N2:</strong>{" "}
-            Vá»‡ sinh, trá»±c nháº­t,
-            xáº¿p hÃ ng, chÃ o cá»,
-            sinh hoáº¡t táº­p thá»ƒ
+            Vệ sinh, trực nhật,
+            xếp hàng, chào cờ,
+            sinh hoạt tập thể
           </Typography>
 
           <Typography variant="body2">
             <strong>N3:</strong>{" "}
-            Thiáº¿t bá»‹, Ä‘iá»‡n thoáº¡i,
-            tráº­t tá»± há»c táº­p
+            Thiết bị, điện thoại,
+            trật tự học tập
           </Typography>
 
           <Typography variant="body2">
             <strong>N4:</strong>{" "}
-            Báº£o quáº£n cÆ¡ sá»Ÿ váº­t cháº¥t
+            Bảo quản cơ sở vật chất
           </Typography>
 
           <Typography variant="body2">
             <strong>N5:</strong>{" "}
-            CÃ¡c vi pháº¡m ná»™i quy khÃ¡c
+            Các vi phạm nội quy khác
           </Typography>
 
           <Typography variant="body2">
             <strong>S1:</strong>{" "}
-            Äáº·c biá»‡t nghiÃªm trá»ng
+            Đặc biệt nghiêm trọng
           </Typography>
         </Box>
 
@@ -2564,11 +2535,11 @@ const changeViewMode =
             mt: 0.7,
           }}
         >
-          Má»—i vi pháº¡m N1-N5 bá»‹
-          trá»« 1 Ä‘iá»ƒm. S1 khÃ´ng
-          trá»« Ä‘iá»ƒm nhÆ°ng Ä‘Æ°á»£c
-          ghi nháº­n lÃ  vi pháº¡m
-          nghiÃªm trá»ng.
+          Mỗi vi phạm N1-N5 bị
+          trừ 1 điểm. S1 không
+          trừ điểm nhưng được
+          ghi nhận là vi phạm
+          nghiêm trọng.
         </Typography>
       </Paper>
     );
@@ -2600,7 +2571,7 @@ const changeViewMode =
             variant="body2"
             color="text.secondary"
           >
-            Tá»•ng báº£n ghi
+            Tổng bản ghi
           </Typography>
 
           <Typography
@@ -2623,7 +2594,7 @@ const changeViewMode =
             variant="body2"
             color="text.secondary"
           >
-            HS cÃ³ vi pháº¡m
+            HS có vi phạm
           </Typography>
 
           <Typography
@@ -2650,7 +2621,7 @@ const changeViewMode =
             variant="body2"
             color="text.secondary"
           >
-            HS khÃ´ng vi pháº¡m
+            HS không vi phạm
           </Typography>
 
           <Typography
@@ -2677,7 +2648,7 @@ const changeViewMode =
             variant="body2"
             color="text.secondary"
           >
-            HS cÃ³ S1
+            HS có S1
           </Typography>
 
           <Typography
@@ -2743,18 +2714,18 @@ const changeViewMode =
               >
                 {[
                   "STT",
-                  "Há» vÃ  tÃªn",
-                  "Tuáº§n",
+                  "Họ và tên",
+                  "Tuần",
                   "N1",
                   "N2",
                   "N3",
                   "N4",
                   "N5",
                   "S1",
-                  "Tá»•ng lá»—i",
-                  "Äiá»ƒm",
-                  "Xáº¿p loáº¡i",
-                  "Tráº¡ng thÃ¡i",
+                  "Tổng lỗi",
+                  "Điểm",
+                  "Xếp loại",
+                  "Trạng thái",
                 ].map(
                   (
                     title: string
@@ -2763,7 +2734,7 @@ const changeViewMode =
                       key={title}
                       align={
                         title ===
-                          "Há» vÃ  tÃªn"
+                          "Họ và tên"
                           ? "left"
                           : "center"
                       }
@@ -2804,7 +2775,7 @@ const changeViewMode =
                     record?.finalScore ??
                     100;
                   
-                  // CÃ³ Ã­t nháº¥t 1 lá»—i nghiÃªm trá»ng nhÃ³m S1
+                  // Có ít nhất 1 lỗi nghiêm trọng nhóm S1
                   const hasSeriousViolation =
                     Number(
                       record?.groupViolations?.S1 ?? 0
@@ -3005,7 +2976,7 @@ const changeViewMode =
           >
             <TableHead>
               {/* ---------------------------------------
-                  HEADER DÃ’NG 1
+                  HEADER DÒNG 1
               --------------------------------------- */}
 
               <TableRow
@@ -3034,7 +3005,7 @@ const changeViewMode =
                     minWidth: 200,
                   }}
                 >
-                  Há» vÃ  tÃªn
+                  Họ và tên
                 </TableCell>
 
                 {monthWeeks.map(
@@ -3054,7 +3025,7 @@ const changeViewMode =
                           "1px solid #fff",
                       }}
                     >
-                      Tuáº§n{" "}
+                      Tuần{" "}
                       {
                         week.weekNumber
                       }
@@ -3073,7 +3044,7 @@ const changeViewMode =
                       "#74b9ed",
                   }}
                 >
-                  Xáº¿p loáº¡i tá»•ng
+                  Xếp loại tổng
                 </TableCell>
 
                 <TableCell
@@ -3085,12 +3056,12 @@ const changeViewMode =
                     minWidth: 90,
                   }}
                 >
-                  Tráº¡ng thÃ¡i
+                  Trạng thái
                 </TableCell>
               </TableRow>
 
               {/* ---------------------------------------
-                  HEADER DÃ’NG 2
+                  HEADER DÒNG 2
               --------------------------------------- */}
 
               <TableRow
@@ -3115,7 +3086,7 @@ const changeViewMode =
                             "bold",
                         }}
                       >
-                        Äiá»ƒm
+                        Điểm
                       </TableCell>
 
                       <TableCell
@@ -3125,7 +3096,7 @@ const changeViewMode =
                             "bold",
                         }}
                       >
-                        Xáº¿p loáº¡i
+                        Xếp loại
                       </TableCell>
                     </Fragment>
                   )
@@ -3330,7 +3301,7 @@ const changeViewMode =
                     minWidth: 190,
                   }}
                 >
-                  Há» vÃ  tÃªn
+                  Họ và tên
                 </TableCell>
 
                 {annualMonths.map(
@@ -3369,7 +3340,7 @@ const changeViewMode =
                     minWidth: 120,
                   }}
                 >
-                  Cáº£ nÄƒm
+                  Cả năm
                 </TableCell>
 
                 <TableCell
@@ -3380,7 +3351,7 @@ const changeViewMode =
                     minWidth: 90,
                   }}
                 >
-                  Tráº¡ng thÃ¡i
+                  Trạng thái
                 </TableCell>
               </TableRow>
             </TableHead>
@@ -3534,7 +3505,7 @@ const changeViewMode =
           mb: 3,
         }}
       >
-        Xáº¾P LOáº I Háº NH KIá»‚M Há»ŒC SINH
+        XẾP LOẠI HẠNH KIỂM HỌC SINH
       </Typography>
 
       {/* ===================================================
@@ -3575,7 +3546,7 @@ const changeViewMode =
                 "bold",
             }}
           >
-            XEM TUáº¦N
+            XEM TUẦN
           </Button>
 
           <Button
@@ -3595,7 +3566,7 @@ const changeViewMode =
                 "bold",
             }}
           >
-            XEM THÃNG
+            XEM THÁNG
           </Button>
 
           <Button
@@ -3615,7 +3586,7 @@ const changeViewMode =
                 "bold",
             }}
           >
-            XEM NÄ‚M
+            XEM NĂM
           </Button>
         </Box>
       </Paper>
@@ -3656,7 +3627,7 @@ const changeViewMode =
             <>
               <TextField
                 select
-                label="Chá»n lá»›p"
+                label="Chọn lớp"
                 value={
                   selectedClass
                 }
@@ -3665,7 +3636,7 @@ const changeViewMode =
                   
                     setSelectedClass(newClass);
                   
-                    // Reset dá»¯ liá»‡u Ä‘ang hiá»ƒn thá»‹
+                    // Reset dữ liệu đang hiển thị
                     setHasLoadedData(false);
                     setStudents([]);
                     setWeeklyData([]);
@@ -3676,7 +3647,7 @@ const changeViewMode =
               >
                 {loadingClasses ? (
                   <MenuItem disabled>
-                    Äang táº£i...
+                    Đang tải...
                   </MenuItem>
                 ) : (
                   classes.map(
@@ -3702,7 +3673,7 @@ const changeViewMode =
 
               <TextField
                 select
-                label="Tuáº§n"
+                label="Tuần"
                 value={
                   selectedWeek
                 }
@@ -3723,12 +3694,12 @@ const changeViewMode =
               >
                 {loadingWeeks ? (
                   <MenuItem disabled>
-                    Äang táº£i...
+                    Đang tải...
                   </MenuItem>
                 ) : studyWeeks.length ===
                   0 ? (
                   <MenuItem disabled>
-                    KhÃ´ng cÃ³ tuáº§n há»c
+                    Không có tuần học
                   </MenuItem>
                 ) : (
                   studyWeeks.map(
@@ -3743,7 +3714,7 @@ const changeViewMode =
                           week.weekNumber
                         }
                       >
-                        Tuáº§n{" "}
+                        Tuần{" "}
                         {
                           week.weekNumber
                         }
@@ -3769,7 +3740,7 @@ const changeViewMode =
       fontWeight: "bold",
     }}
   >
-    XEM Dá»® LIá»†U
+    XEM DỮ LIỆU
   </Button>
 
   <Button
@@ -3786,7 +3757,7 @@ const changeViewMode =
       fontWeight: "bold",
     }}
   >
-    DUYá»†T TUáº¦N
+    DUYỆT TUẦN
   </Button>
   <Button
   variant="contained"
@@ -3799,7 +3770,7 @@ const changeViewMode =
     fontWeight: "bold",
   }}
 >
-  XUáº¤T EXCEL
+  XUẤT EXCEL
 </Button>              
   
 </Box>
@@ -3814,7 +3785,7 @@ const changeViewMode =
             <>
               <TextField
                 select
-                label="Chá»n lá»›p"
+                label="Chọn lớp"
                 value={
                   selectedClass
                 }
@@ -3823,7 +3794,7 @@ const changeViewMode =
 
   setSelectedClass(newClass);
 
-  // Äá»•i lá»›p -> xÃ³a dá»¯ liá»‡u cÅ©
+  // Đổi lớp -> xóa dữ liệu cũ
   setHasLoadedData(false);
 
   setStudents([]);
@@ -3838,7 +3809,7 @@ const changeViewMode =
               >
                 {loadingClasses ? (
                   <MenuItem disabled>
-                    Äang táº£i...
+                    Đang tải...
                   </MenuItem>
                 ) : (
                   classes.map(
@@ -3864,7 +3835,7 @@ const changeViewMode =
 
               <TextField
                 select
-                label="ThÃ¡ng há»c"
+                label="Tháng học"
                 value={
                   selectedMonthKey
                 }
@@ -3873,7 +3844,7 @@ onChange={(e) => {
 
   setSelectedMonthKey(newMonth);
 
-  // Äá»•i thÃ¡ng -> xÃ³a dá»¯ liá»‡u cÅ©
+  // Đổi tháng -> xóa dữ liệu cũ
   setHasLoadedData(false);
 
   setStudents([]);
@@ -3914,7 +3885,7 @@ onChange={(e) => {
                     "bold",
                 }}
               >
-                XEM Dá»® LIá»†U
+                XEM DỮ LIỆU
               </Button>
             </>
           )}
@@ -3926,7 +3897,7 @@ onChange={(e) => {
           {viewMode === "year" && (
             <>
               <TextField
-                label="NÄƒm há»c"
+                label="Năm học"
                 value={
                   annualAcademicYear
                 }
@@ -3942,7 +3913,7 @@ onChange={(e) => {
 
               <TextField
                 select
-                label="Chá»n lá»›p"
+                label="Chọn lớp"
                 value={
                   selectedClass
                 }
@@ -3956,7 +3927,7 @@ onChange={(e) => {
               >
                 {loadingClasses ? (
                   <MenuItem disabled>
-                    Äang táº£i...
+                    Đang tải...
                   </MenuItem>
                 ) : (
                   classes.map(
@@ -3994,7 +3965,7 @@ onChange={(e) => {
                     "bold",
                 }}
               >
-                XEM Dá»® LIá»†U
+                XEM DỮ LIỆU
               </Button>
             </>
           )}
@@ -4003,7 +3974,7 @@ onChange={(e) => {
 
       {/* ===================================================
           WEEK LEGEND
-          LUÃ”N HIá»‚N THá»Š SAU CBB
+          LUÔN HIỂN THỊ SAU CBB
       =================================================== */}
 
       {viewMode === "week" &&
@@ -4023,14 +3994,14 @@ onChange={(e) => {
             variant="h6"
             fontWeight="bold"
           >
-            Lá»›p{" "}
+            Lớp{" "}
             {selectedClass}
           </Typography>
 
           <Typography
             color="text.secondary"
           >
-            Tá»•ng sá»‘ há»c sinh:{" "}
+            Tổng số học sinh:{" "}
             <strong>
               {
                 students.length
@@ -4044,19 +4015,19 @@ onChange={(e) => {
               mt: 0.5,
             }}
           >
-            Cháº¿ Ä‘á»™:{" "}
+            Chế độ:{" "}
             <strong>
               {viewMode ===
                 "week" &&
-                "Theo tuáº§n"}
+                "Theo tuần"}
 
               {viewMode ===
                 "month" &&
-                "Theo thÃ¡ng"}
+                "Theo tháng"}
 
               {viewMode ===
                 "year" &&
-                "Theo nÄƒm"}
+                "Theo năm"}
             </strong>
           </Typography>
 
@@ -4070,7 +4041,7 @@ onChange={(e) => {
                   mt: 0.5,
                 }}
               >
-                Tuáº§n:{" "}
+                Tuần:{" "}
                 <strong>
                   {
                     selectedWeek
@@ -4088,7 +4059,7 @@ onChange={(e) => {
                   mt: 0.5,
                 }}
               >
-                ThÃ¡ng há»c:{" "}
+                Tháng học:{" "}
                 <strong>
                   {
                     selectedMonthInfo.label
@@ -4105,7 +4076,7 @@ onChange={(e) => {
                   mt: 0.5,
                 }}
               >
-                NÄƒm há»c:{" "}
+                Năm học:{" "}
                 <strong>
                   {
                     annualAcademicYear
@@ -4151,7 +4122,7 @@ onChange={(e) => {
         renderYearTable()}
 
 {/* ===================================================
-    NO STUDENTS / CHÆ¯A XEM Dá»® LIá»†U
+    NO STUDENTS / CHƯA XEM DỮ LIỆU
 =================================================== */}
 
 {selectedClass &&
@@ -4164,7 +4135,7 @@ onChange={(e) => {
       }}
     >
       <Typography color="text.secondary">
-        Báº¥m vÃ o nÃºt "XEM Dá»® LIá»†U" Ä‘á»ƒ xem.
+        Bấm vào nút "XEM DỮ LIỆU" để xem.
       </Typography>
     </Paper>
   )}
@@ -4180,7 +4151,7 @@ onChange={(e) => {
       }}
     >
       <Typography color="text.secondary">
-        KhÃ´ng cÃ³ há»c sinh trong lá»›p nÃ y.
+        Không có học sinh trong lớp này.
       </Typography>
     </Paper>
   )}
@@ -4191,7 +4162,7 @@ onChange={(e) => {
   maxWidth="xs"
 >
   <DialogTitle>
-    ðŸ“Š Xuáº¥t bÃ¡o cÃ¡o háº¡nh kiá»ƒm
+    📊 Xuất báo cáo hạnh kiểm
   </DialogTitle>
 
   <DialogContent>
@@ -4199,7 +4170,7 @@ onChange={(e) => {
 
       <TextField
         select
-        label="Khá»‘i"
+        label="Khối"
         value={exportGrade}
         onChange={(e) =>
           setExportGrade(e.target.value)
@@ -4207,29 +4178,29 @@ onChange={(e) => {
         fullWidth
       >
         <MenuItem value="">
-          Chá»n khá»‘i
+          Chọn khối
         </MenuItem>
 
         <MenuItem value="6">
-          Khá»‘i 6
+          Khối 6
         </MenuItem>
 
         <MenuItem value="7">
-          Khá»‘i 7
+          Khối 7
         </MenuItem>
 
         <MenuItem value="8">
-          Khá»‘i 8
+          Khối 8
         </MenuItem>
 
         <MenuItem value="9">
-          Khá»‘i 9
+          Khối 9
         </MenuItem>
       </TextField>
 
       <TextField
         select
-        label="Tuáº§n"
+        label="Tuần"
         value={exportWeek}
         onChange={(e) =>
           setExportWeek(
@@ -4241,7 +4212,7 @@ onChange={(e) => {
         fullWidth
       >
         <MenuItem value="">
-          Chá»n tuáº§n
+          Chọn tuần
         </MenuItem>
 
         {studyWeeks.map(
@@ -4250,7 +4221,7 @@ onChange={(e) => {
               key={week.weekNumber}
               value={week.weekNumber}
             >
-              Tuáº§n {week.weekNumber}
+              Tuần {week.weekNumber}
             </MenuItem>
           )
         )}
@@ -4265,7 +4236,7 @@ onChange={(e) => {
         setExportDialogOpen(false)
       }
     >
-      Há»¦Y
+      HỦY
     </Button>
     <Button
   variant="contained"
@@ -4276,7 +4247,7 @@ onChange={(e) => {
   }
 onClick={exportConductExcel}
 >
-  XUáº¤T EXCEL
+  XUẤT EXCEL
 </Button>
 
   </DialogActions>
