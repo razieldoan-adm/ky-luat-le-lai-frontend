@@ -459,7 +459,9 @@ export default function RecordClassLineUpSummaryPage() {
       const compressedFiles = await Promise.all(
         validFiles.map((file) => compressImage(file))
       );
-
+      alert(
+  `ĐÃ CHUYỂN ẢNH THÀNH CÔNG\nSố ảnh: ${compressedFiles.length}\nTên: ${compressedFiles[0]?.name}\nLoại: ${compressedFiles[0]?.type}`
+);
       const previews = compressedFiles.map((file) =>
         URL.createObjectURL(file)
       );
