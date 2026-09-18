@@ -724,7 +724,7 @@ exportRows.push(...gradeClasses);
         // Chỉ tô A:K
         // Cột L để Conditional Formatting xử lý theo hạng
         // ===================================================
-        if (columnNumber <= 11) {
+        
           cell.fill = {
             type: "pattern",
             pattern: "solid",
@@ -732,7 +732,7 @@ exportRows.push(...gradeClasses);
               argb: gradeColor,
             },
           };
-        }
+        
         cell.border = {
           top: {
             style: "thin",
@@ -878,12 +878,14 @@ for (
   // ===================================================
   // TÔ MÀU TOÀN BỘ DÒNG THEO KHỐI
   // ===================================================
-  cell.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: {
-      argb: gradeColor,
-    },
+  if (columnNumber <= 11) {
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: gradeColor,
+      },
+    };
   };
 
           // ===================================================
