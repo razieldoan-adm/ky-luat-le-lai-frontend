@@ -1028,7 +1028,7 @@ worksheet.addConditionalFormatting({
 worksheet.addConditionalFormatting({
   ref: `L${firstDataRow}:L${lastDataRow}`,
   rules: [
-    // HẠNG 1 → VÀNG
+    // HẠNG 1
     {
       type: "cellIs",
       operator: "equal",
@@ -1038,7 +1038,7 @@ worksheet.addConditionalFormatting({
         fill: {
           type: "pattern",
           pattern: "solid",
-          fgColor: {
+          bgColor: {
             argb: "FFFFD966",
           },
         },
@@ -1048,7 +1048,7 @@ worksheet.addConditionalFormatting({
       },
     },
 
-    // HẠNG 2 → XANH DƯƠNG
+    // HẠNG 2
     {
       type: "cellIs",
       operator: "equal",
@@ -1058,7 +1058,7 @@ worksheet.addConditionalFormatting({
         fill: {
           type: "pattern",
           pattern: "solid",
-          fgColor: {
+          bgColor: {
             argb: "FFD9E1F2",
           },
         },
@@ -1068,7 +1068,7 @@ worksheet.addConditionalFormatting({
       },
     },
 
-    // HẠNG 3 → CAM
+    // HẠNG 3
     {
       type: "cellIs",
       operator: "equal",
@@ -1078,7 +1078,7 @@ worksheet.addConditionalFormatting({
         fill: {
           type: "pattern",
           pattern: "solid",
-          fgColor: {
+          bgColor: {
             argb: "FFF4B183",
           },
         },
