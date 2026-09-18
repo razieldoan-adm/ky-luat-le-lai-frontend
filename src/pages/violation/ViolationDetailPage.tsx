@@ -2309,18 +2309,6 @@ const totalConductViolations =
     <Button
       size="small"
       variant="outlined"
-      onClick={() => openDetailDialog(v)}
-      sx={{
-        minWidth: 80,
-        height: 32,
-      }}
-    >
-      Thêm hình
-    </Button>
-
-    <Button
-      size="small"
-      variant="outlined"
       onClick={() => openEditDialog(v)}
       sx={{
         minWidth: 55,
