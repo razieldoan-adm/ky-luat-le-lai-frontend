@@ -90,6 +90,7 @@ export default function RecordClassLineUpSummaryPage() {
   const detailGalleryInputRef = useRef<HTMLInputElement | null>(null);
   
   const [processingImages, setProcessingImages] = useState(false);
+  const [imageProcessMessage, setImageProcessMessage] = useState("");
   
   // tuần
   const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
@@ -911,12 +912,7 @@ const handleSelectDetailImages = async (
             multiline
             minRows={2}
           />
-
-
           {/* 📷 Ảnh ghi nhận vi phạm */}
-<Box>
-  <Stack direction="row" spacing={1} alignItems="center">
-    {/* 📷 Ảnh ghi nhận vi phạm */}
 <Box>
   <Stack
     direction={{ xs: "column", sm: "row" }}
@@ -971,6 +967,7 @@ const handleSelectDetailImages = async (
     </Typography>
   </Stack>
 
+  {/* Thông báo xử lý ảnh */}
   {imageProcessMessage && (
     <Typography
       variant="body2"
@@ -989,6 +986,7 @@ const handleSelectDetailImages = async (
           }}
         />
       )}
+
       {imageProcessMessage}
     </Typography>
   )}
@@ -1059,86 +1057,6 @@ const handleSelectDetailImages = async (
     </Box>
   )}
 </Box>
-
-    <Typography variant="body2" color="text.secondary">
-      Có thể chụp trước khi lưu
-    </Typography>
-  </Stack>
-  {processingImages && (
-  <Typography
-    variant="body2"
-    color="primary"
-    sx={{ mt: 1 }}
-  >
-    ⏳ Đang xử lý ảnh, vui lòng chờ...
-  </Typography>
-)}
-  {/* Preview ảnh chuẩn bị lưu */}
-  {newImagePreviews.length > 0 && (
-    <Box
-      sx={{
-        display: "grid",
-        gridTemplateColumns: {
-          xs: "repeat(2, 1fr)",
-          sm: "repeat(4, 1fr)",
-        },
-        gap: 1,
-        mt: 1.5,
-      }}
-    >
-      {newImagePreviews.map((preview, index) => (
-        <Box
-          key={preview}
-          sx={{
-            position: "relative",
-            border: "1px solid",
-            borderColor: "primary.main",
-            borderRadius: 1,
-            overflow: "hidden",
-            aspectRatio: "1 / 1",
-          }}
-        >
-          <img
-            src={preview}
-            alt={`Ảnh vi phạm ${index + 1}`}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-
-          <IconButton
-            size="small"
-            color="error"
-            onClick={() => {
-              URL.revokeObjectURL(newImagePreviews[index]);
-
-              setImagePreviews((prev) =>
-                prev.filter((_, i) => i !== index)
-              );
-
-              setImageFiles((prev) =>
-                prev.filter((_, i) => i !== index)
-              );
-            }}
-            sx={{
-              position: "absolute",
-              top: 4,
-              right: 4,
-              bgcolor: "rgba(255,255,255,0.9)",
-            }}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Box>
-      ))}
-    </Box>
-  )}
-</Box>
-          
-
           <Box sx={{ display: "flex", gap: 2 }}>
             <Button
               variant="contained"
