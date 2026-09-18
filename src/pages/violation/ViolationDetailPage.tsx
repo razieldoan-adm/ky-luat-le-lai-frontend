@@ -34,6 +34,7 @@ import api from "../../api/api";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import heic2any from "heic2any";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -209,6 +210,22 @@ const cameraInputRef = useRef<HTMLInputElement | null>(null);
 const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
 const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+
+  // 📷 Ảnh của lỗi mới - chụp/chọn trước khi ghi nhận
+const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
+const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
+
+const newCameraInputRef =
+  useRef<HTMLInputElement | null>(null);
+
+const newGalleryInputRef =
+  useRef<HTMLInputElement | null>(null);
+
+const [processingImages, setProcessingImages] =
+  useState(false);
+
+const [imageProcessMessage, setImageProcessMessage] =
+  useState("");
   
   // ==========================================================
   // LOAD DATA
@@ -712,36 +729,68 @@ const fetchSettings = async () => {
       }
     );
 
-    await api.post(
-      "/api/violations",
-      {
-        name,
-        className,
+// 1. LƯU GHI NHẬN VI PHẠM
+const res = await api.post(
+  "/api/violations",
+  {
+    name,
+    className,
 
-        description:
-          selectedRule.title,
+    description:
+      selectedRule.title,
 
-        ruleCode:
-          selectedRule.ruleCode,
+    ruleCode:
+      selectedRule.ruleCode,
 
-        groupCode:
-          selectedRule.groupCode,
+    groupCode:
+      selectedRule.groupCode,
 
-        handlingMethod: "",
+    handlingMethod: "",
 
-        academicYear: year,
+    academicYear: year,
 
-        weekNumber,
+    weekNumber,
 
-        time:
-          violationDate.toISOString(),
+    time:
+      violationDate.toISOString(),
 
-        handled: false,
+    handled: false,
 
-        handledBy: "",
-      }
-    );
+    handledBy: "",
+  }
+);
 
+// 2. LẤY ID CỦA LỖI VỪA TẠO
+const createdViolation =
+  res.data?.violation || res.data;
+
+const violationId =
+  createdViolation?._id;
+
+if (!violationId) {
+  throw new Error(
+    "Không lấy được ID vi phạm vừa tạo."
+  );
+}
+
+// 3. NẾU CÓ ẢNH → UPLOAD ẢNH
+if (newImageFiles.length > 0) {
+  const formData = new FormData();
+
+  newImageFiles.forEach((file) => {
+    formData.append("images", file);
+  });
+
+  await api.post(
+    `/api/violations/${violationId}/images`,
+    formData
+  );
+}
+    newImagePreviews.forEach((url) => { URL.revokeObjectURL(url);});
+    
+    setNewImageFiles([]);
+    setNewImagePreviews([]);
+    
     setSelectedRuleId("");
     setDayInput("");
     setMonthInput("");
@@ -897,78 +946,288 @@ const openDetailDialog = async (v: Violation) => {
 };
 // ==========================================================
 // 📷 GIẢM DUNG LƯỢNG HÌNH ẢNH
+// Hỗ trợ JPG / PNG / WEBP / HEIC / HEIF
 // ==========================================================
+const compressImage = async (
+  file: File
+): Promise<File> => {
+  let inputFile = file;
 
-  const compressImage = (file: File): Promise<File> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
+  const isHEIC =
+    file.type === "image/heic" ||
+    file.type === "image/heif" ||
+    /\.(heic|heif)$/i.test(file.name);
 
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
+  // HEIC / HEIF → JPEG
+  if (isHEIC) {
+    try {
+      const converted = await heic2any({
+        blob: file,
+        toType: "image/jpeg",
+        quality: 0.65,
+      });
 
-      const maxSize = 1280;
+      const convertedBlob = Array.isArray(converted)
+        ? converted[0]
+        : converted;
 
-      let width = img.width;
-      let height = img.height;
-
-      if (width > maxSize || height > maxSize) {
-        if (width > height) {
-          height = Math.round((height * maxSize) / width);
-          width = maxSize;
-        } else {
-          width = Math.round((width * maxSize) / height);
-          height = maxSize;
+      inputFile = new File(
+        [convertedBlob],
+        file.name.replace(
+          /\.(heic|heif)$/i,
+          ".jpg"
+        ),
+        {
+          type: "image/jpeg",
+          lastModified: Date.now(),
         }
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext("2d");
-
-      if (!ctx) {
-        reject(new Error("Không thể xử lý hình ảnh."));
-        return;
-      }
-
-      ctx.drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error("Không thể nén hình ảnh."));
-            return;
-          }
-
-          const fileName =
-            file.name.replace(/\.[^/.]+$/, "") + ".jpg";
-
-          const compressedFile = new File(
-            [blob],
-            fileName,
-            {
-              type: "image/jpeg",
-              lastModified: Date.now(),
-            }
-          );
-
-          resolve(compressedFile);
-        },
-        "image/jpeg",
-        0.7
       );
-    };
+    } catch (error) {
+      console.error(
+        "❌ Lỗi chuyển HEIC:",
+        error
+      );
 
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("Không thể đọc hình ảnh."));
-    };
+      throw new Error(
+        "Không thể chuyển ảnh HEIC sang JPEG."
+      );
+    }
+  }
 
-    img.src = objectUrl;
-  });
+  const bitmap =
+    await createImageBitmap(inputFile);
+
+  const maxSize = 1024;
+
+  let width = bitmap.width;
+  let height = bitmap.height;
+
+  if (
+    width > maxSize ||
+    height > maxSize
+  ) {
+    if (width >= height) {
+      height = Math.round(
+        (height * maxSize) / width
+      );
+      width = maxSize;
+    } else {
+      width = Math.round(
+        (width * maxSize) / height
+      );
+      height = maxSize;
+    }
+  }
+
+  const canvas =
+    document.createElement("canvas");
+
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx =
+    canvas.getContext("2d");
+
+  if (!ctx) {
+    bitmap.close();
+    throw new Error(
+      "Không thể tạo canvas."
+    );
+  }
+
+  ctx.drawImage(
+    bitmap,
+    0,
+    0,
+    width,
+    height
+  );
+
+  bitmap.close();
+
+  const blob =
+    await new Promise<Blob | null>(
+      (resolve) => {
+        canvas.toBlob(
+          resolve,
+          "image/jpeg",
+          0.65
+        );
+      }
+    );
+
+  if (!blob) {
+    throw new Error(
+      "Không thể nén hình ảnh."
+    );
+  }
+
+  const fileName =
+    inputFile.name.replace(
+      /\.[^/.]+$/,
+      ""
+    ) + ".jpg";
+
+  return new File(
+    [blob],
+    fileName,
+    {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    }
+  );
 };
+
+  // ==========================================================
+// 📷 XỬ LÝ ẢNH
+// ==========================================================
+const processNewImages = async (
+  files: File[],
+  startIndex: number
+) => {
+  if (files.length === 0) return;
+
+  try {
+    setProcessingImages(true);
+
+    setImageProcessMessage(
+      `⏳ Đang tối ưu ${files.length} ảnh...`
+    );
+
+    const compressedFiles =
+      await Promise.all(
+        files.map((file) =>
+          compressImage(file)
+        )
+      );
+
+    setNewImageFiles((prev) => {
+      const next = [...prev];
+
+      compressedFiles.forEach(
+        (file, index) => {
+          next[startIndex + index] = file;
+        }
+      );
+
+      return next;
+    });
+
+    setImageProcessMessage(
+      `✓ Đã xử lý xong ${compressedFiles.length} ảnh`
+    );
+
+    setTimeout(() => {
+      setImageProcessMessage("");
+    }, 2000);
+  } catch (error: any) {
+    console.error(
+      "❌ Lỗi xử lý hình ảnh:",
+      error
+    );
+
+    setImageProcessMessage(
+      "❌ Không thể xử lý hình ảnh."
+    );
+  } finally {
+    setProcessingImages(false);
+  }
+};
+
+  // ==========================================================
+// 📷 CHỌN / CHỤP ẢNH CHO LỖI MỚI
+// ==========================================================
+const handleSelectNewImages = async (
+  event: ChangeEvent<HTMLInputElement>
+) => {
+  const files = Array.from(
+    event.target.files || []
+  );
+
+  // Cho phép chọn lại cùng một file
+  event.target.value = "";
+
+  if (files.length === 0) return;
+
+  const currentCount =
+    newImageFiles.length;
+
+  const maxImages =
+    Math.max(0, 5 - currentCount);
+
+  if (maxImages <= 0) {
+    setSnackbarMessage(
+      "Tối đa 5 hình ảnh."
+    );
+    setSnackbarSeverity("error");
+    setSnackbarOpen(true);
+    return;
+  }
+
+  const selected =
+    files.slice(0, maxImages);
+
+  const validFiles =
+    selected.filter((file) => {
+      const isImage =
+        file.type.startsWith("image/") ||
+        /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(
+          file.name
+        );
+
+      if (!isImage) {
+        return false;
+      }
+
+      if (
+        file.size >
+        15 * 1024 * 1024
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+  if (validFiles.length === 0) {
+    setSnackbarMessage(
+      "Không có hình ảnh hợp lệ."
+    );
+    setSnackbarSeverity("error");
+    setSnackbarOpen(true);
+    return;
+  }
+
+  // ========================================================
+  // HIỆN PREVIEW NGAY
+  // ========================================================
+  const previewUrls =
+    validFiles.map((file) =>
+      URL.createObjectURL(file)
+    );
+
+  const startIndex =
+    newImageFiles.length;
+
+  setNewImageFiles((prev) => [
+    ...prev,
+    ...validFiles,
+  ]);
+
+  setNewImagePreviews((prev) => [
+    ...prev,
+    ...previewUrls,
+  ]);
+
+  // ========================================================
+  // XỬ LÝ / NÉN SAU
+  // ========================================================
+  await processNewImages(
+    validFiles,
+    startIndex
+  );
+};
+
   
 // ==========================================================
 // 📷 CHỌN HÌNH ẢNH
