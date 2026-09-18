@@ -412,7 +412,12 @@ export default function RecordClassLineUpSummaryPage() {
       setImagePreviews((prev) => [...prev, ...previews]);
     } catch (err) {
       console.error("Lỗi xử lý hình ảnh:", err);
-      alert("Không thể xử lý hình ảnh.");
+      alert(
+            `Không thể xử lý hình ảnh.\n\n` +
+            `Tên file: ${file.name}\n` +
+            `Loại: ${file.type}\n` +
+            `Dung lượng: ${(file.size / 1024 / 1024).toFixed(2)} MB`
+          );
     }
   };
 
