@@ -780,10 +780,17 @@ const handleSelectDetailImages = async (
 
       alert("Upload hình ảnh thành công.");
     } catch (err: any) {
-      console.error("Lỗi upload hình ảnh:", err);
-      alert(
-        err?.response?.data?.message ||
-          "Không thể upload hình ảnh."
+  console.error("========== LỖI UPLOAD HÌNH ẢNH ==========");
+  console.error("Status:", err?.response?.status);
+  console.error("Response:", err?.response?.data);
+  console.error("Message:", err?.message);
+  console.error("Error:", err);
+
+  alert(
+    err?.response?.data?.message ||
+      err?.response?.data?.error ||
+      err?.message ||
+      "Không thể upload hình ảnh."
       );
     } finally {
       setUploadingImages(false);
