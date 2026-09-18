@@ -1583,7 +1583,7 @@ XLSX.utils.book_append_sheet(
     // -----------------------------------------
 
     const fileName =
-      `HanhKiem_Khoi${exportGrade}_Tuan${weekNumber}.xlsx`;
+      `DiemRenLuyen_Khoi${exportGrade}_Tuan${weekNumber}.xlsx`;
 
     XLSX.writeFile(
       workbook,
@@ -1703,7 +1703,7 @@ const handleFinalizeWeek = async () => {
   }
 
   const confirmed = window.confirm(
-    `Bạn có chắc muốn duyệt hạnh kiểm TOÀN TRƯỜNG của tuần ${selectedWeek} không?`
+    `Bạn có chắc muốn duyệt điểm rèn luyện TOÀN TRƯỜNG của tuần ${selectedWeek} không?`
   );
 
   if (!confirmed) {
@@ -1730,7 +1730,7 @@ const handleFinalizeWeek = async () => {
       open: true,
       message:
         res.data?.message ||
-        `Đã duyệt hạnh kiểm toàn trường tuần ${selectedWeek}`,
+        `Đã duyệt rèn luyện toàn trường tuần ${selectedWeek}`,
       severity: "success",
     });
 
@@ -1739,7 +1739,7 @@ const handleFinalizeWeek = async () => {
 
   } catch (error: any) {
     console.error(
-      "❌ Lỗi duyệt hạnh kiểm toàn trường:",
+      "❌ Lỗi duyệt rèn luyện toàn trường:",
       error
     );
      const status = error?.response?.status;
@@ -1758,7 +1758,7 @@ const handleFinalizeWeek = async () => {
       open: true,
       message:
         error?.response?.data?.message ||
-        "Không thể duyệt hạnh kiểm toàn trường",
+        "Không thể duyệt rèn luyện toàn trường",
       severity: "error",
     });
   } finally {
@@ -1948,7 +1948,7 @@ const loadWeeklyDataForExport = async (
                     : [];
                 } catch (error) {
                   console.error(
-                    `Lỗi tải hạnh kiểm tuần ${week.weekNumber}:`,
+                    `Lỗi tải rèn luyện tuần ${week.weekNumber}:`,
                     error
                   );
 
@@ -1966,7 +1966,7 @@ const loadWeeklyDataForExport = async (
         );
       } catch (error) {
         console.error(
-          "Lỗi tải dữ liệu hạnh kiểm tháng:",
+          "Lỗi tải dữ liệu rèn luyện tháng:",
           error
         );
 
@@ -1976,7 +1976,7 @@ const loadWeeklyDataForExport = async (
         setSnackbar({
           open: true,
           message:
-            "Không thể tải dữ liệu hạnh kiểm tháng",
+            "Không thể tải dữ liệu rèn luyện tháng",
           severity: "error",
         });
       } finally {
