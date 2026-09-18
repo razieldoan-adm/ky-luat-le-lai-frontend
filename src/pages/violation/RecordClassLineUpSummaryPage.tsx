@@ -489,7 +489,7 @@ export default function RecordClassLineUpSummaryPage() {
 
     if (files.length === 0) return;
 
-    const currentCount = imageFiles.length;
+    const currentCount = newImageFiles.length;
     const maxNewImages = Math.max(0, 5 - currentCount);
 
     if (maxNewImages <= 0) {
@@ -524,9 +524,11 @@ export default function RecordClassLineUpSummaryPage() {
     if (validFiles.length === 0) return;
 
     try {
-      const compressedFiles = await Promise.all(
-        validFiles.map((file) => compressImage(file))
-      );
+  setProcessingImages(true);
+
+  const compressedFiles = await Promise.all(
+    validFiles.map((file) => compressImage(file))
+  );
       alert(
   `ĐÃ CHUYỂN ẢNH THÀNH CÔNG\nSố ảnh: ${compressedFiles.length}\nTên: ${compressedFiles[0]?.name}\nLoại: ${compressedFiles[0]?.type}`
 );
@@ -554,6 +556,9 @@ setNewImagePreviews((prev) => [...prev, ...previews]);
     `Chi tiết lỗi: ${err?.message || "Không xác định"}`
   );
     }
+    finally {
+  setProcessingImages(false);
+}
   };
 
   const handleUploadImages = async () => {
@@ -811,9 +816,17 @@ setNewImagePreviews((prev) => [...prev, ...previews]);
       Có thể chụp trước khi lưu
     </Typography>
   </Stack>
-
+  {processingImages && (
+  <Typography
+    variant="body2"
+    color="primary"
+    sx={{ mt: 1 }}
+  >
+    ⏳ Đang xử lý ảnh, vui lòng chờ...
+  </Typography>
+)}
   {/* Preview ảnh chuẩn bị lưu */}
-  {imagePreviews.length > 0 && (
+  {newImagePreviews.length > 0 && (
     <Box
       sx={{
         display: "grid",
@@ -825,7 +838,7 @@ setNewImagePreviews((prev) => [...prev, ...previews]);
         mt: 1.5,
       }}
     >
-      {imagePreviews.map((preview, index) => (
+      {newImagePreviews.map((preview, index) => (
         <Box
           key={preview}
           sx={{
@@ -852,7 +865,7 @@ setNewImagePreviews((prev) => [...prev, ...previews]);
             size="small"
             color="error"
             onClick={() => {
-              URL.revokeObjectURL(imagePreviews[index]);
+              URL.revokeObjectURL(newImagePreviews[index]);
 
               setImagePreviews((prev) =>
                 prev.filter((_, i) => i !== index)
@@ -1250,11 +1263,11 @@ setNewImagePreviews((prev) => [...prev, ...previews]);
                       onClick={() => {
                         URL.revokeObjectURL(imagePreviews[index]);
 
-                        setImagePreviews((prev) =>
+                        setNewImagePreviews((prev) =>
                           prev.filter((_, i) => i !== index)
                         );
 
-                        setImageFiles((prev) =>
+                        setNewImageFiles((prev) =>
                           prev.filter((_, i) => i !== index)
                         );
                       }}
