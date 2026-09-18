@@ -719,14 +719,20 @@ exportRows.push(...gradeClasses);
           wrapText: true,
         };
 
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: {
-            argb: "FFD9E2F3",
-          },
-        };
-
+        // ===================================================
+        // TÔ MÀU DÒNG THEO KHỐI
+        // Chỉ tô A:K
+        // Cột L để Conditional Formatting xử lý theo hạng
+        // ===================================================
+        if (columnNumber <= 11) {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: {
+              argb: gradeColor,
+            },
+          };
+        }
         cell.border = {
           top: {
             style: "thin",
