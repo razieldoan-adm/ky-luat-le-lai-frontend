@@ -82,8 +82,13 @@ export default function RecordClassLineUpSummaryPage() {
   const [detailImageUrls, setDetailImageUrls] = useState<{ [fileId: string]: string }>({});
   const [uploadingImages, setUploadingImages] = useState(false);
   const [loadingDetailImages, setLoadingDetailImages] = useState(false);
-  const cameraInputRef = useRef<HTMLInputElement | null>(null);
-  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  
+  const newCameraInputRef = useRef<HTMLInputElement | null>(null);
+  const newGalleryInputRef = useRef<HTMLInputElement | null>(null);
+  
+  const detailCameraInputRef = useRef<HTMLInputElement | null>(null);
+  const detailGalleryInputRef = useRef<HTMLInputElement | null>(null);
+  
   const [processingImages, setProcessingImages] = useState(false);
   
   // tuần
@@ -212,10 +217,14 @@ export default function RecordClassLineUpSummaryPage() {
     setSelectedStudents((p) => p.filter((x) => x !== name));
   };
 
-  // --- Lưu ghi nhận
-  const handleSave = async () => {
+// --- Lưu ghi nhận
+const handleSave = async () => {
   if (!className) return alert("Vui lòng chọn lớp.");
   if (!violation) return alert("Vui lòng chọn loại vi phạm.");
+
+  if (processingImages) {
+    return alert("Ảnh đang được xử lý, vui lòng chờ.");
+  }
 
   try {
     setLoading(true);
@@ -233,9 +242,7 @@ export default function RecordClassLineUpSummaryPage() {
       note,
     };
 
-    // ==========================================================
     // 1. LƯU GHI NHẬN
-    // ==========================================================
     const res = await api.post(
       "/api/class-lineup-summaries",
       payload
@@ -250,13 +257,11 @@ export default function RecordClassLineUpSummaryPage() {
       throw new Error("Không lấy được ID bản ghi vừa tạo.");
     }
 
-    // ==========================================================
-    // 2. NẾU CÓ ẢNH → UPLOAD NGAY VÀO BẢN GHI VỪA TẠO
-    // ==========================================================
-    if (imageFiles.length > 0) {
+    // 2. UPLOAD ẢNH CỦA LỖI MỚI
+    if (newImageFiles.length > 0) {
       const formData = new FormData();
 
-      imageFiles.forEach((file) => {
+      newImageFiles.forEach((file) => {
         formData.append("images", file);
       });
 
@@ -266,27 +271,25 @@ export default function RecordClassLineUpSummaryPage() {
       );
     }
 
-    // ==========================================================
-    // 3. DỌN FORM
-    // ==========================================================
-    imagePreviews.forEach((url) => {
+    // 3. GIẢI PHÓNG PREVIEW
+    newImagePreviews.forEach((url) => {
       URL.revokeObjectURL(url);
     });
 
+    // 4. DỌN FORM
     setViolation("");
     setStudentInput("");
     setSelectedStudents([]);
     setNote("");
-    setImageFiles([]);
-    setImagePreviews([]);
 
-    // ==========================================================
-    // 4. TẢI LẠI DANH SÁCH
-    // ==========================================================
+    setNewImageFiles([]);
+    setNewImagePreviews([]);
+
+    // 5. TẢI LẠI DANH SÁCH
     await loadRecords(selectedWeek || undefined);
 
     alert(
-      imageFiles.length > 0
+      newImageFiles.length > 0
         ? "Đã lưu ghi nhận và hình ảnh thành công."
         : "Đã lưu ghi nhận thành công."
     );
@@ -303,38 +306,56 @@ export default function RecordClassLineUpSummaryPage() {
   }
 };
 
+
   // ============================================================
   // 📷 HÌNH ẢNH VI PHẠM XẾP HÀNG
   // ============================================================
 
-  const loadDetailImages = async (record: LineUpRecord) => {
-    if (!record.images || record.images.length === 0) {
-      setDetailImageUrls({});
-      return;
-    }
+const loadDetailImages = async (record: LineUpRecord) => {
+  if (!record.images || record.images.length === 0) {
+    setDetailImageUrls({});
+    return;
+  }
 
-    setLoadingDetailImages(true);
+  setLoadingDetailImages(true);
 
-    try {
-      const urls: { [fileId: string]: string } = {};
-
-      for (const image of record.images) {
+  try {
+    const results = await Promise.all(
+      record.images.map(async (image) => {
         try {
           const res = await api.get(image.url, {
             responseType: "blob",
           });
 
-          urls[image.fileId] = URL.createObjectURL(res.data);
+          return {
+            fileId: image.fileId,
+            url: URL.createObjectURL(res.data),
+          };
         } catch (err) {
-          console.error("Lỗi tải hình ảnh:", image.fileId, err);
-        }
-      }
+          console.error(
+            "Lỗi tải hình ảnh:",
+            image.fileId,
+            err
+          );
 
-      setDetailImageUrls(urls);
-    } finally {
-      setLoadingDetailImages(false);
-    }
-  };
+          return null;
+        }
+      })
+    );
+
+    const urls: { [fileId: string]: string } = {};
+
+    results.forEach((item) => {
+      if (item) {
+        urls[item.fileId] = item.url;
+      }
+    });
+
+    setDetailImageUrls(urls);
+  } finally {
+    setLoadingDetailImages(false);
+  }
+};
 
   const openDetailDialog = (record: LineUpRecord) => {
     // Giải phóng preview cũ
@@ -361,13 +382,11 @@ export default function RecordClassLineUpSummaryPage() {
     setDetailImageUrls({});
   };
 
-//=========================================================
-
-  const compressImage = async (file: File): Promise<File> => {
+const compressImage = async (file: File): Promise<File> => {
   let inputFile = file;
 
   // ==========================================================
-  // 📷 HEIC / HEIF → JPEG
+  // HEIC / HEIF → JPEG
   // ==========================================================
   const isHEIC =
     file.type === "image/heic" ||
@@ -395,171 +414,268 @@ export default function RecordClassLineUpSummaryPage() {
         }
       );
     } catch (error) {
-      console.error("❌ Lỗi chuyển HEIC sang JPEG:", error);
+      console.error("Lỗi chuyển HEIC sang JPEG:", error);
       throw new Error("Không thể chuyển ảnh HEIC sang JPEG");
     }
   }
 
   // ==========================================================
-  // 📷 Resize + nén
+  // Resize + nén
   // ==========================================================
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
+  const bitmap = await createImageBitmap(inputFile);
 
-    reader.onload = (event) => {
-      const img = new Image();
+  const maxSize = 1024;
 
-      img.onload = () => {
-        // Giảm từ 1280 xuống 1024 để xử lý nhanh hơn trên điện thoại
-        const maxSize = 1024;
+  let width = bitmap.width;
+  let height = bitmap.height;
 
-        let width = img.width;
-        let height = img.height;
+  if (width > maxSize || height > maxSize) {
+    if (width >= height) {
+      height = Math.round((height * maxSize) / width);
+      width = maxSize;
+    } else {
+      width = Math.round((width * maxSize) / height);
+      height = maxSize;
+    }
+  }
 
-        if (width > maxSize || height > maxSize) {
-          if (width >= height) {
-            height = Math.round((height * maxSize) / width);
-            width = maxSize;
-          } else {
-            width = Math.round((width * maxSize) / height);
-            height = maxSize;
-          }
-        }
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
 
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
+  const ctx = canvas.getContext("2d");
 
-        const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    bitmap.close();
+    throw new Error("Không thể tạo canvas");
+  }
 
-        if (!ctx) {
-          reject(new Error("Không thể tạo canvas"));
-          return;
-        }
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
 
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error("Không thể nén hình ảnh"));
-              return;
-            }
-
-            const compressedName =
-              inputFile.name.replace(/\.[^/.]+$/, "") + ".jpg";
-
-            resolve(
-              new File([blob], compressedName, {
-                type: "image/jpeg",
-                lastModified: Date.now(),
-              })
-            );
-          },
-          "image/jpeg",
-          0.65
-        );
-      };
-
-      img.onerror = () => {
-        reject(new Error("Không thể đọc hình ảnh sau khi chuyển đổi"));
-      };
-
-      img.src = event.target?.result as string;
-    };
-
-    reader.onerror = () => {
-      reject(new Error("Không thể đọc file"));
-    };
-
-    reader.readAsDataURL(inputFile);
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(
+      resolve,
+      "image/jpeg",
+      0.65
+    );
   });
+
+  if (!blob) {
+    throw new Error("Không thể nén hình ảnh");
+  }
+
+  const compressedName =
+    inputFile.name.replace(/\.[^/.]+$/, "") + ".jpg";
+
+  return new File(
+    [blob],
+    compressedName,
+    {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    }
+  );
 };
-  
-//=========================================================
-  const handleSelectImages = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const files = Array.from(event.target.files || []);
+
+// ==========================================================
+// XỬ LÝ ẢNH CHUNG
+// ==========================================================
+const processImagesInBackground = async (
+  files: File[],
+  target: "new" | "detail"
+) => {
+  if (files.length === 0) return;
+
+  try {
+    setProcessingImages(true);
+
+    const compressedFiles = await Promise.all(
+      files.map((file) => compressImage(file))
+    );
+
+    if (target === "new") {
+      setNewImageFiles((prev) => {
+        const startIndex = prev.length;
+
+        const next = [...prev];
+
+        compressedFiles.forEach((file, index) => {
+          next[startIndex + index] = file;
+        });
+
+        return next;
+      });
+    } else {
+      setImageFiles((prev) => {
+        const startIndex = prev.length;
+
+        const next = [...prev];
+
+        compressedFiles.forEach((file, index) => {
+          next[startIndex + index] = file;
+        });
+
+        return next;
+      });
+    }
+  } catch (err: any) {
+    console.error("Lỗi xử lý hình ảnh:", err);
+
     alert(
-  `ĐÃ NHẬN ẢNH\nTên: ${files[0]?.name}\nLoại: ${files[0]?.type || "không xác định"}`
-);
-    // Cho phép chọn lại cùng một file ở lần sau
-    event.target.value = "";
+      err?.message ||
+        "Không thể xử lý hình ảnh."
+    );
+  } finally {
+    setProcessingImages(false);
+  }
+};
 
-    if (files.length === 0) return;
 
-    const currentCount = newImageFiles.length;
-    const maxNewImages = Math.max(0, 5 - currentCount);
+// ==========================================================
+// ẢNH CHO LỖI MỚI - CHỤP/CHỌN TRƯỚC KHI LƯU
+// ==========================================================
+const handleSelectNewImages = async (
+  event: React.ChangeEvent<HTMLInputElement>
+) => {
+  const files = Array.from(event.target.files || []);
 
-    if (maxNewImages <= 0) {
-      alert("Mỗi lần chỉ được chọn tối đa 5 hình ảnh.");
-      return;
-    }
+  event.target.value = "";
 
-    const selected = files.slice(0, maxNewImages);
+  if (files.length === 0) return;
 
-    if (files.length > maxNewImages) {
-      alert(`Chỉ nhận tối đa ${maxNewImages} hình ảnh mới.`);
-    }
+  const currentCount = newImageFiles.length;
+  const maxNewImages = Math.max(0, 5 - currentCount);
 
-    const validFiles = selected.filter((file) => {
+  if (maxNewImages <= 0) {
+    alert("Mỗi lần chỉ được chọn tối đa 5 hình ảnh.");
+    return;
+  }
+
+  const selected = files.slice(0, maxNewImages);
+
+  const validFiles = selected.filter((file) => {
     const isImage =
       file.type.startsWith("image/") ||
       /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(file.name);
-  
+
     if (!isImage) {
       alert(`"${file.name}" không phải là hình ảnh.`);
       return false;
     }
-  
-    if (file.size > 10 * 1024 * 1024) {
-      alert(`"${file.name}" vượt quá 10MB.`);
+
+    if (file.size > 15 * 1024 * 1024) {
+      alert(`"${file.name}" vượt quá 15MB.`);
       return false;
     }
-  
+
     return true;
   });
 
-    if (validFiles.length === 0) return;
+  if (validFiles.length === 0) return;
 
-    try {
-  setProcessingImages(true);
-
-  const compressedFiles = await Promise.all(
-    validFiles.map((file) => compressImage(file))
+  // ========================================================
+  // HIỆN PREVIEW NGAY
+  // ========================================================
+  const immediatePreviews = validFiles.map((file) =>
+    URL.createObjectURL(file)
   );
-      alert(
-  `ĐÃ CHUYỂN ẢNH THÀNH CÔNG\nSố ảnh: ${compressedFiles.length}\nTên: ${compressedFiles[0]?.name}\nLoại: ${compressedFiles[0]?.type}`
-);
-      const previews = compressedFiles.map((file) =>
-        URL.createObjectURL(file)
-      );
 
-setNewImageFiles((prev) => [...prev, ...compressedFiles]);
-setNewImagePreviews((prev) => [...prev, ...previews]);
-    } catch (err: any) {
-  console.error("❌ Lỗi xử lý hình ảnh:", err);
+  const startIndex = newImageFiles.length;
 
-  const fileInfo = files
-    .map(
-      (f) =>
-        `Tên: ${f.name}\n` +
-        `Loại: ${f.type || "không xác định"}\n` +
-        `Dung lượng: ${(f.size / 1024 / 1024).toFixed(2)} MB`
-    )
-    .join("\n\n");
+  setNewImageFiles((prev) => [
+    ...prev,
+    ...validFiles,
+  ]);
 
-  alert(
-    `❌ Không thể xử lý hình ảnh.\n\n` +
-    `${fileInfo}\n\n` +
-    `Chi tiết lỗi: ${err?.message || "Không xác định"}`
+  setNewImagePreviews((prev) => [
+    ...prev,
+    ...immediatePreviews,
+  ]);
+
+  // ========================================================
+  // NÉN Ở BACKGROUND
+  // ========================================================
+  await processImagesInBackground(
+    validFiles,
+    "new"
   );
+};
+
+
+// ==========================================================
+// ẢNH CHO DIALOG - BẢN GHI ĐÃ CÓ
+// ==========================================================
+const handleSelectDetailImages = async (
+  event: React.ChangeEvent<HTMLInputElement>
+) => {
+  const files = Array.from(event.target.files || []);
+
+  event.target.value = "";
+
+  if (files.length === 0) return;
+
+  const existingCount = detailItem?.images?.length || 0;
+  const currentPending = imageFiles.length;
+
+  const maxImages = Math.max(
+    0,
+    20 - existingCount - currentPending
+  );
+
+  if (maxImages <= 0) {
+    alert("Bản ghi này đã đủ 20 hình ảnh.");
+    return;
+  }
+
+  const selected = files.slice(0, Math.min(5, maxImages));
+
+  const validFiles = selected.filter((file) => {
+    const isImage =
+      file.type.startsWith("image/") ||
+      /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(file.name);
+
+    if (!isImage) {
+      alert(`"${file.name}" không phải là hình ảnh.`);
+      return false;
     }
-    finally {
-  setProcessingImages(false);
-}
-  };
+
+    if (file.size > 15 * 1024 * 1024) {
+      alert(`"${file.name}" vượt quá 15MB.`);
+      return false;
+    }
+
+    return true;
+  });
+
+  if (validFiles.length === 0) return;
+
+  // Hiện preview ngay
+  const immediatePreviews = validFiles.map((file) =>
+    URL.createObjectURL(file)
+  );
+
+  setImageFiles((prev) => [
+    ...prev,
+    ...validFiles,
+  ]);
+
+  setImagePreviews((prev) => [
+    ...prev,
+    ...immediatePreviews,
+  ]);
+
+  // Nén phía sau
+  await processImagesInBackground(
+    validFiles,
+    "detail"
+  );
+};
+  
+//=========================================================
+
+//=========================================================
+
 
   const handleUploadImages = async () => {
     if (!detailItem) return;
@@ -890,16 +1006,35 @@ setNewImagePreviews((prev) => [...prev, ...previews]);
           
 
           <Box sx={{ display: "flex", gap: 2 }}>
-            <Button variant="contained" onClick={handleSave}>
-              Lưu ghi nhận
+            <Button
+              variant="contained"
+              onClick={handleSave}
+              disabled={loading || processingImages}
+            >
+              {loading ? (
+                <>
+                  <CircularProgress size={18} sx={{ mr: 1 }} />
+                  Đang lưu...
+                </>
+              ) : (
+                "Lưu ghi nhận"
+              )}
             </Button>
             <Button
               variant="outlined"
               onClick={() => {
+                newImagePreviews.forEach((url) => {
+                  URL.revokeObjectURL(url);
+                });
+              
                 setViolation("");
                 setStudentInput("");
                 setSelectedStudents([]);
                 setClassName("");
+                setNote("");
+              
+                setNewImageFiles([]);
+                setNewImagePreviews([]);
               }}
             >
               Reset
@@ -1069,22 +1204,22 @@ setNewImagePreviews((prev) => [...prev, ...previews]);
         <DialogContent dividers>
           {/* Input camera */}
           <input
-            ref={cameraInputRef}
+            ref={detailCameraInputRef}
             type="file"
             accept="image/*"
             capture="environment"
             style={{ display: "none" }}
-            onChange={handleSelectImages}
+            onChange={handleSelectDetailImages}
           />
 
           {/* Input thư viện */}
           <input
-            ref={galleryInputRef}
+            ref={detailGalleryInputRef}
             type="file"
             accept="image/*"
             multiple
             style={{ display: "none" }}
-            onChange={handleSelectImages}
+            onChange={handleSelectDetailImages}
           />
 
           <Stack
@@ -1094,16 +1229,20 @@ setNewImagePreviews((prev) => [...prev, ...previews]);
           >
             <Button
               variant="contained"
-              onClick={() => cameraInputRef.current?.click()}
-              disabled={uploadingImages}
+              onClick={() =>
+                detailCameraInputRef.current?.click()
+              }
+              disabled={uploadingImages || processingImages}
             >
               📷 Chụp ảnh
             </Button>
-
+            
             <Button
               variant="outlined"
-              onClick={() => galleryInputRef.current?.click()}
-              disabled={uploadingImages}
+              onClick={() =>
+                detailGalleryInputRef.current?.click()
+              }
+              disabled={uploadingImages || processingImages}
             >
               🖼️ Chọn ảnh
             </Button>
@@ -1260,12 +1399,12 @@ setNewImagePreviews((prev) => [...prev, ...previews]);
                       color="error"
                       onClick={() => {
                         URL.revokeObjectURL(imagePreviews[index]);
-
-                        setNewImagePreviews((prev) =>
+                      
+                        setImagePreviews((prev) =>
                           prev.filter((_, i) => i !== index)
                         );
-
-                        setNewImageFiles((prev) =>
+                      
+                        setImageFiles((prev) =>
                           prev.filter((_, i) => i !== index)
                         );
                       }}
