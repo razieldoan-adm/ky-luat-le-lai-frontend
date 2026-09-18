@@ -410,14 +410,23 @@ export default function RecordClassLineUpSummaryPage() {
 
       setImageFiles((prev) => [...prev, ...compressedFiles]);
       setImagePreviews((prev) => [...prev, ...previews]);
-    } catch (err) {
-      console.error("Lỗi xử lý hình ảnh:", err);
-      alert(
-            `Không thể xử lý hình ảnh.\n\n` +
-            `Tên file: ${file.name}\n` +
-            `Loại: ${file.type}\n` +
-            `Dung lượng: ${(file.size / 1024 / 1024).toFixed(2)} MB`
-          );
+    } catch (err: any) {
+  console.error("❌ Lỗi xử lý hình ảnh:", err);
+
+  const fileInfo = files
+    .map(
+      (f) =>
+        `Tên: ${f.name}\n` +
+        `Loại: ${f.type || "không xác định"}\n` +
+        `Dung lượng: ${(f.size / 1024 / 1024).toFixed(2)} MB`
+    )
+    .join("\n\n");
+
+  alert(
+    `❌ Không thể xử lý hình ảnh.\n\n` +
+    `${fileInfo}\n\n` +
+    `Chi tiết lỗi: ${err?.message || "Không xác định"}`
+  );
     }
   };
 
