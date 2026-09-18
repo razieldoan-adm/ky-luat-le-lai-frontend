@@ -1021,19 +1021,18 @@ worksheet.addConditionalFormatting({
 });
 
 // ---------------------------------------------------------
-// 13.2. MÀU THEO XẾP HẠNG
-// Chỉ áp dụng cho cột L
+// 13.2. TÔ MÀU CẢ DÒNG THEO XẾP HẠNG
+// Hạng 1, 2, 3 áp dụng từ cột A → L
 // ---------------------------------------------------------
 
 worksheet.addConditionalFormatting({
-  ref: `L${firstDataRow}:L${lastDataRow}`,
+  ref: `A${firstDataRow}:L${lastDataRow}`,
   rules: [
-    // HẠNG 1
+    // 🥇 HẠNG 1
     {
-      type: "cellIs",
-      operator: "equal",
+      type: "expression",
       priority: 1,
-      formulae: [1],
+      formulae: [`$L${firstDataRow}=1`],
       style: {
         fill: {
           type: "pattern",
@@ -1048,18 +1047,17 @@ worksheet.addConditionalFormatting({
       },
     },
 
-    // HẠNG 2
+    // 🥈 HẠNG 2
     {
-      type: "cellIs",
-      operator: "equal",
+      type: "expression",
       priority: 2,
-      formulae: [2],
+      formulae: [`$L${firstDataRow}=2`],
       style: {
         fill: {
           type: "pattern",
           pattern: "solid",
           bgColor: {
-            argb: "FFD9E1F2",
+            argb: "FFBDD7EE",
           },
         },
         font: {
@@ -1068,12 +1066,11 @@ worksheet.addConditionalFormatting({
       },
     },
 
-    // HẠNG 3
+    // 🥉 HẠNG 3
     {
-      type: "cellIs",
-      operator: "equal",
+      type: "expression",
       priority: 3,
-      formulae: [3],
+      formulae: [`$L${firstDataRow}=3`],
       style: {
         fill: {
           type: "pattern",
