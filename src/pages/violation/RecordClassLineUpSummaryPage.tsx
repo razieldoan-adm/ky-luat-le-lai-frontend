@@ -383,23 +383,66 @@ const loadDetailImages = async (record: LineUpRecord) => {
     setDetailImageUrls({});
   };
 
-const compressImage = async (file: File): Promise<File> => {
-  let inputFile = file;
+// ==========================================================
+// XỬ LÝ ẢNH UPLOAD
+// ==========================================================
 
-  // ==========================================================
-  // HEIC / HEIF → JPEG
-  // ==========================================================
+const compressImage = async (file: File): Promise<File> => {
+  const TEN_MB = 10 * 1024 * 1024;
+
   const isHEIC =
     file.type === "image/heic" ||
     file.type === "image/heif" ||
     /\.(heic|heif)$/i.test(file.name);
+
+  // ==========================================================
+  // ẢNH <= 10MB
+  // ==========================================================
+  if (file.size <= TEN_MB) {
+    // HEIC/HEIF bắt buộc chuyển sang JPEG
+    if (isHEIC) {
+      try {
+        const converted = await heic2any({
+          blob: file,
+          toType: "image/jpeg",
+          quality: 1,
+        });
+
+        const convertedBlob = Array.isArray(converted)
+          ? converted[0]
+          : converted;
+
+        return new File(
+          [convertedBlob],
+          file.name.replace(/\.(heic|heif)$/i, ".jpg"),
+          {
+            type: "image/jpeg",
+            lastModified: Date.now(),
+          }
+        );
+      } catch (error) {
+        console.error("Lỗi chuyển HEIC sang JPEG:", error);
+        throw new Error("Không thể chuyển ảnh HEIC sang JPEG");
+      }
+    }
+
+    // JPG/JPEG/PNG/WEBP <= 10MB:
+    // giữ nguyên file, KHÔNG resize, KHÔNG nén
+    return file;
+  }
+
+  // ==========================================================
+  // ẢNH > 10MB → chuyển JPEG + resize + nén
+  // ==========================================================
+
+  let inputFile = file;
 
   if (isHEIC) {
     try {
       const converted = await heic2any({
         blob: file,
         toType: "image/jpeg",
-        quality: 0.65,
+        quality: 0.85,
       });
 
       const convertedBlob = Array.isArray(converted)
@@ -420,12 +463,9 @@ const compressImage = async (file: File): Promise<File> => {
     }
   }
 
-  // ==========================================================
-  // Resize + nén
-  // ==========================================================
   const bitmap = await createImageBitmap(inputFile);
 
-  const maxSize = 1024;
+  const maxSize = 1600;
 
   let width = bitmap.width;
   let height = bitmap.height;
@@ -455,11 +495,7 @@ const compressImage = async (file: File): Promise<File> => {
   bitmap.close();
 
   const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(
-      resolve,
-      "image/jpeg",
-      0.65
-    );
+    canvas.toBlob(resolve, "image/jpeg", 0.75);
   });
 
   if (!blob) {
@@ -478,7 +514,7 @@ const compressImage = async (file: File): Promise<File> => {
     }
   );
 };
-
+  
 // ==========================================================
 // XỬ LÝ ẢNH CHUNG
 // ==========================================================
