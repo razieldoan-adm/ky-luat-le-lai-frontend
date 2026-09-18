@@ -1021,24 +1021,36 @@ worksheet.addConditionalFormatting({
 });
 
 // ---------------------------------------------------------
-// 13.2. TÔ MÀU CẢ DÒNG THEO XẾP HẠNG
-// Hạng 1, 2, 3 áp dụng từ cột A → L
+// 13.2. TÔ MÀU CẢ DÒNG THEO KHỐI + XẾP HẠNG
+//
+// Hạng 1 → màu đậm nhất của khối
+// Hạng 2 → màu trung bình của khối
+// Hạng 3 → màu nhạt hơn của khối
+//
+// Hạng 4 trở đi → giữ màu nền khối bình thường
 // ---------------------------------------------------------
 
 worksheet.addConditionalFormatting({
   ref: `A${firstDataRow}:L${lastDataRow}`,
   rules: [
-    // 🥇 HẠNG 1
+
+    // =====================================================
+    // KHỐI 6 - VÀNG
+    // =====================================================
+
+    // Khối 6 - Hạng 1
     {
       type: "expression",
       priority: 1,
-      formulae: [`$L${firstDataRow}=1`],
+      formulae: [
+        `AND(LEFT($B${firstDataRow},1)="6",$L${firstDataRow}=1)`
+      ],
       style: {
         fill: {
           type: "pattern",
           pattern: "solid",
           bgColor: {
-            argb: "FFFFD966",
+            argb: "FFE6B800",
           },
         },
         font: {
@@ -1047,17 +1059,19 @@ worksheet.addConditionalFormatting({
       },
     },
 
-    // 🥈 HẠNG 2
+    // Khối 6 - Hạng 2
     {
       type: "expression",
       priority: 2,
-      formulae: [`$L${firstDataRow}=2`],
+      formulae: [
+        `AND(LEFT($B${firstDataRow},1)="6",$L${firstDataRow}=2)`
+      ],
       style: {
         fill: {
           type: "pattern",
           pattern: "solid",
           bgColor: {
-            argb: "FFBDD7EE",
+            argb: "FFF2D46D",
           },
         },
         font: {
@@ -1066,17 +1080,19 @@ worksheet.addConditionalFormatting({
       },
     },
 
-    // 🥉 HẠNG 3
+    // Khối 6 - Hạng 3
     {
       type: "expression",
       priority: 3,
-      formulae: [`$L${firstDataRow}=3`],
+      formulae: [
+        `AND(LEFT($B${firstDataRow},1)="6",$L${firstDataRow}=3)`
+      ],
       style: {
         fill: {
           type: "pattern",
           pattern: "solid",
           bgColor: {
-            argb: "FFF4B183",
+            argb: "FFF8E8A8",
           },
         },
         font: {
@@ -1084,6 +1100,208 @@ worksheet.addConditionalFormatting({
         },
       },
     },
+
+
+    // =====================================================
+    // KHỐI 7 - XANH DƯƠNG
+    // =====================================================
+
+    // Khối 7 - Hạng 1
+    {
+      type: "expression",
+      priority: 4,
+      formulae: [
+        `AND(LEFT($B${firstDataRow},1)="7",$L${firstDataRow}=1)`
+      ],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          bgColor: {
+            argb: "FF5B9BD5",
+          },
+        },
+        font: {
+          bold: true,
+        },
+      },
+    },
+
+    // Khối 7 - Hạng 2
+    {
+      type: "expression",
+      priority: 5,
+      formulae: [
+        `AND(LEFT($B${firstDataRow},1)="7",$L${firstDataRow}=2)`
+      ],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          bgColor: {
+            argb: "FF9DC3E6",
+          },
+        },
+        font: {
+          bold: true,
+        },
+      },
+    },
+
+    // Khối 7 - Hạng 3
+    {
+      type: "expression",
+      priority: 6,
+      formulae: [
+        `AND(LEFT($B${firstDataRow},1)="7",$L${firstDataRow}=3)`
+      ],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          bgColor: {
+            argb: "FFDDEBF7",
+          },
+        },
+        font: {
+          bold: true,
+        },
+      },
+    },
+
+
+    // =====================================================
+    // KHỐI 8 - XANH LÁ
+    // =====================================================
+
+    // Khối 8 - Hạng 1
+    {
+      type: "expression",
+      priority: 7,
+      formulae: [
+        `AND(LEFT($B${firstDataRow},1)="8",$L${firstDataRow}=1)`
+      ],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          bgColor: {
+            argb: "FF70AD47",
+          },
+        },
+        font: {
+          bold: true,
+        },
+      },
+    },
+
+    // Khối 8 - Hạng 2
+    {
+      type: "expression",
+      priority: 8,
+      formulae: [
+        `AND(LEFT($B${firstDataRow},1)="8",$L${firstDataRow}=2)`
+      ],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          bgColor: {
+            argb: "FFA9D18E",
+          },
+        },
+        font: {
+          bold: true,
+        },
+      },
+    },
+
+    // Khối 8 - Hạng 3
+    {
+      type: "expression",
+      priority: 9,
+      formulae: [
+        `AND(LEFT($B${firstDataRow},1)="8",$L${firstDataRow}=3)`
+      ],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          bgColor: {
+            argb: "FFE2F0D9",
+          },
+        },
+        font: {
+          bold: true,
+        },
+      },
+    },
+
+
+    // =====================================================
+    // KHỐI 9 - HỒNG
+    // =====================================================
+
+    // Khối 9 - Hạng 1
+    {
+      type: "expression",
+      priority: 10,
+      formulae: [
+        `AND(LEFT($B${firstDataRow},1)="9",$L${firstDataRow}=1)`
+      ],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          bgColor: {
+            argb: "FFE0668C",
+          },
+        },
+        font: {
+          bold: true,
+        },
+      },
+    },
+
+    // Khối 9 - Hạng 2
+    {
+      type: "expression",
+      priority: 11,
+      formulae: [
+        `AND(LEFT($B${firstDataRow},1)="9",$L${firstDataRow}=2)`
+      ],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          bgColor: {
+            argb: "FFF4B6C7",
+          },
+        },
+        font: {
+          bold: true,
+        },
+      },
+    },
+
+    // Khối 9 - Hạng 3
+    {
+      type: "expression",
+      priority: 12,
+      formulae: [
+        `AND(LEFT($B${firstDataRow},1)="9",$L${firstDataRow}=3)`
+      ],
+      style: {
+        fill: {
+          type: "pattern",
+          pattern: "FFFCE4EC",
+        },
+        font: {
+          bold: true,
+        },
+      },
+    },
+
   ],
 });
     // =========================================================
