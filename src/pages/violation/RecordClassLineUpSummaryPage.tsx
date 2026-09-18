@@ -788,9 +788,7 @@ setNewImagePreviews((prev) => [...prev, ...previews]);
             multiline
             minRows={2}
           />
-          //===============================================
-          // CHUP ANH TRUOC KHI LUU
-          //===============================================
+
 
           {/* 📷 Ảnh ghi nhận vi phạm */}
 <Box>
@@ -890,7 +888,7 @@ setNewImagePreviews((prev) => [...prev, ...previews]);
   )}
 </Box>
           
-          //===============================================
+
           <Box sx={{ display: "flex", gap: 2 }}>
             <Button variant="contained" onClick={handleSave}>
               Lưu ghi nhận
