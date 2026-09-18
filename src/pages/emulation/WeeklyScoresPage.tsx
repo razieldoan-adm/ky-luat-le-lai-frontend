@@ -589,59 +589,17 @@ const handleExport = async () => {
           };
         });
 
-     // =======================================================
+// =======================================================
 // 6. XẾP HẠNG RIÊNG TỪNG KHỐI
 //    - TÍNH HẠNG THEO ĐIỂM
 //    - NHƯNG KHÔNG ĐỔI THỨ TỰ LỚP
 // =======================================================
 
 // Tạo bản sao để xếp hạng
-const rankedClasses = [...gradeClasses];
 
-rankedClasses.sort(
-  (a: any, b: any) =>
-    b.total - a.total ||
-    a.className.localeCompare(
-      b.className,
-      undefined,
-      { numeric: true }
-    )
-);
-
-let currentRank = 1;
-
-rankedClasses.forEach(
-  (item: any, index: number) => {
-    if (
-      index > 0 &&
-      item.total ===
-        rankedClasses[index - 1].total
-    ) {
-      item.rank =
-        rankedClasses[index - 1].rank;
-    } else {
-      item.rank = currentRank;
-    }
-
-    currentRank++;
-  }
-);
-
-// Lấy hạng theo tên lớp
-const rankMap = new Map<string, number>();
-
-rankedClasses.forEach((item: any) => {
-  rankMap.set(item.className, item.rank);
-});
-
-// GIỮ NGUYÊN THỨ TỰ LỚP BAN ĐẦU
-gradeClasses.forEach((item: any) => {
-  item.rank =
-    rankMap.get(item.className) ?? 0;
-});
 
 exportRows.push(...gradeClasses);
-    });
+  
 
       // =========================================================
     // 7. TẠO FILE EXCEL BẰNG EXCELJS
@@ -808,7 +766,7 @@ exportRows.push(...gradeClasses);
           null,
           null,
           null,
-          row.rank,
+          null,
         ]);
 
         // =====================================================
@@ -845,6 +803,30 @@ exportRows.push(...gradeClasses);
         };
 
         // =====================================================
+        // L = XẾP HẠNG
+        // Xếp hạng bằng CÔNG THỨC EXCEL
+        // =====================================================
+        
+        const gradeRows = exportRows
+          .map((r: any, i: number) => ({
+            grade: r.grade,
+            excelRow: firstDataRow + i,
+          }))
+          .filter((r: any) => r.grade === row.grade);
+        
+        const gradeStartRow = gradeRows[0]?.excelRow;
+        const gradeEndRow =
+          gradeRows[gradeRows.length - 1]?.excelRow;
+        
+        if (gradeStartRow && gradeEndRow) {
+          worksheet.getCell(`L${excelRow}`).value = {
+            formula:
+              `RANK.EQ(J${excelRow},` +
+              `$J$${gradeStartRow}:$J$${gradeEndRow},0)`,
+          };
+        }
+        
+// =====================================================
 // STYLE DÒNG
 // =====================================================
 
