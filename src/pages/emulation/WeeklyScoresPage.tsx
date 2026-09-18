@@ -878,7 +878,7 @@ for (
   // ===================================================
   // TÔ MÀU TOÀN BỘ DÒNG THEO KHỐI
   // ===================================================
-  if (columnNumber <= 11) {
+  if (columnNumber <= 12) {
     cell.fill = {
       type: "pattern",
       pattern: "solid",
@@ -1050,7 +1050,7 @@ worksheet.addConditionalFormatting({
           type: "pattern",
           pattern: "solid",
           bgColor: {
-            argb: "FFE6B800",
+            argb: "FFF1C232",
           },
         },
         font: {
@@ -1071,7 +1071,7 @@ worksheet.addConditionalFormatting({
           type: "pattern",
           pattern: "solid",
           bgColor: {
-            argb: "FFF2D46D",
+            argb: "FFF6D965",
           },
         },
         font: {
@@ -1092,7 +1092,7 @@ worksheet.addConditionalFormatting({
           type: "pattern",
           pattern: "solid",
           bgColor: {
-            argb: "FFF8E8A8",
+            argb: "FFFFE699",
           },
         },
         font: {
@@ -1139,7 +1139,7 @@ worksheet.addConditionalFormatting({
           type: "pattern",
           pattern: "solid",
           bgColor: {
-            argb: "FF9DC3E6",
+            argb: "FF7EAED6",
           },
         },
         font: {
@@ -1160,7 +1160,7 @@ worksheet.addConditionalFormatting({
           type: "pattern",
           pattern: "solid",
           bgColor: {
-            argb: "FFDDEBF7",
+            argb: "FF9DC3E6",
           },
         },
         font: {
@@ -1207,7 +1207,7 @@ worksheet.addConditionalFormatting({
           type: "pattern",
           pattern: "solid",
           bgColor: {
-            argb: "FFA9D18E",
+            argb: "FF8CC66A",
           },
         },
         font: {
@@ -1228,7 +1228,7 @@ worksheet.addConditionalFormatting({
           type: "pattern",
           pattern: "solid",
           bgColor: {
-            argb: "FFE2F0D9",
+            argb: "FFA9D18E",
           },
         },
         font: {
@@ -1275,7 +1275,7 @@ worksheet.addConditionalFormatting({
           type: "pattern",
           pattern: "solid",
           bgColor: {
-            argb: "FFF4B6C7",
+            argb: "FFED8FA8",
           },
         },
         font: {
@@ -1296,7 +1296,7 @@ worksheet.addConditionalFormatting({
           type: "pattern",
           pattern: "solid",
           bgColor: {
-            argb: "FFFCE4EC",
+            argb: "FFF4B6C7",
           },
         },
         font: {
