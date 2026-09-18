@@ -1925,8 +1925,125 @@ const totalConductViolations =
             >
               Ghi nhận
             </Button>
+            <Button
+              variant="outlined"
+              onClick={() => newCameraInputRef.current?.click()}
+              disabled={processingImages}
+            >
+              📷 Chụp ảnh
+            </Button>
+            
+            <Button
+              variant="outlined"
+              onClick={() => newGalleryInputRef.current?.click()}
+              disabled={processingImages}
+            >
+              🖼️ Chọn ảnh
+            </Button>
           </Stack>
+          //=========================
+          //INPUT AN
+          //=========================
 
+            <input
+            ref={newCameraInputRef}
+            type="file"
+            accept="image/*,.heic,.heif"
+            capture="environment"
+            multiple
+            hidden
+            onChange={handleSelectNewImages}
+          />
+          
+          <input
+            ref={newGalleryInputRef}
+            type="file"
+            accept="image/*,.heic,.heif"
+            multiple
+            hidden
+            onChange={handleSelectNewImages}
+          />
+
+          {processingImages && (
+            <Typography
+              variant="body2"
+              color="primary"
+              sx={{ mt: 1 }}
+            >
+              {imageProcessMessage || "⏳ Đang xử lý hình ảnh..."}
+            </Typography>
+          )}
+
+          {newImagePreviews.length > 0 && (
+  <Box
+    sx={{
+      display: "grid",
+      gridTemplateColumns:
+        "repeat(auto-fill, minmax(120px, 1fr))",
+      gap: 1.5,
+      mt: 2,
+    }}
+  >
+    {newImagePreviews.map((preview, index) => (
+      <Box
+        key={preview}
+        sx={{
+          position: "relative",
+          border: "1px solid",
+          borderColor: "primary.main",
+          borderRadius: 1,
+          overflow: "hidden",
+          aspectRatio: "1 / 1",
+        }}
+      >
+        <img
+          src={preview}
+          alt={`Ảnh vi phạm ${index + 1}`}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+        />
+
+                <Button
+                  size="small"
+                  color="error"
+                  onClick={() => {
+                    URL.revokeObjectURL(
+                      newImagePreviews[index]
+                    );
+        
+                    setNewImagePreviews((prev) =>
+                      prev.filter((_, i) => i !== index)
+                    );
+        
+                    setNewImageFiles((prev) =>
+                      prev.filter((_, i) => i !== index)
+                    );
+                  }}
+                  sx={{
+                    position: "absolute",
+                    top: 2,
+                    right: 2,
+                    minWidth: 30,
+                    width: 30,
+                    height: 30,
+                    p: 0,
+                    bgcolor: "rgba(255,255,255,0.9)",
+                  }}
+                >
+                  ✕
+                </Button>
+              </Box>
+            ))}
+          </Box>
+        )}
+          //=========================
+          //Kết thuc INPUT AN
+          //=========================
+          
           <Button
             variant="outlined"
             sx={{ mt: 2 }}
