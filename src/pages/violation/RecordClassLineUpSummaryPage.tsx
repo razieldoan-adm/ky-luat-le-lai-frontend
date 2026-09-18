@@ -434,18 +434,22 @@ export default function RecordClassLineUpSummaryPage() {
     }
 
     const validFiles = selected.filter((file) => {
-      if (!file.type.startsWith("image/")) {
-        alert(`"${file.name}" không phải là hình ảnh.`);
-        return false;
-      }
-
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`"${file.name}" vượt quá 10MB.`);
-        return false;
-      }
-
-      return true;
-    });
+    const isImage =
+      file.type.startsWith("image/") ||
+      /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(file.name);
+  
+    if (!isImage) {
+      alert(`"${file.name}" không phải là hình ảnh.`);
+      return false;
+    }
+  
+    if (file.size > 10 * 1024 * 1024) {
+      alert(`"${file.name}" vượt quá 10MB.`);
+      return false;
+    }
+  
+    return true;
+  });
 
     if (validFiles.length === 0) return;
 
