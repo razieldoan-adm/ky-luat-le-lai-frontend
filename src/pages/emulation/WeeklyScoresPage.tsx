@@ -757,7 +757,7 @@ exportRows.push(...gradeClasses);
         const excelRowData = worksheet.addRow([
           index + 1,
           row.className,
-          row.academic,
+          30,
           row.bonus,
           row.violation,
           row.lineUp,
@@ -821,7 +821,7 @@ exportRows.push(...gradeClasses);
         if (gradeStartRow && gradeEndRow) {
           worksheet.getCell(`L${excelRow}`).value = {
             formula:
-              `RANK.EQ(J${excelRow},` +
+              `RANK(J${excelRow},` +
               `$J$${gradeStartRow}:$J$${gradeEndRow},0)`,
           };
         }
