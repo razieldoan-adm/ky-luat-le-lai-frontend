@@ -1294,7 +1294,10 @@ worksheet.addConditionalFormatting({
       style: {
         fill: {
           type: "pattern",
-          pattern: "FFFCE4EC",
+          pattern: "solid",
+          bgColor: {
+            argb: "FFFCE4EC",
+          },
         },
         font: {
           bold: true,
