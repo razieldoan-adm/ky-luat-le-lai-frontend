@@ -1020,10 +1020,10 @@ worksheet.addConditionalFormatting({
 worksheet.addConditionalFormatting({
   ref: `L${firstDataRow}:L${lastDataRow}`,
   rules: [
+    // HẠNG 1
     {
       type: "expression",
-      priority: 1,
-      formulae: [`$L${firstDataRow}=1`],
+      formulae: [`L${firstDataRow}=1`],
       style: {
         fill: {
           type: "pattern",
@@ -1037,10 +1037,11 @@ worksheet.addConditionalFormatting({
         },
       },
     },
+
+    // HẠNG 2
     {
       type: "expression",
-      priority: 2,
-      formulae: [`$L${firstDataRow}=2`],
+      formulae: [`L${firstDataRow}=2`],
       style: {
         fill: {
           type: "pattern",
@@ -1054,10 +1055,11 @@ worksheet.addConditionalFormatting({
         },
       },
     },
+
+    // HẠNG 3
     {
       type: "expression",
-      priority: 3,
-      formulae: [`$L${firstDataRow}=3`],
+      formulae: [`L${firstDataRow}=3`],
       style: {
         fill: {
           type: "pattern",
