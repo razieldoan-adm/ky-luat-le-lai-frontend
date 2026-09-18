@@ -74,12 +74,18 @@ export default function RecordClassLineUpSummaryPage() {
   const [detailItem, setDetailItem] = useState<LineUpRecord | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+
+  // 📷 Ảnh của lỗi mới - chụp trước khi lưu
+  const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
+  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
+  
   const [detailImageUrls, setDetailImageUrls] = useState<{ [fileId: string]: string }>({});
   const [uploadingImages, setUploadingImages] = useState(false);
   const [loadingDetailImages, setLoadingDetailImages] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
-
+  const [processingImages, setProcessingImages] = useState(false);
+  
   // tuần
   const [weeks, setWeeks] = useState<AcademicWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number | "">("");
@@ -208,34 +214,94 @@ export default function RecordClassLineUpSummaryPage() {
 
   // --- Lưu ghi nhận
   const handleSave = async () => {
-    if (!className) return alert("Vui lòng chọn lớp.");
-    if (!violation) return alert("Vui lòng chọn loại vi phạm.");
+  if (!className) return alert("Vui lòng chọn lớp.");
+  if (!violation) return alert("Vui lòng chọn loại vi phạm.");
 
-    try {
-      const now = new Date();
-      const timePart = now.toTimeString().split(" ")[0];
-      const isoDatetime = new Date(`${date}T${timePart}`).toISOString();
+  try {
+    setLoading(true);
 
-      const payload = {
-        className,
-        violation,
-        studentName: selectedStudents.join(", "),
-        recorder,
-        date: isoDatetime,
-        note, // ✅ thêm ghi chú
-      };
+    const now = new Date();
+    const timePart = now.toTimeString().split(" ")[0];
+    const isoDatetime = new Date(`${date}T${timePart}`).toISOString();
 
-      await api.post("/api/class-lineup-summaries", payload);
-      setViolation("");
-      setStudentInput("");
-      setSelectedStudents([]);
-      setNote("");
-      await loadRecords(selectedWeek || undefined);
-    } catch (err) {
-      console.error("Lỗi khi lưu ghi nhận:", err);
-      alert("Lưu thất bại. Xem console để biết chi tiết.");
+    const payload = {
+      className,
+      violation,
+      studentName: selectedStudents.join(", "),
+      recorder,
+      date: isoDatetime,
+      note,
+    };
+
+    // ==========================================================
+    // 1. LƯU GHI NHẬN
+    // ==========================================================
+    const res = await api.post(
+      "/api/class-lineup-summaries",
+      payload
+    );
+
+    const createdRecord =
+      res.data?.record || res.data;
+
+    const recordId = createdRecord?._id;
+
+    if (!recordId) {
+      throw new Error("Không lấy được ID bản ghi vừa tạo.");
     }
-  };
+
+    // ==========================================================
+    // 2. NẾU CÓ ẢNH → UPLOAD NGAY VÀO BẢN GHI VỪA TẠO
+    // ==========================================================
+    if (imageFiles.length > 0) {
+      const formData = new FormData();
+
+      imageFiles.forEach((file) => {
+        formData.append("images", file);
+      });
+
+      await api.post(
+        `/api/class-lineup-summaries/${recordId}/images`,
+        formData
+      );
+    }
+
+    // ==========================================================
+    // 3. DỌN FORM
+    // ==========================================================
+    imagePreviews.forEach((url) => {
+      URL.revokeObjectURL(url);
+    });
+
+    setViolation("");
+    setStudentInput("");
+    setSelectedStudents([]);
+    setNote("");
+    setImageFiles([]);
+    setImagePreviews([]);
+
+    // ==========================================================
+    // 4. TẢI LẠI DANH SÁCH
+    // ==========================================================
+    await loadRecords(selectedWeek || undefined);
+
+    alert(
+      imageFiles.length > 0
+        ? "Đã lưu ghi nhận và hình ảnh thành công."
+        : "Đã lưu ghi nhận thành công."
+    );
+  } catch (err: any) {
+    console.error("Lỗi khi lưu ghi nhận:", err);
+
+    alert(
+      err?.response?.data?.message ||
+        err?.message ||
+        "Lưu ghi nhận thất bại."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ============================================================
   // 📷 HÌNH ẢNH VI PHẠM XẾP HÀNG
@@ -295,6 +361,8 @@ export default function RecordClassLineUpSummaryPage() {
     setDetailImageUrls({});
   };
 
+//=========================================================
+
   const compressImage = async (file: File): Promise<File> => {
   let inputFile = file;
 
@@ -304,15 +372,14 @@ export default function RecordClassLineUpSummaryPage() {
   const isHEIC =
     file.type === "image/heic" ||
     file.type === "image/heif" ||
-    /\.heic$/i.test(file.name) ||
-    /\.heif$/i.test(file.name);
+    /\.(heic|heif)$/i.test(file.name);
 
   if (isHEIC) {
     try {
       const converted = await heic2any({
         blob: file,
         toType: "image/jpeg",
-        quality: 0.8,
+        quality: 0.65,
       });
 
       const convertedBlob = Array.isArray(converted)
@@ -334,7 +401,7 @@ export default function RecordClassLineUpSummaryPage() {
   }
 
   // ==========================================================
-  // 📷 NÉN HÌNH ẢNH
+  // 📷 Resize + nén
   // ==========================================================
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -343,7 +410,8 @@ export default function RecordClassLineUpSummaryPage() {
       const img = new Image();
 
       img.onload = () => {
-        const maxSize = 1280;
+        // Giảm từ 1280 xuống 1024 để xử lý nhanh hơn trên điện thoại
+        const maxSize = 1024;
 
         let width = img.width;
         let height = img.height;
@@ -359,7 +427,6 @@ export default function RecordClassLineUpSummaryPage() {
         }
 
         const canvas = document.createElement("canvas");
-
         canvas.width = width;
         canvas.height = height;
 
@@ -390,7 +457,7 @@ export default function RecordClassLineUpSummaryPage() {
             );
           },
           "image/jpeg",
-          0.7
+          0.65
         );
       };
 
@@ -408,7 +475,8 @@ export default function RecordClassLineUpSummaryPage() {
     reader.readAsDataURL(inputFile);
   });
 };
-
+  
+//=========================================================
   const handleSelectImages = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -466,8 +534,8 @@ export default function RecordClassLineUpSummaryPage() {
         URL.createObjectURL(file)
       );
 
-      setImageFiles((prev) => [...prev, ...compressedFiles]);
-      setImagePreviews((prev) => [...prev, ...previews]);
+setNewImageFiles((prev) => [...prev, ...compressedFiles]);
+setNewImagePreviews((prev) => [...prev, ...previews]);
     } catch (err: any) {
   console.error("❌ Lỗi xử lý hình ảnh:", err);
 
@@ -715,6 +783,101 @@ export default function RecordClassLineUpSummaryPage() {
             multiline
             minRows={2}
           />
+          //===============================================
+          // CHUP ANH TRUOC KHI LUU
+          //===============================================
+
+          {/* 📷 Ảnh ghi nhận vi phạm */}
+<Box>
+  <Stack direction="row" spacing={1} alignItems="center">
+    <input
+      ref={cameraInputRef}
+      type="file"
+      accept="image/*"
+      capture="environment"
+      style={{ display: "none" }}
+      onChange={handleSelectImages}
+    />
+
+    <Button
+      variant="outlined"
+      onClick={() => cameraInputRef.current?.click()}
+      disabled={loading}
+    >
+      📷 Chụp ảnh
+    </Button>
+
+    <Typography variant="body2" color="text.secondary">
+      Có thể chụp trước khi lưu
+    </Typography>
+  </Stack>
+
+  {/* Preview ảnh chuẩn bị lưu */}
+  {imagePreviews.length > 0 && (
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "repeat(2, 1fr)",
+          sm: "repeat(4, 1fr)",
+        },
+        gap: 1,
+        mt: 1.5,
+      }}
+    >
+      {imagePreviews.map((preview, index) => (
+        <Box
+          key={preview}
+          sx={{
+            position: "relative",
+            border: "1px solid",
+            borderColor: "primary.main",
+            borderRadius: 1,
+            overflow: "hidden",
+            aspectRatio: "1 / 1",
+          }}
+        >
+          <img
+            src={preview}
+            alt={`Ảnh vi phạm ${index + 1}`}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+
+          <IconButton
+            size="small"
+            color="error"
+            onClick={() => {
+              URL.revokeObjectURL(imagePreviews[index]);
+
+              setImagePreviews((prev) =>
+                prev.filter((_, i) => i !== index)
+              );
+
+              setImageFiles((prev) =>
+                prev.filter((_, i) => i !== index)
+              );
+            }}
+            sx={{
+              position: "absolute",
+              top: 4,
+              right: 4,
+              bgcolor: "rgba(255,255,255,0.9)",
+            }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      ))}
+    </Box>
+  )}
+</Box>
+          
+          //===============================================
           <Box sx={{ display: "flex", gap: 2 }}>
             <Button variant="contained" onClick={handleSave}>
               Lưu ghi nhận
