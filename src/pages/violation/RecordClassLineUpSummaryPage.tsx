@@ -413,7 +413,9 @@ export default function RecordClassLineUpSummaryPage() {
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const files = Array.from(event.target.files || []);
-
+    alert(
+  `ĐÃ NHẬN ẢNH\nTên: ${files[0]?.name}\nLoại: ${files[0]?.type || "không xác định"}`
+);
     // Cho phép chọn lại cùng một file ở lần sau
     event.target.value = "";
 
