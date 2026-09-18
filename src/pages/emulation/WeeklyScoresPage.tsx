@@ -1022,10 +1022,9 @@ worksheet.addConditionalFormatting({
   rules: [
     // HẠNG 1
     {
-      type: "cellIs",
-      operator: "equal",
+      type: "expression",
       priority: 1,
-      formulae: [1],
+      formulae: [`L${firstDataRow}=1`],
       style: {
         fill: {
           type: "pattern",
@@ -1042,10 +1041,9 @@ worksheet.addConditionalFormatting({
 
     // HẠNG 2
     {
-      type: "cellIs",
-      operator: "equal",
+      type: "expression",
       priority: 2,
-      formulae: [2],
+      formulae: [`L${firstDataRow}=2`],
       style: {
         fill: {
           type: "pattern",
@@ -1062,10 +1060,9 @@ worksheet.addConditionalFormatting({
 
     // HẠNG 3
     {
-      type: "cellIs",
-      operator: "equal",
+      type: "expression",
       priority: 3,
-      formulae: [3],
+      formulae: [`L${firstDataRow}=3`],
       style: {
         fill: {
           type: "pattern",
