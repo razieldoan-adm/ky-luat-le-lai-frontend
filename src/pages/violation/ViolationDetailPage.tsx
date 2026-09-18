@@ -1941,9 +1941,7 @@ const totalConductViolations =
               🖼️ Chọn ảnh
             </Button>
           </Stack>
-          //=========================
-          //INPUT AN
-          //=========================
+
 
             <input
             ref={newCameraInputRef}
@@ -2040,10 +2038,7 @@ const totalConductViolations =
             ))}
           </Box>
         )}
-          //=========================
-          //Kết thuc INPUT AN
-          //=========================
-          
+
           <Button
             variant="outlined"
             sx={{ mt: 2 }}
