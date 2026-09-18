@@ -483,12 +483,16 @@ const compressImage = async (file: File): Promise<File> => {
 // ==========================================================
 const processImagesInBackground = async (
   files: File[],
-  target: "new" | "detail"
+  target: "new" | "detail",
+  startIndex: number
 ) => {
   if (files.length === 0) return;
 
   try {
     setProcessingImages(true);
+    setImageProcessMessage(
+      `⏳ Đang tối ưu ${files.length} ảnh...`
+    );
 
     const compressedFiles = await Promise.all(
       files.map((file) => compressImage(file))
@@ -496,8 +500,6 @@ const processImagesInBackground = async (
 
     if (target === "new") {
       setNewImageFiles((prev) => {
-        const startIndex = prev.length;
-
         const next = [...prev];
 
         compressedFiles.forEach((file, index) => {
@@ -508,8 +510,6 @@ const processImagesInBackground = async (
       });
     } else {
       setImageFiles((prev) => {
-        const startIndex = prev.length;
-
         const next = [...prev];
 
         compressedFiles.forEach((file, index) => {
@@ -519,12 +519,19 @@ const processImagesInBackground = async (
         return next;
       });
     }
+
+    setImageProcessMessage(
+      `✓ Đã xử lý xong ${compressedFiles.length} ảnh`
+    );
+
+    setTimeout(() => {
+      setImageProcessMessage("");
+    }, 2000);
   } catch (err: any) {
     console.error("Lỗi xử lý hình ảnh:", err);
 
-    alert(
-      err?.message ||
-        "Không thể xử lý hình ảnh."
+    setImageProcessMessage(
+      "❌ Không thể xử lý một hoặc nhiều hình ảnh."
     );
   } finally {
     setProcessingImages(false);
@@ -581,26 +588,24 @@ const handleSelectNewImages = async (
     URL.createObjectURL(file)
   );
 
-  const startIndex = newImageFiles.length;
-
-  setNewImageFiles((prev) => [
-    ...prev,
-    ...validFiles,
-  ]);
-
-  setNewImagePreviews((prev) => [
-    ...prev,
-    ...immediatePreviews,
-  ]);
-
-  // ========================================================
-  // NÉN Ở BACKGROUND
-  // ========================================================
-  await processImagesInBackground(
-    validFiles,
-    "new"
-  );
-};
+    const startIndex = newImageFiles.length;
+    
+    setNewImageFiles((prev) => [
+      ...prev,
+      ...validFiles,
+    ]);
+    
+    setNewImagePreviews((prev) => [
+      ...prev,
+      ...immediatePreviews,
+    ]);
+    
+    await processImagesInBackground(
+      validFiles,
+      "new",
+      startIndex
+    );
+  };
 
 
 // ==========================================================
@@ -655,21 +660,23 @@ const handleSelectDetailImages = async (
     URL.createObjectURL(file)
   );
 
-  setImageFiles((prev) => [
-    ...prev,
-    ...validFiles,
-  ]);
+  const startIndex = imageFiles.length;
 
-  setImagePreviews((prev) => [
-    ...prev,
-    ...immediatePreviews,
-  ]);
-
-  // Nén phía sau
-  await processImagesInBackground(
-    validFiles,
-    "detail"
-  );
+    setImageFiles((prev) => [
+      ...prev,
+      ...validFiles,
+    ]);
+    
+    setImagePreviews((prev) => [
+      ...prev,
+      ...immediatePreviews,
+    ]);
+    
+    await processImagesInBackground(
+      validFiles,
+      "detail",
+      startIndex
+    );
 };
   
 //=========================================================
@@ -909,22 +916,149 @@ const handleSelectDetailImages = async (
           {/* 📷 Ảnh ghi nhận vi phạm */}
 <Box>
   <Stack direction="row" spacing={1} alignItems="center">
+    {/* 📷 Ảnh ghi nhận vi phạm */}
+<Box>
+  <Stack
+    direction={{ xs: "column", sm: "row" }}
+    spacing={1}
+    alignItems={{ xs: "stretch", sm: "center" }}
+  >
+    {/* Camera */}
     <input
-      ref={cameraInputRef}
+      ref={newCameraInputRef}
       type="file"
       accept="image/*"
       capture="environment"
       style={{ display: "none" }}
-      onChange={handleSelectImages}
+      onChange={handleSelectNewImages}
+    />
+
+    {/* Thư viện */}
+    <input
+      ref={newGalleryInputRef}
+      type="file"
+      accept="image/*"
+      multiple
+      style={{ display: "none" }}
+      onChange={handleSelectNewImages}
     />
 
     <Button
       variant="outlined"
-      onClick={() => cameraInputRef.current?.click()}
-      disabled={loading}
+      onClick={() =>
+        newCameraInputRef.current?.click()
+      }
+      disabled={loading || processingImages}
     >
       📷 Chụp ảnh
     </Button>
+
+    <Button
+      variant="outlined"
+      onClick={() =>
+        newGalleryInputRef.current?.click()
+      }
+      disabled={loading || processingImages}
+    >
+      🖼️ Chọn từ thư viện
+    </Button>
+
+    <Typography
+      variant="body2"
+      color="text.secondary"
+    >
+      Tối đa 5 ảnh
+    </Typography>
+  </Stack>
+
+  {imageProcessMessage && (
+    <Typography
+      variant="body2"
+      color={processingImages ? "primary" : "success.main"}
+      sx={{
+        mt: 1,
+        fontWeight: 500,
+      }}
+    >
+      {processingImages && (
+        <CircularProgress
+          size={14}
+          sx={{
+            mr: 1,
+            verticalAlign: "middle",
+          }}
+        />
+      )}
+      {imageProcessMessage}
+    </Typography>
+  )}
+
+  {/* Preview ảnh chuẩn bị lưu */}
+  {newImagePreviews.length > 0 && (
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "repeat(2, 1fr)",
+          sm: "repeat(4, 1fr)",
+        },
+        gap: 1,
+        mt: 1.5,
+      }}
+    >
+      {newImagePreviews.map((preview, index) => (
+        <Box
+          key={preview}
+          sx={{
+            position: "relative",
+            border: "1px solid",
+            borderColor: "primary.main",
+            borderRadius: 1,
+            overflow: "hidden",
+            aspectRatio: "1 / 1",
+          }}
+        >
+          <img
+            src={preview}
+            alt={`Ảnh vi phạm ${index + 1}`}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+
+          <IconButton
+            size="small"
+            color="error"
+            onClick={() => {
+              URL.revokeObjectURL(
+                newImagePreviews[index]
+              );
+
+              setNewImagePreviews((prev) =>
+                prev.filter((_, i) => i !== index)
+              );
+
+              setNewImageFiles((prev) =>
+                prev.filter((_, i) => i !== index)
+              );
+            }}
+            sx={{
+              position: "absolute",
+              top: 4,
+              right: 4,
+              bgcolor: "rgba(255,255,255,0.9)",
+            }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      ))}
+    </Box>
+  )}
+</Box>
 
     <Typography variant="body2" color="text.secondary">
       Có thể chụp trước khi lưu
