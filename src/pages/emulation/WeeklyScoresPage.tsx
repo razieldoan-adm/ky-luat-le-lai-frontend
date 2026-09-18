@@ -729,7 +729,7 @@ exportRows.push(...gradeClasses);
             type: "pattern",
             pattern: "solid",
             fgColor: {
-              argb: gradeColor,
+              argb: "FFD9E2F3",
             },
           };
         
