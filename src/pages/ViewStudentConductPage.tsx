@@ -353,6 +353,19 @@ const getFinalWeeklyClassification = (
 
   return classification;
 };
+
+const hasSeriousViolationGroup = (
+  groupViolations?: WeeklyGroups
+): boolean => {
+  if (!groupViolations) return false;
+
+  return Object.entries(groupViolations).some(
+    ([groupCode, count]) =>
+      groupCode.startsWith("S") &&
+      Number(count ?? 0) > 0
+  );
+};
+
 const monthStart = (
   month: number,
   year: number
@@ -1035,9 +1048,10 @@ const mergeStudentsWithWeeklyData = (
         weeklyDataForExport.find(
           (item) =>
             normalizeName(item.name) ===
-            normalizeName(student.name)
+              normalizeName(student.name) &&
+            normalizeClass(item.className) ===
+              normalizeClass(student.className)
         );
-
       return {
         stt: index + 1,
 
@@ -1162,6 +1176,8 @@ const sheetData = mergedData.map((item) => {
     "XẾP LOẠI": "",
 
     "GHI CHÚ": "",
+
+    "S": 0,
   };
 });
 
@@ -1216,7 +1232,7 @@ XLSX.utils.sheet_add_aoa(
 worksheet["!merges"] = [
   {
     s: { r: 0, c: 0 },
-    e: { r: 0, c: 10 },
+    e: { r: 0, c: 11 },
   },
 ];
 
@@ -1253,11 +1269,6 @@ for (let row = 5; row < 5 + sheetData.length; row++) {
   // H = CỘNG
   // -------------------------------------------------------
 
-  worksheet[`I${row}`] = {
-    t: "n",
-    f: `D${row}-F${row}+H${row}`,
-  };
-
   // -------------------------------------------------------
   // XẾP LOẠI
   //
@@ -1267,10 +1278,29 @@ for (let row = 5; row < 5 + sheetData.length; row++) {
   // 0 - 49    = Chưa đạt
   // -------------------------------------------------------
 
-  worksheet[`J${row}`] = {
-    t: "s",
-    f: `IF(I${row}>=90,"Tốt",IF(I${row}>=75,"Khá",IF(I${row}>=50,"Đạt","Chưa đạt")))`,
-  };
+  // Cột L: đánh dấu có lỗi nhóm S hay không
+const hasSeriousViolation =
+  hasSeriousViolationGroup(
+    mergedData[dataIndex]?.conduct?.groupViolations
+  );
+
+worksheet[`L${row}`] = {
+  t: "n",
+  v: hasSeriousViolation ? 1 : 0,
+};
+
+// Cột I: ĐIỂM CUỐI
+worksheet[`I${row}`] = {
+  t: "n",
+  f: `D${row}-F${row}+H${row}`,
+};
+
+// Cột J: XẾP LOẠI
+worksheet[`J${row}`] = {
+  t: "s",
+  f: `IF(I${row}>=90,IF(L${row}=1,"Khá","Tốt"),IF(I${row}>=70,IF(L${row}=1,"Đạt","Khá"),IF(I${row}>=50,IF(L${row}=1,"Chưa đạt","Đạt"),"Chưa đạt")))`,
+};
+  
 }
 
 // =========================================================
@@ -1330,7 +1360,7 @@ for (
 const totalRows =
   sheetData.length + 4;
 
-const totalCols = 11;
+const totalCols = 12;
 
 for (
   let row = 0;
@@ -1513,19 +1543,36 @@ for (
   dataIndex++
 ) {
   const excelRow = dataIndex + 5;
-  const deduction = Number(
-    sheetData[dataIndex]["TRỪ"] ?? 0
+
+const deduction = Number(
+  sheetData[dataIndex]["TRỪ"] ?? 0
+);
+
+const bonus = Number(
+  sheetData[dataIndex]["CỘNG"] ?? 0
+);
+
+// Điểm cuối thực tế của học sinh
+const finalScore =
+  100 - deduction + bonus;
+
+const hasSeriousViolation =
+  hasSeriousViolationGroup(
+    mergedData[dataIndex]?.conduct?.groupViolations
   );
 
-  // Vì CỘNG mặc định 0 khi xuất file nên điểm cuối
-  // ban đầu = 100 - TRỪ.
-  const initialScore =
-    100 - deduction;
+const classification =
+  getFinalWeeklyClassification(
+    finalScore,
+    hasSeriousViolation
+  );
 
-  const hasSeriousViolation =
-  Number(
-    mergedData[dataIndex]?.conduct?.groupViolations?.S1 ?? 0
-  ) > 0;
+const fillColor =
+  getExcelConductFillColor(
+    classification,
+    deduction
+  );
+
 
 const classification =
   getFinalWeeklyClassification(
