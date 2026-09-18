@@ -1179,7 +1179,7 @@ const sheetData = mergedData.map((item) => {
       hasSeriousViolationGroup(
         conduct?.groupViolations
       )
-        ? "Có vi phạm lỗi nặng - hạ 1 bậc rèn luyện"
+        ? "Có vi phạm lỗi nặng "
         : "",
 
     "S": 0,
