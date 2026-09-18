@@ -24,6 +24,8 @@ import api from '../../api/api';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import heic2any from 'heic2any';
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.tz.setDefault('Asia/Ho_Chi_Minh');
@@ -326,57 +328,158 @@ export default function AllViolationStudentPage() {
   };
 
   // 📷 Nén ảnh giống trang chi tiết
-  const compressImage = (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
+  const compressImage = async (
+  file: File
+): Promise<File> => {
+  let inputFile = file;
 
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-        const maxSize = 1280;
-        let width = img.width;
-        let height = img.height;
+  // ==========================================================
+  // 📱 iPhone HEIC / HEIF → JPEG
+  // ==========================================================
+  const isHEIC =
+    file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    /\.(heic|heif)$/i.test(file.name);
 
-        if (width > maxSize || height > maxSize) {
-          if (width > height) {
-            height = Math.round((height * maxSize) / width);
-            width = maxSize;
-          } else {
-            width = Math.round((width * maxSize) / height);
-            height = maxSize;
-          }
+  if (isHEIC) {
+    try {
+      const converted = await heic2any({
+        blob: file,
+        toType: 'image/jpeg',
+        quality: 0.65,
+      });
+
+      const convertedBlob = Array.isArray(converted)
+        ? converted[0]
+        : converted;
+
+      inputFile = new File(
+        [convertedBlob],
+        file.name.replace(
+          /\.(heic|heif)$/i,
+          '.jpg'
+        ),
+        {
+          type: 'image/jpeg',
+          lastModified: Date.now(),
         }
+      );
+    } catch (error) {
+      console.error(
+        '❌ Lỗi chuyển HEIC:',
+        error
+      );
 
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Không thể xử lý hình ảnh.'));
-          return;
+      throw new Error(
+        'Không thể chuyển ảnh HEIC sang JPEG.'
+      );
+    }
+  }
+
+  // ==========================================================
+  // 🖼️ Đọc ảnh sau khi đã chuyển HEIC
+  // ==========================================================
+  const objectUrl =
+    URL.createObjectURL(inputFile);
+
+  try {
+    const img = new Image();
+
+    await new Promise<void>(
+      (resolve, reject) => {
+        img.onload = () => resolve();
+
+        img.onerror = () =>
+          reject(
+            new Error(
+              'Không thể đọc hình ảnh.'
+            )
+          );
+
+        img.src = objectUrl;
+      }
+    );
+
+    const maxSize = 1280;
+
+    let width = img.width;
+    let height = img.height;
+
+    if (
+      width > maxSize ||
+      height > maxSize
+    ) {
+      if (width > height) {
+        height = Math.round(
+          (height * maxSize) / width
+        );
+        width = maxSize;
+      } else {
+        width = Math.round(
+          (width * maxSize) / height
+        );
+        height = maxSize;
+      }
+    }
+
+    const canvas =
+      document.createElement('canvas');
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx =
+      canvas.getContext('2d');
+
+    if (!ctx) {
+      throw new Error(
+        'Không thể xử lý hình ảnh.'
+      );
+    }
+
+    ctx.drawImage(
+      img,
+      0,
+      0,
+      width,
+      height
+    );
+
+    const blob =
+      await new Promise<Blob | null>(
+        (resolve) => {
+          canvas.toBlob(
+            resolve,
+            'image/jpeg',
+            0.7
+          );
         }
+      );
 
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => {
-          if (!blob) {
-            reject(new Error('Không thể nén hình ảnh.'));
-            return;
-          }
-          const fileName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
-          resolve(new File([blob], fileName, {
-            type: 'image/jpeg',
-            lastModified: Date.now(),
-          }));
-        }, 'image/jpeg', 0.7);
-      };
+    if (!blob) {
+      throw new Error(
+        'Không thể nén hình ảnh.'
+      );
+    }
 
-      img.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        reject(new Error('Không thể đọc hình ảnh.'));
-      };
-      img.src = objectUrl;
-    });
-  };
+    const fileName =
+      inputFile.name.replace(
+        /\.[^/.]+$/,
+        ''
+      ) + '.jpg';
+
+    return new File(
+      [blob],
+      fileName,
+      {
+        type: 'image/jpeg',
+        lastModified: Date.now(),
+      }
+    );
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+};
 
   const handleSelectImages = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -393,9 +496,18 @@ export default function AllViolationStudentPage() {
         return;
       }
 
-      const validFiles = files.filter((file) =>
-        file.type.startsWith('image/') && file.size <= 10 * 1024 * 1024
+      const validFiles = files.filter((file) => {
+      const isImage =
+        file.type.startsWith('image/') ||
+        /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(
+          file.name
+        );
+    
+      return (
+        isImage &&
+        file.size <= 15 * 1024 * 1024
       );
+    });
 
       if (validFiles.length === 0) {
         setSnackbar({ open: true, message: 'Không có hình ảnh hợp lệ.', severity: 'error' });
@@ -826,8 +938,8 @@ export default function AllViolationStudentPage() {
               <Box>
                 <Typography variant="h6" gutterBottom>Thêm hình ảnh</Typography>
 
-                <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleSelectImages} />
-                <input ref={galleryInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleSelectImages} />
+                <input ref={cameraInputRef} type="file" accept="image/*,.heic,.heif" capture="environment" style={{ display: 'none' }} onChange={handleSelectImages} />
+                <input ref={galleryInputRef} type="file" accept="image/*,.heic,.heif" multiple style={{ display: 'none' }} onChange={handleSelectImages} />
 
                 <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
                   <Button variant="outlined" onClick={() => cameraInputRef.current?.click()}>
