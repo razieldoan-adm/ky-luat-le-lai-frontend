@@ -1175,7 +1175,12 @@ const sheetData = mergedData.map((item) => {
     // Sẽ thay bằng công thức Excel sau
     "XẾP LOẠI": "",
 
-    "GHI CHÚ": "",
+    "GHI CHÚ":
+      hasSeriousViolationGroup(
+        conduct?.groupViolations
+      )
+        ? "Có vi phạm lỗi nặng - hạ 1 bậc rèn luyện"
+        : "",
 
     "S": 0,
   };
@@ -1298,7 +1303,7 @@ worksheet["!cols"] = [
   { wch: 10 },  // H - CỘNG
   { wch: 12 },  // I - ĐIỂM CUỐI
   { wch: 14 },  // J - XẾP LOẠI
-  { wch: 25 },  // K - GHI CHÚ
+  { wch: 38 },  // K - GHI CHÚ
   { wch: 8, hidden: true }, // L - S
 ];
 
@@ -1487,6 +1492,27 @@ if (worksheet["A2"]) {
       vertical: "center",
     },
   };
+}
+
+// =========================================================
+// XÓA KHUNG THỪA Ở VÙNG B2:E2
+// =========================================================
+// Các ô B2:E2 chỉ dùng làm khoảng trống giữa thông tin Lớp và Khối.
+// Không tạo viền cho vùng này.
+// =========================================================
+
+for (const address of ["B2", "C2", "D2", "E2"]) {
+  if (worksheet[address]) {
+    worksheet[address].s = {
+      ...(worksheet[address].s || {}),
+      border: {
+        top: { style: "none" },
+        bottom: { style: "none" },
+        left: { style: "none" },
+        right: { style: "none" },
+      },
+    };
+  }
 }
 
 // =========================================================
