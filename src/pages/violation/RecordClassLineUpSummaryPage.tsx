@@ -28,7 +28,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import api from "../../api/api";
 import dayjs from "dayjs";
-
+import heic2any from "heic2any";
 interface StudentSuggestion {
   _id: string;
   name: string;
@@ -295,69 +295,119 @@ export default function RecordClassLineUpSummaryPage() {
     setDetailImageUrls({});
   };
 
-  const compressImage = (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
+  const compressImage = async (file: File): Promise<File> => {
+  let inputFile = file;
 
-      reader.onload = (event) => {
-        const img = new Image();
+  // ==========================================================
+  // 📷 HEIC / HEIF → JPEG
+  // ==========================================================
+  const isHEIC =
+    file.type === "image/heic" ||
+    file.type === "image/heif" ||
+    /\.heic$/i.test(file.name) ||
+    /\.heif$/i.test(file.name);
 
-        img.onload = () => {
-          const maxSize = 1280;
-          let width = img.width;
-          let height = img.height;
+  if (isHEIC) {
+    try {
+      const converted = await heic2any({
+        blob: file,
+        toType: "image/jpeg",
+        quality: 0.8,
+      });
 
-          if (width > maxSize || height > maxSize) {
-            if (width >= height) {
-              height = Math.round((height * maxSize) / width);
-              width = maxSize;
-            } else {
-              width = Math.round((width * maxSize) / height);
-              height = maxSize;
+      const convertedBlob = Array.isArray(converted)
+        ? converted[0]
+        : converted;
+
+      inputFile = new File(
+        [convertedBlob],
+        file.name.replace(/\.(heic|heif)$/i, ".jpg"),
+        {
+          type: "image/jpeg",
+          lastModified: Date.now(),
+        }
+      );
+    } catch (error) {
+      console.error("❌ Lỗi chuyển HEIC sang JPEG:", error);
+      throw new Error("Không thể chuyển ảnh HEIC sang JPEG");
+    }
+  }
+
+  // ==========================================================
+  // 📷 NÉN HÌNH ẢNH
+  // ==========================================================
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+      const img = new Image();
+
+      img.onload = () => {
+        const maxSize = 1280;
+
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxSize || height > maxSize) {
+          if (width >= height) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          } else {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+
+        if (!ctx) {
+          reject(new Error("Không thể tạo canvas"));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error("Không thể nén hình ảnh"));
+              return;
             }
-          }
 
-          const canvas = document.createElement("canvas");
-          canvas.width = width;
-          canvas.height = height;
+            const compressedName =
+              inputFile.name.replace(/\.[^/.]+$/, "") + ".jpg";
 
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            reject(new Error("Không thể tạo canvas"));
-            return;
-          }
-
-          ctx.drawImage(img, 0, 0, width, height);
-
-          canvas.toBlob(
-            (blob) => {
-              if (!blob) {
-                reject(new Error("Không thể nén hình ảnh"));
-                return;
-              }
-
-              const compressedName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
-
-              resolve(
-                new File([blob], compressedName, {
-                  type: "image/jpeg",
-                  lastModified: Date.now(),
-                })
-              );
-            },
-            "image/jpeg",
-            0.7
-          );
-        };
-
-        img.onerror = () => reject(new Error("Không đọc được hình ảnh"));
-        img.src = event.target?.result as string;
+            resolve(
+              new File([blob], compressedName, {
+                type: "image/jpeg",
+                lastModified: Date.now(),
+              })
+            );
+          },
+          "image/jpeg",
+          0.7
+        );
       };
 
-      reader.onerror = () => reject(new Error("Không đọc được file"));
-      reader.readAsDataURL(file);
-    });
-  };
+      img.onerror = () => {
+        reject(new Error("Không thể đọc hình ảnh sau khi chuyển đổi"));
+      };
+
+      img.src = event.target?.result as string;
+    };
+
+    reader.onerror = () => {
+      reject(new Error("Không thể đọc file"));
+    };
+
+    reader.readAsDataURL(inputFile);
+  });
+};
 
   const handleSelectImages = async (
     event: React.ChangeEvent<HTMLInputElement>
