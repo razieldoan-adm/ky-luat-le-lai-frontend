@@ -949,7 +949,12 @@ const openDetailDialog = async (v: Violation) => {
 // Hỗ trợ JPG / PNG / WEBP / HEIC / HEIF
 // ==========================================================
 
-  const compressImage = async (
+  // ==========================================================
+// 📷 GIẢM DUNG LƯỢNG HÌNH ẢNH
+// Hỗ trợ JPG / PNG / WEBP / HEIC / HEIF
+// ==========================================================
+
+const compressImage = async (
   file: File
 ): Promise<File> => {
   const TEN_MB = 10 * 1024 * 1024;
@@ -959,63 +964,20 @@ const openDetailDialog = async (v: Violation) => {
     file.type === "image/heif" ||
     /\.(heic|heif)$/i.test(file.name);
 
-  // ========================================================
-  // ẢNH <= 10 MB
-  // ========================================================
-
-  if (file.size <= TEN_MB) {
-
-    // JPG/JPEG/PNG/WEBP:
-    // giữ nguyên, không nén
-    if (!isHEIC) {
-      return file;
-    }
-
-    // HEIC/HEIF:
-    // chỉ chuyển sang JPG, KHÔNG nén
-    try {
-      const converted = await heic2any({
-        blob: file,
-        toType: "image/jpeg",
-        quality: 1,
-      });
-
-      const convertedBlob = Array.isArray(converted)
-        ? converted[0]
-        : converted;
-
-      return new File(
-        [convertedBlob],
-        file.name.replace(
-          /\.(heic|heif)$/i,
-          ".jpg"
-        ),
-        {
-          type: "image/jpeg",
-          lastModified: Date.now(),
-        }
-      );
-    } catch (error) {
-      console.error(
-        "❌ Lỗi chuyển HEIC:",
-        error
-      );
-
-      throw new Error(
-        "Không thể chuyển ảnh HEIC sang JPEG."
-      );
-    }
-  }
-
-  // ========================================================
-  // ẢNH > 10 MB → MỚI NÉN
-  // ========================================================
-
   let inputFile = file;
 
-  // HEIC > 10 MB → chuyển sang JPG trước
+  // ========================================================
+  // 1. HEIC / HEIF → JPEG
+  // ========================================================
+
   if (isHEIC) {
     try {
+      console.log("📱 Chuyển HEIC/HEIF → JPEG:", {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      });
+
       const converted = await heic2any({
         blob: file,
         toType: "image/jpeg",
@@ -1037,6 +999,12 @@ const openDetailDialog = async (v: Violation) => {
           lastModified: Date.now(),
         }
       );
+
+      console.log("✅ Đã chuyển HEIC → JPEG:", {
+        name: inputFile.name,
+        size: inputFile.size,
+      });
+
     } catch (error) {
       console.error(
         "❌ Lỗi chuyển HEIC:",
@@ -1044,94 +1012,170 @@ const openDetailDialog = async (v: Violation) => {
       );
 
       throw new Error(
-        "Không thể chuyển ảnh HEIC sang JPEG."
+        "Không thể chuyển ảnh HEIC/HEIF sang JPEG."
       );
     }
   }
 
-  const bitmap =
-    await createImageBitmap(inputFile);
+  // ========================================================
+  // 2. ẢNH SAU KHI XỬ LÝ <= 10 MB
+  //    → giữ nguyên
+  // ========================================================
 
-  const maxSize = 1024;
-
-  let width = bitmap.width;
-  let height = bitmap.height;
-
-  if (
-    width > maxSize ||
-    height > maxSize
-  ) {
-    if (width >= height) {
-      height = Math.round(
-        (height * maxSize) / width
-      );
-      width = maxSize;
-    } else {
-      width = Math.round(
-        (width * maxSize) / height
-      );
-      height = maxSize;
-    }
+  if (inputFile.size <= TEN_MB) {
+    return inputFile;
   }
 
-  const canvas =
-    document.createElement("canvas");
+  // ========================================================
+  // 3. ẢNH > 10 MB → NÉN
+  // ========================================================
 
-  canvas.width = width;
-  canvas.height = height;
-
-  const ctx =
-    canvas.getContext("2d");
-
-  if (!ctx) {
-    bitmap.close();
-
-    throw new Error(
-      "Không thể tạo canvas."
-    );
-  }
-
-  ctx.drawImage(
-    bitmap,
-    0,
-    0,
-    width,
-    height
+  console.log(
+    "📦 Ảnh > 10MB, bắt đầu nén:",
+    inputFile.name
   );
 
-  bitmap.close();
+  const objectUrl =
+    URL.createObjectURL(inputFile);
 
-  const blob =
-    await new Promise<Blob | null>(
-      (resolve) => {
-        canvas.toBlob(
-          resolve,
-          "image/jpeg",
-          0.65
-        );
+  try {
+    const img = new Image();
+
+    await new Promise<void>(
+      (resolve, reject) => {
+        img.onload = () => resolve();
+
+        img.onerror = () => {
+          reject(
+            new Error(
+              "Không thể đọc hình ảnh."
+            )
+          );
+        };
+
+        img.src = objectUrl;
       }
     );
 
-  if (!blob) {
-    throw new Error(
-      "Không thể nén hình ảnh."
-    );
-  }
+    const maxSize = 1024;
 
-  const fileName =
-    inputFile.name.replace(
-      /\.[^/.]+$/,
-      ""
-    ) + ".jpg";
+    let width =
+      img.naturalWidth || img.width;
 
-  return new File(
-    [blob],
-    fileName,
-    {
-      type: "image/jpeg",
-      lastModified: Date.now(),
+    let height =
+      img.naturalHeight || img.height;
+
+    if (!width || !height) {
+      throw new Error(
+        "Không xác định được kích thước hình ảnh."
+      );
     }
-  );
+
+    // ======================================================
+    // 4. GIẢM KÍCH THƯỚC
+    // ======================================================
+
+    if (
+      width > maxSize ||
+      height > maxSize
+    ) {
+      if (width >= height) {
+        height = Math.round(
+          (height * maxSize) / width
+        );
+
+        width = maxSize;
+      } else {
+        width = Math.round(
+          (width * maxSize) / height
+        );
+
+        height = maxSize;
+      }
+    }
+
+    const canvas =
+      document.createElement("canvas");
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx =
+      canvas.getContext("2d");
+
+    if (!ctx) {
+      throw new Error(
+        "Không thể tạo canvas."
+      );
+    }
+
+    ctx.drawImage(
+      img,
+      0,
+      0,
+      width,
+      height
+    );
+
+    // ======================================================
+    // 5. JPEG
+    // ======================================================
+
+    const blob =
+      await new Promise<Blob | null>(
+        (resolve) => {
+          canvas.toBlob(
+            resolve,
+            "image/jpeg",
+            0.65
+          );
+        }
+      );
+
+    if (!blob) {
+      throw new Error(
+        "Không thể nén hình ảnh."
+      );
+    }
+
+    const fileName =
+      inputFile.name.replace(
+        /\.[^/.]+$/,
+        ""
+      ) + ".jpg";
+
+    const compressedFile =
+      new File(
+        [blob],
+        fileName,
+        {
+          type: "image/jpeg",
+          lastModified: Date.now(),
+        }
+      );
+
+    console.log(
+      "✅ Đã nén ảnh:",
+      {
+        originalMB: (
+          inputFile.size /
+          1024 /
+          1024
+        ).toFixed(2),
+
+        compressedMB: (
+          compressedFile.size /
+          1024 /
+          1024
+        ).toFixed(2),
+      }
+    );
+
+    return compressedFile;
+
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 };
 
 // ==========================================================
@@ -1249,63 +1293,85 @@ const handleSelectNewImages = async (
 // 📷 CHỌN HÌNH ẢNH
 // ==========================================================
 
+// ==========================================================
+// 📷 CHỌN / CHỤP HÌNH ẢNH
+// ==========================================================
+
 const handleSelectImages = async (
   event: ChangeEvent<HTMLInputElement>
 ) => {
-  const files = Array.from(event.target.files || []);
+  const files = Array.from(
+    event.target.files || []
+  );
 
-  // Cho phép chọn lại đúng file vừa chọn trước đó
+  // Cho phép chọn lại cùng file
   event.target.value = "";
 
   if (files.length === 0) return;
 
   try {
     // ========================================================
-    // 1. KIỂM TRA SỐ LƯỢNG ẢNH
+    // 1. KIỂM TRA SỐ LƯỢNG
     // ========================================================
 
-    if (imageFiles.length + files.length > 5) {
+    const remaining =
+      5 - imageFiles.length;
+
+    if (remaining <= 0) {
       setSnackbarMessage(
-        `Tối đa 5 hình ảnh. Hiện đã có ${imageFiles.length} hình.`
+        "Tối đa 5 hình ảnh."
       );
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
       return;
     }
 
+    const selectedFiles =
+      files.slice(0, remaining);
+
     // ========================================================
-    // 2. KIỂM TRA FILE ẢNH
-    //    Không chỉ dựa vào file.type
-    //    vì một số điện thoại không trả MIME type đúng
+    // 2. KIỂM TRA FILE
     // ========================================================
+    
+    const validFiles =
+      selectedFiles.filter((file) => {
+        const isImage =
+          file.type.startsWith("image/") ||
+          /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(
+            file.name
+          );
 
-    const validFiles = files.filter((file) => {
-      const isImage =
-        file.type.startsWith("image/") ||
-        /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(
-          file.name
-        );
+        if (!isImage) {
+          console.warn(
+            "⚠️ Không phải file hình ảnh:",
+            {
+              name: file.name,
+              type: file.type,
+            }
+          );
 
-      if (!isImage) {
-        console.warn(
-          "⚠️ File không phải hình ảnh:",
-          file.name,
-          file.type
-        );
-        return false;
-      }
+          return false;
+        }
 
-      if (file.size > 10 * 1024 * 1024) {
-        console.warn(
-          "⚠️ File quá 10MB:",
-          file.name,
-          file.size
-        );
-        return false;
-      }
+        // File gốc tối đa 15 MB
+        // Sau đó compressImage sẽ xử lý ảnh >10MB
+        if (
+          file.size >
+          15 * 1024 * 1024
+        ) {
+          console.warn(
+            "⚠️ File quá 15MB:",
+            {
+              name: file.name,
+              size: file.size,
+            }
+          );
 
-      return true;
-    });
+          return false;
+        }
+
+        return true;
+      });
 
     if (validFiles.length === 0) {
       setSnackbarMessage(
@@ -1317,7 +1383,7 @@ const handleSelectImages = async (
     }
 
     console.log(
-      "🖼️ ẢNH ĐƯỢC CHỌN:",
+      "📸 FILE ẢNH ĐƯỢC CHỌN:",
       validFiles.map((file) => ({
         name: file.name,
         type: file.type,
@@ -1330,17 +1396,18 @@ const handleSelectImages = async (
     );
 
     // ========================================================
-    // 3. NÉN / CHUYỂN ĐỔI ẢNH
+    // 3. XỬ LÝ / CHUYỂN HEIC / NÉN ẢNH
     // ========================================================
 
-    const compressedFiles = await Promise.all(
-      validFiles.map((file) =>
-        compressImage(file)
-      )
-    );
+    const compressedFiles =
+      await Promise.all(
+        validFiles.map((file) =>
+          compressImage(file)
+        )
+      );
 
     console.log(
-      "✅ ẢNH SAU KHI XỬ LÝ:",
+      "✅ FILE SAU KHI XỬ LÝ:",
       compressedFiles.map((file) => ({
         name: file.name,
         type: file.type,
@@ -1353,7 +1420,7 @@ const handleSelectImages = async (
     );
 
     // ========================================================
-    // 4. THÊM FILE VÀO DANH SÁCH
+    // 4. THÊM FILE
     // ========================================================
 
     setImageFiles((prev) => [
@@ -1365,19 +1432,25 @@ const handleSelectImages = async (
     // 5. TẠO PREVIEW TỪ FILE ĐÃ XỬ LÝ
     // ========================================================
 
-    const previewUrls = compressedFiles.map(
-      (file) =>
+    const previewUrls =
+      compressedFiles.map((file) =>
         URL.createObjectURL(file)
-    );
+      );
 
     setImagePreviews((prev) => [
       ...prev,
       ...previewUrls,
     ]);
 
+    setSnackbarMessage(
+      `Đã chọn ${compressedFiles.length} hình ảnh.`
+    );
+    setSnackbarSeverity("success");
+    setSnackbarOpen(true);
+
   } catch (error) {
     console.error(
-      "❌ Lỗi nén hình ảnh:",
+      "❌ Lỗi xử lý hình ảnh:",
       error
     );
 
@@ -1391,7 +1464,6 @@ const handleSelectImages = async (
     setSnackbarOpen(true);
   }
 };
-
 
 
 // ==========================================================
@@ -2731,24 +2803,24 @@ const totalConductViolations =
   </Typography>
 
   {/* Camera */}
-  <input
-    ref={cameraInputRef}
-    type="file"
-    accept="image/*"
-    capture="environment"
-    style={{ display: "none" }}
-    onChange={handleSelectImages}
-  />
+<input
+  ref={cameraInputRef}
+  type="file"
+  accept="image/*,.heic,.heif"
+  capture="environment"
+  style={{ display: "none" }}
+  onChange={handleSelectImages}
+/>
 
-  {/* Thư viện ảnh */}
-  <input
-    ref={galleryInputRef}
-    type="file"
-    accept="image/*"
-    multiple
-    style={{ display: "none" }}
-    onChange={handleSelectImages}
-  />
+{/* Thư viện ảnh */}
+<input
+  ref={galleryInputRef}
+  type="file"
+  accept="image/*,.heic,.heif"
+  multiple
+  style={{ display: "none" }}
+  onChange={handleSelectImages}
+/>
 
   <Stack
     direction="row"
