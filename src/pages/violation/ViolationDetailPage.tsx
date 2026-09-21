@@ -1190,100 +1190,118 @@ const processNewImages = async (
   }
 };
 
-  // ==========================================================
+// ==========================================================
 // 📷 CHỌN / CHỤP ẢNH CHO LỖI MỚI
 // ==========================================================
+
 const handleSelectNewImages = async (
   event: ChangeEvent<HTMLInputElement>
 ) => {
-  const files = Array.from(
-    event.target.files || []
-  );
+  const files = Array.from(event.target.files || []);
 
   // Cho phép chọn lại cùng một file
   event.target.value = "";
 
   if (files.length === 0) return;
 
-  const currentCount =
-    newImageFiles.length;
+  const currentCount = newImageFiles.length;
 
-  const maxImages =
-    Math.max(0, 5 - currentCount);
+  const maxImages = Math.max(0, 5 - currentCount);
 
   if (maxImages <= 0) {
-    setSnackbarMessage(
-      "Tối đa 5 hình ảnh."
-    );
+    setSnackbarMessage("Tối đa 5 hình ảnh.");
     setSnackbarSeverity("error");
     setSnackbarOpen(true);
     return;
   }
 
-  const selected =
-    files.slice(0, maxImages);
+  const selected = files.slice(0, maxImages);
 
-  const validFiles =
-    selected.filter((file) => {
-      const isImage =
-        file.type.startsWith("image/") ||
-        /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(
-          file.name
-        );
+  const validFiles = selected.filter((file) => {
+    const isImage =
+      file.type.startsWith("image/") ||
+      /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(file.name);
 
-      if (!isImage) {
-        return false;
-      }
+    if (!isImage) {
+      return false;
+    }
 
-      if (
-        file.size >
-        15 * 1024 * 1024
-      ) {
-        return false;
-      }
+    if (file.size > 15 * 1024 * 1024) {
+      return false;
+    }
 
-      return true;
-    });
+    return true;
+  });
 
   if (validFiles.length === 0) {
-    setSnackbarMessage(
-      "Không có hình ảnh hợp lệ."
-    );
+    setSnackbarMessage("Không có hình ảnh hợp lệ.");
     setSnackbarSeverity("error");
     setSnackbarOpen(true);
     return;
   }
 
-  // ========================================================
-  // HIỆN PREVIEW NGAY
-  // ========================================================
-  const previewUrls =
-    validFiles.map((file) =>
+  const startIndex = newImageFiles.length;
+
+  try {
+    setProcessingImages(true);
+
+    setImageProcessMessage(
+      `⏳ Đang tối ưu ${validFiles.length} ảnh...`
+    );
+
+    // ========================================================
+    // 1. TỐI ƯU / CHUYỂN ĐỔI ẢNH
+    // ========================================================
+
+    const compressedFiles = await Promise.all(
+      validFiles.map((file) => compressImage(file))
+    );
+
+    // ========================================================
+    // 2. LƯU FILE ĐÃ TỐI ƯU
+    // ========================================================
+
+    setNewImageFiles((prev) => [
+      ...prev,
+      ...compressedFiles,
+    ]);
+
+    // ========================================================
+    // 3. TẠO PREVIEW TỪ FILE ĐÃ TỐI ƯU
+    //    Quan trọng: không tạo preview từ HEIC gốc
+    // ========================================================
+
+    const previewUrls = compressedFiles.map((file) =>
       URL.createObjectURL(file)
     );
 
-  const startIndex =
-    newImageFiles.length;
+    setNewImagePreviews((prev) => [
+      ...prev,
+      ...previewUrls,
+    ]);
 
-  setNewImageFiles((prev) => [
-    ...prev,
-    ...validFiles,
-  ]);
+    setImageProcessMessage(
+      `✓ Đã xử lý xong ${compressedFiles.length} ảnh`
+    );
 
-  setNewImagePreviews((prev) => [
-    ...prev,
-    ...previewUrls,
-  ]);
+    setTimeout(() => {
+      setImageProcessMessage("");
+    }, 2000);
 
-  // ========================================================
-  // XỬ LÝ / NÉN SAU
-  // ========================================================
-  await processNewImages(
-    validFiles,
-    startIndex
-  );
+  } catch (error: any) {
+    console.error(
+      "❌ Lỗi xử lý hình ảnh:",
+      error
+    );
+
+    setImageProcessMessage(
+      "❌ Không thể xử lý hình ảnh."
+    );
+
+  } finally {
+    setProcessingImages(false);
+  }
 };
-
   
 // ==========================================================
 // 📷 CHỌN HÌNH ẢNH
