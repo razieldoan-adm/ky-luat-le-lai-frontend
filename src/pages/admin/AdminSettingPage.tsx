@@ -24,8 +24,7 @@ interface Settings {
   maxWeeklyHygieneScore: number;
   backgroundImagePC: string;
   backgroundImageMobile: string;
-  backgroundImagePC: '',
-  backgroundImageMobile: '',
+
 }
 
 export default function AdminSettingPage() {
@@ -38,12 +37,15 @@ export default function AdminSettingPage() {
       hygiene: 10,
     },
       maxWeeklyDisciplineScore: 100,
-  maxWeeklyAttendanceScore: 100,
-  maxWeeklyHygieneScore: 100,
+    maxWeeklyAttendanceScore: 100,
+    maxWeeklyHygieneScore: 100,
+    
+    backgroundImagePC: '',
+    backgroundImageMobile: '',
   });
-
+  
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-
+  
   // Fetch settings from API on load
   useEffect(() => {
     fetchSettings();
