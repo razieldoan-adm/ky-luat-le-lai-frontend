@@ -24,7 +24,7 @@ import api from '../../api/api';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-
+import heic2any from "heic2any";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -331,6 +331,75 @@ export default function AllViolationStudentPage() {
 // 📷 NÉN / CHUYỂN ĐỔI HÌNH ẢNH
 // ==========================================================
 
+  const compressImage = async (
+  file: File
+): Promise<File> => {
+  const isHEIC =
+    file.type === "image/heic" ||
+    file.type === "image/heif" ||
+    /\.(heic|heif)$/i.test(file.name);
+
+  // ========================================================
+  // HEIC / HEIF → JPEG
+  // ========================================================
+
+  if (isHEIC) {
+    console.log("📱 Phát hiện HEIC/HEIF:", {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    });
+
+    try {
+      const converted = await heic2any({
+        blob: file,
+        toType: "image/jpeg",
+        quality: 0.8,
+      });
+
+      const convertedBlob = Array.isArray(converted)
+        ? converted[0]
+        : converted;
+
+      const jpgFile = new File(
+        [convertedBlob],
+        file.name.replace(
+          /\.(heic|heif)$/i,
+          ".jpg"
+        ),
+        {
+          type: "image/jpeg",
+          lastModified: Date.now(),
+        }
+      );
+
+      console.log("✅ HEIC → JPEG:", {
+        name: jpgFile.name,
+        type: jpgFile.type,
+        size: jpgFile.size,
+      });
+
+      return jpgFile;
+
+    } catch (error) {
+      console.error(
+        "❌ Không thể chuyển HEIC:",
+        error
+      );
+
+      throw new Error(
+        "Điện thoại trả về ảnh HEIC/HEIF nhưng không thể chuyển sang JPEG."
+      );
+    }
+  }
+
+  // ========================================================
+  // JPG / PNG / WEBP
+  // Không cần chuyển đổi nếu file đã phù hợp
+  // ========================================================
+
+  return file;
+};
 
   // ==========================================================
 // 📷 CHỌN / CHỤP HÌNH ẢNH
@@ -339,22 +408,17 @@ export default function AllViolationStudentPage() {
 const handleSelectImages = async (
   event: ChangeEvent<HTMLInputElement>
 ) => {
-  const input = event.target;
+  const files = Array.from(
+    event.target.files || []
+  );
 
-  const files = Array.from(input.files || []);
+  event.target.value = "";
 
-  // Cho phép chọn lại cùng file
-  input.value = "";
-
-  console.log("📸 handleSelectImages:", files);
-
-  if (files.length === 0) {
-    console.log("⚠️ Không có file");
-    return;
-  }
+  if (files.length === 0) return;
 
   try {
-    const remaining = 5 - imageFiles.length;
+    const remaining =
+      5 - imageFiles.length;
 
     if (remaining <= 0) {
       setSnackbar({
@@ -365,22 +429,24 @@ const handleSelectImages = async (
       return;
     }
 
-    const selectedFiles = files.slice(
-      0,
-      remaining
-    );
+    const selectedFiles =
+      files.slice(0, remaining);
 
     console.log(
-      "📸 File được chọn:",
+      "📸 FILE GỐC:",
       selectedFiles.map((file) => ({
         name: file.name,
         type: file.type,
-        size: file.size,
+        sizeMB: (
+          file.size /
+          1024 /
+          1024
+        ).toFixed(2),
       }))
     );
 
-    const validFiles = selectedFiles.filter(
-      (file) => {
+    const validFiles =
+      selectedFiles.filter((file) => {
         const isImage =
           file.type.startsWith("image/") ||
           /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(
@@ -391,42 +457,66 @@ const handleSelectImages = async (
           isImage &&
           file.size <= 15 * 1024 * 1024
         );
-      }
-    );
-
-    console.log(
-      "📸 File hợp lệ:",
-      validFiles
-    );
+      });
 
     if (validFiles.length === 0) {
       setSnackbar({
         open: true,
-        message: "Không có hình ảnh hợp lệ.",
+        message:
+          "Không có hình ảnh hợp lệ.",
         severity: "error",
       });
+
       return;
     }
 
-    // =====================================================
-    // TEST QUAN TRỌNG:
-    // tạo preview NGAY từ file gốc
-    // =====================================================
+    setSnackbar({
+      open: true,
+      message: "Đang xử lý hình ảnh...",
+      severity: "warning",
+    });
 
-    const previewUrls = validFiles.map(
-      (file) =>
-        URL.createObjectURL(file)
-    );
+    // ======================================================
+    // CHUYỂN HEIC → JPEG
+    // ======================================================
+
+    const processedFiles =
+      await Promise.all(
+        validFiles.map((file) =>
+          compressImage(file)
+        )
+      );
 
     console.log(
-      "🖼️ Preview URL:",
-      previewUrls
+      "✅ FILE SAU XỬ LÝ:",
+      processedFiles.map((file) => ({
+        name: file.name,
+        type: file.type,
+        sizeMB: (
+          file.size /
+          1024 /
+          1024
+        ).toFixed(2),
+      }))
     );
+
+    // ======================================================
+    // LƯU FILE
+    // ======================================================
 
     setImageFiles((prev) => [
       ...prev,
-      ...validFiles,
+      ...processedFiles,
     ]);
+
+    // ======================================================
+    // PREVIEW
+    // ======================================================
+
+    const previewUrls =
+      processedFiles.map((file) =>
+        URL.createObjectURL(file)
+      );
 
     setImagePreviews((prev) => [
       ...prev,
@@ -435,28 +525,30 @@ const handleSelectImages = async (
 
     setSnackbar({
       open: true,
-      message: `Đã chọn ${validFiles.length} hình ảnh.`,
+      message: `Đã chọn ${processedFiles.length} hình ảnh.`,
       severity: "success",
     });
 
-    console.log(
-      "✅ ĐÃ THÊM ẢNH VÀO STATE"
-    );
-
   } catch (error) {
     console.error(
-      "❌ Lỗi chọn ảnh:",
+      "❌ Lỗi xử lý hình ảnh:",
       error
     );
 
     setSnackbar({
       open: true,
-      message: "Không thể chọn hình ảnh.",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Không thể xử lý hình ảnh.",
       severity: "error",
     });
   }
 };
-
+  
+// ==========================================================
+// END 📷 CHỌN / CHỤP HÌNH ẢNH
+// ==========================================================
   const handleUploadImages = async () => {
     if (!imageViolation || imageFiles.length === 0) return;
 
