@@ -24,7 +24,7 @@ import api from '../../api/api';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-import heic2any from 'heic2any';
+
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
