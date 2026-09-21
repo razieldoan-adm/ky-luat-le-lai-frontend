@@ -1134,62 +1134,6 @@ const openDetailDialog = async (v: Violation) => {
   );
 };
 
-  // ==========================================================
-// 📷 XỬ LÝ ẢNH
-// ==========================================================
-const processNewImages = async (
-  files: File[],
-  startIndex: number
-) => {
-  if (files.length === 0) return;
-
-  try {
-    setProcessingImages(true);
-
-    setImageProcessMessage(
-      `⏳ Đang tối ưu ${files.length} ảnh...`
-    );
-
-    const compressedFiles =
-      await Promise.all(
-        files.map((file) =>
-          compressImage(file)
-        )
-      );
-
-    setNewImageFiles((prev) => {
-      const next = [...prev];
-
-      compressedFiles.forEach(
-        (file, index) => {
-          next[startIndex + index] = file;
-        }
-      );
-
-      return next;
-    });
-
-    setImageProcessMessage(
-      `✓ Đã xử lý xong ${compressedFiles.length} ảnh`
-    );
-
-    setTimeout(() => {
-      setImageProcessMessage("");
-    }, 2000);
-  } catch (error: any) {
-    console.error(
-      "❌ Lỗi xử lý hình ảnh:",
-      error
-    );
-
-    setImageProcessMessage(
-      "❌ Không thể xử lý hình ảnh."
-    );
-  } finally {
-    setProcessingImages(false);
-  }
-};
-
 // ==========================================================
 // 📷 CHỌN / CHỤP ẢNH CHO LỖI MỚI
 // ==========================================================
@@ -1239,8 +1183,6 @@ const handleSelectNewImages = async (
     setSnackbarOpen(true);
     return;
   }
-
-  const startIndex = newImageFiles.length;
 
   try {
     setProcessingImages(true);
