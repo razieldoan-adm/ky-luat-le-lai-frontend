@@ -518,7 +518,9 @@ const compressImage = async (file: File): Promise<File> => {
 // ==========================================================
 // XỬ LÝ ẢNH CHUNG
 // ==========================================================
-const processImagesInBackground = async (
+
+
+  const processImagesInBackground = async (
   files: File[],
   target: "new" | "detail",
   startIndex: number
@@ -535,6 +537,9 @@ const processImagesInBackground = async (
       files.map((file) => compressImage(file))
     );
 
+    // =========================================================
+    // CẬP NHẬT FILE SAU KHI NÉN
+    // =========================================================
     if (target === "new") {
       setNewImageFiles((prev) => {
         const next = [...prev];
@@ -557,6 +562,50 @@ const processImagesInBackground = async (
       });
     }
 
+    // =========================================================
+    // 🔥 CẬP NHẬT PREVIEW BẰNG FILE ĐÃ CHUYỂN/NÉN
+    // Đặc biệt sửa lỗi HEIC không hiển thị preview
+    // =========================================================
+    const newPreviewUrls = compressedFiles.map((file) =>
+      URL.createObjectURL(file)
+    );
+
+    if (target === "new") {
+      setNewImagePreviews((prev) => {
+        const next = [...prev];
+
+        compressedFiles.forEach((_, index) => {
+          const previewIndex = startIndex + index;
+
+          // Giải phóng preview cũ
+          if (next[previewIndex]) {
+            URL.revokeObjectURL(next[previewIndex]);
+          }
+
+          next[previewIndex] = newPreviewUrls[index];
+        });
+
+        return next;
+      });
+    } else {
+      setImagePreviews((prev) => {
+        const next = [...prev];
+
+        compressedFiles.forEach((_, index) => {
+          const previewIndex = startIndex + index;
+
+          // Giải phóng preview cũ
+          if (next[previewIndex]) {
+            URL.revokeObjectURL(next[previewIndex]);
+          }
+
+          next[previewIndex] = newPreviewUrls[index];
+        });
+
+        return next;
+      });
+    }
+
     setImageProcessMessage(
       `✓ Đã xử lý xong ${compressedFiles.length} ảnh`
     );
@@ -564,6 +613,7 @@ const processImagesInBackground = async (
     setTimeout(() => {
       setImageProcessMessage("");
     }, 2000);
+
   } catch (err: any) {
     console.error("Lỗi xử lý hình ảnh:", err);
 
