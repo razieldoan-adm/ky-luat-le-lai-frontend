@@ -526,22 +526,22 @@ const compressImage = async (
 const handleSelectImages = async (
   event: ChangeEvent<HTMLInputElement>
 ) => {
-  const files = Array.from(
-    event.target.files || []
-  );
+  const input = event.target;
+
+  const files = Array.from(input.files || []);
 
   // Cho phép chọn lại cùng file
-  event.target.value = "";
+  input.value = "";
 
-  if (files.length === 0) return;
+  console.log("📸 handleSelectImages:", files);
+
+  if (files.length === 0) {
+    console.log("⚠️ Không có file");
+    return;
+  }
 
   try {
-    // ========================================================
-    // 1. GIỚI HẠN 5 ẢNH
-    // ========================================================
-
-    const remaining =
-      5 - imageFiles.length;
+    const remaining = 5 - imageFiles.length;
 
     if (remaining <= 0) {
       setSnackbar({
@@ -549,149 +549,100 @@ const handleSelectImages = async (
         message: "Tối đa 5 hình ảnh.",
         severity: "error",
       });
-
       return;
     }
 
-    const selectedFiles =
-      files.slice(0, remaining);
+    const selectedFiles = files.slice(
+      0,
+      remaining
+    );
 
-    // ========================================================
-    // 2. KIỂM TRA FILE
-    //    Không phụ thuộc hoàn toàn vào file.type
-    // ========================================================
+    console.log(
+      "📸 File được chọn:",
+      selectedFiles.map((file) => ({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      }))
+    );
 
-    const validFiles =
-      selectedFiles.filter((file) => {
+    const validFiles = selectedFiles.filter(
+      (file) => {
         const isImage =
           file.type.startsWith("image/") ||
           /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(
             file.name
           );
 
-        if (!isImage) {
-          console.warn(
-            "⚠️ File không phải hình ảnh:",
-            {
-              name: file.name,
-              type: file.type,
-            }
-          );
+        return (
+          isImage &&
+          file.size <= 15 * 1024 * 1024
+        );
+      }
+    );
 
-          return false;
-        }
-
-        // File gốc không được quá 15MB
-        if (
-          file.size >
-          15 * 1024 * 1024
-        ) {
-          console.warn(
-            "⚠️ Hình ảnh quá 15MB:",
-            {
-              name: file.name,
-              size: file.size,
-            }
-          );
-
-          return false;
-        }
-
-        return true;
-      });
+    console.log(
+      "📸 File hợp lệ:",
+      validFiles
+    );
 
     if (validFiles.length === 0) {
       setSnackbar({
         open: true,
-        message:
-          "Không có hình ảnh hợp lệ.",
+        message: "Không có hình ảnh hợp lệ.",
         severity: "error",
       });
-
       return;
     }
 
-    // ========================================================
-    // 3. LOG THÔNG TIN FILE
-    // ========================================================
+    // =====================================================
+    // TEST QUAN TRỌNG:
+    // tạo preview NGAY từ file gốc
+    // =====================================================
 
-    console.log(
-      "📸 FILE ẢNH ĐƯỢC CHỌN:",
-      validFiles.map((file) => ({
-        name: file.name,
-        type: file.type,
-        sizeMB: (
-          file.size /
-          1024 /
-          1024
-        ).toFixed(2),
-      }))
+    const previewUrls = validFiles.map(
+      (file) =>
+        URL.createObjectURL(file)
     );
 
-    // ========================================================
-    // 4. CHUYỂN ĐỔI + NÉN
-    // ========================================================
-
-    const compressedFiles =
-      await Promise.all(
-        validFiles.map((file) =>
-          compressImage(file)
-        )
-      );
-
     console.log(
-      "✅ FILE SAU KHI XỬ LÝ:",
-      compressedFiles.map((file) => ({
-        name: file.name,
-        type: file.type,
-        sizeMB: (
-          file.size /
-          1024 /
-          1024
-        ).toFixed(2),
-      }))
+      "🖼️ Preview URL:",
+      previewUrls
     );
-
-    // ========================================================
-    // 5. THÊM FILE
-    // ========================================================
 
     setImageFiles((prev) => [
       ...prev,
-      ...compressedFiles,
+      ...validFiles,
     ]);
-
-    // ========================================================
-    // 6. PREVIEW
-    // ========================================================
-
-    const previewUrls =
-      compressedFiles.map((file) =>
-        URL.createObjectURL(file)
-      );
 
     setImagePreviews((prev) => [
       ...prev,
       ...previewUrls,
     ]);
 
+    setSnackbar({
+      open: true,
+      message: `Đã chọn ${validFiles.length} hình ảnh.`,
+      severity: "success",
+    });
+
+    console.log(
+      "✅ ĐÃ THÊM ẢNH VÀO STATE"
+    );
+
   } catch (error) {
     console.error(
-      "❌ Lỗi xử lý hình ảnh:",
+      "❌ Lỗi chọn ảnh:",
       error
     );
 
     setSnackbar({
       open: true,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Không thể xử lý hình ảnh.",
+      message: "Không thể chọn hình ảnh.",
       severity: "error",
     });
   }
 };
-  
 
   const handleUploadImages = async () => {
     if (!imageViolation || imageFiles.length === 0) return;
