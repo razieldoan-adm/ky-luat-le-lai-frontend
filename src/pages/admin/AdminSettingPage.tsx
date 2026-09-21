@@ -22,6 +22,10 @@ interface Settings {
   maxWeeklyDisciplineScore: number;
   maxWeeklyAttendanceScore: number;
   maxWeeklyHygieneScore: number;
+  backgroundImagePC: string;
+  backgroundImageMobile: string;
+  backgroundImagePC: '',
+  backgroundImageMobile: '',
 }
 
 export default function AdminSettingPage() {
@@ -98,6 +102,59 @@ export default function AdminSettingPage() {
       </Typography>
 
       <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+            🖼️ Hình nền trang chủ
+          </Typography>
+          
+          <TextField
+            fullWidth
+            label="URL hình nền máy tính (PC)"
+            value={settings.backgroundImagePC}
+            onChange={(e) =>
+              setSettings(prev => ({
+                ...prev,
+                backgroundImagePC: e.target.value,
+              }))
+            }
+            placeholder="https://..."
+            sx={{ mb: 2 }}
+          />
+          
+          <TextField
+            fullWidth
+            label="URL hình nền điện thoại (Mobile)"
+            value={settings.backgroundImageMobile}
+            onChange={(e) =>
+              setSettings(prev => ({
+                ...prev,
+                backgroundImageMobile: e.target.value,
+              }))
+            }
+            placeholder="https://..."
+            sx={{ mb: 2 }}
+          />
+        {settings.backgroundImagePC && (
+            <Box
+              sx={{
+                width: '100%',
+                height: 180,
+                mb: 2,
+                borderRadius: 2,
+                overflow: 'hidden',
+                border: '1px solid #ddd',
+              }}
+            >
+              <img
+                src={settings.backgroundImagePC}
+                alt="Preview hình nền PC"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+            </Box>
+          )}
         <Typography variant="h6" gutterBottom>Điểm hạnh kiểm tối đa</Typography>
         <TextField
           type="number"
