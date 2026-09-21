@@ -1260,7 +1260,10 @@ const handleSelectImages = async (
   if (files.length === 0) return;
 
   try {
-    // Tổng số ảnh đang chờ upload + ảnh mới không được quá 5
+    // ========================================================
+    // 1. KIỂM TRA SỐ LƯỢNG ẢNH
+    // ========================================================
+
     if (imageFiles.length + files.length > 5) {
       setSnackbarMessage(
         `Tối đa 5 hình ảnh. Hiện đã có ${imageFiles.length} hình.`
@@ -1270,12 +1273,34 @@ const handleSelectImages = async (
       return;
     }
 
+    // ========================================================
+    // 2. KIỂM TRA FILE ẢNH
+    //    Không chỉ dựa vào file.type
+    //    vì một số điện thoại không trả MIME type đúng
+    // ========================================================
+
     const validFiles = files.filter((file) => {
-      if (!file.type.startsWith("image/")) {
+      const isImage =
+        file.type.startsWith("image/") ||
+        /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(
+          file.name
+        );
+
+      if (!isImage) {
+        console.warn(
+          "⚠️ File không phải hình ảnh:",
+          file.name,
+          file.type
+        );
         return false;
       }
 
       if (file.size > 10 * 1024 * 1024) {
+        console.warn(
+          "⚠️ File quá 10MB:",
+          file.name,
+          file.size
+        );
         return false;
       }
 
@@ -1283,41 +1308,91 @@ const handleSelectImages = async (
     });
 
     if (validFiles.length === 0) {
-      setSnackbarMessage("Không có hình ảnh hợp lệ.");
+      setSnackbarMessage(
+        "Không có hình ảnh hợp lệ."
+      );
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
       return;
     }
 
-    // Nén ảnh ngay sau khi chụp/chọn
-    const compressedFiles = await Promise.all(
-      validFiles.map((file) => compressImage(file))
+    console.log(
+      "🖼️ ẢNH ĐƯỢC CHỌN:",
+      validFiles.map((file) => ({
+        name: file.name,
+        type: file.type,
+        sizeMB: (
+          file.size /
+          1024 /
+          1024
+        ).toFixed(2),
+      }))
     );
 
-    // THÊM vào danh sách cũ, không ghi đè
+    // ========================================================
+    // 3. NÉN / CHUYỂN ĐỔI ẢNH
+    // ========================================================
+
+    const compressedFiles = await Promise.all(
+      validFiles.map((file) =>
+        compressImage(file)
+      )
+    );
+
+    console.log(
+      "✅ ẢNH SAU KHI XỬ LÝ:",
+      compressedFiles.map((file) => ({
+        name: file.name,
+        type: file.type,
+        sizeMB: (
+          file.size /
+          1024 /
+          1024
+        ).toFixed(2),
+      }))
+    );
+
+    // ========================================================
+    // 4. THÊM FILE VÀO DANH SÁCH
+    // ========================================================
+
     setImageFiles((prev) => [
       ...prev,
       ...compressedFiles,
     ]);
 
-    const previewUrls = compressedFiles.map((file) =>
-      URL.createObjectURL(file)
+    // ========================================================
+    // 5. TẠO PREVIEW TỪ FILE ĐÃ XỬ LÝ
+    // ========================================================
+
+    const previewUrls = compressedFiles.map(
+      (file) =>
+        URL.createObjectURL(file)
     );
 
-    // THÊM preview mới vào preview cũ
     setImagePreviews((prev) => [
       ...prev,
       ...previewUrls,
     ]);
 
   } catch (error) {
-    console.error("❌ Lỗi nén hình ảnh:", error);
+    console.error(
+      "❌ Lỗi nén hình ảnh:",
+      error
+    );
 
-    setSnackbarMessage("Không thể xử lý hình ảnh.");
+    setSnackbarMessage(
+      error instanceof Error
+        ? error.message
+        : "Không thể xử lý hình ảnh."
+    );
+
     setSnackbarSeverity("error");
     setSnackbarOpen(true);
   }
 };
+
+
 
 // ==========================================================
 // 📤 UPLOAD HÌNH ẢNH
