@@ -966,17 +966,17 @@ const handleSelectDetailImages = async (
     <input
       ref={newCameraInputRef}
       type="file"
-      accept="image/*"
+      accept="image/*,.heic,.heif"
       capture="environment"
       style={{ display: "none" }}
       onChange={handleSelectNewImages}
     />
 
     {/* Thư viện */}
-    <input
+     <input
       ref={newGalleryInputRef}
       type="file"
-      accept="image/*"
+      accept="image/*,.heic,.heif"
       multiple
       style={{ display: "none" }}
       onChange={handleSelectNewImages}
