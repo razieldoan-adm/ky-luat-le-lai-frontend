@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, type ChangeEvent } from 'react';
 import {
   Box,
@@ -775,7 +774,6 @@ const handleSelectImages = async (
               <TableCell>Tuần</TableCell>
               <TableCell>Lỗi vi phạm</TableCell>
               <TableCell>Thời gian</TableCell>
-              <TableCell>Hình thức xử lý</TableCell>
               <TableCell>Trạng thái</TableCell>
               <TableCell>Người xử lý</TableCell>
               <TableCell>Điểm</TableCell>
@@ -792,7 +790,6 @@ const handleSelectImages = async (
                   <TableCell>{v.weekNumber || '-'}</TableCell>
                   <TableCell>{v.description}</TableCell>
                   <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
-                  <TableCell>{v.handlingMethod || '—'}</TableCell>
                   <TableCell>
   {v.handled
     ? v.handledBy === "PGT"
@@ -855,6 +852,23 @@ const handleSelectImages = async (
     >
       PGT
     </Button>
+
+
+    {/* Nút nộp đơn xin phép */}
+    <Button
+      variant="outlined"
+      color="warning"
+      size="small"
+      onClick={() => {
+        setSnackbar({
+          open: true,
+          message: `Đã chọn học sinh ${v.name} - ${v.className} để theo dõi nộp đơn xin phép.`,
+          severity: "warning",
+        });
+      }}
+    >
+      📝 Nộp đơn xin phép
+    </Button>
   </Box>
 </TableCell>
 
@@ -862,7 +876,7 @@ const handleSelectImages = async (
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={11} align="center">
+                <TableCell colSpan={10} align="center">
                   Không có dữ liệu phù hợp.
                 </TableCell>
               </TableRow>
@@ -881,14 +895,6 @@ const handleSelectImages = async (
               value={violationBeingEdited?.description || ''}
               onChange={(e) =>
                 setViolationBeingEdited((prev) => (prev ? { ...prev, description: e.target.value } : prev))
-              }
-            />
-            <TextField
-              label="Hình thức xử lý"
-              fullWidth
-              value={violationBeingEdited?.handlingMethod || ''}
-              onChange={(e) =>
-                setViolationBeingEdited((prev) => (prev ? { ...prev, handlingMethod: e.target.value } : prev))
               }
             />
           </Stack>
