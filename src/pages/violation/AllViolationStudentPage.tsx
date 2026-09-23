@@ -229,7 +229,10 @@ export default function AllViolationStudentPage() {
 
     const applicationList = applicationRes.data?.data || [];
 
-    const applicationMap = new Map(
+    const applicationMap = new Map<
+      string,
+      Violation["application"]
+    >(
       applicationList.map((item: any) => [
         String(item._id),
         item.application || null,
