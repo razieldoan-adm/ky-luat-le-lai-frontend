@@ -44,6 +44,15 @@ interface Violation {
     url: string;
   }[];
   weekNumber?: number;
+
+  application?: {
+    _id: string;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'OVERDUE';
+    note?: string;
+    processedBy?: string;
+    submittedAt?: string;
+    processedAt?: string;
+  } | null;
 }
 
 interface Rule {
@@ -208,15 +217,39 @@ export default function AllViolationStudentPage() {
   };
 
   const fetchViolations = async () => {
-    try {
-      const res = await api.get('/api/violations/all/all-student');
-      console.log("API COUNT:", res.data.length);   // thêm dòng này
-      setViolations(res.data);
-      setFiltered(res.data);
-    } catch (err) {
-      console.error('Lỗi khi lấy dữ liệu vi phạm:', err);
-    }
-  };
+  try {
+    const res = await api.get('/api/violations/all/all-student');
+
+    const violationList: Violation[] = res.data;
+
+    // Lấy trạng thái đơn xin phép tương ứng
+    const applicationRes = await api.get(
+      '/api/leave-applications/eligible'
+    );
+
+    const applicationList = applicationRes.data?.data || [];
+
+    const applicationMap = new Map(
+      applicationList.map((item: any) => [
+        String(item._id),
+        item.application || null,
+      ])
+    );
+
+    const mergedViolations = violationList.map((violation) => ({
+      ...violation,
+      application:
+        applicationMap.get(String(violation._id)) || null,
+    }));
+
+    console.log("API COUNT:", mergedViolations.length);
+
+    setViolations(mergedViolations);
+    setFiltered(mergedViolations);
+  } catch (err) {
+    console.error('Lỗi khi lấy dữ liệu vi phạm:', err);
+  }
+};
 
   const fetchClasses = async () => {
     try {
@@ -280,6 +313,55 @@ export default function AllViolationStudentPage() {
     }
   };
 
+  const handleSubmitApplication = async (violation: Violation) => {
+  try {
+    const currentApplication = violation.application;
+
+    // Đã có đơn thì không cho nộp lại
+    if (currentApplication) {
+      setSnackbar({
+        open: true,
+        message: 'Vi phạm này đã có đơn xin phép.',
+        severity: 'warning',
+      });
+      return;
+    }
+
+    const res = await api.post('/api/leave-applications', {
+      violationId: violation._id,
+    });
+
+    const newApplication = res.data?.data;
+
+    setViolations((prev) =>
+      prev.map((v) =>
+        v._id === violation._id
+          ? {
+              ...v,
+              application: newApplication,
+            }
+          : v
+      )
+    );
+
+    setSnackbar({
+      open: true,
+      message: 'Đã nộp đơn xin phép. Hai nút GVCN/PGT đã được khóa chờ duyệt.',
+      severity: 'success',
+    });
+  } catch (error: any) {
+    console.error('Lỗi nộp đơn xin phép:', error);
+
+    setSnackbar({
+      open: true,
+      message:
+        error?.response?.data?.message ||
+        'Không thể nộp đơn xin phép.',
+      severity: 'error',
+    });
+  }
+};
+  
   // 📷 Tải và hiển thị ảnh hiện có
   const loadDetailImages = async (violation: Violation) => {
     if (!violation.images || violation.images.length === 0) {
@@ -834,41 +916,52 @@ const handleSelectImages = async (
     </Button>
 
     {/* Nút GVCN xử lý */}
-    <Button
-      variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
-      color="info"
-      size="small"
-      onClick={() => handleProcessViolation(v._id, "GVCN")}
-    >
-      GVCN
-    </Button>
+{/* Nút GVCN xử lý */}
+<Button
+  variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
+  color="info"
+  size="small"
+  disabled={
+    v.application?.status === "PENDING" ||
+    v.application?.status === "APPROVED"
+  }
+  onClick={() => handleProcessViolation(v._id, "GVCN")}
+>
+  GVCN
+</Button>
 
-    {/* Nút PGT xử lý */}
-    <Button
-      variant={v.handledBy === "PGT" ? "contained" : "outlined"}
-      color="success"
-      size="small"
-      onClick={() => handleProcessViolation(v._id, "PGT")}
-    >
-      PGT
-    </Button>
+{/* Nút PGT xử lý */}
+<Button
+  variant={v.handledBy === "PGT" ? "contained" : "outlined"}
+  color="success"
+  size="small"
+  disabled={
+    v.application?.status === "PENDING" ||
+    v.application?.status === "APPROVED"
+  }
+  onClick={() => handleProcessViolation(v._id, "PGT")}
+>
+  PGT
+</Button>
 
-
-    {/* Nút nộp đơn xin phép */}
-    <Button
-      variant="outlined"
-      color="warning"
-      size="small"
-      onClick={() => {
-        setSnackbar({
-          open: true,
-          message: `Đã chọn học sinh ${v.name} - ${v.className} để theo dõi nộp đơn xin phép.`,
-          severity: "warning",
-        });
-      }}
-    >
-      📝 Nộp đơn xin phép
-    </Button>
+{/* Nút nộp đơn xin phép */}
+<Button
+  variant="outlined"
+  color="warning"
+  size="small"
+  disabled={!!v.application}
+  onClick={() => handleSubmitApplication(v)}
+>
+  {v.application?.status === "PENDING"
+    ? "⏳ Đang chờ duyệt"
+    : v.application?.status === "APPROVED"
+    ? "✅ Đã duyệt đơn"
+    : v.application?.status === "REJECTED"
+    ? "❌ Đơn bị từ chối"
+    : v.application?.status === "OVERDUE"
+    ? "⚠️ Đơn quá hạn"
+    : "📝 Nộp đơn xin phép"}
+</Button>
   </Box>
 </TableCell>
 
