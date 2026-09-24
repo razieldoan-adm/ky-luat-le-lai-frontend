@@ -38,6 +38,11 @@ export default function LeaveApplicationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectNote, setRejectNote] = useState('');
+  const [selectedApplication, setSelectedApplication] = useState<LeaveApplication | null>(null);  
+  
   const fetchApplications = async () => {
     try {
       setLoading(true);
@@ -62,6 +67,66 @@ export default function LeaveApplicationsPage() {
     }
   };
 
+  const handleApprove = async (id: string) => {
+  try {
+    setProcessingId(id);
+
+    await api.patch(`/api/leave-applications/${id}/approve`);
+
+    await fetchApplications();
+  } catch (error: any) {
+    console.error('Lỗi duyệt đơn:', error);
+
+    setError(
+      error?.response?.data?.message ||
+        'Không thể duyệt đơn xin phép.'
+    );
+  } finally {
+    setProcessingId(null);
+  }
+};
+
+  const handleOpenReject = (application: LeaveApplication) => {
+    setSelectedApplication(application);
+    setRejectNote('');
+    setRejectDialogOpen(true);
+  };
+
+  const handleReject = async () => {
+  if (!selectedApplication) return;
+
+  if (!rejectNote.trim()) {
+    setError('Vui lòng nhập lý do từ chối đơn.');
+    return;
+  }
+
+  try {
+    setProcessingId(selectedApplication._id);
+
+    await api.patch(
+      `/api/leave-applications/${selectedApplication._id}/reject`,
+      {
+        note: rejectNote.trim(),
+      }
+    );
+
+    setRejectDialogOpen(false);
+    setSelectedApplication(null);
+    setRejectNote('');
+
+    await fetchApplications();
+  } catch (error: any) {
+    console.error('Lỗi từ chối đơn:', error);
+
+    setError(
+      error?.response?.data?.message ||
+        'Không thể từ chối đơn xin phép.'
+    );
+  } finally {
+    setProcessingId(null);
+  }
+};
+  
   useEffect(() => {
     fetchApplications();
   }, []);
@@ -167,6 +232,7 @@ export default function LeaveApplicationsPage() {
                 <TableCell>Hạn xử lý</TableCell>
                 <TableCell>Trạng thái</TableCell>
                 <TableCell>Ghi chú</TableCell>
+                <TableCell>Thao tác</TableCell>
               </TableRow>
             </TableHead>
 
@@ -215,6 +281,33 @@ export default function LeaveApplicationsPage() {
                     <TableCell>
                       {application.note || '-'}
                     </TableCell>
+                    <TableCell>
+  {application.status === 'PENDING' ? (
+    <Box sx={{ display: 'flex', gap: 1 }}>
+      <Button
+        variant="contained"
+        color="success"
+        size="small"
+        disabled={processingId === application._id}
+        onClick={() => handleApprove(application._id)}
+      >
+        Duyệt
+      </Button>
+
+      <Button
+        variant="outlined"
+        color="error"
+        size="small"
+        disabled={processingId === application._id}
+        onClick={() => handleOpenReject(application)}
+      >
+        Từ chối
+      </Button>
+    </Box>
+  ) : (
+    '-'
+  )}
+</TableCell>
                   </TableRow>
                 ))
               ) : (
@@ -232,6 +325,56 @@ export default function LeaveApplicationsPage() {
           </Table>
         )}
       </Paper>
+      <Dialog
+  open={rejectDialogOpen}
+  onClose={() => {
+    if (processingId === null) {
+      setRejectDialogOpen(false);
+    }
+  }}
+  fullWidth
+  maxWidth="sm"
+>
+  <DialogTitle>Từ chối đơn xin phép</DialogTitle>
+
+  <DialogContent>
+    <Typography sx={{ mb: 2 }}>
+      Học sinh: <strong>{selectedApplication?.studentName}</strong>
+      <br />
+      Lớp: <strong>{selectedApplication?.className}</strong>
+    </Typography>
+
+    <TextField
+      label="Lý do từ chối"
+      fullWidth
+      multiline
+      minRows={3}
+      value={rejectNote}
+      onChange={(e) => setRejectNote(e.target.value)}
+      placeholder="Ví dụ: Không nộp đơn đúng hạn..."
+    />
+  </DialogContent>
+
+  <DialogActions>
+    <Button
+      onClick={() => setRejectDialogOpen(false)}
+      disabled={processingId !== null}
+    >
+      Hủy
+    </Button>
+
+    <Button
+      variant="contained"
+      color="error"
+      onClick={handleReject}
+      disabled={
+        processingId !== null || !rejectNote.trim()
+      }
+    >
+      {processingId !== null ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+    </Button>
+  </DialogActions>
+</Dialog>
     </Box>
   );
 }
