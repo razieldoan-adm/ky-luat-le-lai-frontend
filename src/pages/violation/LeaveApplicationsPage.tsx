@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Paper,
@@ -11,6 +11,12 @@ import {
   Chip,
   CircularProgress,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
 } from '@mui/material';
 import api from '../../api/api';
 
@@ -350,7 +356,7 @@ export default function LeaveApplicationsPage() {
       multiline
       minRows={3}
       value={rejectNote}
-      onChange={(e) => setRejectNote(e.target.value)}
+      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRejectNote(e.target.value)}
       placeholder="Ví dụ: Không nộp đơn đúng hạn..."
     />
   </DialogContent>
