@@ -111,7 +111,7 @@ function AppContent() {
                       <Route path="class-attendance-list" element={<RecordAttendancePage />} />
                       <Route path="early-leave-student-input" element={<EarlyLeaveInputPage />} />
                       <Route path="early-leave-student-list" element={<EarlyLeaveListPage />} />
-                      <Route path="leave-applications" element={<EarlyLeaveListPage />} />
+                      <Route path="leave-applications" element={<LeaveApplicationsPage />} />
                   
                     </Route>
         {/* General app routes (with global header/sidebar) */}
