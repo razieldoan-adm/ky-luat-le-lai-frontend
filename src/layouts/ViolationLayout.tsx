@@ -56,17 +56,19 @@ const drawerWidth = 240;
           <ListItemIcon><ClassIcon /></ListItemIcon>
           <ListItemText primary="Duyệt xử lý vi phạm" />
         </ListItemButton>
-          <ListItemButton onClick={() => navigate('/violation/all-violations')}>
-            <ListItemIcon><ClassIcon /></ListItemIcon>
-            <ListItemText primary="Duyệt xử lý vi phạm" />
-          </ListItemButton>
         <ListItemButton onClick={() => navigate('/violation/leave-applications')}>
           <ListItemIcon><AssignmentTurnedInIcon /></ListItemIcon>
           <ListItemText primary="Nhận đơn xin phép" />
         </ListItemButton>
-                
+        <ListItemButton onClick={() => navigate('/violation/leave-applications')}>
+          <ListItemIcon><AssignmentTurnedInIcon /></ListItemIcon>
+          <ListItemText primary="Nhận đơn xin phép" />
+        </ListItemButton>
       </List>
-      
+          <ListItemButton onClick={() => navigate('/violation/student-list')}>
+          <ListItemIcon><AssignmentTurnedInIcon /></ListItemIcon>
+          <ListItemText primary="Danh sách học sinh" />
+        </ListItemButton>
 
       {/* Spacer đẩy nút quay về xuống cuối */}
       <Box sx={{ flexGrow: 1 }} />
