@@ -515,6 +515,9 @@ useEffect(() => {
       onClick={() => {
         setDirectApplicationDialogOpen(false);
         setApplicationContent('');
+        setSelectedStudent(null);
+        setStudentName('');
+        setStudentSuggestions([]);
       }}
     >
       Hủy
