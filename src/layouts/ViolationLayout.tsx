@@ -13,7 +13,6 @@ import ClassIcon from '@mui/icons-material/Class';
 
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuth } from '../contexts/AuthContext'; // nếu đang dùng AuthContext
-import ClassIcon from '@mui/icons-material/Class';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 // bên trong component
 
