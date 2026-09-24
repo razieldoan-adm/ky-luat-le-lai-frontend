@@ -17,8 +17,22 @@ import {
   DialogActions,
   TextField,
   Button,
+  List,
+  ListItemButton,
+  ListItemText,
+  Stack,
 } from '@mui/material';
 import api from '../../api/api';
+
+function removeVietnameseTones(str: string): string {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
+}
+let recognition: any = null;
+let stopTimer: any = null;
 
 interface LeaveApplication {
   _id: string;
@@ -38,7 +52,11 @@ interface LeaveApplication {
   processedBy?: string;
   note?: string;
 }
-
+interface StudentSuggestion {
+  _id: string;
+  name: string;
+  className: string;
+}
 export default function LeaveApplicationsPage() {
   const [applications, setApplications] = useState<LeaveApplication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +66,175 @@ export default function LeaveApplicationsPage() {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectNote, setRejectNote] = useState('');
   const [selectedApplication, setSelectedApplication] = useState<LeaveApplication | null>(null);  
+
+  const [studentName, setStudentName] = useState('');
+  const [studentSuggestions, setStudentSuggestions] = useState<StudentSuggestion[]>([]);
+  
+  const [selectedStudent, setSelectedStudent] = useState<StudentSuggestion | null>(null);
+  
+  const [isListening, setIsListening] = useState(false);
+  
+  const [directApplicationDialogOpen, setDirectApplicationDialogOpen] = useState(false);
+  
+  const [applicationContent, setApplicationContent] = useState('');
+
+
+  // =========================
+  // PHẦN 6 ĐẶT Ở ĐÂY
+  // =========================
+  useEffect(() => {
+  const SR =
+    (window as any).webkitSpeechRecognition ||
+    (window as any).SpeechRecognition;
+
+  if (!SR) {
+    console.warn('Trình duyệt không hỗ trợ nhận dạng giọng nói');
+    return;
+  }
+
+  recognition = new SR();
+  recognition.lang = 'vi-VN';
+  recognition.continuous = false;
+  recognition.interimResults = true;
+
+  return () => {
+    try {
+      recognition?.stop();
+    } catch {
+      // Không làm gì
+    }
+
+    clearTimeout(stopTimer);
+  };
+}, []);
+
+
+  // =========================
+// PHẦN 7
+// =========================
+const startVoice = () => {
+  if (!recognition) {
+    setError('Trình duyệt không hỗ trợ nhận dạng giọng nói.');
+    return;
+  }
+
+  try {
+    setIsListening(true);
+    recognition.start();
+  } catch (error) {
+    console.error('Lỗi khởi động microphone:', error);
+  }
+
+  recognition.onresult = async (event: any) => {
+    let interimText = '';
+    let finalText = '';
+
+    for (
+      let i = event.resultIndex;
+      i < event.results.length;
+      i++
+    ) {
+      const transcript =
+        event.results[i][0].transcript;
+
+      if (event.results[i].isFinal) {
+        finalText += transcript;
+      } else {
+        interimText += transcript;
+      }
+    }
+
+    if (interimText) {
+      setStudentName(interimText);
+    }
+
+    if (finalText) {
+      const text = finalText.trim();
+
+      setStudentName(text);
+      setSelectedStudent(null);
+      setStudentSuggestions([]);
+
+      try {
+        const params = new URLSearchParams();
+
+        params.append('name', text);
+        params.append(
+          'normalizedName',
+          removeVietnameseTones(text)
+        );
+
+        const res = await api.get(
+          `/api/students/search?${params.toString()}`
+        );
+
+        setStudentSuggestions(res.data);
+      } catch (error) {
+        console.error(
+          'Lỗi tìm học sinh bằng giọng nói:',
+          error
+        );
+
+        setStudentSuggestions([]);
+      }
+    }
+
+    clearTimeout(stopTimer);
+
+    stopTimer = setTimeout(() => {
+      try {
+        recognition.stop();
+      } catch {
+        // Không làm gì
+      }
+    }, 200);
+  };
+
+  recognition.onerror = () => {
+    setIsListening(false);
+  };
+
+  recognition.onend = () => {
+    setIsListening(false);
+  };
+};
+
+  // =========================
+// PHẦN 8
+// =========================
+useEffect(() => {
+  if (!studentName.trim()) {
+    setStudentSuggestions([]);
+    return;
+  }
+
+  if (selectedStudent) {
+    return;
+  }
+
+  const timeout = setTimeout(() => {
+    const params = new URLSearchParams();
+
+    params.append('name', studentName.trim());
+    params.append(
+      'normalizedName',
+      removeVietnameseTones(studentName.trim())
+    );
+
+    api
+      .get(`/api/students/search?${params.toString()}`)
+      .then((res) => {
+        setStudentSuggestions(res.data);
+      })
+      .catch((err) => {
+        console.error('Lỗi tìm học sinh:', err);
+        setStudentSuggestions([]);
+      });
+  }, 300);
+
+  return () => clearTimeout(timeout);
+}, [studentName, selectedStudent]);
+  
   
   const fetchApplications = async () => {
     try {
@@ -191,7 +378,164 @@ export default function LeaveApplicationsPage() {
       >
         Nhận đơn xin phép
       </Typography>
+    <Paper
+  elevation={3}
+  sx={{
+    p: 3,
+    mb: 3,
+    borderRadius: 3,
+  }}
+>
+  <Typography
+    variant="h6"
+    fontWeight="bold"
+    sx={{ mb: 2 }}
+  >
+    Nộp đơn xin phép trực tiếp
+  </Typography>
 
+  <Stack
+    direction={{ xs: 'column', sm: 'row' }}
+    spacing={1}
+  >
+    <TextField
+      fullWidth
+      label="Nhập tên học sinh"
+      placeholder="Nhập hoặc đọc tên học sinh..."
+      value={studentName}
+      onChange={(e) => {
+        setStudentName(e.target.value);
+        setSelectedStudent(null);
+      }}
+    />
+
+    <Button
+      variant={isListening ? 'contained' : 'outlined'}
+      color={isListening ? 'error' : 'secondary'}
+      onClick={startVoice}
+      sx={{
+        minWidth: { xs: '100%', sm: 130 },
+      }}
+    >
+      {isListening ? '🎙️ Đang nghe...' : '🎤 Nói'}
+    </Button>
+  </Stack>
+
+  {selectedStudent && (
+    <Alert
+      severity="success"
+      sx={{ mt: 2 }}
+    >
+      Đã chọn học sinh:{' '}
+      <strong>{selectedStudent.name}</strong>
+      {' — '}
+      <strong>{selectedStudent.className}</strong>
+    </Alert>
+  )}
+
+  {studentSuggestions.length > 0 && !selectedStudent && (
+    <Paper
+      elevation={2}
+      sx={{
+        mt: 2,
+        maxHeight: 250,
+        overflowY: 'auto',
+      }}
+    >
+      <Typography
+        sx={{
+          px: 2,
+          pt: 1.5,
+          fontWeight: 600,
+        }}
+      >
+        Gợi ý học sinh:
+      </Typography>
+
+      <List>
+        {studentSuggestions.map((student) => (
+          <ListItemButton
+            key={student._id}
+            onClick={() => {
+              setSelectedStudent(student);
+              setStudentName(student.name);
+              setStudentSuggestions([]);
+
+              setDirectApplicationDialogOpen(true);
+            }}
+          >
+            <ListItemText
+              primary={`Tên: ${student.name}`}
+              secondary={`Lớp: ${student.className}`}
+            />
+          </ListItemButton>
+        ))}
+      </List>
+    </Paper>
+  )}
+</Paper>
+
+      <Dialog
+  open={directApplicationDialogOpen}
+  onClose={() => {
+    setDirectApplicationDialogOpen(false);
+    setApplicationContent('');
+  }}
+  fullWidth
+  maxWidth="sm"
+>
+  <DialogTitle>
+    Nộp đơn xin phép
+  </DialogTitle>
+
+  <DialogContent>
+    <Typography sx={{ mb: 2 }}>
+      Học sinh:{' '}
+      <strong>{selectedStudent?.name}</strong>
+      <br />
+      Lớp:{' '}
+      <strong>{selectedStudent?.className}</strong>
+    </Typography>
+
+    <TextField
+      label="Nội dung xin phép"
+      fullWidth
+      multiline
+      minRows={4}
+      value={applicationContent}
+      onChange={(e) =>
+        setApplicationContent(e.target.value)
+      }
+      placeholder="Nhập nội dung xin phép..."
+    />
+  </DialogContent>
+
+  <DialogActions>
+    <Button
+      onClick={() => {
+        setDirectApplicationDialogOpen(false);
+        setApplicationContent('');
+      }}
+    >
+      Hủy
+    </Button>
+
+    <Button
+      variant="contained"
+      disabled={!applicationContent.trim()}
+      onClick={() => {
+        // Chưa gọi API ở bước này
+        console.log('Học sinh:', selectedStudent);
+        console.log(
+          'Nội dung xin phép:',
+          applicationContent
+        );
+      }}
+    >
+      Nộp đơn
+    </Button>
+  </DialogActions>
+</Dialog>
       <Typography
         align="center"
         color="text.secondary"
