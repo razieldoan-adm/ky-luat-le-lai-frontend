@@ -33,43 +33,42 @@ const drawerWidth = 240;
       </Toolbar>
 
       {/* Danh sách menu chính */}
-      <List>
+      <List> Ghi nhận
         <ListItemButton onClick={() => navigate('/violation/')}>
           <ListItemIcon><MenuBook /></ListItemIcon>
-          <ListItemText primary="Ghi nhận vi phạm" />
+          <ListItemText primary="Học sinh vi phạm" />
         </ListItemButton>
        <ListItemButton onClick={() => navigate('/violation/class-lineup-list')}>
           <ListItemIcon><MenuBook /></ListItemIcon>
-          <ListItemText primary="Ghi nhận lỗi xếp hàng" />
+          <ListItemText primary="Lỗi xếp hàng lớp" />
         </ListItemButton>
           
         <ListItemButton onClick={() => navigate('/violation/class-attendance-list')}>
           <ListItemIcon><MenuBook /></ListItemIcon>
-          <ListItemText primary="Ghi nhận chuyên cần" />
+          <ListItemText primary="Chuyên cần" />
         </ListItemButton>
-        
-        <ListItemButton onClick={() => navigate('/violation/unhandled')}>
-          <ListItemIcon><ClassIcon /></ListItemIcon>
-          <ListItemText primary="Báo cáo danh sách theo lớp" />
-        </ListItemButton>
+      </List>
+      <List> Xử lý/Duyệt đơn
           <ListItemButton onClick={() => navigate('/violation/all-violations')}>
           <ListItemIcon><ClassIcon /></ListItemIcon>
-          <ListItemText primary="Duyệt xử lý vi phạm" />
-        </ListItemButton>
-        <ListItemButton onClick={() => navigate('/violation/leave-applications')}>
-          <ListItemIcon><AssignmentTurnedInIcon /></ListItemIcon>
-          <ListItemText primary="Nhận đơn xin phép" />
+          <ListItemText primary="Xử lý vi phạm" />
         </ListItemButton>
         <ListItemButton onClick={() => navigate('/violation/leave-applications')}>
           <ListItemIcon><AssignmentTurnedInIcon /></ListItemIcon>
           <ListItemText primary="Nhận đơn xin phép" />
         </ListItemButton>
       </List>
+        <List> Danh sách
+        <ListItemButton onClick={() => navigate('/violation/unhandled')}>
+          <ListItemIcon><ClassIcon /></ListItemIcon>
+          <ListItemText primary="Báo cáo theo lớp" />
+        </ListItemButton>
+       
           <ListItemButton onClick={() => navigate('/violation/student-list')}>
           <ListItemIcon><AssignmentTurnedInIcon /></ListItemIcon>
           <ListItemText primary="Danh sách học sinh" />
         </ListItemButton>
-
+       </List>
       {/* Spacer đẩy nút quay về xuống cuối */}
       <Box sx={{ flexGrow: 1 }} />
 
