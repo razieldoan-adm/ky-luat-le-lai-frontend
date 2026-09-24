@@ -13,7 +13,8 @@ import ClassIcon from '@mui/icons-material/Class';
 
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuth } from '../contexts/AuthContext'; // nếu đang dùng AuthContext
-
+import ClassIcon from '@mui/icons-material/Class';
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 // bên trong component
 
 
@@ -55,22 +56,16 @@ const drawerWidth = 240;
           <ListItemButton onClick={() => navigate('/violation/all-violations')}>
           <ListItemIcon><ClassIcon /></ListItemIcon>
           <ListItemText primary="Duyệt xử lý vi phạm" />
-        
         </ListItemButton>
-        <ListItemButton onClick={() => navigate('/violation/student-list')}>
-          <ListItemIcon><ClassIcon /></ListItemIcon>
-          <ListItemText primary="Danh sách học sinh" />
+          <ListItemButton onClick={() => navigate('/violation/all-violations')}>
+            <ListItemIcon><ClassIcon /></ListItemIcon>
+            <ListItemText primary="Duyệt xử lý vi phạm" />
+          </ListItemButton>
+        <ListItemButton onClick={() => navigate('/violation/leave-applications')}>
+          <ListItemIcon><AssignmentTurnedInIcon /></ListItemIcon>
+          <ListItemText primary="Nhận đơn xin phép" />
         </ListItemButton>
-        
-     <ListItemButton onClick={() => navigate('/violation/early-leave-student-input')}>
-          <ListItemIcon><ClassIcon /></ListItemIcon>
-          <ListItemText primary="Nhập DS học sinh về sớm" />
-        </ListItemButton>
-        
-      <ListItemButton onClick={() => navigate('/violation/early-leave-student-list')}>
-          <ListItemIcon><ClassIcon /></ListItemIcon>
-          <ListItemText primary="DS học sinh về sớm" />
-        </ListItemButton>
+                
       </List>
       
 
