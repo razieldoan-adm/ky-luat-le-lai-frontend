@@ -21,6 +21,9 @@ import {
   ListItemButton,
   ListItemText,
   Stack,
+  Checkbox,
+  FormControlLabel,
+  Divider,
 } from '@mui/material';
 import api from '../../api/api';
 
@@ -57,6 +60,18 @@ interface StudentSuggestion {
   name: string;
   className: string;
 }
+
+interface Rule {
+  _id: string;
+  groupCode: string;
+  groupName: string;
+  ruleCode: string;
+  title: string;
+  point: number;
+  content: string;
+  active: boolean;
+}
+
 export default function LeaveApplicationsPage() {
   const [applications, setApplications] = useState<LeaveApplication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,10 +93,33 @@ export default function LeaveApplicationsPage() {
   
   const [applicationContent, setApplicationContent] = useState('');
 
+  const [rules, setRules] = useState<Rule[]>([]);
+
+  const [selectedRuleCodes, setSelectedRuleCodes] = useState<string[]>([]);
+
+  const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
 
   // =========================
   // PHẦN 6 ĐẶT Ở ĐÂY
   // =========================
+
+  useEffect(() => {
+  const fetchRules = async () => {
+    try {
+      const res = await api.get('/api/rules');
+
+      const activeRules: Rule[] = (res.data || []).filter(
+        (rule: Rule) => rule.active
+      );
+
+      setRules(activeRules);
+    } catch (error) {
+      console.error('Lỗi khi lấy danh sách nội quy:', error);
+    }
+  };
+  fetchRules();
+}, []);
+  
   useEffect(() => {
   const SR =
     (window as any).webkitSpeechRecognition ||
@@ -235,6 +273,19 @@ useEffect(() => {
   return () => clearTimeout(timeout);
 }, [studentName, selectedStudent]);
   
+  const handleToggleRule = (ruleCode: string) => {
+  setSelectedRuleCodes((prev) => {
+    if (prev.includes(ruleCode)) {
+      return prev.filter((code) => code !== ruleCode);
+    }
+
+    return [...prev, ruleCode];
+  });
+};
+  
+  // =========================
+  // Bỏ chọn Rule
+  // =========================
   
   const fetchApplications = async () => {
     try {
@@ -432,7 +483,61 @@ useEffect(() => {
       <strong>{selectedStudent.className}</strong>
     </Alert>
   )}
+  
+  <Box
+  sx={{
+    mt: 2,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 2,
+    flexWrap: 'wrap',
+  }}
+>
+  <Typography fontWeight={600}>
+    Nội dung vi phạm được phép nộp đơn
+  </Typography>
 
+  <Button
+    variant="outlined"
+    size="small"
+    onClick={() => setRuleDialogOpen(true)}
+  >
+    ＋ Quản lý
+  </Button>
+</Box>
+
+  <Box sx={{ mt: 1 }}>
+  {selectedRuleCodes.length === 0 ? (
+    <Typography
+      variant="body2"
+      color="text.secondary"
+      sx={{ fontStyle: 'italic' }}
+    >
+      Chưa chọn nội dung vi phạm nào được phép nộp đơn.
+    </Typography>
+  ) : (
+    <Stack
+      direction="row"
+      spacing={1}
+      flexWrap="wrap"
+      useFlexGap
+    >
+      {rules
+        .filter((rule) =>
+          selectedRuleCodes.includes(rule.ruleCode)
+        )
+        .map((rule) => (
+          <Chip
+            key={rule._id}
+            label={`${rule.title} — ${rule.point} điểm`}
+            color="primary"
+            variant="outlined"
+          />
+        ))}
+    </Stack>
+  )}
+</Box>
   {studentSuggestions.length > 0 && !selectedStudent && (
     <Paper
       elevation={2}
@@ -509,7 +614,83 @@ useEffect(() => {
       placeholder="Nhập nội dung xin phép..."
     />
   </DialogContent>
+  <Dialog
+  open={ruleDialogOpen}
+  onClose={() => setRuleDialogOpen(false)}
+  fullWidth
+  maxWidth="sm"
+>
+  <DialogTitle>
+    Nội dung vi phạm được phép nộp đơn
+  </DialogTitle>
 
+  <DialogContent dividers>
+    <Typography
+      variant="body2"
+      color="text.secondary"
+      sx={{ mb: 2 }}
+    >
+      Chọn những nội dung học sinh được phép nộp đơn xin phép trực tiếp.
+    </Typography>
+
+    {rules.length === 0 ? (
+      <Alert severity="warning">
+        Chưa có nội quy đang hoạt động.
+      </Alert>
+    ) : (
+      <Stack spacing={1}>
+        {rules.map((rule) => (
+          <Box key={rule._id}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={selectedRuleCodes.includes(
+                    rule.ruleCode
+                  )}
+                  onChange={() =>
+                    handleToggleRule(rule.ruleCode)
+                  }
+                />
+              }
+              label={
+                <Box>
+                  <Typography fontWeight={600}>
+                    {rule.title}
+                  </Typography>
+
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                  >
+                    {rule.ruleCode} — {rule.groupName} —{' '}
+                    {rule.point} điểm
+                  </Typography>
+                </Box>
+              }
+            />
+
+            <Divider />
+          </Box>
+        ))}
+      </Stack>
+    )}
+  </DialogContent>
+
+  <DialogActions>
+    <Button
+      onClick={() => setRuleDialogOpen(false)}
+    >
+      Đóng
+    </Button>
+
+    <Button
+      variant="contained"
+      onClick={() => setRuleDialogOpen(false)}
+    >
+      Lưu lựa chọn
+    </Button>
+  </DialogActions>
+</Dialog>
   <DialogActions>
     <Button
       onClick={() => {
