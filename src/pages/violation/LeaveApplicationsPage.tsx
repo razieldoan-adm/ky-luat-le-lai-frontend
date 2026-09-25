@@ -39,7 +39,7 @@ let stopTimer: any = null;
 
 interface LeaveApplication {
   _id: string;
-  violationId: string;
+  violationId?: string;
   studentName: string;
   className: string;
   academicYear: string;
@@ -284,7 +284,51 @@ useEffect(() => {
     return [...prev, ruleCode];
   });
 };
-  
+  // ============================================================
+// LẤY CÁC LỖI ĐƯỢC PHÉP XIN PHÉP TRỰC TIẾP
+// ============================================================
+const fetchDirectLeaveRules = async () => {
+  try {
+    const res = await api.get('/api/direct-leave-rules');
+
+    const codes = res.data?.data?.ruleCodes || [];
+
+    setSelectedRuleCodes(codes);
+  } catch (error) {
+    console.error(
+      'Lỗi khi lấy cấu hình lỗi được phép xin phép:',
+      error
+    );
+  }
+};
+
+  // ============================================================
+// LƯU CÁC LỖI ĐƯỢC PHÉP XIN PHÉP TRỰC TIẾP
+// ============================================================
+const handleSaveDirectLeaveRules = async () => {
+  try {
+    await api.put('/api/direct-leave-rules', {
+      ruleCodes: selectedRuleCodes,
+    });
+
+    setRuleDialogOpen(false);
+
+    setError('');
+
+    // Đọc lại từ server để chắc chắn dữ liệu đã lưu
+    await fetchDirectLeaveRules();
+  } catch (error: any) {
+    console.error(
+      'Lỗi lưu cấu hình lỗi được phép xin phép:',
+      error
+    );
+
+    setError(
+      error?.response?.data?.message ||
+        'Không thể lưu cấu hình lỗi được phép xin phép.'
+    );
+  }
+};
   // =========================
   // Bỏ chọn Rule
   // =========================
@@ -375,6 +419,7 @@ useEffect(() => {
   
   useEffect(() => {
     fetchApplications();
+    fetchDirectLeaveRules();
   }, []);
 
   const getStatusLabel = (status: LeaveApplication['status']) => {
@@ -500,13 +545,13 @@ useEffect(() => {
     Nội dung vi phạm được phép nộp đơn
   </Typography>
 
-  <Button
+ <Button
     variant="outlined"
     size="small"
     onClick={() => setRuleDialogOpen(true)}
   >
-    ＋ Quản lý
-  </Button>
+  ⚙️ Chọn lỗi được phép xin
+</Button>
 </Box>
 
   <Box sx={{ mt: 1 }}>
@@ -751,7 +796,7 @@ useEffect(() => {
 
     <Button
       variant="contained"
-      onClick={() => setRuleDialogOpen(false)}
+      onClick={handleSaveDirectLeaveRules}
     >
       Lưu lựa chọn
     </Button>
