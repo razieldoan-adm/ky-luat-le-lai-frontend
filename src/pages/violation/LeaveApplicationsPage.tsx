@@ -147,492 +147,493 @@ export default function LeaveApplicationsPage() {
     clearTimeout(stopTimer);
   };
 }, []);
-
-
-  // =========================
-// PHẦN 7
-// =========================
-const startVoice = () => {
-  if (!recognition) {
-    setError('Trình duyệt không hỗ trợ nhận dạng giọng nói.');
-    return;
-  }
-
-  try {
-    setIsListening(true);
-    recognition.start();
-  } catch (error) {
-    console.error('Lỗi khởi động microphone:', error);
-  }
-
-  recognition.onresult = async (event: any) => {
-    let interimText = '';
-    let finalText = '';
-
-    for (
-      let i = event.resultIndex;
-      i < event.results.length;
-      i++
-    ) {
-      const transcript =
-        event.results[i][0].transcript;
-
-      if (event.results[i].isFinal) {
-        finalText += transcript;
-      } else {
-        interimText += transcript;
-      }
-    }
-
-    if (interimText) {
-      setStudentName(interimText);
-    }
-
-    if (finalText) {
-      const text = finalText.trim();
-
-      setStudentName(text);
-      setSelectedStudent(null);
-      setStudentSuggestions([]);
-
-      try {
-        const params = new URLSearchParams();
-
-        params.append('name', text);
-        params.append(
-          'normalizedName',
-          removeVietnameseTones(text)
-        );
-
-        const res = await api.get(
-          `/api/students/search?${params.toString()}`
-        );
-
-        setStudentSuggestions(res.data);
-      } catch (error) {
-        console.error(
-          'Lỗi tìm học sinh bằng giọng nói:',
-          error
-        );
-
-        setStudentSuggestions([]);
-      }
-    }
-
-    clearTimeout(stopTimer);
-
-    stopTimer = setTimeout(() => {
-      try {
-        recognition.stop();
-      } catch {
-        // Không làm gì
-      }
-    }, 200);
-  };
-
-  recognition.onerror = () => {
-    setIsListening(false);
-  };
-
-  recognition.onend = () => {
-    setIsListening(false);
-  };
-};
-
-  // =========================
-// PHẦN 8
-// =========================
-useEffect(() => {
-  if (!studentName.trim()) {
-    setStudentSuggestions([]);
-    return;
-  }
-
-  if (selectedStudent) {
-    return;
-  }
-
-  const timeout = setTimeout(() => {
-    const params = new URLSearchParams();
-
-    params.append('name', studentName.trim());
-    params.append(
-      'normalizedName',
-      removeVietnameseTones(studentName.trim())
-    );
-
-    api
-      .get(`/api/students/search?${params.toString()}`)
-      .then((res) => {
-        setStudentSuggestions(res.data);
-      })
-      .catch((err) => {
-        console.error('Lỗi tìm học sinh:', err);
-        setStudentSuggestions([]);
-      });
-  }, 300);
-
-  return () => clearTimeout(timeout);
-}, [studentName, selectedStudent]);
   
-  const handleToggleRule = (ruleCode: string) => {
-  setSelectedRuleCodes((prev) => {
-    if (prev.includes(ruleCode)) {
-      return prev.filter((code) => code !== ruleCode);
-    }
-
-    return [...prev, ruleCode];
-  });
-};
-  // ============================================================
-// LẤY CÁC LỖI ĐƯỢC PHÉP XIN PHÉP TRỰC TIẾP
-// ============================================================
-const fetchDirectLeaveRules = async () => {
-  try {
-    const res = await api.get('/api/direct-leave-rules');
-
-    const codes = res.data?.data?.ruleCodes || [];
-
-    setSelectedRuleCodes(codes);
-  } catch (error) {
-    console.error(
-      'Lỗi khi lấy cấu hình lỗi được phép xin phép:',
-      error
-    );
-  }
-};
-
-  // ============================================================
-// LƯU CÁC LỖI ĐƯỢC PHÉP XIN PHÉP TRỰC TIẾP
-// ============================================================
-const handleSaveDirectLeaveRules = async () => {
-  try {
-    await api.put('/api/direct-leave-rules', {
-      ruleCodes: selectedRuleCodes,
-    });
-
-    setRuleDialogOpen(false);
-
-    setError('');
-
-    // Đọc lại từ server để chắc chắn dữ liệu đã lưu
-    await fetchDirectLeaveRules();
-  } catch (error: any) {
-    console.error(
-      'Lỗi lưu cấu hình lỗi được phép xin phép:',
-      error
-    );
-
-    setError(
-      error?.response?.data?.message ||
-        'Không thể lưu cấu hình lỗi được phép xin phép.'
-    );
-  }
-};
-  // =========================
-  // Bỏ chọn Rule
-  // =========================
   
-  const fetchApplications = async () => {
+  // =========================
+  // PHẦN 7
+  // =========================
+  const startVoice = () => {
+    if (!recognition) {
+      setError('Trình duyệt không hỗ trợ nhận dạng giọng nói.');
+      return;
+    }
+  
     try {
-      setLoading(true);
+      setIsListening(true);
+      recognition.start();
+    } catch (error) {
+      console.error('Lỗi khởi động microphone:', error);
+    }
+  
+    recognition.onresult = async (event: any) => {
+      let interimText = '';
+      let finalText = '';
+  
+      for (
+        let i = event.resultIndex;
+        i < event.results.length;
+        i++
+      ) {
+        const transcript =
+          event.results[i][0].transcript;
+  
+        if (event.results[i].isFinal) {
+          finalText += transcript;
+        } else {
+          interimText += transcript;
+        }
+      }
+  
+      if (interimText) {
+        setStudentName(interimText);
+      }
+  
+      if (finalText) {
+        const text = finalText.trim();
+  
+        setStudentName(text);
+        setSelectedStudent(null);
+        setStudentSuggestions([]);
+  
+        try {
+          const params = new URLSearchParams();
+  
+          params.append('name', text);
+          params.append(
+            'normalizedName',
+            removeVietnameseTones(text)
+          );
+  
+          const res = await api.get(
+            `/api/students/search?${params.toString()}`
+          );
+  
+          setStudentSuggestions(res.data);
+        } catch (error) {
+          console.error(
+            'Lỗi tìm học sinh bằng giọng nói:',
+            error
+          );
+  
+          setStudentSuggestions([]);
+        }
+      }
+  
+      clearTimeout(stopTimer);
+  
+      stopTimer = setTimeout(() => {
+        try {
+          recognition.stop();
+        } catch {
+          // Không làm gì
+        }
+      }, 200);
+    };
+  
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+  
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+  };
+  
+    // =========================
+  // PHẦN 8
+  // =========================
+  useEffect(() => {
+    if (!studentName.trim()) {
+      setStudentSuggestions([]);
+      return;
+    }
+  
+    if (selectedStudent) {
+      return;
+    }
+  
+    const timeout = setTimeout(() => {
+      const params = new URLSearchParams();
+  
+      params.append('name', studentName.trim());
+      params.append(
+        'normalizedName',
+        removeVietnameseTones(studentName.trim())
+      );
+  
+      api
+        .get(`/api/students/search?${params.toString()}`)
+        .then((res) => {
+          setStudentSuggestions(res.data);
+        })
+        .catch((err) => {
+          console.error('Lỗi tìm học sinh:', err);
+          setStudentSuggestions([]);
+        });
+    }, 300);
+  
+    return () => clearTimeout(timeout);
+  }, [studentName, selectedStudent]);
+    
+    const handleToggleRule = (ruleCode: string) => {
+    setSelectedRuleCodes((prev) => {
+      if (prev.includes(ruleCode)) {
+        return prev.filter((code) => code !== ruleCode);
+      }
+  
+      return [...prev, ruleCode];
+    });
+  };
+    // ============================================================
+  // LẤY CÁC LỖI ĐƯỢC PHÉP XIN PHÉP TRỰC TIẾP
+  // ============================================================
+  const fetchDirectLeaveRules = async () => {
+    try {
+      const res = await api.get('/api/direct-leave-rules');
+  
+      const codes = res.data?.data?.ruleCodes || [];
+  
+      setSelectedRuleCodes(codes);
+    } catch (error) {
+      console.error(
+        'Lỗi khi lấy cấu hình lỗi được phép xin phép:',
+        error
+      );
+    }
+  };
+  
+    // ============================================================
+  // LƯU CÁC LỖI ĐƯỢC PHÉP XIN PHÉP TRỰC TIẾP
+  // ============================================================
+  const handleSaveDirectLeaveRules = async () => {
+    try {
+      await api.put('/api/direct-leave-rules', {
+        ruleCodes: selectedRuleCodes,
+      });
+  
+      setRuleDialogOpen(false);
+  
       setError('');
-
-      const res = await api.get('/api/leave-applications');
-
-      console.log('📋 API đơn xin phép:', res.data);
-
-      const data = res.data?.data || [];
-
-      setApplications(data);
-    } catch (err: any) {
-      console.error('Lỗi lấy danh sách đơn xin phép:', err);
-
+  
+      // Đọc lại từ server để chắc chắn dữ liệu đã lưu
+      await fetchDirectLeaveRules();
+    } catch (error: any) {
+      console.error(
+        'Lỗi lưu cấu hình lỗi được phép xin phép:',
+        error
+      );
+  
       setError(
-        err?.response?.data?.message ||
-          'Không thể tải danh sách đơn xin phép.'
+        error?.response?.data?.message ||
+          'Không thể lưu cấu hình lỗi được phép xin phép.'
+      );
+    }
+  };
+    // =========================
+    // Bỏ chọn Rule
+    // =========================
+    
+    const fetchApplications = async () => {
+      try {
+        setLoading(true);
+        setError('');
+  
+        const res = await api.get('/api/leave-applications');
+  
+        console.log('📋 API đơn xin phép:', res.data);
+  
+        const data = res.data?.data || [];
+  
+        setApplications(data);
+      } catch (err: any) {
+        console.error('Lỗi lấy danh sách đơn xin phép:', err);
+  
+        setError(
+          err?.response?.data?.message ||
+            'Không thể tải danh sách đơn xin phép.'
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    const handleApprove = async (id: string) => {
+    try {
+      setProcessingId(id);
+  
+      await api.patch(`/api/leave-applications/${id}/approve`);
+  
+      await fetchApplications();
+    } catch (error: any) {
+      console.error('Lỗi duyệt đơn:', error);
+  
+      setError(
+        error?.response?.data?.message ||
+          'Không thể duyệt đơn xin phép.'
       );
     } finally {
-      setLoading(false);
+      setProcessingId(null);
     }
   };
-
-  const handleApprove = async (id: string) => {
-  try {
-    setProcessingId(id);
-
-    await api.patch(`/api/leave-applications/${id}/approve`);
-
-    await fetchApplications();
-  } catch (error: any) {
-    console.error('Lỗi duyệt đơn:', error);
-
-    setError(
-      error?.response?.data?.message ||
-        'Không thể duyệt đơn xin phép.'
-    );
-  } finally {
-    setProcessingId(null);
-  }
-};
-
-  const handleOpenReject = (application: LeaveApplication) => {
-    setSelectedApplication(application);
-    setRejectNote('');
-    setRejectDialogOpen(true);
+  
+    const handleOpenReject = (application: LeaveApplication) => {
+      setSelectedApplication(application);
+      setRejectNote('');
+      setRejectDialogOpen(true);
+    };
+  
+    const handleReject = async () => {
+    if (!selectedApplication) return;
+  
+    if (!rejectNote.trim()) {
+      setError('Vui lòng nhập lý do từ chối đơn.');
+      return;
+    }
+  
+    try {
+      setProcessingId(selectedApplication._id);
+  
+      await api.patch(
+        `/api/leave-applications/${selectedApplication._id}/reject`,
+        {
+          note: rejectNote.trim(),
+        }
+      );
+  
+      setRejectDialogOpen(false);
+      setSelectedApplication(null);
+      setRejectNote('');
+  
+      await fetchApplications();
+    } catch (error: any) {
+      console.error('Lỗi từ chối đơn:', error);
+  
+      setError(
+        error?.response?.data?.message ||
+          'Không thể từ chối đơn xin phép.'
+      );
+    } finally {
+      setProcessingId(null);
+    }
   };
-
-  const handleReject = async () => {
-  if (!selectedApplication) return;
-
-  if (!rejectNote.trim()) {
-    setError('Vui lòng nhập lý do từ chối đơn.');
-    return;
-  }
-
-  try {
-    setProcessingId(selectedApplication._id);
-
-    await api.patch(
-      `/api/leave-applications/${selectedApplication._id}/reject`,
-      {
-        note: rejectNote.trim(),
+    
+    useEffect(() => {
+      fetchApplications();
+      fetchDirectLeaveRules();
+    }, []);
+  
+    const getStatusLabel = (status: LeaveApplication['status']) => {
+      switch (status) {
+        case 'PENDING':
+          return 'Chờ duyệt';
+        case 'APPROVED':
+          return 'Đã duyệt';
+        case 'REJECTED':
+          return 'Từ chối';
+        case 'OVERDUE':
+          return 'Quá hạn';
+        default:
+          return status;
       }
-    );
-
-    setRejectDialogOpen(false);
-    setSelectedApplication(null);
-    setRejectNote('');
-
-    await fetchApplications();
-  } catch (error: any) {
-    console.error('Lỗi từ chối đơn:', error);
-
-    setError(
-      error?.response?.data?.message ||
-        'Không thể từ chối đơn xin phép.'
-    );
-  } finally {
-    setProcessingId(null);
-  }
-};
+    };
   
-  useEffect(() => {
-    fetchApplications();
-    fetchDirectLeaveRules();
-  }, []);
-
-  const getStatusLabel = (status: LeaveApplication['status']) => {
-    switch (status) {
-      case 'PENDING':
-        return 'Chờ duyệt';
-      case 'APPROVED':
-        return 'Đã duyệt';
-      case 'REJECTED':
-        return 'Từ chối';
-      case 'OVERDUE':
-        return 'Quá hạn';
-      default:
-        return status;
-    }
-  };
-
-  const getStatusColor = (
-    status: LeaveApplication['status']
-  ): 'warning' | 'success' | 'error' | 'default' => {
-    switch (status) {
-      case 'PENDING':
-        return 'warning';
-      case 'APPROVED':
-        return 'success';
-      case 'REJECTED':
-        return 'error';
-      case 'OVERDUE':
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
-
-  const formatDate = (value?: string | null) => {
-    if (!value) return '-';
-
-    return new Date(value).toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  return (
-    <Box sx={{ maxWidth: '100%', mx: 'auto', py: 3 }}>
-      <Typography
-        variant="h4"
-        fontWeight="bold"
-        align="center"
-        gutterBottom
-      >
-        Nhận đơn xin phép
-      </Typography>
-    <Paper
-  elevation={3}
-  sx={{
-    p: 3,
-    mb: 3,
-    borderRadius: 3,
-  }}
->
-  <Typography
-    variant="h6"
-    fontWeight="bold"
-    sx={{ mb: 2 }}
-  >
-    Nộp đơn xin phép trực tiếp
-  </Typography>
-
-  <Stack
-    direction={{ xs: 'column', sm: 'row' }}
-    spacing={1}
-  >
-    <TextField
-      fullWidth
-      label="Nhập tên học sinh"
-      placeholder="Nhập hoặc đọc tên học sinh..."
-      value={studentName}
-      onChange={(e) => {
-        setStudentName(e.target.value);
-        setSelectedStudent(null);
-      }}
-    />
-
-    <Button
-      variant={isListening ? 'contained' : 'outlined'}
-      color={isListening ? 'error' : 'secondary'}
-      onClick={startVoice}
-      sx={{
-        minWidth: { xs: '100%', sm: 130 },
-      }}
-    >
-      {isListening ? '🎙️ Đang nghe...' : '🎤 Nói'}
-    </Button>
-  </Stack>
-
-  {selectedStudent && (
-    <Alert
-      severity="success"
-      sx={{ mt: 2 }}
-    >
-      Đã chọn học sinh:{' '}
-      <strong>{selectedStudent.name}</strong>
-      {' — '}
-      <strong>{selectedStudent.className}</strong>
-    </Alert>
-  )}
+    const getStatusColor = (
+      status: LeaveApplication['status']
+    ): 'warning' | 'success' | 'error' | 'default' => {
+      switch (status) {
+        case 'PENDING':
+          return 'warning';
+        case 'APPROVED':
+          return 'success';
+        case 'REJECTED':
+          return 'error';
+        case 'OVERDUE':
+          return 'error';
+        default:
+          return 'default';
+      }
+    };
   
-  <Box
-  sx={{
-    mt: 2,
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 2,
-    flexWrap: 'wrap',
-  }}
->
-  <Typography fontWeight={600}>
-    Nội dung vi phạm được phép nộp đơn
-  </Typography>
-
- <Button
-    variant="outlined"
-    size="small"
-    onClick={() => setRuleDialogOpen(true)}
+    const formatDate = (value?: string | null) => {
+      if (!value) return '-';
+  
+      return new Date(value).toLocaleString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    };
+  
+    return (
+      <Box sx={{ maxWidth: '100%', mx: 'auto', py: 3 }}>
+        <Typography
+          variant="h4"
+          fontWeight="bold"
+          align="center"
+          gutterBottom
+        >
+          Nhận đơn xin phép
+        </Typography>
+      <Paper
+    elevation={3}
+    sx={{
+      p: 3,
+      mb: 3,
+      borderRadius: 3,
+    }}
   >
-  ⚙️ Chọn lỗi được phép xin
-</Button>
-</Box>
-
-  <Box sx={{ mt: 1 }}>
-  {selectedRuleCodes.length === 0 ? (
     <Typography
-      variant="body2"
-      color="text.secondary"
-      sx={{ fontStyle: 'italic' }}
+      variant="h6"
+      fontWeight="bold"
+      sx={{ mb: 2 }}
     >
-      Chưa chọn nội dung vi phạm nào được phép nộp đơn.
+      Nộp đơn xin phép trực tiếp
     </Typography>
-  ) : (
+  
     <Stack
-      direction="row"
+      direction={{ xs: 'column', sm: 'row' }}
       spacing={1}
-      flexWrap="wrap"
-      useFlexGap
     >
-      {rules
-        .filter((rule) =>
-          selectedRuleCodes.includes(rule.ruleCode)
-        )
-        .map((rule) => (
-          <Chip
-            key={rule._id}
-            label={`${rule.title} — ${rule.point} điểm`}
-            color="primary"
-            variant="outlined"
-          />
-        ))}
-    </Stack>
-  )}
-</Box>
-  {studentSuggestions.length > 0 && !selectedStudent && (
-    <Paper
-      elevation={2}
-      sx={{
-        mt: 2,
-        maxHeight: 250,
-        overflowY: 'auto',
-      }}
-    >
-      <Typography
+      <TextField
+        fullWidth
+        label="Nhập tên học sinh"
+        placeholder="Nhập hoặc đọc tên học sinh..."
+        value={studentName}
+        onChange={(e) => {
+          setStudentName(e.target.value);
+          setSelectedStudent(null);
+        }}
+      />
+  
+      <Button
+        variant={isListening ? 'contained' : 'outlined'}
+        color={isListening ? 'error' : 'secondary'}
+        onClick={startVoice}
         sx={{
-          px: 2,
-          pt: 1.5,
-          fontWeight: 600,
+          minWidth: { xs: '100%', sm: 130 },
         }}
       >
-        Gợi ý học sinh:
+        {isListening ? '🎙️ Đang nghe...' : '🎤 Nói'}
+      </Button>
+    </Stack>
+  
+    {selectedStudent && (
+      <Alert
+        severity="success"
+        sx={{ mt: 2 }}
+      >
+        Đã chọn học sinh:{' '}
+        <strong>{selectedStudent.name}</strong>
+        {' — '}
+        <strong>{selectedStudent.className}</strong>
+      </Alert>
+    )}
+    
+    <Box
+    sx={{
+      mt: 2,
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 2,
+      flexWrap: 'wrap',
+    }}
+  >
+    <Typography fontWeight={600}>
+      Nội dung vi phạm được phép nộp đơn
+    </Typography>
+  
+   <Button
+      variant="outlined"
+      size="small"
+      onClick={() => setRuleDialogOpen(true)}
+    >
+    ⚙️ Chọn lỗi được phép xin
+  </Button>
+  </Box>
+  
+    <Box sx={{ mt: 1 }}>
+    {selectedRuleCodes.length === 0 ? (
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{ fontStyle: 'italic' }}
+      >
+        Chưa chọn nội dung vi phạm nào được phép nộp đơn.
       </Typography>
-
-      <List>
-        {studentSuggestions.map((student) => (
-          <ListItemButton
-            key={student._id}
-            onClick={() => {
-              setSelectedStudent(student);
-              setStudentName(student.name);
-              setStudentSuggestions([]);
-              setSelectedDirectRuleCode('');
-
-              setDirectApplicationDialogOpen(true);
-            }}
-          >
-            <ListItemText
-              primary={`Tên: ${student.name}`}
-              secondary={`Lớp: ${student.className}`}
+    ) : (
+      <Stack
+        direction="row"
+        spacing={1}
+        flexWrap="wrap"
+        useFlexGap
+      >
+        {rules
+          .filter((rule) =>
+            selectedRuleCodes.includes(rule.ruleCode)
+          )
+          .map((rule) => (
+            <Chip
+              key={rule._id}
+              label={`${rule.title} — ${rule.point} điểm`}
+              color="primary"
+              variant="outlined"
             />
-          </ListItemButton>
-        ))}
-      </List>
-    </Paper>
-  )}
-</Paper>
-
-      <Dialog
+          ))}
+      </Stack>
+    )}
+  </Box>
+    {studentSuggestions.length > 0 && !selectedStudent && (
+      <Paper
+        elevation={2}
+        sx={{
+          mt: 2,
+          maxHeight: 250,
+          overflowY: 'auto',
+        }}
+      >
+        <Typography
+          sx={{
+            px: 2,
+            pt: 1.5,
+            fontWeight: 600,
+          }}
+        >
+          Gợi ý học sinh:
+        </Typography>
+  
+        <List>
+          {studentSuggestions.map((student) => (
+            <ListItemButton
+              key={student._id}
+              onClick={() => {
+                setSelectedStudent(student);
+                setStudentName(student.name);
+                setStudentSuggestions([]);
+                setSelectedDirectRuleCode('');
+  
+                setDirectApplicationDialogOpen(true);
+              }}
+            >
+              <ListItemText
+                primary={`Tên: ${student.name}`}
+                secondary={`Lớp: ${student.className}`}
+              />
+            </ListItemButton>
+          ))}
+        </List>
+      </Paper>
+    )}
+  </Paper>
+        {/* ============================================================
+    DIALOG NỘP ĐƠN XIN PHÉP TRỰC TIẾP
+============================================================ */}
+<Dialog
   open={directApplicationDialogOpen}
   onClose={() => {
     setDirectApplicationDialogOpen(false);
-    
   }}
   fullWidth
   maxWidth="sm"
@@ -651,162 +652,88 @@ const handleSaveDirectLeaveRules = async () => {
     </Typography>
 
     <Typography
-  variant="subtitle1"
-  fontWeight={600}
-  sx={{ mb: 1 }}
->
-  Chọn nội dung vi phạm
-</Typography>
-
-{selectedRuleCodes.length === 0 ? (
-  <Alert severity="warning">
-    Chưa có nội dung vi phạm nào được phép nộp đơn.
-    Vui lòng cấu hình trước ở nút "＋ Quản lý".
-  </Alert>
-) : (
-  <Stack spacing={1}>
-    {rules
-      .filter((rule) =>
-        selectedRuleCodes.includes(rule.ruleCode)
-      )
-      .map((rule) => (
-        <Paper
-          key={rule._id}
-          variant="outlined"
-          sx={{
-            p: 1,
-            cursor: 'pointer',
-            border:
-              selectedDirectRuleCode === rule.ruleCode
-                ? '2px solid'
-                : '1px solid',
-            borderColor:
-              selectedDirectRuleCode === rule.ruleCode
-                ? 'primary.main'
-                : 'divider',
-            backgroundColor:
-              selectedDirectRuleCode === rule.ruleCode
-                ? 'action.selected'
-                : 'background.paper',
-          }}
-          onClick={() =>
-            setSelectedDirectRuleCode(rule.ruleCode)
-          }
-        >
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={
-                  selectedDirectRuleCode === rule.ruleCode
-                }
-                onChange={() =>
-                  setSelectedDirectRuleCode(rule.ruleCode)
-                }
-              />
-            }
-            label={
-              <Box>
-                <Typography fontWeight={600}>
-                  {rule.title}
-                </Typography>
-
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                >
-                  {rule.ruleCode} — {rule.groupName} —{' '}
-                  {rule.point} điểm
-                </Typography>
-              </Box>
-            }
-          />
-        </Paper>
-      ))}
-  </Stack>
-)}
-  </DialogContent>
-  <Dialog
-  open={ruleDialogOpen}
-  onClose={() => setRuleDialogOpen(false)}
-  fullWidth
-  maxWidth="sm"
->
-  <DialogTitle>
-    Nội dung vi phạm được phép nộp đơn
-  </DialogTitle>
-
-  <DialogContent dividers>
-    <Typography
-      variant="body2"
-      color="text.secondary"
-      sx={{ mb: 2 }}
+      variant="subtitle1"
+      fontWeight={600}
+      sx={{ mb: 1 }}
     >
-      Chọn những nội dung học sinh được phép nộp đơn xin phép trực tiếp.
+      Chọn nội dung vi phạm
     </Typography>
 
-    {rules.length === 0 ? (
+    {selectedRuleCodes.length === 0 ? (
       <Alert severity="warning">
-        Chưa có nội quy đang hoạt động.
+        Chưa có nội dung vi phạm nào được phép nộp đơn.
+        <br />
+        Vui lòng cấu hình trước ở nút
+        "Chọn lỗi được phép xin".
       </Alert>
     ) : (
       <Stack spacing={1}>
-        {rules.map((rule) => (
-          <Box key={rule._id}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={selectedRuleCodes.includes(
-                    rule.ruleCode
-                  )}
-                  onChange={() =>
-                    handleToggleRule(rule.ruleCode)
-                  }
-                />
+        {rules
+          .filter((rule) =>
+            selectedRuleCodes.includes(rule.ruleCode)
+          )
+          .map((rule) => (
+            <Paper
+              key={rule._id}
+              variant="outlined"
+              sx={{
+                p: 1,
+                cursor: 'pointer',
+                border:
+                  selectedDirectRuleCode === rule.ruleCode
+                    ? '2px solid'
+                    : '1px solid',
+                borderColor:
+                  selectedDirectRuleCode === rule.ruleCode
+                    ? 'primary.main'
+                    : 'divider',
+                backgroundColor:
+                  selectedDirectRuleCode === rule.ruleCode
+                    ? 'action.selected'
+                    : 'background.paper',
+              }}
+              onClick={() =>
+                setSelectedDirectRuleCode(rule.ruleCode)
               }
-              label={
-                <Box>
-                  <Typography fontWeight={600}>
-                    {rule.title}
-                  </Typography>
+            >
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={
+                      selectedDirectRuleCode === rule.ruleCode
+                    }
+                    onChange={() =>
+                      setSelectedDirectRuleCode(rule.ruleCode)
+                    }
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography fontWeight={600}>
+                      {rule.title}
+                    </Typography>
 
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                  >
-                    {rule.ruleCode} — {rule.groupName} —{' '}
-                    {rule.point} điểm
-                  </Typography>
-                </Box>
-              }
-            />
-
-            <Divider />
-          </Box>
-        ))}
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                    >
+                      {rule.ruleCode} — {rule.groupName} —{' '}
+                      {rule.point} điểm
+                    </Typography>
+                  </Box>
+                }
+              />
+            </Paper>
+          ))}
       </Stack>
     )}
   </DialogContent>
 
-  <DialogActions>
-    <Button
-      onClick={() => setRuleDialogOpen(false)}
-    >
-      Đóng
-    </Button>
-
-    <Button
-      variant="contained"
-      onClick={handleSaveDirectLeaveRules}
-    >
-      Lưu lựa chọn
-    </Button>
-  </DialogActions>
-</Dialog>
+  {/* NÚT CỦA DIALOG NỘP ĐƠN */}
   <DialogActions>
     <Button
       onClick={() => {
         setDirectApplicationDialogOpen(false);
-        
         setSelectedStudent(null);
         setStudentName('');
         setStudentSuggestions([]);
@@ -820,18 +747,102 @@ const handleSaveDirectLeaveRules = async () => {
       variant="contained"
       disabled={!selectedDirectRuleCode}
       onClick={() => {
-        const selectedRule = rules.find((rule) =>
-      rule.ruleCode === selectedDirectRuleCode
-  );
+        const selectedRule = rules.find(
+          (rule) =>
+            rule.ruleCode === selectedDirectRuleCode
+        );
 
-  console.log('Học sinh:', selectedStudent);
-  console.log('Nội dung vi phạm:', selectedRule);
-}}
+        console.log('Học sinh:', selectedStudent);
+        console.log('Nội dung vi phạm:', selectedRule);
+      }}
     >
       Nộp đơn
     </Button>
   </DialogActions>
 </Dialog>
+
+
+      {/* ============================================================
+          DIALOG CHỌN LỖI ĐƯỢC PHÉP XIN
+      ============================================================ */}
+      <Dialog
+        open={ruleDialogOpen}
+        onClose={() => setRuleDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          Nội dung vi phạm được phép nộp đơn
+        </DialogTitle>
+      
+        <DialogContent dividers>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mb: 2 }}
+          >
+            Chọn những nội dung học sinh được phép
+            nộp đơn xin phép trực tiếp.
+          </Typography>
+      
+          {rules.length === 0 ? (
+            <Alert severity="warning">
+              Chưa có nội quy đang hoạt động.
+            </Alert>
+          ) : (
+            <Stack spacing={1}>
+              {rules.map((rule) => (
+                <Box key={rule._id}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={selectedRuleCodes.includes(
+                          rule.ruleCode
+                        )}
+                        onChange={() =>
+                          handleToggleRule(rule.ruleCode)
+                        }
+                      />
+                    }
+                    label={
+                      <Box>
+                        <Typography fontWeight={600}>
+                          {rule.title}
+                        </Typography>
+      
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                        >
+                          {rule.ruleCode} — {rule.groupName} —{' '}
+                          {rule.point} điểm
+                        </Typography>
+                      </Box>
+                    }
+                  />
+      
+                  <Divider />
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+      
+        <DialogActions>
+          <Button
+            onClick={() => setRuleDialogOpen(false)}
+          >
+            Đóng
+          </Button>
+      
+          <Button
+            variant="contained"
+            onClick={handleSaveDirectLeaveRules}
+          >
+            Lưu lựa chọn
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Typography
         align="center"
         color="text.secondary"
