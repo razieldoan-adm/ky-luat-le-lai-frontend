@@ -91,7 +91,7 @@ export default function LeaveApplicationsPage() {
   
   const [directApplicationDialogOpen, setDirectApplicationDialogOpen] = useState(false);
   
-  const [applicationContent, setApplicationContent] = useState('');
+ 
 
   const [rules, setRules] = useState<Rule[]>([]);
 
@@ -587,7 +587,7 @@ useEffect(() => {
   open={directApplicationDialogOpen}
   onClose={() => {
     setDirectApplicationDialogOpen(false);
-    setApplicationContent('');
+    
   }}
   fullWidth
   maxWidth="sm"
@@ -761,7 +761,7 @@ useEffect(() => {
     <Button
       onClick={() => {
         setDirectApplicationDialogOpen(false);
-        setApplicationContent('');
+        
         setSelectedStudent(null);
         setStudentName('');
         setStudentSuggestions([]);
