@@ -745,8 +745,10 @@ export default function LeaveApplicationsPage() {
  {/* ============================================================
          NỘP ĐƠN
       ============================================================ */}
-
-          onClick={async () => {
+      <Button
+        variant="contained"
+        disabled={!selectedStudent || !selectedDirectRuleCode}
+        onClick={async () => {
         const selectedRule = rules.find(
           (rule) =>
             rule.ruleCode === selectedDirectRuleCode
@@ -809,7 +811,9 @@ export default function LeaveApplicationsPage() {
           );
         }
       }}
-          
+          >
+      Nộp đơn
+    </Button>
   </DialogActions>
 </Dialog>
 
