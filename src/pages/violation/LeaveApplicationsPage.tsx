@@ -43,7 +43,7 @@ interface LeaveApplication {
   studentName: string;
   className: string;
   academicYear: string;
-  weekNumber: number;
+  number;
   ruleCode?: string;
   groupCode?: string;
   description?: string;
@@ -100,7 +100,8 @@ export default function LeaveApplicationsPage() {
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
 
   const [selectedDirectRuleCode, setSelectedDirectRuleCode] = useState<string>('');
-  
+
+  const [currentWeek, setCurrentWeek] = useState<number | null>(null);
   // =========================
   // PHẦN 6 ĐẶT Ở ĐÂY
   // =========================
@@ -356,7 +357,32 @@ export default function LeaveApplicationsPage() {
         setLoading(false);
       }
     };
-  
+    const fetchCurrentWeek = async () => {
+  try {
+    const res = await api.get('/api/academic-weeks/study-weeks');
+
+    const weeks = res.data || [];
+    const now = new Date();
+
+    const currentWeekFound = weeks.find((w: any) => {
+      const start = new Date(w.startDate);
+      const end = new Date(w.endDate);
+
+      return now >= start && now <= end;
+    });
+
+    if (!currentWeekFound) {
+      console.warn('Không tìm thấy tuần học hiện tại.');
+      return;
+    }
+
+    const week = Number(currentWeekFound.weekNumber);
+
+    setCurrentWeek(week);
+  } catch (error) {
+    console.error('Lỗi khi lấy tuần hiện tại:', error);
+  }
+};
     const handleApprove = async (id: string) => {
     try {
       setProcessingId(id);
@@ -420,6 +446,7 @@ export default function LeaveApplicationsPage() {
     useEffect(() => {
       fetchApplications();
       fetchDirectLeaveRules();
+      fetchCurrentWeek();
     }, []);
   
     const getStatusLabel = (status: LeaveApplication['status']) => {
@@ -763,7 +790,10 @@ export default function LeaveApplicationsPage() {
       
         try {
           setError('');
-      
+          if (currentWeek === null) {
+            setError('Không xác định được tuần học hiện tại.');
+            return;
+          }
           const res = await api.post(
             '/api/leave-applications/direct',
             {
@@ -774,7 +804,7 @@ export default function LeaveApplicationsPage() {
               academicYear: '2026-2027',
       
               // Sẽ thay bằng tuần hiện tại ở bước tiếp theo
-              weekNumber: 1,
+              weekNumber: currentWeek,
       
               ruleCode: selectedRule.ruleCode,
               groupCode: selectedRule.groupCode,
