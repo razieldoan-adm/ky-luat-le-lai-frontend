@@ -43,7 +43,7 @@ interface LeaveApplication {
   studentName: string;
   className: string;
   academicYear: string;
-  number;
+  weekNumber;
   ruleCode?: string;
   groupCode?: string;
   description?: string;
