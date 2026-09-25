@@ -99,6 +99,8 @@ export default function LeaveApplicationsPage() {
 
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
 
+  const [selectedDirectRuleCode, setSelectedDirectRuleCode] = useState<string>('');
+  
   // =========================
   // PHẦN 6 ĐẶT Ở ĐÂY
   // =========================
@@ -565,6 +567,7 @@ useEffect(() => {
               setSelectedStudent(student);
               setStudentName(student.name);
               setStudentSuggestions([]);
+              setSelectedDirectRuleCode('');
 
               setDirectApplicationDialogOpen(true);
             }}
@@ -602,17 +605,80 @@ useEffect(() => {
       <strong>{selectedStudent?.className}</strong>
     </Typography>
 
-    <TextField
-      label="Nội dung xin phép"
-      fullWidth
-      multiline
-      minRows={4}
-      value={applicationContent}
-      onChange={(e) =>
-        setApplicationContent(e.target.value)
-      }
-      placeholder="Nhập nội dung xin phép..."
-    />
+    <Typography
+  variant="subtitle1"
+  fontWeight={600}
+  sx={{ mb: 1 }}
+>
+  Chọn nội dung vi phạm
+</Typography>
+
+{selectedRuleCodes.length === 0 ? (
+  <Alert severity="warning">
+    Chưa có nội dung vi phạm nào được phép nộp đơn.
+    Vui lòng cấu hình trước ở nút "＋ Quản lý".
+  </Alert>
+) : (
+  <Stack spacing={1}>
+    {rules
+      .filter((rule) =>
+        selectedRuleCodes.includes(rule.ruleCode)
+      )
+      .map((rule) => (
+        <Paper
+          key={rule._id}
+          variant="outlined"
+          sx={{
+            p: 1,
+            cursor: 'pointer',
+            border:
+              selectedDirectRuleCode === rule.ruleCode
+                ? '2px solid'
+                : '1px solid',
+            borderColor:
+              selectedDirectRuleCode === rule.ruleCode
+                ? 'primary.main'
+                : 'divider',
+            backgroundColor:
+              selectedDirectRuleCode === rule.ruleCode
+                ? 'action.selected'
+                : 'background.paper',
+          }}
+          onClick={() =>
+            setSelectedDirectRuleCode(rule.ruleCode)
+          }
+        >
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={
+                  selectedDirectRuleCode === rule.ruleCode
+                }
+                onChange={() =>
+                  setSelectedDirectRuleCode(rule.ruleCode)
+                }
+              />
+            }
+            label={
+              <Box>
+                <Typography fontWeight={600}>
+                  {rule.title}
+                </Typography>
+
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                >
+                  {rule.ruleCode} — {rule.groupName} —{' '}
+                  {rule.point} điểm
+                </Typography>
+              </Box>
+            }
+          />
+        </Paper>
+      ))}
+  </Stack>
+)}
   </DialogContent>
   <Dialog
   open={ruleDialogOpen}
@@ -699,6 +765,7 @@ useEffect(() => {
         setSelectedStudent(null);
         setStudentName('');
         setStudentSuggestions([]);
+        setSelectedDirectRuleCode('');
       }}
     >
       Hủy
@@ -706,15 +773,15 @@ useEffect(() => {
 
     <Button
       variant="contained"
-      disabled={!applicationContent.trim()}
+      disabled={!selectedDirectRuleCode}
       onClick={() => {
-        // Chưa gọi API ở bước này
-        console.log('Học sinh:', selectedStudent);
-        console.log(
-          'Nội dung xin phép:',
-          applicationContent
-        );
-      }}
+        const selectedRule = rules.find((rule) =>
+      rule.ruleCode === selectedDirectRuleCode
+  );
+
+  console.log('Học sinh:', selectedStudent);
+  console.log('Nội dung vi phạm:', selectedRule);
+}}
     >
       Nộp đơn
     </Button>
