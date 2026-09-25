@@ -742,22 +742,74 @@ export default function LeaveApplicationsPage() {
     >
       Hủy
     </Button>
+ {/* ============================================================
+         NỘP ĐƠN
+      ============================================================ */}
 
-    <Button
-      variant="contained"
-      disabled={!selectedDirectRuleCode}
-      onClick={() => {
+          onClick={async () => {
         const selectedRule = rules.find(
           (rule) =>
             rule.ruleCode === selectedDirectRuleCode
         );
-
-        console.log('Học sinh:', selectedStudent);
-        console.log('Nội dung vi phạm:', selectedRule);
+      
+        if (!selectedStudent || !selectedRule) {
+          setError(
+            'Vui lòng chọn học sinh và nội dung vi phạm.'
+          );
+          return;
+        }
+      
+        try {
+          setError('');
+      
+          const res = await api.post(
+            '/api/leave-applications/direct',
+            {
+              studentName: selectedStudent.name,
+              className: selectedStudent.className,
+      
+              // Tạm thời lấy năm học hiện tại
+              academicYear: '2026-2027',
+      
+              // Sẽ thay bằng tuần hiện tại ở bước tiếp theo
+              weekNumber: 1,
+      
+              ruleCode: selectedRule.ruleCode,
+              groupCode: selectedRule.groupCode,
+              description: selectedRule.title,
+              originalPenalty: selectedRule.point,
+            }
+          );
+      
+          console.log(
+            '📋 API tạo đơn trực tiếp:',
+            res.data
+          );
+      
+          // Đóng dialog
+          setDirectApplicationDialogOpen(false);
+      
+          // Reset form
+          setSelectedStudent(null);
+          setStudentName('');
+          setStudentSuggestions([]);
+          setSelectedDirectRuleCode('');
+      
+          // Tải lại danh sách đơn
+          await fetchApplications();
+        } catch (error: any) {
+          console.error(
+            '❌ Lỗi nộp đơn trực tiếp:',
+            error
+          );
+      
+          setError(
+            error?.response?.data?.message ||
+              'Không thể nộp đơn xin phép.'
+          );
+        }
       }}
-    >
-      Nộp đơn
-    </Button>
+          
   </DialogActions>
 </Dialog>
 
