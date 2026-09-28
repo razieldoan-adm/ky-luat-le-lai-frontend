@@ -24,6 +24,7 @@ import {
   Checkbox,
   FormControlLabel,
   Divider,
+  DeleteIcon,
 } from '@mui/material';
 import api from '../../api/api';
 
@@ -384,8 +385,9 @@ export default function LeaveApplicationsPage() {
         setLoading(false);
       }
     };
+    
     const fetchCurrentWeek = async () => {
-  try {
+    try {
     const res = await api.get('/api/academic-weeks/study-weeks');
 
     const weeks = res.data || [];
@@ -410,6 +412,39 @@ export default function LeaveApplicationsPage() {
     console.error('Lỗi khi lấy tuần hiện tại:', error);
   }
 };
+
+// ============================================================
+// 🗑️ XÓA ĐƠN XIN PHÉP
+// Chỉ xóa đơn, KHÔNG xóa Violation
+// ============================================================
+
+const handleDeleteApplication = async (id: string) => {
+  const confirmed = window.confirm(
+    'Bạn có chắc chắn muốn xóa đơn xin phép này không?'
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await api.delete(`/api/leave-applications/${id}`);
+
+    await fetchApplications();
+
+    setError('');
+  } catch (error: any) {
+    console.error('❌ Lỗi xóa đơn:', error);
+
+    setError(
+      error?.response?.data?.message ||
+        'Không thể xóa đơn xin phép.'
+    );
+  }
+};
+
+
+// ============================================================
+// Các hàm duyệt / từ chối ở phía dưới
+// ============================================================
     const handleApprove = async (id: string) => {
     try {
       setProcessingId(id);
@@ -520,7 +555,7 @@ export default function LeaveApplicationsPage() {
       });
     };
 
-    // ============================================================
+// ============================================================
 // 📝 TẠO ĐƠN XIN PHÉP TRỰC TIẾP
 // ============================================================
 
@@ -606,7 +641,7 @@ const submitDirectApplication = async (
   }
 };
 
-    // ============================================================
+// ============================================================
 // 🔢 KIỂM TRA SỐ LẦN ĐÃ NỘP CÙNG LỖI TRONG THÁNG
 // ============================================================
 
@@ -866,7 +901,7 @@ const handleSubmitApplication = async () => {
       </Paper>
     )}
   </Paper>
-        {/* ============================================================
+{/* ============================================================
     DIALOG NỘP ĐƠN XIN PHÉP TRỰC TIẾP
 ============================================================ */}
 <Dialog
@@ -1351,6 +1386,14 @@ return (
         onClick={() => handleOpenReject(application)}
       >
         Từ chối
+      </Button>
+      <Button
+        variant="outlined"
+        color="error"
+        size="small"
+        onClick={() => handleDeleteApplication(application._id)}
+      >
+        XÓA
       </Button>
     </Box>
   ) : (
