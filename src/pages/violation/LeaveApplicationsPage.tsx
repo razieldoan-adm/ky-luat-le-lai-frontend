@@ -58,6 +58,7 @@ interface LeaveApplication {
     // 🔢 Thông tin số lần nộp cùng lỗi
   submissionCount?: number;
   submissionLimit?: number;
+  submissionNumber?: number;
   submissionLimitReached?: boolean;
   submissionLimitExceeded?: boolean;
 
