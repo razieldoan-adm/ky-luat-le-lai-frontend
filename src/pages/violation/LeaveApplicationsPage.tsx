@@ -1250,57 +1250,48 @@ const handleSubmitApplication = async () => {
                     </TableCell>
                     <TableCell>
   {(() => {
-    const count =
-      application.submissionCount || 1;
+    const submissionNumber = application.submissionNumber || 1;
+    const limit = application.submissionLimit || 2;
 
-    const limit =
-      application.submissionLimit || 2;
-
-    if (count > limit) {
-      return (
-        <Stack spacing={0.5}>
-          <Chip
-            label={`Nộp lần ${count}`}
-            color="error"
-            size="small"
-          />
-
-          <Typography
-            variant="caption"
-            color="error"
-          >
-            ⚠️ Vượt số lần quy định
-          </Typography>
-        </Stack>
-      );
-    }
-
-    if (count === limit) {
-      return (
-        <Stack spacing={0.5}>
-          <Chip
-            label={`Nộp lần ${count}`}
-            color="warning"
-            size="small"
-          />
-
-          <Typography
-            variant="caption"
-            color="warning.main"
-          >
-            ⚠️ Đã hết số lần
-          </Typography>
-        </Stack>
-      );
-    }
-
-    return (
+if (submissionNumber > limit) {
+  return (
+    <Stack spacing={0.5}>
       <Chip
-        label={`Nộp lần ${count}`}
-        color="default"
+        label={`Nộp lần ${submissionNumber}`}
+        color="error"
         size="small"
       />
-        );
+      <Typography variant="caption" color="error">
+        ⚠️ Vượt số lần quy định
+      </Typography>
+    </Stack>
+  );
+}
+
+if (submissionNumber === limit) {
+  return (
+    <Stack spacing={0.5}>
+      <Chip
+        label={`Nộp lần ${submissionNumber}`}
+        color="warning"
+        size="small"
+      />
+      <Typography variant="caption" color="warning.main">
+        ⚠️ Đã hết số lần nộp đơn
+      </Typography>
+    </Stack>
+  );
+}
+
+return (
+  <Chip
+    label={`Nộp lần ${submissionNumber}`}
+    color="default"
+    size="small"
+  />
+);
+
+
       })()}
     </TableCell>
                     <TableCell>
