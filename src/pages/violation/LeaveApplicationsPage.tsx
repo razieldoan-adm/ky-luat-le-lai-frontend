@@ -26,7 +26,7 @@ import {
   Divider,
   
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
+
 import api from '../../api/api';
 
 function removeVietnameseTones(str: string): string {
