@@ -1300,9 +1300,9 @@ const handleSubmitApplication = async () => {
         color="default"
         size="small"
       />
-    );
-  })()}
-</TableCell>
+        );
+      })()}
+    </TableCell>
                     <TableCell>
                       {application.originalPenalty ?? 0}
                     </TableCell>
