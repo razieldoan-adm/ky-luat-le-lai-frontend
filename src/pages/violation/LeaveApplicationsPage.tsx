@@ -54,6 +54,15 @@ interface LeaveApplication {
   processedAt?: string | null;
   processedBy?: string;
   note?: string;
+
+    // 🔢 Thông tin số lần nộp cùng lỗi
+  submissionCount?: number;
+  submissionLimit?: number;
+  submissionLimitReached?: boolean;
+  submissionLimitExceeded?: boolean;
+
+  // ⭐ Đơn được nhận theo diện ngoại lệ
+  isException?: boolean;
 }
 interface StudentSuggestion {
   _id: string;
@@ -91,7 +100,24 @@ export default function LeaveApplicationsPage() {
   
   const [directApplicationDialogOpen, setDirectApplicationDialogOpen] = useState(false);
   
- 
+  // ============================================================
+  // ⚠️ DIALOG CẢNH BÁO QUÁ SỐ LẦN NỘP
+  // ============================================================
+  
+  const [submissionWarningOpen, setSubmissionWarningOpen] =
+    useState(false);
+  
+  const [submissionCount, setSubmissionCount] =
+    useState(0);
+  
+  const [submissionLimit, setSubmissionLimit] =
+    useState(2);
+  
+  const [checkingSubmissionCount, setCheckingSubmissionCount] =
+    useState(false);
+  
+  const [submittingApplication, setSubmittingApplication] =
+    useState(false);
 
   const [rules, setRules] = useState<Rule[]>([]);
 
@@ -492,6 +518,191 @@ export default function LeaveApplicationsPage() {
         minute: '2-digit',
       });
     };
+
+    // ============================================================
+// 📝 TẠO ĐƠN XIN PHÉP TRỰC TIẾP
+// ============================================================
+
+const submitDirectApplication = async (
+  isException = false
+) => {
+  const selectedRule = rules.find(
+    (rule) => rule.ruleCode === selectedDirectRuleCode
+  );
+
+  if (!selectedStudent || !selectedRule) {
+    setError(
+      'Vui lòng chọn học sinh và nội dung vi phạm.'
+    );
+    return;
+  }
+
+  try {
+    setSubmittingApplication(true);
+    setError('');
+
+    if (currentWeek === null) {
+      setError(
+        'Không xác định được tuần học hiện tại.'
+      );
+      return;
+    }
+
+    const res = await api.post(
+      '/api/leave-applications/direct',
+      {
+        studentName: selectedStudent.name,
+        className: selectedStudent.className,
+
+        academicYear: '2026-2027',
+
+        weekNumber: currentWeek,
+
+        ruleCode: selectedRule.ruleCode,
+        groupCode: selectedRule.groupCode,
+        description: selectedRule.title,
+        originalPenalty: selectedRule.point,
+
+        // ⭐ Nếu cán bộ chọn ngoại lệ
+        isException,
+      }
+    );
+
+    console.log(
+      '📋 API tạo đơn trực tiếp:',
+      res.data
+    );
+
+    // Đóng dialog cảnh báo nếu đang mở
+    setSubmissionWarningOpen(false);
+
+    // Đóng dialog nộp đơn
+    setDirectApplicationDialogOpen(false);
+
+    // Reset form
+    setSelectedStudent(null);
+    setStudentName('');
+    setStudentSuggestions([]);
+    setSelectedDirectRuleCode('');
+
+    setSubmissionCount(0);
+
+    // Tải lại danh sách
+    await fetchApplications();
+
+  } catch (error: any) {
+    console.error(
+      '❌ Lỗi nộp đơn trực tiếp:',
+      error
+    );
+
+    setError(
+      error?.response?.data?.message ||
+        'Không thể nộp đơn xin phép.'
+    );
+  } finally {
+    setSubmittingApplication(false);
+  }
+};
+
+    // ============================================================
+// 🔢 KIỂM TRA SỐ LẦN ĐÃ NỘP CÙNG LỖI TRONG THÁNG
+// ============================================================
+
+const handleSubmitApplication = async () => {
+  const selectedRule = rules.find(
+    (rule) => rule.ruleCode === selectedDirectRuleCode
+  );
+
+  if (!selectedStudent || !selectedRule) {
+    setError(
+      'Vui lòng chọn học sinh và nội dung vi phạm.'
+    );
+    return;
+  }
+
+  if (currentWeek === null) {
+    setError(
+      'Không xác định được tuần học hiện tại.'
+    );
+    return;
+  }
+
+  try {
+    setCheckingSubmissionCount(true);
+    setError('');
+
+    const params = new URLSearchParams();
+
+    params.append(
+      'studentName',
+      selectedStudent.name
+    );
+
+    params.append(
+      'className',
+      selectedStudent.className
+    );
+
+    params.append(
+      'academicYear',
+      '2026-2027'
+    );
+
+    params.append(
+      'ruleCode',
+      selectedRule.ruleCode
+    );
+
+    const res = await api.get(
+      `/api/leave-applications/monthly-count?${params.toString()}`
+    );
+
+    console.log(
+      '🔢 Số lần nộp cùng lỗi:',
+      res.data
+    );
+
+    const data = res.data?.data;
+
+    const count = Number(data?.count || 0);
+
+    const limit = Number(
+      data?.limit || 2
+    );
+
+    setSubmissionCount(count);
+    setSubmissionLimit(limit);
+
+    // ========================================================
+    // Nếu đã đạt giới hạn → hiện cảnh báo
+    // ========================================================
+
+    if (count >= limit) {
+      setSubmissionWarningOpen(true);
+      return;
+    }
+
+    // ========================================================
+    // Chưa đạt giới hạn → nộp bình thường
+    // ========================================================
+
+    await submitDirectApplication(false);
+
+  } catch (error: any) {
+    console.error(
+      '❌ Lỗi kiểm tra số lần nộp:',
+      error
+    );
+
+    setError(
+      error?.response?.data?.message ||
+        'Không thể kiểm tra số lần nộp đơn.'
+    );
+  } finally {
+    setCheckingSubmissionCount(false);
+  }
+};
   
     return (
       <Box sx={{ maxWidth: '100%', mx: 'auto', py: 3 }}>
@@ -665,6 +876,7 @@ export default function LeaveApplicationsPage() {
   fullWidth
   maxWidth="sm"
 >
+  
   <DialogTitle>
     Nộp đơn xin phép
   </DialogTitle>
@@ -685,7 +897,98 @@ export default function LeaveApplicationsPage() {
     >
       Chọn nội dung vi phạm
     </Typography>
+    {/* ============================================================
+    ⚠️ DIALOG CẢNH BÁO HẾT SỐ LẦN NỘP
+============================================================ */}
 
+<Dialog
+  open={submissionWarningOpen}
+  onClose={() => {
+    if (!submittingApplication) {
+      setSubmissionWarningOpen(false);
+    }
+  }}
+  fullWidth
+  maxWidth="sm"
+>
+  <DialogTitle>
+    ⚠️ Cảnh báo số lần nộp đơn
+  </DialogTitle>
+
+  <DialogContent>
+    <Alert
+      severity="warning"
+      sx={{ mb: 2 }}
+    >
+      Học sinh đã nộp đơn cho lỗi này{' '}
+      <strong>
+        {submissionCount} lần
+      </strong>{' '}
+      trong tháng này.
+    </Alert>
+
+    <Typography sx={{ mb: 1 }}>
+      Học sinh:{' '}
+      <strong>
+        {selectedStudent?.name}
+      </strong>
+    </Typography>
+
+    <Typography sx={{ mb: 1 }}>
+      Lớp:{' '}
+      <strong>
+        {selectedStudent?.className}
+      </strong>
+    </Typography>
+
+    <Typography sx={{ mb: 2 }}>
+      Nội dung vi phạm:{' '}
+      <strong>
+        {
+          rules.find(
+            (rule) =>
+              rule.ruleCode ===
+              selectedDirectRuleCode
+          )?.title
+        }
+      </strong>
+    </Typography>
+
+    <Alert severity="error">
+      Học sinh đã hết số lần nộp đơn theo
+      giới hạn hiện tại ({submissionLimit} lần/tháng).
+      <br />
+      <br />
+      Cán bộ có thể kiểm tra tình trạng thực tế
+      trước khi quyết định có nhận đơn ngoại lệ
+      hay không.
+    </Alert>
+  </DialogContent>
+
+  <DialogActions>
+    <Button
+      onClick={() =>
+        setSubmissionWarningOpen(false)
+      }
+      disabled={submittingApplication}
+    >
+      Không cho nộp
+    </Button>
+
+    <Button
+      variant="contained"
+      color="warning"
+      onClick={() =>
+        submitDirectApplication(true)
+      }
+      disabled={submittingApplication}
+    >
+      {submittingApplication
+        ? 'Đang nộp...'
+        : 'Ngoại lệ – vẫn nộp'}
+    </Button>
+  </DialogActions>
+</Dialog>
     {selectedRuleCodes.length === 0 ? (
       <Alert severity="warning">
         Chưa có nội dung vi phạm nào được phép nộp đơn.
@@ -970,6 +1273,7 @@ export default function LeaveApplicationsPage() {
                 <TableCell>Lớp</TableCell>
                 <TableCell>Tuần</TableCell>
                 <TableCell>Lỗi vi phạm</TableCell>
+                <TableCell>Lần nộp cùng lỗi</TableCell>
                 <TableCell>Điểm phạt</TableCell>
                 <TableCell>Ngày nộp</TableCell>
                 <TableCell>Hạn xử lý</TableCell>
@@ -1000,7 +1304,61 @@ export default function LeaveApplicationsPage() {
                     <TableCell>
                       {application.description || '-'}
                     </TableCell>
+                    <TableCell>
+  {(() => {
+    const count =
+      application.submissionCount || 1;
 
+    const limit =
+      application.submissionLimit || 2;
+
+    if (count > limit) {
+      return (
+        <Stack spacing={0.5}>
+          <Chip
+            label={`Nộp lần ${count}`}
+            color="error"
+            size="small"
+          />
+
+          <Typography
+            variant="caption"
+            color="error"
+          >
+            ⚠️ Vượt số lần quy định
+          </Typography>
+        </Stack>
+      );
+    }
+
+    if (count === limit) {
+      return (
+        <Stack spacing={0.5}>
+          <Chip
+            label={`Nộp lần ${count}`}
+            color="warning"
+            size="small"
+          />
+
+          <Typography
+            variant="caption"
+            color="warning.main"
+          >
+            ⚠️ Đã hết số lần
+          </Typography>
+        </Stack>
+      );
+    }
+
+    return (
+      <Chip
+        label={`Nộp lần ${count}`}
+        color="default"
+        size="small"
+      />
+    );
+  })()}
+</TableCell>
                     <TableCell>
                       {application.originalPenalty ?? 0}
                     </TableCell>
@@ -1022,7 +1380,19 @@ export default function LeaveApplicationsPage() {
                     </TableCell>
 
                     <TableCell>
-                      {application.note || '-'}
+                      <Stack spacing={0.5}>
+                        {application.isException && (
+                          <Chip
+                            label="⭐ Ngoại lệ"
+                            color="warning"
+                            size="small"
+                          />
+                        )}
+                    
+                        <Typography variant="body2">
+                          {application.note || '-'}
+                        </Typography>
+                      </Stack>
                     </TableCell>
                     <TableCell>
   {application.status === 'PENDING' ? (
@@ -1056,7 +1426,7 @@ export default function LeaveApplicationsPage() {
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={10}
+                    colSpan={12}
                     align="center"
                     sx={{ py: 4 }}
                   >
