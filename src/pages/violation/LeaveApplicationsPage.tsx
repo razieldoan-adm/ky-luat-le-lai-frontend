@@ -1077,76 +1077,20 @@ const handleSubmitApplication = async () => {
       ============================================================ */}
       <Button
         variant="contained"
-        disabled={!selectedStudent || !selectedDirectRuleCode}
-        onClick={async () => {
-        const selectedRule = rules.find(
-          (rule) =>
-            rule.ruleCode === selectedDirectRuleCode
-        );
-      
-        if (!selectedStudent || !selectedRule) {
-          setError(
-            'Vui lòng chọn học sinh và nội dung vi phạm.'
-          );
-          return;
+        disabled={
+          !selectedStudent ||
+          !selectedDirectRuleCode ||
+          checkingSubmissionCount ||
+          submittingApplication
         }
-      
-        try {
-          setError('');
-          if (currentWeek === null) {
-            setError('Không xác định được tuần học hiện tại.');
-            return;
-          }
-          const res = await api.post(
-            '/api/leave-applications/direct',
-            {
-              studentName: selectedStudent.name,
-              className: selectedStudent.className,
-      
-              // Tạm thời lấy năm học hiện tại
-              academicYear: '2026-2027',
-      
-              // Sẽ thay bằng tuần hiện tại ở bước tiếp theo
-              weekNumber: currentWeek,
-      
-              ruleCode: selectedRule.ruleCode,
-              groupCode: selectedRule.groupCode,
-              description: selectedRule.title,
-              originalPenalty: selectedRule.point,
-            }
-          );
-      
-          console.log(
-            '📋 API tạo đơn trực tiếp:',
-            res.data
-          );
-      
-          // Đóng dialog
-          setDirectApplicationDialogOpen(false);
-      
-          // Reset form
-          setSelectedStudent(null);
-          setStudentName('');
-          setStudentSuggestions([]);
-          setSelectedDirectRuleCode('');
-      
-          // Tải lại danh sách đơn
-          await fetchApplications();
-        } catch (error: any) {
-          console.error(
-            '❌ Lỗi nộp đơn trực tiếp:',
-            error
-          );
-      
-          setError(
-            error?.response?.data?.message ||
-              'Không thể nộp đơn xin phép.'
-          );
-        }
-      }}
-          >
-      Nộp đơn
-    </Button>
+        onClick={handleSubmitApplication}
+      >
+        {checkingSubmissionCount
+          ? 'Đang kiểm tra...'
+          : submittingApplication
+            ? 'Đang nộp...'
+            : 'Nộp đơn'}
+      </Button>
   </DialogActions>
 </Dialog>
 
