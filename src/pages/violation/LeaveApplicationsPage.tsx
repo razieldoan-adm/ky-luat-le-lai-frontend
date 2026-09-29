@@ -1388,9 +1388,9 @@ return (
       >
         Từ chối
       </Button>
-      
     </Box>
-  )}<Button
+  )}
+      <Button
         variant="outlined"
         color="error"
         size="small"
@@ -1401,7 +1401,7 @@ return (
 </TableCell>
                   </TableRow>
                 ))
-              ) : (
+             
                 <TableRow>
                   <TableCell
                     colSpan={12}
