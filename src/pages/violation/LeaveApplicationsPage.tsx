@@ -1388,7 +1388,11 @@ return (
       >
         Từ chối
       </Button>
-      <Button
+      
+    </Box>
+  ) : (
+    '-'
+  )}<Button
         variant="outlined"
         color="error"
         size="small"
@@ -1396,10 +1400,6 @@ return (
       >
         XÓA
       </Button>
-    </Box>
-  ) : (
-    '-'
-  )}
 </TableCell>
                   </TableRow>
                 ))
