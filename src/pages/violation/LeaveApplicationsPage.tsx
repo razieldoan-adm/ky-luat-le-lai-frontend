@@ -1399,6 +1399,7 @@ return (
 >
   XÓA
 </Button>
+            </TableCell>
                   </TableRow>
                 ))
              ):(
