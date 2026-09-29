@@ -1391,7 +1391,6 @@ return (
       
     </Box>
   ) : (
-    '-'
   )}<Button
         variant="outlined"
         color="error"
