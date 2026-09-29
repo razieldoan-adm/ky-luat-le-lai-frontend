@@ -1367,41 +1367,41 @@ return (
                       </Stack>
                     </TableCell>
                     <TableCell>
-  {application.status === 'PENDING' ? (
-    <Box sx={{ display: 'flex', gap: 1 }}>
-      <Button
-        variant="contained"
-        color="success"
-        size="small"
-        disabled={processingId === application._id}
-        onClick={() => handleApprove(application._id)}
-      >
-        Duyệt
-      </Button>
+  {application.status === 'PENDING' && (
+  <Box sx={{ display: 'flex', gap: 1 }}>
+    <Button
+      variant="contained"
+      color="success"
+      size="small"
+      disabled={processingId === application._id}
+      onClick={() => handleApprove(application._id)}
+    >
+      Duyệt
+    </Button>
 
-      <Button
-        variant="outlined"
-        color="error"
-        size="small"
-        disabled={processingId === application._id}
-        onClick={() => handleOpenReject(application)}
-      >
-        Từ chối
-      </Button>
-    </Box>
-  )}
-      <Button
-        variant="outlined"
-        color="error"
-        size="small"
-        onClick={() => handleDeleteApplication(application._id)}
-      >
-        XÓA
-      </Button>
-</TableCell>
+    <Button
+      variant="outlined"
+      color="error"
+      size="small"
+      disabled={processingId === application._id}
+      onClick={() => handleOpenReject(application)}
+    >
+      Từ chối
+    </Button>
+  </Box>
+)}
+
+<Button
+  variant="outlined"
+  color="error"
+  size="small"
+  onClick={() => handleDeleteApplication(application._id)}
+>
+  XÓA
+</Button>
                   </TableRow>
                 ))
-             
+             ):(
                 <TableRow>
                   <TableCell
                     colSpan={12}
