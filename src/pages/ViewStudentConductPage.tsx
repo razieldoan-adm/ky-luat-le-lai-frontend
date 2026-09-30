@@ -4608,6 +4608,20 @@ onChange={(e) => {
 
                 <Button
                   variant="contained"
+                  color="success"
+                  onClick={handleFinalizeMonth}
+                  disabled={!selectedMonthInfo || loadingData}
+                  sx={{
+                    height: 40,
+                    minWidth: 145,
+                    fontWeight: "bold",
+                  }}
+                >
+                  DUYỆT THÁNG
+                </Button>
+                
+                <Button
+                  variant="contained"
                   color="primary"
                   startIcon={<FileDownload />}
                   onClick={openMonthExportDialog}
@@ -4707,19 +4721,7 @@ onChange={(e) => {
                   XEM DỮ LIỆU
                 </Button>
 
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={handleFinalizeMonth}
-                  disabled={!selectedMonthInfo || loadingData}
-                  sx={{
-                    height: 40,
-                    minWidth: 145,
-                    fontWeight: "bold",
-                  }}
-                >
-                  DUYỆT THÁNG
-                </Button>
+                
 
                 <Button
                   variant="contained"
