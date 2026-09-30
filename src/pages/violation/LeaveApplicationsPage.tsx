@@ -102,6 +102,16 @@ export default function LeaveApplicationsPage() {
   const [isListening, setIsListening] = useState(false);
   
   const [directApplicationDialogOpen, setDirectApplicationDialogOpen] = useState(false);
+
+  // ============================================================
+  // ⚠️ CẢNH BÁO HỌC SINH CÒN ĐƠN CHƯA DUYỆT
+  // ============================================================
+  
+  const [pendingStudentWarningOpen, setPendingStudentWarningOpen] =
+    useState(false);
+  
+  const [pendingStudentApplications, setPendingStudentApplications] =
+    useState<LeaveApplication[]>([]);
   
   // ============================================================
   // ⚠️ DIALOG CẢNH BÁO QUÁ SỐ LẦN NỘP
@@ -131,6 +141,8 @@ export default function LeaveApplicationsPage() {
   const [selectedDirectRuleCode, setSelectedDirectRuleCode] = useState<string>('');
 
   const [currentWeek, setCurrentWeek] = useState<number | null>(null);
+
+  
   // =========================
   // PHẦN 6 ĐẶT Ở ĐÂY
   // =========================
@@ -740,7 +752,41 @@ const handleSubmitApplication = async () => {
     setCheckingSubmissionCount(false);
   }
 };
-  
+
+
+  // ============================================================
+// 👨‍🎓 CHỌN HỌC SINH ĐỂ NHẬN ĐƠN
+// ============================================================
+
+const handleSelectStudentForApplication = (
+  student: StudentSuggestion
+) => {
+  // Tìm các đơn đang chờ duyệt của học sinh này
+  const pendingApplications = applications.filter(
+    (application) =>
+      application.status === 'PENDING' &&
+      application.studentName?.trim().toLowerCase() ===
+        student.name.trim().toLowerCase() &&
+      application.className?.trim().toUpperCase() ===
+        student.className.trim().toUpperCase()
+  );
+
+  // Lưu học sinh đang chọn
+  setSelectedStudent(student);
+  setStudentName(student.name);
+  setStudentSuggestions([]);
+  setSelectedDirectRuleCode('');
+
+  // Nếu còn đơn chưa duyệt → hiện cảnh báo
+  if (pendingApplications.length > 0) {
+    setPendingStudentApplications(pendingApplications);
+    setPendingStudentWarningOpen(true);
+    return;
+  }
+
+  // Không có đơn cũ → mở dialog nhận đơn
+  setDirectApplicationDialogOpen(true);
+};
     return (
       <Box sx={{ maxWidth: '100%', mx: 'auto', py: 3 }}>
         <Typography
@@ -884,12 +930,7 @@ const handleSubmitApplication = async () => {
             <ListItemButton
               key={student._id}
               onClick={() => {
-                setSelectedStudent(student);
-                setStudentName(student.name);
-                setStudentSuggestions([]);
-                setSelectedDirectRuleCode('');
-  
-                setDirectApplicationDialogOpen(true);
+                handleSelectStudentForApplication(student)
               }}
             >
               <ListItemText
@@ -902,6 +943,134 @@ const handleSubmitApplication = async () => {
       </Paper>
     )}
   </Paper>
+
+{/* ============================================================
+    ⚠️ DIALOG HỌC SINH CÒN ĐƠN CHƯA DUYỆT
+============================================================ */}
+
+<Dialog
+  open={pendingStudentWarningOpen}
+  onClose={() => {
+    if (!submittingApplication) {
+      setPendingStudentWarningOpen(false);
+    }
+  }}
+  fullWidth
+  maxWidth="sm"
+>
+  <DialogTitle>
+    ⚠️ Học sinh còn đơn chưa duyệt
+  </DialogTitle>
+
+  <DialogContent dividers>
+
+    <Alert severity="warning" sx={{ mb: 2 }}>
+      Học sinh này đang có{' '}
+      <strong>
+        {pendingStudentApplications.length}
+      </strong>{' '}
+      đơn xin phép chưa được xử lý.
+    </Alert>
+
+    <Typography sx={{ mb: 1 }}>
+      Học sinh:{' '}
+      <strong>
+        {selectedStudent?.name}
+      </strong>
+    </Typography>
+
+    <Typography sx={{ mb: 2 }}>
+      Lớp:{' '}
+      <strong>
+        {selectedStudent?.className}
+      </strong>
+    </Typography>
+
+    <Typography
+      variant="subtitle1"
+      fontWeight={600}
+      sx={{ mb: 1 }}
+    >
+      Đơn đang chờ duyệt:
+    </Typography>
+
+    <Stack spacing={1}>
+      {pendingStudentApplications.map((application) => (
+        <Paper
+          key={application._id}
+          variant="outlined"
+          sx={{
+            p: 1.5,
+            borderLeft: '4px solid',
+            borderLeftColor: 'warning.main',
+          }}
+        >
+          <Typography fontWeight={600}>
+            {application.description}
+          </Typography>
+
+          <Typography
+            variant="body2"
+            color="text.secondary"
+          >
+            Tuần {application.weekNumber}
+            {' • '}
+            Nộp lần{' '}
+            {application.submissionNumber || 1}
+          </Typography>
+
+          <Typography
+            variant="body2"
+            color="text.secondary"
+          >
+            Ngày nộp:{' '}
+            {formatDate(application.submittedAt)}
+          </Typography>
+
+          <Chip
+            label="Đang chờ duyệt"
+            color="warning"
+            size="small"
+            sx={{ mt: 1 }}
+          />
+        </Paper>
+      ))}
+    </Stack>
+
+    <Alert
+      severity="info"
+      sx={{ mt: 2 }}
+    >
+      Bạn vẫn có thể tiếp tục nhận đơn mới nếu cần.
+      Hệ thống sẽ kiểm tra lại nội dung vi phạm khi
+      nộp đơn.
+    </Alert>
+
+  </DialogContent>
+
+  <DialogActions>
+    <Button
+      onClick={() => {
+        setPendingStudentWarningOpen(false);
+        setSelectedStudent(null);
+        setStudentName('');
+        setSelectedDirectRuleCode('');
+      }}
+    >
+      Hủy
+    </Button>
+
+    <Button
+      variant="contained"
+      onClick={() => {
+        setPendingStudentWarningOpen(false);
+        setDirectApplicationDialogOpen(true);
+      }}
+    >
+      Tiếp tục nhận đơn
+    </Button>
+  </DialogActions>
+</Dialog>
 {/* ============================================================
     DIALOG NỘP ĐƠN XIN PHÉP TRỰC TIẾP
 ============================================================ */}
