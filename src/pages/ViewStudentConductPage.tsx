@@ -430,9 +430,11 @@ const isWeekInMonth = (
     year
   );
 
+  // Một tuần được tính cho tháng theo NGÀY BẮT ĐẦU của tuần.
+  // Như vậy mỗi tuần chỉ thuộc đúng một tháng, không bị chia lẻ.
   return (
-    start <= endOfMonth &&
-    end >= startOfMonth
+    start >= startOfMonth &&
+    start <= endOfMonth
   );
 };
 
@@ -1841,8 +1843,8 @@ XLSX.utils.book_append_sheet(
         // 4. TẠO HEADER + DỮ LIỆU
         // -----------------------------------------
 
-        // Header giống đúng bố cục bảng trên trang:
-        // STT | HỌ VÀ TÊN | TUẦN 1 | TUẦN 2 | ... | XẾP LOẠI TỔNG | TRẠNG THÁI
+        // Header giống đúng bố cục bảng trên trang, bỏ cột TRẠNG THÁI khỏi Excel:
+        // STT | HỌ VÀ TÊN | TUẦN 1 | TUẦN 2 | ... | XẾP LOẠI TỔNG
         //                    ĐIỂM/XẾP LOẠI cho từng tuần.
         const weekHeaderRow: string[] = [
           "STT",
@@ -1865,12 +1867,8 @@ XLSX.utils.book_append_sheet(
           );
         });
 
-        weekHeaderRow.push(
-          "XẾP LOẠI TỔNG",
-          "TRẠNG THÁI"
-        );
-
-        weekSubHeaderRow.push("", "");
+        weekHeaderRow.push("XẾP LOẠI TỔNG");
+        weekSubHeaderRow.push("");
 
         const dataRows = studentsForExport.map(
           (student: Student, index: number) => {
@@ -1915,10 +1913,7 @@ XLSX.utils.book_append_sheet(
               );
             });
 
-            row.push(
-              monthlyRecord?.classification || "-",
-              monthlyRecord?.status === "FINAL" ? "FINAL" : "DRAFT"
-            );
+            row.push(monthlyRecord?.classification || "-");
 
             return row;
           }
@@ -1970,7 +1965,7 @@ XLSX.utils.book_append_sheet(
         // Gộp ô:
         // STT và HỌ VÀ TÊN gộp dọc 2 dòng.
         // Mỗi TUẦN gộp ngang 2 cột.
-        // XẾP LOẠI TỔNG và TRẠNG THÁI gộp dọc 2 dòng.
+        // XẾP LOẠI TỔNG gộp dọc 2 dòng.
         const merges = [
           {
             s: { r: 3, c: 0 },
@@ -1993,19 +1988,12 @@ XLSX.utils.book_append_sheet(
           }
         );
 
-        const totalClassificationColumn = weekHeaderRow.length - 2;
-        const statusColumn = weekHeaderRow.length - 1;
+        const totalClassificationColumn = weekHeaderRow.length - 1;
 
-        merges.push(
-          {
-            s: { r: 3, c: totalClassificationColumn },
-            e: { r: 4, c: totalClassificationColumn },
-          },
-          {
-            s: { r: 3, c: statusColumn },
-            e: { r: 4, c: statusColumn },
-          }
-        );
+        merges.push({
+          s: { r: 3, c: totalClassificationColumn },
+          e: { r: 4, c: totalClassificationColumn },
+        });
 
         worksheet["!merges"] = merges;
 
@@ -2024,10 +2012,7 @@ XLSX.utils.book_append_sheet(
           );
         });
 
-        columnWidths.push(
-          { wch: 18 },
-          { wch: 14 }
-        );
+        columnWidths.push({ wch: 18 });
 
         worksheet["!cols"] = columnWidths;
 
@@ -2210,7 +2195,7 @@ XLSX.utils.book_append_sheet(
           );
 
           // Xếp loại tổng.
-          const totalClassificationColumn = weekHeaderRow.length - 2;
+          const totalClassificationColumn = weekHeaderRow.length - 1;
           const totalClassification = String(
             rowData[totalClassificationColumn] ?? ""
           );
@@ -2241,21 +2226,7 @@ XLSX.utils.book_append_sheet(
             }
           }
 
-          // Trạng thái FINAL/DRAFT.
-          const statusAddress = XLSX.utils.encode_cell({
-            r: excelRow - 1,
-            c: statusColumn,
-          });
-          const statusCell = worksheet[statusAddress];
-          if (statusCell) {
-            statusCell.s = {
-              ...(statusCell.s || {}),
-              font: {
-                ...(statusCell.s?.font || {}),
-                bold: true,
-              },
-            };
-          }
+
         }
 
         // -----------------------------------------
@@ -2447,6 +2418,77 @@ const handleFinalizeWeek = async () => {
   }
 };
   // =========================================================
+// FINALIZE THÁNG - TOÀN TRƯỜNG
+// =========================================================
+const handleFinalizeMonth = async () => {
+  if (!selectedMonthInfo) {
+    setSnackbar({
+      open: true,
+      message: "Vui lòng chọn tháng trước khi duyệt",
+      severity: "warning",
+    });
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Bạn có chắc muốn duyệt hạnh kiểm TOÀN TRƯỜNG tháng ${selectedMonthInfo.label} không?`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setLoadingData(true);
+
+    // Backend cần chốt toàn bộ bản ghi tháng theo năm học + tháng.
+    const res = await api.post(
+      "/api/student-monthly-conduct/finalize",
+      {
+        academicYear: CURRENT_ACADEMIC_YEAR,
+        month: selectedMonthInfo.month,
+        year: selectedMonthInfo.year,
+      }
+    );
+
+    setSnackbar({
+      open: true,
+      message:
+        res.data?.message ||
+        `Đã duyệt hạnh kiểm toàn trường tháng ${selectedMonthInfo.label}`,
+      severity: "success",
+    });
+
+    // Tải lại dữ liệu tháng đang xem để cập nhật trạng thái FINAL.
+    await loadMonthlyData();
+    setHasLoadedData(true);
+  } catch (error: any) {
+    console.error("❌ Lỗi duyệt hạnh kiểm tháng:", error);
+
+    const status = error?.response?.status;
+
+    if (status === 401 || status === 403) {
+      setSnackbar({
+        open: true,
+        message: "Bạn không phải QTV, không có quyền duyệt.",
+        severity: "warning",
+      });
+      return;
+    }
+
+    setSnackbar({
+      open: true,
+      message:
+        error?.response?.data?.message ||
+        "Không thể duyệt hạnh kiểm tháng",
+      severity: "error",
+    });
+  } finally {
+    setLoadingData(false);
+  }
+};
+
+// =========================================================
 // LẤY DỮ LIỆU HẠNH KIỂM TUẦN CHO 1 LỚP - DÙNG KHI XUẤT EXCEL
 // =========================================================
 
@@ -4645,20 +4687,54 @@ onChange={(e) => {
 
               <Box />
 
-              <Button
-                variant="contained"
-                onClick={
-                  handleView
-                }
+              <Box
                 sx={{
-                  height: 40,
-                  minWidth: 145,
-                  fontWeight:
-                    "bold",
+                  display: "flex",
+                  gap: 1,
+                  alignItems: "center",
+                  flexWrap: "wrap",
                 }}
               >
-                XEM DỮ LIỆU
-              </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleView}
+                  sx={{
+                    height: 40,
+                    minWidth: 145,
+                    fontWeight: "bold",
+                  }}
+                >
+                  XEM DỮ LIỆU
+                </Button>
+
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={handleFinalizeMonth}
+                  disabled={!selectedMonthInfo || loadingData}
+                  sx={{
+                    height: 40,
+                    minWidth: 145,
+                    fontWeight: "bold",
+                  }}
+                >
+                  DUYỆT THÁNG
+                </Button>
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<FileDownload />}
+                  onClick={openMonthExportDialog}
+                  sx={{
+                    height: 40,
+                    minWidth: 145,
+                    fontWeight: "bold",
+                  }}
+                >
+                  XUẤT EXCEL
+                </Button>
+              </Box>
             </>
           )}
         </Box>
