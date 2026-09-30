@@ -2109,7 +2109,7 @@ XLSX.utils.book_append_sheet(
           const rowData = dataRows[dataIndex];
 
           // Các cột xếp loại tuần bắt đầu từ C (index 3 trong headerRow).
-          exportMonthWeeks.forEach((week: StudyWeek, weekIndex: number) => {
+          exportMonthWeeks.forEach((_week: StudyWeek, weekIndex: number) => {
             const classificationColumn = 3 + weekIndex * 2;
             const classification = String(
               rowData[classificationColumn] ?? ""
