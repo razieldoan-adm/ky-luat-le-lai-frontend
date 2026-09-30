@@ -1840,19 +1840,37 @@ XLSX.utils.book_append_sheet(
         // -----------------------------------------
         // 4. TẠO HEADER + DỮ LIỆU
         // -----------------------------------------
-        const headerRow: string[] = [
+
+        // Header giống đúng bố cục bảng trên trang:
+        // STT | HỌ VÀ TÊN | TUẦN 1 | TUẦN 2 | ... | XẾP LOẠI TỔNG | TRẠNG THÁI
+        //                    ĐIỂM/XẾP LOẠI cho từng tuần.
+        const weekHeaderRow: string[] = [
           "STT",
           "HỌ VÀ TÊN",
         ];
 
+        const weekSubHeaderRow: string[] = [
+          "",
+          "",
+        ];
+
         exportMonthWeeks.forEach((week: StudyWeek) => {
-          headerRow.push(
-            `TUẦN ${week.weekNumber} - ĐIỂM`,
-            `TUẦN ${week.weekNumber} - XẾP LOẠI`
+          weekHeaderRow.push(
+            `TUẦN ${week.weekNumber}`,
+            ""
+          );
+          weekSubHeaderRow.push(
+            "ĐIỂM",
+            "XẾP LOẠI"
           );
         });
 
-        headerRow.push("XẾP LOẠI TỔNG", "TRẠNG THÁI");
+        weekHeaderRow.push(
+          "XẾP LOẠI TỔNG",
+          "TRẠNG THÁI"
+        );
+
+        weekSubHeaderRow.push("", "");
 
         const dataRows = studentsForExport.map(
           (student: Student, index: number) => {
@@ -1935,18 +1953,61 @@ XLSX.utils.book_append_sheet(
           { origin: "A2" }
         );
 
-        worksheet["!merges"] = [
+        // Dòng tiêu đề 2 tầng: giống bảng trên trang.
+        XLSX.utils.sheet_add_aoa(
+          worksheet,
+          [weekHeaderRow, weekSubHeaderRow],
+          { origin: "A4" }
+        );
+
+        // Dữ liệu bắt đầu từ dòng 6.
+        XLSX.utils.sheet_add_aoa(
+          worksheet,
+          dataRows,
+          { origin: "A6" }
+        );
+
+        // Gộp ô:
+        // STT và HỌ VÀ TÊN gộp dọc 2 dòng.
+        // Mỗi TUẦN gộp ngang 2 cột.
+        // XẾP LOẠI TỔNG và TRẠNG THÁI gộp dọc 2 dòng.
+        const merges = [
           {
-            s: { r: 0, c: 0 },
-            e: { r: 0, c: headerRow.length - 1 },
+            s: { r: 3, c: 0 },
+            e: { r: 4, c: 0 },
+          },
+          {
+            s: { r: 3, c: 1 },
+            e: { r: 4, c: 1 },
           },
         ];
 
-        XLSX.utils.sheet_add_aoa(
-          worksheet,
-          [headerRow, ...dataRows],
-          { origin: "A4" }
+        exportMonthWeeks.forEach(
+          (_week: StudyWeek, weekIndex: number) => {
+            const startCol = 2 + weekIndex * 2;
+
+            merges.push({
+              s: { r: 3, c: startCol },
+              e: { r: 3, c: startCol + 1 },
+            });
+          }
         );
+
+        const totalClassificationColumn = weekHeaderRow.length - 2;
+        const statusColumn = weekHeaderRow.length - 1;
+
+        merges.push(
+          {
+            s: { r: 3, c: totalClassificationColumn },
+            e: { r: 4, c: totalClassificationColumn },
+          },
+          {
+            s: { r: 3, c: statusColumn },
+            e: { r: 4, c: statusColumn },
+          }
+        );
+
+        worksheet["!merges"] = merges;
 
         // -----------------------------------------
         // 6. ĐỘ RỘNG CỘT
@@ -1958,8 +2019,8 @@ XLSX.utils.book_append_sheet(
 
         exportMonthWeeks.forEach(() => {
           columnWidths.push(
-            { wch: 15 },
-            { wch: 20 }
+            { wch: 12 },
+            { wch: 16 }
           );
         });
 
@@ -1973,16 +2034,17 @@ XLSX.utils.book_append_sheet(
         // -----------------------------------------
         // 7. ĐỊNH DẠNG TOÀN BỘ BẢNG
         // -----------------------------------------
-        const totalRows = dataRows.length + 4;
-        const totalCols = headerRow.length;
+        const totalRows = dataRows.length + 5;
+        const totalCols = weekHeaderRow.length;
 
         worksheet["!rows"] = [];
         worksheet["!rows"][0] = { hpt: 28 };
         worksheet["!rows"][1] = { hpt: 24 };
         worksheet["!rows"][2] = { hpt: 10 };
-        worksheet["!rows"][3] = { hpt: 40 };
+        worksheet["!rows"][3] = { hpt: 28 };
+        worksheet["!rows"][4] = { hpt: 28 };
 
-        for (let row = 4; row < totalRows; row++) {
+        for (let row = 5; row < totalRows; row++) {
           worksheet["!rows"][row] = { hpt: 24 };
         }
 
@@ -2016,29 +2078,31 @@ XLSX.utils.book_append_sheet(
           }
         }
 
-        // Header dòng 4.
-        for (let col = 0; col < totalCols; col++) {
-          const address = XLSX.utils.encode_cell({
-            r: 3,
-            c: col,
-          });
+        // Header 2 tầng.
+        for (let row = 3; row <= 4; row++) {
+          for (let col = 0; col < totalCols; col++) {
+            const address = XLSX.utils.encode_cell({
+              r: row,
+              c: col,
+            });
 
-          const cell = worksheet[address];
-          if (!cell) continue;
+            const cell = worksheet[address];
+            if (!cell) continue;
 
-          cell.s = {
-            ...(cell.s || {}),
-            font: {
-              name: "Times New Roman",
-              sz: 14,
-              bold: true,
-            },
-            alignment: {
-              horizontal: "center",
-              vertical: "center",
-              wrapText: true,
-            },
-          };
+            cell.s = {
+              ...(cell.s || {}),
+              font: {
+                name: "Times New Roman",
+                sz: 14,
+                bold: true,
+              },
+              alignment: {
+                horizontal: "center",
+                vertical: "center",
+                wrapText: true,
+              },
+            };
+          }
         }
 
         if (worksheet["A1"]) {
@@ -2105,46 +2169,48 @@ XLSX.utils.book_append_sheet(
         // 8. TÔ MÀU XẾP LOẠI
         // -----------------------------------------
         for (let dataIndex = 0; dataIndex < dataRows.length; dataIndex++) {
-          const excelRow = dataIndex + 5;
+          const excelRow = dataIndex + 6;
           const rowData = dataRows[dataIndex];
 
-          // Các cột xếp loại tuần bắt đầu từ C (index 3 trong headerRow).
-          exportMonthWeeks.forEach((_week: StudyWeek, weekIndex: number) => {
-            const classificationColumn = 3 + weekIndex * 2;
-            const classification = String(
-              rowData[classificationColumn] ?? ""
-            );
+          // Các cột xếp loại tuần bắt đầu từ D (index 3 trong headerRow).
+          exportMonthWeeks.forEach(
+            (_week: StudyWeek, weekIndex: number) => {
+              const classificationColumn = 3 + weekIndex * 2;
+              const classification = String(
+                rowData[classificationColumn] ?? ""
+              );
 
-            const fillColor = getExcelConductFillColor(
-              classification,
-              0
-            );
+              const fillColor = getExcelConductFillColor(
+                classification,
+                0
+              );
 
-            if (!fillColor) return;
+              if (!fillColor) return;
 
-            const address = XLSX.utils.encode_cell({
-              r: excelRow - 1,
-              c: classificationColumn,
-            });
+              const address = XLSX.utils.encode_cell({
+                r: excelRow - 1,
+                c: classificationColumn,
+              });
 
-            const cell = worksheet[address];
-            if (!cell) return;
+              const cell = worksheet[address];
+              if (!cell) return;
 
-            cell.s = {
-              ...(cell.s || {}),
-              fill: {
-                patternType: "solid",
-                fgColor: { rgb: fillColor },
-              },
-              font: {
-                ...(cell.s?.font || {}),
-                bold: true,
-              },
-            };
-          });
+              cell.s = {
+                ...(cell.s || {}),
+                fill: {
+                  patternType: "solid",
+                  fgColor: { rgb: fillColor },
+                },
+                font: {
+                  ...(cell.s?.font || {}),
+                  bold: true,
+                },
+              };
+            }
+          );
 
           // Xếp loại tổng.
-          const totalClassificationColumn = headerRow.length - 2;
+          const totalClassificationColumn = weekHeaderRow.length - 2;
           const totalClassification = String(
             rowData[totalClassificationColumn] ?? ""
           );
@@ -2176,7 +2242,6 @@ XLSX.utils.book_append_sheet(
           }
 
           // Trạng thái FINAL/DRAFT.
-          const statusColumn = headerRow.length - 1;
           const statusAddress = XLSX.utils.encode_cell({
             r: excelRow - 1,
             c: statusColumn,
