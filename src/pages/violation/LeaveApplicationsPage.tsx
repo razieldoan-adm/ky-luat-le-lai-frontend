@@ -112,6 +112,11 @@ export default function LeaveApplicationsPage() {
   
   const [pendingStudentApplications, setPendingStudentApplications] =
     useState<LeaveApplication[]>([]);
+
+  // Xác nhận trước khi duyệt đơn ngay trong dialog cảnh báo
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [applicationToApprove, setApplicationToApprove] =
+    useState<LeaveApplication | null>(null);
   
   // ============================================================
   // ⚠️ DIALOG CẢNH BÁO QUÁ SỐ LẦN NỘP
@@ -375,7 +380,7 @@ export default function LeaveApplicationsPage() {
     // Bỏ chọn Rule
     // =========================
     
-    const fetchApplications = async () => {
+    const fetchApplications = async (): Promise<LeaveApplication[] | null> => {
       try {
         setLoading(true);
         setError('');
@@ -384,9 +389,10 @@ export default function LeaveApplicationsPage() {
   
         console.log('📋 API đơn xin phép:', res.data);
   
-        const data = res.data?.data || [];
+        const data: LeaveApplication[] = res.data?.data || [];
   
         setApplications(data);
+        return data;
       } catch (err: any) {
         console.error('Lỗi lấy danh sách đơn xin phép:', err);
   
@@ -394,6 +400,7 @@ export default function LeaveApplicationsPage() {
           err?.response?.data?.message ||
             'Không thể tải danh sách đơn xin phép.'
         );
+        return null;
       } finally {
         setLoading(false);
       }
@@ -456,26 +463,70 @@ const handleDeleteApplication = async (id: string) => {
 
 
 // ============================================================
-// Các hàm duyệt / từ chối ở phía dưới
+// Các hàm duyệt / từ chối
 // ============================================================
-    const handleApprove = async (id: string) => {
-    try {
-      setProcessingId(id);
-  
-      await api.patch(`/api/leave-applications/${id}/approve`);
-  
-      await fetchApplications();
-    } catch (error: any) {
-      console.error('Lỗi duyệt đơn:', error);
-  
-      setError(
-        error?.response?.data?.message ||
-          'Không thể duyệt đơn xin phép.'
+
+    // Sau khi xử lý một đơn PENDING, kiểm tra lại các đơn PENDING
+    // của đúng học sinh đang được chọn. Chỉ khi hết PENDING mới
+    // cho phép mở form nhận đơn mới.
+    const refreshPendingStudentApplications = async () => {
+      if (!selectedStudent) return;
+
+      const data = await fetchApplications();
+      if (!data) return;
+
+      const remainingPending = data.filter(
+        (application) =>
+          application.status === 'PENDING' &&
+          application.studentName?.trim().toLowerCase() ===
+            selectedStudent.name.trim().toLowerCase() &&
+          application.className?.trim().toUpperCase() ===
+            selectedStudent.className.trim().toUpperCase()
       );
-    } finally {
-      setProcessingId(null);
-    }
-  };
+
+      setPendingStudentApplications(remainingPending);
+
+      // Hết toàn bộ đơn PENDING -> đóng cảnh báo và mở form nhận đơn mới.
+      if (remainingPending.length === 0) {
+        setPendingStudentWarningOpen(false);
+        setDirectApplicationDialogOpen(true);
+      }
+    };
+
+    const handleOpenApprove = (application: LeaveApplication) => {
+      setApplicationToApprove(application);
+      setApproveDialogOpen(true);
+    };
+
+    const handleApprove = async (id: string) => {
+      const isPendingDialogAction = pendingStudentApplications.some(
+        (application) => application._id === id
+      );
+
+      try {
+        setProcessingId(id);
+
+        await api.patch(`/api/leave-applications/${id}/approve`);
+
+        setApproveDialogOpen(false);
+        setApplicationToApprove(null);
+
+        if (isPendingDialogAction) {
+          await refreshPendingStudentApplications();
+        } else {
+          await fetchApplications();
+        }
+      } catch (error: any) {
+        console.error('Lỗi duyệt đơn:', error);
+
+        setError(
+          error?.response?.data?.message ||
+            'Không thể duyệt đơn xin phép.'
+        );
+      } finally {
+        setProcessingId(null);
+      }
+    };
   
     const handleOpenReject = (application: LeaveApplication) => {
       setSelectedApplication(application);
@@ -485,6 +536,10 @@ const handleDeleteApplication = async (id: string) => {
   
     const handleReject = async () => {
     if (!selectedApplication) return;
+
+    const isPendingDialogAction = pendingStudentApplications.some(
+      (application) => application._id === selectedApplication._id
+    );
   
     if (!rejectNote.trim()) {
       setError('Vui lòng nhập lý do từ chối đơn.');
@@ -505,7 +560,11 @@ const handleDeleteApplication = async (id: string) => {
       setSelectedApplication(null);
       setRejectNote('');
   
-      await fetchApplications();
+      if (isPendingDialogAction) {
+        await refreshPendingStudentApplications();
+      } else {
+        await fetchApplications();
+      }
     } catch (error: any) {
       console.error('Lỗi từ chối đơn:', error);
   
@@ -1033,6 +1092,32 @@ const handleSelectStudentForApplication = (
             size="small"
             sx={{ mt: 1 }}
           />
+
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ mt: 1.5 }}
+          >
+            <Button
+              variant="contained"
+              color="success"
+              size="small"
+              onClick={() => handleOpenApprove(application)}
+              disabled={processingId === application._id}
+            >
+              Duyệt
+            </Button>
+
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              onClick={() => handleOpenReject(application)}
+              disabled={processingId === application._id}
+            >
+              Từ chối
+            </Button>
+          </Stack>
         </Paper>
       ))}
     </Stack>
@@ -1041,9 +1126,8 @@ const handleSelectStudentForApplication = (
       severity="info"
       sx={{ mt: 2 }}
     >
-      Bạn vẫn có thể tiếp tục nhận đơn mới nếu cần.
-      Hệ thống sẽ kiểm tra lại nội dung vi phạm khi
-      nộp đơn.
+      Vui lòng xử lý tất cả đơn đang chờ duyệt trước khi
+      nhận đơn mới cho học sinh này.
     </Alert>
 
   </DialogContent>
@@ -1062,6 +1146,7 @@ const handleSelectStudentForApplication = (
 
     <Button
       variant="contained"
+      disabled={pendingStudentApplications.length > 0}
       onClick={() => {
         setPendingStudentWarningOpen(false);
         setDirectApplicationDialogOpen(true);
@@ -1071,6 +1156,69 @@ const handleSelectStudentForApplication = (
     </Button>
   </DialogActions>
 </Dialog>
+{/* ============================================================
+    DIALOG XÁC NHẬN DUYỆT ĐƠN
+============================================================ */}
+<Dialog
+  open={approveDialogOpen}
+  onClose={() => {
+    if (processingId === null) {
+      setApproveDialogOpen(false);
+      setApplicationToApprove(null);
+    }
+  }}
+  fullWidth
+  maxWidth="sm"
+>
+  <DialogTitle>Xác nhận duyệt đơn</DialogTitle>
+
+  <DialogContent dividers>
+    <Typography sx={{ mb: 2 }}>
+      Bạn có chắc chắn muốn duyệt đơn xin phép này?
+    </Typography>
+
+    <Typography>
+      Học sinh:{' '}
+      <strong>{applicationToApprove?.studentName}</strong>
+    </Typography>
+
+    <Typography>
+      Lớp:{' '}
+      <strong>{applicationToApprove?.className}</strong>
+    </Typography>
+
+    <Typography sx={{ mt: 1 }}>
+      Nội dung:{' '}
+      <strong>{applicationToApprove?.description}</strong>
+    </Typography>
+  </DialogContent>
+
+  <DialogActions>
+    <Button
+      onClick={() => {
+        setApproveDialogOpen(false);
+        setApplicationToApprove(null);
+      }}
+      disabled={processingId !== null}
+    >
+      Hủy
+    </Button>
+
+    <Button
+      variant="contained"
+      color="success"
+      onClick={() => {
+        if (applicationToApprove) {
+          handleApprove(applicationToApprove._id);
+        }
+      }}
+      disabled={processingId !== null || !applicationToApprove}
+    >
+      {processingId !== null ? 'Đang duyệt...' : 'Duyệt đơn'}
+    </Button>
+  </DialogActions>
+</Dialog>
+
 {/* ============================================================
     DIALOG NỘP ĐƠN XIN PHÉP TRỰC TIẾP
 ============================================================ */}
