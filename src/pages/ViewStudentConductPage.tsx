@@ -463,6 +463,15 @@ export default function ViewStudentConductPage() {
 
   const [exportWeek, setExportWeek] =
     useState<number | "">("");
+
+  const [exportMonthDialogOpen, setExportMonthDialogOpen] =
+    useState(false);
+
+  const [exportMonthGrade, setExportMonthGrade] =
+    useState("");
+
+  const [exportMonthKey, setExportMonthKey] =
+    useState("");
   
   const [selectedWeek, setSelectedWeek] =
     useState<number | "">("");
@@ -783,6 +792,12 @@ const openExportDialog = () => {
   setExportWeek("");
   setExportDialogOpen(true);
 
+};
+
+const openMonthExportDialog = () => {
+  setExportMonthGrade("");
+  setExportMonthKey(selectedMonthKey || "");
+  setExportMonthDialogOpen(true);
 };
   // =========================================================
   // LOAD STUDENTS
@@ -1654,6 +1669,568 @@ XLSX.utils.book_append_sheet(
     setLoadingData(false);
   }
 };
+  // =========================================================
+  // XUẤT EXCEL THEO THÁNG - MỖI LỚP 1 SHEET
+  // =========================================================
+
+  const exportMonthlyConductExcel = async () => {
+    if (!exportMonthGrade || !exportMonthKey) {
+      return;
+    }
+
+    const monthInfo = SCHOOL_MONTHS.find(
+      (item) => `${item.month}-${item.year}` === exportMonthKey
+    );
+
+    if (!monthInfo) {
+      return;
+    }
+
+    try {
+      setLoadingData(true);
+
+      const gradeClasses = getClassesByGrade(exportMonthGrade);
+
+      if (gradeClasses.length === 0) {
+        setSnackbar({
+          open: true,
+          message: `Không có lớp thuộc khối ${exportMonthGrade}.`,
+          severity: "warning",
+        });
+        return;
+      }
+
+      // Xác định các tuần thuộc tháng giống hệt trang đang xem.
+      let exportMonthWeeks = studyWeeks.filter(
+        (week: StudyWeek) =>
+          isWeekInMonth(
+            week,
+            monthInfo.month,
+            monthInfo.year
+          )
+      );
+
+      // Fallback giống loadMonthlyData/monthWeeks.
+      if (exportMonthWeeks.length === 0) {
+        const allMonthlyLists = await Promise.all(
+          gradeClasses.map(async (classItem) => {
+            try {
+              const response = await api.get(
+                "/api/student-monthly-conduct",
+                {
+                  params: {
+                    className: classItem.className,
+                    academicYear: CURRENT_ACADEMIC_YEAR,
+                    month: monthInfo.month,
+                    year: monthInfo.year,
+                  },
+                }
+              );
+
+              return Array.isArray(response.data)
+                ? (response.data as MonthlyConduct[])
+                : [];
+            } catch (error) {
+              console.error(
+                `❌ Lỗi tải dữ liệu tháng lớp ${classItem.className}:`,
+                error
+              );
+              return [];
+            }
+          })
+        );
+
+        const numbers = new Set<number>();
+
+        allMonthlyLists.flat().forEach(
+          (record: MonthlyConduct) => {
+            record.weekNumbers?.forEach((number: number) => {
+              if (Number.isInteger(Number(number))) {
+                numbers.add(Number(number));
+              }
+            });
+          }
+        );
+
+        exportMonthWeeks = Array.from(numbers)
+          .sort((a, b) => a - b)
+          .map((weekNumber) => ({ weekNumber }));
+      }
+
+      if (exportMonthWeeks.length === 0) {
+        setSnackbar({
+          open: true,
+          message: `Không xác định được tuần học trong tháng ${monthInfo.label}.`,
+          severity: "warning",
+        });
+        return;
+      }
+
+      const workbook = XLSX.utils.book_new();
+
+      for (const classItem of gradeClasses) {
+        const className = classItem.className;
+
+        // -----------------------------------------
+        // 1. HỌC SINH
+        // -----------------------------------------
+        const studentsForExport =
+          await loadStudentsForExport(className);
+
+        // -----------------------------------------
+        // 2. DỮ LIỆU THÁNG
+        // -----------------------------------------
+        let monthlyResponseData: MonthlyConduct[] = [];
+
+        try {
+          const response = await api.get(
+            "/api/student-monthly-conduct",
+            {
+              params: {
+                className,
+                academicYear: CURRENT_ACADEMIC_YEAR,
+                month: monthInfo.month,
+                year: monthInfo.year,
+              },
+            }
+          );
+
+          monthlyResponseData = Array.isArray(response.data)
+            ? response.data
+            : [];
+        } catch (error) {
+          console.error(
+            `❌ Lỗi tải hạnh kiểm tháng lớp ${className}:`,
+            error
+          );
+        }
+
+        // -----------------------------------------
+        // 3. DỮ LIỆU TỪNG TUẦN TRONG THÁNG
+        // -----------------------------------------
+        const weeklyResponses = await Promise.all(
+          exportMonthWeeks.map(async (week: StudyWeek) => {
+            try {
+              const response = await api.get(
+                "/api/student-conduct-scores",
+                {
+                  params: {
+                    className,
+                    academicYear: CURRENT_ACADEMIC_YEAR,
+                    weekNumber: week.weekNumber,
+                  },
+                }
+              );
+
+              return Array.isArray(response.data)
+                ? (response.data as WeeklyConduct[])
+                : [];
+            } catch (error) {
+              console.error(
+                `❌ Lỗi tải lớp ${className}, tuần ${week.weekNumber}:`,
+                error
+              );
+              return [];
+            }
+          })
+        );
+
+        const weeklyDataForExport = weeklyResponses.flat();
+
+        // -----------------------------------------
+        // 4. TẠO HEADER + DỮ LIỆU
+        // -----------------------------------------
+        const headerRow: string[] = [
+          "STT",
+          "HỌ VÀ TÊN",
+        ];
+
+        exportMonthWeeks.forEach((week: StudyWeek) => {
+          headerRow.push(
+            `TUẦN ${week.weekNumber} - ĐIỂM`,
+            `TUẦN ${week.weekNumber} - XẾP LOẠI`
+          );
+        });
+
+        headerRow.push("XẾP LOẠI TỔNG", "TRẠNG THÁI");
+
+        const dataRows = studentsForExport.map(
+          (student: Student, index: number) => {
+            const monthlyRecord = monthlyResponseData.find(
+              (item: MonthlyConduct) =>
+                normalizeName(item.name) === normalizeName(student.name) &&
+                normalizeClass(item.className) ===
+                  normalizeClass(student.className) &&
+                Number(item.month) === monthInfo.month &&
+                Number(item.year) === monthInfo.year
+            );
+
+            const row: (string | number)[] = [
+              index + 1,
+              student.name,
+            ];
+
+            exportMonthWeeks.forEach((week: StudyWeek) => {
+              const record = weeklyDataForExport.find(
+                (item: WeeklyConduct) =>
+                  normalizeName(item.name) === normalizeName(student.name) &&
+                  normalizeClass(item.className) ===
+                    normalizeClass(student.className) &&
+                  Number(item.weekNumber) === Number(week.weekNumber)
+              );
+
+              const score = record?.finalScore;
+              const hasSeriousViolation =
+                Number(record?.groupViolations?.S1 ?? 0) > 0;
+
+              const classification =
+                score !== undefined
+                  ? getFinalWeeklyClassification(
+                      score,
+                      hasSeriousViolation
+                    )
+                  : "";
+
+              row.push(
+                score !== undefined ? Number(score) : "-",
+                classification || "-"
+              );
+            });
+
+            row.push(
+              monthlyRecord?.classification || "-",
+              monthlyRecord?.status === "FINAL" ? "FINAL" : "DRAFT"
+            );
+
+            return row;
+          }
+        );
+
+        const worksheet = XLSX.utils.aoa_to_sheet([]);
+
+        // -----------------------------------------
+        // 5. TIÊU ĐỀ
+        // -----------------------------------------
+        XLSX.utils.sheet_add_aoa(
+          worksheet,
+          [
+            [
+              `BẢNG THEO DÕI ĐIỂM RÈN LUYỆN THÁNG ${monthInfo.label}`,
+            ],
+          ],
+          { origin: "A1" }
+        );
+
+        XLSX.utils.sheet_add_aoa(
+          worksheet,
+          [
+            [
+              `Lớp: ${className}`,
+              "",
+              "",
+              "",
+              `Khối: ${exportMonthGrade}`,
+            ],
+          ],
+          { origin: "A2" }
+        );
+
+        worksheet["!merges"] = [
+          {
+            s: { r: 0, c: 0 },
+            e: { r: 0, c: headerRow.length - 1 },
+          },
+        ];
+
+        XLSX.utils.sheet_add_aoa(
+          worksheet,
+          [headerRow, ...dataRows],
+          { origin: "A4" }
+        );
+
+        // -----------------------------------------
+        // 6. ĐỘ RỘNG CỘT
+        // -----------------------------------------
+        const columnWidths: { wch: number }[] = [
+          { wch: 8 },
+          { wch: 30 },
+        ];
+
+        exportMonthWeeks.forEach(() => {
+          columnWidths.push(
+            { wch: 15 },
+            { wch: 20 }
+          );
+        });
+
+        columnWidths.push(
+          { wch: 18 },
+          { wch: 14 }
+        );
+
+        worksheet["!cols"] = columnWidths;
+
+        // -----------------------------------------
+        // 7. ĐỊNH DẠNG TOÀN BỘ BẢNG
+        // -----------------------------------------
+        const totalRows = dataRows.length + 4;
+        const totalCols = headerRow.length;
+
+        worksheet["!rows"] = [];
+        worksheet["!rows"][0] = { hpt: 28 };
+        worksheet["!rows"][1] = { hpt: 24 };
+        worksheet["!rows"][2] = { hpt: 10 };
+        worksheet["!rows"][3] = { hpt: 40 };
+
+        for (let row = 4; row < totalRows; row++) {
+          worksheet["!rows"][row] = { hpt: 24 };
+        }
+
+        for (let row = 0; row < totalRows; row++) {
+          for (let col = 0; col < totalCols; col++) {
+            const address = XLSX.utils.encode_cell({
+              r: row,
+              c: col,
+            });
+
+            const cell = worksheet[address];
+            if (!cell) continue;
+
+            cell.s = {
+              font: {
+                name: "Times New Roman",
+                sz: 14,
+              },
+              alignment: {
+                horizontal: col === 1 ? "left" : "center",
+                vertical: "center",
+                wrapText: true,
+              },
+              border: {
+                top: { style: "thin" },
+                bottom: { style: "thin" },
+                left: { style: "thin" },
+                right: { style: "thin" },
+              },
+            };
+          }
+        }
+
+        // Header dòng 4.
+        for (let col = 0; col < totalCols; col++) {
+          const address = XLSX.utils.encode_cell({
+            r: 3,
+            c: col,
+          });
+
+          const cell = worksheet[address];
+          if (!cell) continue;
+
+          cell.s = {
+            ...(cell.s || {}),
+            font: {
+              name: "Times New Roman",
+              sz: 14,
+              bold: true,
+            },
+            alignment: {
+              horizontal: "center",
+              vertical: "center",
+              wrapText: true,
+            },
+          };
+        }
+
+        if (worksheet["A1"]) {
+          worksheet["A1"].s = {
+            font: {
+              name: "Times New Roman",
+              sz: 14,
+              bold: true,
+            },
+            alignment: {
+              horizontal: "center",
+              vertical: "center",
+            },
+          };
+        }
+
+        if (worksheet["A2"]) {
+          worksheet["A2"].s = {
+            font: {
+              name: "Times New Roman",
+              sz: 14,
+              bold: true,
+            },
+            alignment: {
+              horizontal: "left",
+              vertical: "center",
+            },
+          };
+        }
+
+        // Giữ vùng trống giữa Lớp và Khối không có khung.
+        for (const address of ["B2", "C2", "D2"]) {
+          if (worksheet[address]) {
+            worksheet[address].s = {
+              ...(worksheet[address].s || {}),
+              border: {
+                top: { style: "none" },
+                bottom: { style: "none" },
+                left: { style: "none" },
+                right: { style: "none" },
+              },
+            };
+          }
+        }
+
+        const khốiColumn = XLSX.utils.encode_col(4);
+        const khốiCell = worksheet[`${khốiColumn}2`];
+        if (khốiCell) {
+          khốiCell.s = {
+            ...(khốiCell.s || {}),
+            font: {
+              name: "Times New Roman",
+              sz: 14,
+              bold: true,
+            },
+            alignment: {
+              horizontal: "center",
+              vertical: "center",
+            },
+          };
+        }
+
+        // -----------------------------------------
+        // 8. TÔ MÀU XẾP LOẠI
+        // -----------------------------------------
+        for (let dataIndex = 0; dataIndex < dataRows.length; dataIndex++) {
+          const excelRow = dataIndex + 5;
+          const rowData = dataRows[dataIndex];
+
+          // Các cột xếp loại tuần bắt đầu từ C (index 3 trong headerRow).
+          exportMonthWeeks.forEach((week: StudyWeek, weekIndex: number) => {
+            const classificationColumn = 3 + weekIndex * 2;
+            const classification = String(
+              rowData[classificationColumn] ?? ""
+            );
+
+            const fillColor = getExcelConductFillColor(
+              classification,
+              0
+            );
+
+            if (!fillColor) return;
+
+            const address = XLSX.utils.encode_cell({
+              r: excelRow - 1,
+              c: classificationColumn,
+            });
+
+            const cell = worksheet[address];
+            if (!cell) return;
+
+            cell.s = {
+              ...(cell.s || {}),
+              fill: {
+                patternType: "solid",
+                fgColor: { rgb: fillColor },
+              },
+              font: {
+                ...(cell.s?.font || {}),
+                bold: true,
+              },
+            };
+          });
+
+          // Xếp loại tổng.
+          const totalClassificationColumn = headerRow.length - 2;
+          const totalClassification = String(
+            rowData[totalClassificationColumn] ?? ""
+          );
+          const totalFillColor = getExcelConductFillColor(
+            totalClassification,
+            0
+          );
+
+          if (totalFillColor) {
+            const address = XLSX.utils.encode_cell({
+              r: excelRow - 1,
+              c: totalClassificationColumn,
+            });
+
+            const cell = worksheet[address];
+            if (cell) {
+              cell.s = {
+                ...(cell.s || {}),
+                fill: {
+                  patternType: "solid",
+                  fgColor: { rgb: totalFillColor },
+                },
+                font: {
+                  ...(cell.s?.font || {}),
+                  bold: true,
+                },
+              };
+            }
+          }
+
+          // Trạng thái FINAL/DRAFT.
+          const statusColumn = headerRow.length - 1;
+          const statusAddress = XLSX.utils.encode_cell({
+            r: excelRow - 1,
+            c: statusColumn,
+          });
+          const statusCell = worksheet[statusAddress];
+          if (statusCell) {
+            statusCell.s = {
+              ...(statusCell.s || {}),
+              font: {
+                ...(statusCell.s?.font || {}),
+                bold: true,
+              },
+            };
+          }
+        }
+
+        // -----------------------------------------
+        // 9. THÊM SHEET
+        // -----------------------------------------
+        XLSX.utils.book_append_sheet(
+          workbook,
+          worksheet,
+          className
+        );
+      }
+
+      const fileName =
+        `DiemRenLuyen_Khoi${exportMonthGrade}_Thang${String(
+          monthInfo.month
+        ).padStart(2, "0")}-${monthInfo.year}.xlsx`;
+
+      XLSX.writeFile(workbook, fileName);
+
+      setSnackbar({
+        open: true,
+        message:
+          `Đã xuất Excel khối ${exportMonthGrade}, tháng ${monthInfo.label}`,
+        severity: "success",
+      });
+
+      setExportMonthDialogOpen(false);
+    } catch (error) {
+      console.error("❌ LỖI XUẤT EXCEL THÁNG:", error);
+
+      setSnackbar({
+        open: true,
+        message: "Không thể xuất file Excel tháng.",
+        severity: "error",
+      });
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
   // =========================================================
   // INITIAL LOAD
   // =========================================================
@@ -3899,20 +4476,44 @@ onChange={(e) => {
                 )}
               </TextField>
 
-              <Button
-                variant="contained"
-                onClick={
-                  handleView
-                }
+              <Box
                 sx={{
-                  height: 40,
-                  minWidth: 145,
-                  fontWeight:
-                    "bold",
+                  display: "flex",
+                  gap: 1,
+                  alignItems: "center",
+                  flexWrap: "wrap",
                 }}
               >
-                XEM DỮ LIỆU
-              </Button>
+                <Button
+                  variant="contained"
+                  onClick={
+                    handleView
+                  }
+                  sx={{
+                    height: 40,
+                    minWidth: 145,
+                    fontWeight:
+                      "bold",
+                  }}
+                >
+                  XEM DỮ LIỆU
+                </Button>
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<FileDownload />}
+                  onClick={openMonthExportDialog}
+                  disabled={!selectedMonthKey || loadingData}
+                  sx={{
+                    height: 40,
+                    minWidth: 145,
+                    fontWeight: "bold",
+                  }}
+                >
+                  XUẤT EXCEL
+                </Button>
+              </Box>
             </>
           )}
 
@@ -4181,6 +4782,82 @@ onChange={(e) => {
       </Typography>
     </Paper>
   )}
+  <Dialog
+  open={exportMonthDialogOpen}
+  onClose={() => setExportMonthDialogOpen(false)}
+  fullWidth
+  maxWidth="xs"
+>
+  <DialogTitle>
+    📊 Xuất báo cáo hạnh kiểm theo tháng
+  </DialogTitle>
+
+  <DialogContent>
+    <Stack spacing={2} sx={{ mt: 1 }}>
+      <TextField
+        select
+        label="Khối"
+        value={exportMonthGrade}
+        onChange={(e) =>
+          setExportMonthGrade(e.target.value)
+        }
+        fullWidth
+      >
+        <MenuItem value="">
+          Chọn khối
+        </MenuItem>
+        <MenuItem value="6">Khối 6</MenuItem>
+        <MenuItem value="7">Khối 7</MenuItem>
+        <MenuItem value="8">Khối 8</MenuItem>
+        <MenuItem value="9">Khối 9</MenuItem>
+      </TextField>
+
+      <TextField
+        select
+        label="Tháng học"
+        value={exportMonthKey}
+        onChange={(e) =>
+          setExportMonthKey(e.target.value)
+        }
+        fullWidth
+      >
+        <MenuItem value="">
+          Chọn tháng
+        </MenuItem>
+        {SCHOOL_MONTHS.map((item) => (
+          <MenuItem
+            key={`${item.month}-${item.year}`}
+            value={`${item.month}-${item.year}`}
+          >
+            {item.label}
+          </MenuItem>
+        ))}
+      </TextField>
+    </Stack>
+  </DialogContent>
+
+  <DialogActions>
+    <Button
+      onClick={() =>
+        setExportMonthDialogOpen(false)
+      }
+    >
+      HỦY
+    </Button>
+    <Button
+      variant="contained"
+      startIcon={<FileDownload />}
+      disabled={
+        exportMonthGrade === "" ||
+        exportMonthKey === ""
+      }
+      onClick={exportMonthlyConductExcel}
+    >
+      XUẤT EXCEL
+    </Button>
+  </DialogActions>
+</Dialog>
+
   <Dialog
   open={exportDialogOpen}
   onClose={() => setExportDialogOpen(false)}
