@@ -117,7 +117,12 @@ export default function LeaveApplicationsPage() {
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [applicationToApprove, setApplicationToApprove] =
     useState<LeaveApplication | null>(null);
-  
+
+  // Thông báo sau khi xử lý xong đơn cũ để người dùng biết có thể
+  // tiếp tục nhận đơn mới.
+  const [oldApplicationNotice, setOldApplicationNotice] =
+    useState('');
+
   // ============================================================
   // ⚠️ DIALOG CẢNH BÁO QUÁ SỐ LẦN NỘP
   // ============================================================
@@ -136,6 +141,14 @@ export default function LeaveApplicationsPage() {
   
   const [submittingApplication, setSubmittingApplication] =
     useState(false);
+
+  // Các lý do có sẵn chỉ dùng để điền vào GHI CHÚ khi từ chối.
+  // Không có logic xử lý tự động nào gắn với các lựa chọn này.
+  const rejectionReasons = [
+    'Quá hạn',
+    'Đơn không hợp lệ',
+    'Quá số lần nộp đơn',
+  ];
 
   const [rules, setRules] = useState<Rule[]>([]);
 
@@ -469,7 +482,7 @@ const handleDeleteApplication = async (id: string) => {
     // Sau khi xử lý một đơn PENDING, kiểm tra lại các đơn PENDING
     // của đúng học sinh đang được chọn. Chỉ khi hết PENDING mới
     // cho phép mở form nhận đơn mới.
-    const refreshPendingStudentApplications = async () => {
+    const refreshPendingStudentApplications = async (notice = '') => {
       if (!selectedStudent) return;
 
       const data = await fetchApplications();
@@ -489,6 +502,7 @@ const handleDeleteApplication = async (id: string) => {
       // Hết toàn bộ đơn PENDING -> đóng cảnh báo và mở form nhận đơn mới.
       if (remainingPending.length === 0) {
         setPendingStudentWarningOpen(false);
+        setOldApplicationNotice(notice);
         setDirectApplicationDialogOpen(true);
       }
     };
@@ -512,7 +526,9 @@ const handleDeleteApplication = async (id: string) => {
         setApplicationToApprove(null);
 
         if (isPendingDialogAction) {
-          await refreshPendingStudentApplications();
+          await refreshPendingStudentApplications(
+            '✅ Đã duyệt đơn cũ. Bạn có thể tiếp tục nhận đơn mới.'
+          );
         } else {
           await fetchApplications();
         }
@@ -561,7 +577,9 @@ const handleDeleteApplication = async (id: string) => {
       setRejectNote('');
   
       if (isPendingDialogAction) {
-        await refreshPendingStudentApplications();
+        await refreshPendingStudentApplications(
+          '✅ Đã xử lý đơn cũ. Bạn có thể tiếp tục nhận đơn mới.'
+        );
       } else {
         await fetchApplications();
       }
@@ -694,6 +712,7 @@ const submitDirectApplication = async (
     setSelectedDirectRuleCode('');
 
     setSubmissionCount(0);
+    setOldApplicationNotice('');
 
     // Tải lại danh sách
     await fetchApplications();
@@ -835,6 +854,7 @@ const handleSelectStudentForApplication = (
   setStudentName(student.name);
   setStudentSuggestions([]);
   setSelectedDirectRuleCode('');
+  setOldApplicationNotice('');
 
   // Nếu còn đơn chưa duyệt → hiện cảnh báo
   if (pendingApplications.length > 0) {
@@ -1236,6 +1256,12 @@ const handleSelectStudentForApplication = (
   </DialogTitle>
 
   <DialogContent>
+    {oldApplicationNotice && (
+      <Alert severity="success" sx={{ mb: 2 }}>
+        {oldApplicationNotice}
+      </Alert>
+    )}
+
     <Typography sx={{ mb: 2 }}>
       Học sinh:{' '}
       <strong>{selectedStudent?.name}</strong>
@@ -1418,6 +1444,7 @@ const handleSelectStudentForApplication = (
     <Button
       onClick={() => {
         setDirectApplicationDialogOpen(false);
+        setOldApplicationNotice('');
         setSelectedStudent(null);
         setStudentName('');
         setStudentSuggestions([]);
@@ -1753,8 +1780,45 @@ return (
       Lớp: <strong>{selectedApplication?.className}</strong>
     </Typography>
 
+    <Typography
+      variant="subtitle2"
+      fontWeight={600}
+      sx={{ mb: 1 }}
+    >
+      Chọn nội dung từ chối (chỉ để ghi chú)
+    </Typography>
+
+    <Stack
+      direction="row"
+      spacing={1}
+      useFlexGap
+      flexWrap="wrap"
+      sx={{ mb: 2 }}
+    >
+      {rejectionReasons.map((reason) => (
+        <Button
+          key={reason}
+          variant={rejectNote === reason ? 'contained' : 'outlined'}
+          size="small"
+          color="error"
+          onClick={() => setRejectNote(reason)}
+          disabled={processingId !== null}
+        >
+          {reason}
+        </Button>
+      ))}
+    </Stack>
+
+    <Typography
+      variant="caption"
+      color="text.secondary"
+      sx={{ display: 'block', mb: 1 }}
+    >
+      Chọn một nội dung bên trên hoặc nhập thêm chi tiết. Nội dung này chỉ được lưu vào ghi chú, không tự động kích hoạt quy tắc nào khác.
+    </Typography>
+
     <TextField
-      label="Lý do từ chối"
+      label="Lý do từ chối / ghi chú"
       fullWidth
       multiline
       minRows={3}
