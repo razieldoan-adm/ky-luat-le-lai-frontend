@@ -44,6 +44,9 @@ interface Violation {
     url: string;
   }[];
   weekNumber?: number;
+  academicYear?: string;
+  ruleCode?: string;
+  groupCode?: string;
 
   application?: {
     _id: string;
@@ -60,6 +63,8 @@ interface Rule {
   title: string;
   point: number;
   content: string;
+  ruleCode?: string;
+  groupCode?: string;
 }
 
 interface Week {
@@ -96,6 +101,21 @@ export default function AllViolationStudentPage() {
     message: '',
     severity: 'success' as 'success' | 'error' | 'warning',
   });
+
+  // 📝 Tạo đơn xin phép ngay từ lỗi vi phạm
+  const [directLeaveRuleCodes, setDirectLeaveRuleCodes] = useState<string[]>([]);
+  const [applicationChoiceOpen, setApplicationChoiceOpen] = useState(false);
+  const [violationForApplication, setViolationForApplication] =
+    useState<Violation | null>(null);
+  const [applicationSubmitting, setApplicationSubmitting] = useState(false);
+
+  // 🔢 Kiểm tra số lần nộp giống chức năng Tạo đơn trực tiếp
+  const [applicationLimitOpen, setApplicationLimitOpen] = useState(false);
+  const [applicationSubmissionCount, setApplicationSubmissionCount] = useState(0);
+  const [applicationSubmissionLimit, setApplicationSubmissionLimit] = useState(2);
+  const [applicationMode, setApplicationMode] =
+    useState<'APPROVED' | 'PENDING' | null>(null);
+
 
   // ⚙️ Giới hạn
   const [limitGVCNHandling, setLimitGVCNHandling] = useState(false);
@@ -195,6 +215,7 @@ export default function AllViolationStudentPage() {
       await fetchWeeks();
       await fetchClasses();
       await fetchRules();
+      await fetchDirectLeaveRules();
       await fetchViolations();
     };
     init();
@@ -213,6 +234,17 @@ export default function AllViolationStudentPage() {
       }
     } catch (err) {
       console.error('Lỗi khi lấy danh sách tuần học:', err);
+    }
+  };
+
+  const fetchDirectLeaveRules = async () => {
+    try {
+      const res = await api.get('/api/direct-leave-rules');
+      const codes = res.data?.data?.ruleCodes || [];
+      setDirectLeaveRuleCodes(codes);
+    } catch (err) {
+      console.error('Lỗi khi lấy cấu hình lỗi được phép nộp đơn:', err);
+      setDirectLeaveRuleCodes([]);
     }
   };
 
@@ -316,12 +348,25 @@ export default function AllViolationStudentPage() {
     }
   };
 
-  const handleSubmitApplication = async (violation: Violation) => {
-  try {
-    const currentApplication = violation.application;
+  const getViolationRuleCode = (violation: Violation) => {
+    if (violation.ruleCode) return violation.ruleCode;
 
-    // Đã có đơn thì không cho nộp lại
-    if (currentApplication) {
+    const matchedRule = rules.find(
+      (rule) =>
+        rule.title?.trim().toLowerCase() ===
+        violation.description?.trim().toLowerCase()
+    );
+
+    return matchedRule?.ruleCode || '';
+  };
+
+  const isViolationEligibleForLeave = (violation: Violation) => {
+    const ruleCode = getViolationRuleCode(violation);
+    return !!ruleCode && directLeaveRuleCodes.includes(ruleCode);
+  };
+
+  const handleSubmitApplication = (violation: Violation) => {
+    if (violation.application) {
       setSnackbar({
         open: true,
         message: 'Vi phạm này đã có đơn xin phép.',
@@ -330,41 +375,155 @@ export default function AllViolationStudentPage() {
       return;
     }
 
-    const res = await api.post('/api/leave-applications', {
-      violationId: violation._id,
-    });
+    if (!isViolationEligibleForLeave(violation)) {
+      setSnackbar({
+        open: true,
+        message:
+          'Lỗi vi phạm này không nằm trong danh sách được phép nộp đơn xin phép.',
+        severity: 'warning',
+      });
+      return;
+    }
 
-    const newApplication = res.data?.data;
+    setViolationForApplication(violation);
+    setApplicationChoiceOpen(true);
+  };
 
-    setViolations((prev) =>
-      prev.map((v) =>
-        v._id === violation._id
-          ? {
-              ...v,
-              application: newApplication,
-            }
-          : v
-      )
-    );
+  const createApplicationFromViolation = async (
+    mode: 'APPROVED' | 'PENDING',
+    isException = false
+  ) => {
+    if (!violationForApplication) return;
 
-    setSnackbar({
-      open: true,
-      message: 'Đã nộp đơn xin phép. Hai nút GVCN/PGT đã được khóa chờ duyệt.',
-      severity: 'success',
-    });
-  } catch (error: any) {
-    console.error('Lỗi nộp đơn xin phép:', error);
+    try {
+      setApplicationSubmitting(true);
 
-    setSnackbar({
-      open: true,
-      message:
-        error?.response?.data?.message ||
-        'Không thể nộp đơn xin phép.',
-      severity: 'error',
-    });
-  }
-};
-  
+      const violation = violationForApplication;
+      const res = await api.post('/api/leave-applications', {
+        violationId: violation._id,
+        isException,
+      });
+
+      let newApplication = res.data?.data;
+
+      if (mode === 'APPROVED') {
+        const applicationId = newApplication?._id || newApplication?.id;
+
+        if (!applicationId) {
+          throw new Error('API tạo đơn không trả về mã đơn xin phép.');
+        }
+
+        const approveRes = await api.patch(
+          `/api/leave-applications/${applicationId}/approve`
+        );
+
+        newApplication = approveRes.data?.data || {
+          ...newApplication,
+          status: 'APPROVED',
+        };
+      }
+
+      setViolations((prev) =>
+        prev.map((v) =>
+          v._id === violation._id
+            ? { ...v, application: newApplication }
+            : v
+        )
+      );
+
+      setApplicationChoiceOpen(false);
+      setApplicationLimitOpen(false);
+      setViolationForApplication(null);
+      setApplicationMode(null);
+
+      setSnackbar({
+        open: true,
+        message:
+          mode === 'APPROVED'
+            ? 'Đã tạo và duyệt đơn trực tiếp.'
+            : 'Đã tạo đơn. Đơn đang ở trạng thái chờ duyệt.',
+        severity: 'success',
+      });
+    } catch (error: any) {
+      console.error('Lỗi tạo đơn từ vi phạm:', error);
+      setSnackbar({
+        open: true,
+        message:
+          error?.response?.data?.message ||
+          error?.message ||
+          'Không thể tạo đơn xin phép.',
+        severity: 'error',
+      });
+    } finally {
+      setApplicationSubmitting(false);
+    }
+  };
+
+  const handleChooseApplicationMode = async (
+    mode: 'APPROVED' | 'PENDING'
+  ) => {
+    if (!violationForApplication) return;
+
+    const ruleCode = getViolationRuleCode(violationForApplication);
+
+    if (!ruleCode) {
+      setSnackbar({
+        open: true,
+        message: 'Không xác định được mã lỗi để kiểm tra số lần nộp đơn.',
+        severity: 'error',
+      });
+      return;
+    }
+
+    try {
+      setApplicationSubmitting(true);
+
+      const params = new URLSearchParams();
+      params.append('studentName', violationForApplication.name);
+      params.append('className', violationForApplication.className);
+      params.append(
+        'academicYear',
+        violationForApplication.academicYear || '2026-2027'
+      );
+      params.append('ruleCode', ruleCode);
+
+      const res = await api.get(
+        `/api/leave-applications/monthly-count?${params.toString()}`
+      );
+
+      const data = res.data?.data;
+      const count = Number(data?.count || 0);
+      const limit = Number(data?.limit || 2);
+
+      setApplicationSubmissionCount(count);
+      setApplicationSubmissionLimit(limit);
+      setApplicationMode(mode);
+
+      if (count >= limit) {
+        setApplicationLimitOpen(true);
+        return;
+      }
+
+      await createApplicationFromViolation(mode, false);
+    } catch (error: any) {
+      console.error('Lỗi kiểm tra số lần nộp:', error);
+      setSnackbar({
+        open: true,
+        message:
+          error?.response?.data?.message ||
+          'Không thể kiểm tra số lần nộp đơn.',
+        severity: 'error',
+      });
+    } finally {
+      setApplicationSubmitting(false);
+    }
+  };
+
+  const handleSubmitApplicationException = async () => {
+    if (!applicationMode) return;
+    await createApplicationFromViolation(applicationMode, true);
+  };
+
   // 📷 Tải và hiển thị ảnh hiện có
   const loadDetailImages = async (violation: Violation) => {
     if (!violation.images || violation.images.length === 0) {
@@ -949,10 +1108,14 @@ const handleSelectImages = async (
 
 {/* Nút nộp đơn xin phép */}
 <Button
-  variant="outlined"
-  color="warning"
+  variant={v.application ? "outlined" : "contained"}
+  color={v.application ? "inherit" : "warning"}
   size="small"
-  disabled={!!v.application}
+  disabled={
+    !!v.application ||
+    !isViolationEligibleForLeave(v) ||
+    applicationSubmitting
+  }
   onClick={() => handleSubmitApplication(v)}
 >
   {v.application?.status === "PENDING"
@@ -963,7 +1126,9 @@ const handleSelectImages = async (
     ? "❌ Đơn bị từ chối"
     : v.application?.status === "OVERDUE"
     ? "⚠️ Đơn quá hạn"
-    : "📝 Nộp đơn xin phép"}
+    : isViolationEligibleForLeave(v)
+    ? "📝 Nộp đơn xin phép"
+    : "🚫 Không được phép nộp"}
 </Button>
   </Box>
 </TableCell>
@@ -980,6 +1145,139 @@ const handleSelectImages = async (
           </TableBody>
         </Table>
       </Paper>
+
+      {/* ============================================================
+          DIALOG CHỌN CÁCH XỬ LÝ ĐƠN TỪ LỖI VI PHẠM
+      ============================================================ */}
+      <Dialog
+        open={applicationChoiceOpen}
+        onClose={() => {
+          if (!applicationSubmitting) {
+            setApplicationChoiceOpen(false);
+            setViolationForApplication(null);
+          }
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Nộp đơn xin phép</DialogTitle>
+        <DialogContent dividers>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Lỗi này đã được cấu hình cho phép nộp đơn xin phép.
+          </Alert>
+
+          <Typography sx={{ mb: 1 }}>
+            Học sinh: <strong>{violationForApplication?.name}</strong>
+          </Typography>
+          <Typography sx={{ mb: 1 }}>
+            Lớp: <strong>{violationForApplication?.className}</strong>
+          </Typography>
+          <Typography sx={{ mb: 2 }}>
+            Nội dung vi phạm:{' '}
+            <strong>{violationForApplication?.description}</strong>
+          </Typography>
+
+          <Typography fontWeight={600} sx={{ mb: 1 }}>
+            Chọn cách xử lý:
+          </Typography>
+
+          <Stack spacing={1.5}>
+            <Button
+              variant="contained"
+              color="success"
+              disabled={applicationSubmitting}
+              onClick={() => handleChooseApplicationMode('APPROVED')}
+            >
+              ✅ Duyệt trực tiếp
+            </Button>
+
+            <Button
+              variant="outlined"
+              color="warning"
+              disabled={applicationSubmitting}
+              onClick={() => handleChooseApplicationMode('PENDING')}
+            >
+              ⏳ Chờ bổ sung đơn
+            </Button>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setApplicationChoiceOpen(false);
+              setViolationForApplication(null);
+            }}
+            disabled={applicationSubmitting}
+          >
+            Hủy
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ============================================================
+          DIALOG CẢNH BÁO HẾT SỐ LẦN NỘP
+      ============================================================ */}
+      <Dialog
+        open={applicationLimitOpen}
+        onClose={() => {
+          if (!applicationSubmitting) {
+            setApplicationLimitOpen(false);
+            setApplicationMode(null);
+          }
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>⚠️ Cảnh báo số lần nộp đơn</DialogTitle>
+
+        <DialogContent dividers>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Học sinh đã nộp đơn cho lỗi này{' '}
+            <strong>{applicationSubmissionCount} lần</strong> trong tháng
+            này.
+          </Alert>
+
+          <Typography sx={{ mb: 1 }}>
+            Học sinh: <strong>{violationForApplication?.name}</strong>
+          </Typography>
+          <Typography sx={{ mb: 1 }}>
+            Lớp: <strong>{violationForApplication?.className}</strong>
+          </Typography>
+          <Typography sx={{ mb: 2 }}>
+            Nội dung:{' '}
+            <strong>{violationForApplication?.description}</strong>
+          </Typography>
+
+          <Alert severity="error">
+            Đã hết số lần nộp đơn theo giới hạn hiện tại (
+            {applicationSubmissionLimit} lần/tháng).
+          </Alert>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setApplicationLimitOpen(false);
+              setApplicationMode(null);
+            }}
+            disabled={applicationSubmitting}
+          >
+            Không cho nộp
+          </Button>
+
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={handleSubmitApplicationException}
+            disabled={applicationSubmitting || !applicationMode}
+          >
+            {applicationSubmitting
+              ? 'Đang nộp...'
+              : 'Ngoại lệ – vẫn nộp'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} fullWidth>
         <DialogTitle>Sửa lỗi vi phạm</DialogTitle>
