@@ -18,7 +18,6 @@ import {
   Snackbar,
   Alert,
   IconButton,
-  Autocomplete,
   ToggleButtonGroup,
   ToggleButton,
   Dialog,
@@ -26,9 +25,21 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import { Check, Delete, Mic, MicOff } from "@mui/icons-material";
+import { Check, Delete, Mic } from "@mui/icons-material";
 import dayjs from "dayjs";
 import api from "../../api/api";
+
+// 🎤 Nhận diện giọng nói
+let recognition: any = null;
+let stopTimer: any = null;
+
+const removeVietnameseTones = (str: string): string => {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D");
+};
 
 export default function RecordAttendancePage() {
   const [classes, setClasses] = useState<string[]>([]);
@@ -37,9 +48,6 @@ export default function RecordAttendancePage() {
   const [studentInput, setStudentInput] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  // 🎤 Nhận diện tên học sinh bằng giọng nói
-  const [isListening, setIsListening] = useState(false);
-  const speechRecognitionRef = useRef<any>(null);
   
   // 🔹 Dữ liệu nhập ghi nhận
   const [date, setDate] = useState(dayjs().format("YYYY-MM-DD"));
@@ -72,6 +80,23 @@ export default function RecordAttendancePage() {
   } | null>(null);
   
   const [consecutiveProcessing, setConsecutiveProcessing] = useState(false);
+
+  // 🧠 Khởi tạo Web Speech API 1 lần
+  useEffect(() => {
+  const SR =
+    (window as any).webkitSpeechRecognition ||
+    (window as any).SpeechRecognition;
+
+  if (!SR) {
+    alert("Trình duyệt không hỗ trợ nhận dạng giọng nói");
+    return;
+  }
+
+  recognition = new SR();
+  recognition.lang = "vi-VN";
+  recognition.continuous = false;
+  recognition.interimResults = true;
+}, []);
    // Chuẩn hóa tên để so sánh không dấu
   const normalizeName = (value: string) =>
     value
@@ -82,166 +107,7 @@ export default function RecordAttendancePage() {
       .replace(/\s+/g, " ")
       .trim(); 
 
-  // 🎤 Gọi tên học sinh bằng giọng nói
-const handleVoiceStudentRecognition = () => {
-  const SpeechRecognition =
-    (window as any).SpeechRecognition ||
-    (window as any).webkitSpeechRecognition;
 
-  if (!SpeechRecognition) {
-    setSnackbar({
-      open: true,
-      message:
-        "Trình duyệt không hỗ trợ nhận diện giọng nói. Hãy dùng Google Chrome hoặc Microsoft Edge.",
-      severity: "warning",
-    });
-    return;
-  }
-
-  // Nếu đang nghe thì dừng
-  if (isListening) {
-    speechRecognitionRef.current?.stop();
-    return;
-  }
-
-  const recognition = new SpeechRecognition();
-
-  recognition.lang = "vi-VN";
-  recognition.continuous = false;
-  recognition.interimResults = false;
-
-  recognition.onstart = () => {
-    setIsListening(true);
-
-    setSnackbar({
-      open: true,
-      message: "🎤 Đang nghe... Hãy đọc tên học sinh.",
-      severity: "info",
-    });
-  };
-
-  recognition.onresult = async (event: any) => {
-    try {
-      const transcript =
-        event.results?.[0]?.[0]?.transcript?.trim() || "";
-
-      if (!transcript) return;
-
-      console.log("🎤 Tên nhận diện:", transcript);
-
-      setStudentInput(transcript);
-
-      // Tìm trực tiếp trên server theo tên vừa đọc
-      const res = await api.get("/api/students/search", {
-        params: {
-          name: transcript,
-          
-        },
-      });
-
-      const foundStudents = Array.isArray(res.data)
-        ? res.data
-        : [];
-
-      const normalizedSpokenName = normalizeName(transcript);
-
-      // 1. Ưu tiên khớp chính xác
-      let found = foundStudents.find(
-        (student: any) =>
-          normalizeName(student.name || "") ===
-          normalizedSpokenName
-      );
-
-      // 2. Nếu không khớp tuyệt đối thì tìm tên gần đúng
-      if (!found) {
-        found = foundStudents.find((student: any) => {
-          const studentName = normalizeName(student.name || "");
-
-          return (
-            studentName.includes(normalizedSpokenName) ||
-            normalizedSpokenName.includes(studentName)
-          );
-        });
-      }
-
-      setSuggestions(foundStudents);
-
-      if (found) {
-        setSelectedStudent(found);
-        setStudentInput(found.name);
-
-        setSnackbar({
-          open: true,
-          message: `✅ Đã nhận diện: ${found.name}`,
-          severity: "success",
-        });
-      } else if (foundStudents.length === 1) {
-        // Nếu server chỉ trả về đúng 1 học sinh
-        const onlyStudent = foundStudents[0];
-
-        setSelectedStudent(onlyStudent);
-        setStudentInput(onlyStudent.name);
-
-        setSnackbar({
-          open: true,
-          message: `✅ Đã chọn: ${onlyStudent.name}`,
-          severity: "success",
-        });
-      } else {
-        setSelectedStudent(null);
-
-        setSnackbar({
-          open: true,
-          message: `Không tìm thấy học sinh "${transcript}" trong lớp ${className}.`,
-          severity: "warning",
-        });
-      }
-    } catch (error) {
-      console.error("❌ Lỗi nhận diện học sinh:", error);
-
-      setSnackbar({
-        open: true,
-        message: "Không thể tìm học sinh sau khi nhận diện giọng nói.",
-        severity: "error",
-      });
-    }
-  };
-
-  recognition.onerror = (event: any) => {
-    console.error("❌ Speech recognition error:", event);
-
-    setIsListening(false);
-
-    let message = "Không nhận diện được giọng nói.";
-
-    if (event?.error === "not-allowed") {
-      message =
-        "Trình duyệt chưa được cấp quyền sử dụng microphone.";
-    } else if (event?.error === "no-speech") {
-      message = "Không nghe thấy giọng nói. Hãy thử lại.";
-    }
-
-    setSnackbar({
-      open: true,
-      message,
-      severity: "warning",
-    });
-  };
-
-  recognition.onend = () => {
-    setIsListening(false);
-    speechRecognitionRef.current = null;
-  };
-
-  speechRecognitionRef.current = recognition;
-
-  try {
-    recognition.start();
-  } catch (error) {
-    console.error("❌ Không thể khởi động microphone:", error);
-    setIsListening(false);
-  }
-};
   // --- Load danh sách lớp (chỉ phục vụ ghi nhận)
   useEffect(() => {
     const loadClasses = async () => {
@@ -256,37 +122,158 @@ const handleVoiceStudentRecognition = () => {
     loadClasses();
   }, []);
 
-  useEffect(() => {
-  return () => {
-    speechRecognitionRef.current?.stop?.();
-    };
-  }, []);
   // --- Tự động chọn tuần hiện tại khi mở trang
   useEffect(() => {
     fetchCurrentWeek();
   }, []);
   // --- Gợi ý học sinh theo lớp
   useEffect(() => {
-    if (!studentInput.trim() || !className) {
+  if (!studentInput.trim()) {
+    setSuggestions([]);
+    return;
+  }
+
+  const timeout = setTimeout(async () => {
+    try {
+      const params = new URLSearchParams();
+
+      params.append(
+        "name",
+        studentInput.trim()
+      );
+
+      params.append(
+        "normalizedName",
+        removeVietnameseTones(
+          studentInput.trim()
+        )
+      );
+
+      if (className.trim()) {
+        params.append(
+          "className",
+          className.trim()
+        );
+      }
+
+      const res = await api.get(
+        `/api/students/search?${params.toString()}`
+      );
+
+      setSuggestions(
+        Array.isArray(res.data)
+          ? res.data
+          : []
+      );
+    } catch (err) {
+      console.error(
+        "❌ Lỗi tìm học sinh:",
+        err
+      );
+
       setSuggestions([]);
-      return;
     }
-    const t = setTimeout(async () => {
+  }, 300);
+
+  return () => clearTimeout(timeout);
+}, [studentInput, className]);
+  
+  // 🎤 Bấm nút nói
+const startVoice = () => {
+  if (!recognition) return;
+
+  setIsListening(true);
+  recognition.start();
+
+  recognition.onresult = async (event: any) => {
+    let interimText = "";
+    let finalText = "";
+
+    for (
+      let i = event.resultIndex;
+      i < event.results.length;
+      i++
+    ) {
+      const transcript =
+        event.results[i][0].transcript;
+
+      if (event.results[i].isFinal) {
+        finalText += transcript;
+      } else {
+        interimText += transcript;
+      }
+    }
+
+    // Hiện chữ realtime
+    if (interimText) {
+      setStudentInput(interimText);
+    }
+
+    // Có kết quả cuối
+    if (finalText) {
+      setStudentInput(finalText);
+      setSuggestions([]);
+
       try {
-        const res = await api.get("/api/students/search", {
-          params: { name: studentInput.trim(), className },
-        });
-        setSuggestions(res.data || []);
-      } catch (err) {
-        console.error("❌ Lỗi tìm học sinh:", err);
+        const params = new URLSearchParams();
+
+        params.append(
+          "name",
+          finalText.trim()
+        );
+
+        params.append(
+          "normalizedName",
+          removeVietnameseTones(finalText.trim())
+        );
+
+        // Có chọn lớp thì tìm trong lớp.
+        // Không chọn lớp thì tìm toàn trường.
+        if (className.trim()) {
+          params.append(
+            "className",
+            className.trim()
+          );
+        }
+
+        const res = await api.get(
+          `/api/students/search?${params.toString()}`
+        );
+
+        setSuggestions(
+          Array.isArray(res.data)
+            ? res.data
+            : []
+        );
+      } catch (error) {
+        console.error(
+          "❌ Lỗi tìm học sinh:",
+          error
+        );
+
         setSuggestions([]);
       }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [studentInput, className]);
+    }
+
+    // Tự dừng khi im lặng
+    clearTimeout(stopTimer);
+
+    stopTimer = setTimeout(() => {
+      recognition.stop();
+    }, 200);
+  };
+
+  recognition.onerror = () => {
+    setIsListening(false);
+  };
+
+  recognition.onend = () => {
+    setIsListening(false);
+  };
+};
   
   // --- Tự nhận diện tuần học hiện tại
-const fetchCurrentWeek = async () => {
+  const fetchCurrentWeek = async () => {
   try {
     const res = await api.get("/api/academic-weeks/study-weeks");
 
@@ -574,51 +561,73 @@ const handleCountConsecutiveConduct = () => {
           </TextField>
 
           {/* Học sinh */}
+          
           <Stack direction="row" spacing={1} alignItems="center">
-          <Autocomplete
-            freeSolo
-            options={suggestions}
-            getOptionLabel={(s) => s.name || ""}
-            inputValue={studentInput}
-            onInputChange={(_, v) => setStudentInput(v)}
-            onChange={(_, v) => {
-              setSelectedStudent(v);
-        
-              if (v?.name) {
-                setStudentInput(v.name);
-              }
-            }}
+          <TextField
+            label="Học sinh nghỉ học"
+            value={studentInput}
+            onChange={(e) =>
+              setStudentInput(e.target.value)
+            }
+            size="small"
             sx={{ width: 250 }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Học sinh nghỉ học"
-                size="small"
-              />
-            )}
           />
         
-          <IconButton
-            color={isListening ? "error" : "primary"}
-            onClick={handleVoiceStudentRecognition}
-            title={
-              isListening
-                ? "Dừng nghe"
-                : "Gọi tên học sinh bằng giọng nói"
-            }
-            sx={{
-              border: "1px solid",
-              borderColor: isListening
-                ? "error.main"
-                : "primary.main",
-              width: 40,
-              height: 40,
-            }}
+          <Button
+            variant={isListening ? "contained" : "outlined"}
+            color={isListening ? "error" : "secondary"}
+            onClick={startVoice}
           >
+            {isListening
+              ? "🎙️ Đang nghe..."
+              : "🎤 Nói"}
+          </Button>
+        </Stack>
+            
             {isListening ? <MicOff /> : <Mic />}
           </IconButton>
         </Stack>
+          {suggestions.length > 0 && (
+  <Paper sx={{ mt: 2, p: 2, width: "100%" }}>
+    <Typography
+      variant="subtitle1"
+      gutterBottom
+    >
+      Gợi ý học sinh:
+    </Typography>
 
+    <Stack spacing={1}>
+      {suggestions.map((student: any) => (
+        <Button
+          key={student._id}
+          variant="outlined"
+          sx={{
+            justifyContent: "flex-start",
+            textTransform: "none",
+          }}
+          onClick={() => {
+            setSelectedStudent(student);
+            setStudentInput(student.name);
+
+            // Tự động lấy lớp của học sinh
+            setClassName(student.className);
+
+            // Tự động lấy khối
+            const g =
+              student.className?.match(/^\d+/)?.[0] || "";
+
+            setGrade(g);
+
+            // Đã chọn xong thì ẩn danh sách
+            setSuggestions([]);
+          }}
+        >
+          {student.name} — {student.className}
+        </Button>
+      ))}
+    </Stack>
+  </Paper>
+)}
           {/* Ngày */}
           <TextField
             label="Ngày"
