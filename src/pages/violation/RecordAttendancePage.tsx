@@ -1,6 +1,6 @@
 
 // src/pages/violation/RecordAttendancePage.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Box,
   Typography,
@@ -26,7 +26,7 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import { Check, Delete } from "@mui/icons-material";
+import { Check, Delete, Mic, MicOff } from "@mui/icons-material";
 import dayjs from "dayjs";
 import api from "../../api/api";
 
@@ -37,7 +37,10 @@ export default function RecordAttendancePage() {
   const [studentInput, setStudentInput] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
-
+  // 🎤 Nhận diện tên học sinh bằng giọng nói
+  const [isListening, setIsListening] = useState(false);
+  const speechRecognitionRef = useRef<any>(null);
+  
   // 🔹 Dữ liệu nhập ghi nhận
   const [date, setDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [session, setSession] = useState("sáng");
@@ -47,6 +50,8 @@ export default function RecordAttendancePage() {
   const [viewMode, setViewMode] = useState<"day" | "week">("week");
   const [viewDate, setViewDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [viewWeek, setViewWeek] = useState<number | null>(null);
+  const [studyWeeks, setStudyWeeks] = useState<any[]>([]);
+  const [currentWeek, setCurrentWeek] = useState<number | null>(null);
   const [selectedClassView, setSelectedClassView] = useState<string | null>(null);
 
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: any }>({
@@ -66,9 +71,187 @@ export default function RecordAttendancePage() {
     recordIds: string[];
   } | null>(null);
   
-  const [consecutiveProcessing, setConsecutiveProcessing] =
-    useState(false);
-    
+  const [consecutiveProcessing, setConsecutiveProcessing] = useState(false);
+   // Chuẩn hóa tên để so sánh không dấu
+  const normalizeName = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/đ/g, "d")
+      .replace(/\s+/g, " ")
+      .trim(); 
+
+  // 🎤 Gọi tên học sinh bằng giọng nói
+const handleVoiceStudentRecognition = () => {
+  const SpeechRecognition =
+    (window as any).SpeechRecognition ||
+    (window as any).webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    setSnackbar({
+      open: true,
+      message:
+        "Trình duyệt không hỗ trợ nhận diện giọng nói. Hãy dùng Google Chrome hoặc Microsoft Edge.",
+      severity: "warning",
+    });
+    return;
+  }
+
+  // Nếu đang nghe thì dừng
+  if (isListening) {
+    speechRecognitionRef.current?.stop();
+    return;
+  }
+
+  // Phải chọn lớp trước
+  if (!className) {
+    setSnackbar({
+      open: true,
+      message: "Vui lòng chọn lớp trước khi gọi tên học sinh.",
+      severity: "warning",
+    });
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+
+  recognition.lang = "vi-VN";
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    setIsListening(true);
+
+    setSnackbar({
+      open: true,
+      message: "🎤 Đang nghe... Hãy đọc tên học sinh.",
+      severity: "info",
+    });
+  };
+
+  recognition.onresult = async (event: any) => {
+    try {
+      const transcript =
+        event.results?.[0]?.[0]?.transcript?.trim() || "";
+
+      if (!transcript) return;
+
+      console.log("🎤 Tên nhận diện:", transcript);
+
+      setStudentInput(transcript);
+
+      // Tìm trực tiếp trên server theo tên vừa đọc
+      const res = await api.get("/api/students/search", {
+        params: {
+          name: transcript,
+          className,
+        },
+      });
+
+      const foundStudents = Array.isArray(res.data)
+        ? res.data
+        : [];
+
+      const normalizedSpokenName = normalizeName(transcript);
+
+      // 1. Ưu tiên khớp chính xác
+      let found = foundStudents.find(
+        (student: any) =>
+          normalizeName(student.name || "") ===
+          normalizedSpokenName
+      );
+
+      // 2. Nếu không khớp tuyệt đối thì tìm tên gần đúng
+      if (!found) {
+        found = foundStudents.find((student: any) => {
+          const studentName = normalizeName(student.name || "");
+
+          return (
+            studentName.includes(normalizedSpokenName) ||
+            normalizedSpokenName.includes(studentName)
+          );
+        });
+      }
+
+      setSuggestions(foundStudents);
+
+      if (found) {
+        setSelectedStudent(found);
+        setStudentInput(found.name);
+
+        setSnackbar({
+          open: true,
+          message: `✅ Đã nhận diện: ${found.name}`,
+          severity: "success",
+        });
+      } else if (foundStudents.length === 1) {
+        // Nếu server chỉ trả về đúng 1 học sinh
+        const onlyStudent = foundStudents[0];
+
+        setSelectedStudent(onlyStudent);
+        setStudentInput(onlyStudent.name);
+
+        setSnackbar({
+          open: true,
+          message: `✅ Đã chọn: ${onlyStudent.name}`,
+          severity: "success",
+        });
+      } else {
+        setSelectedStudent(null);
+
+        setSnackbar({
+          open: true,
+          message: `Không tìm thấy học sinh "${transcript}" trong lớp ${className}.`,
+          severity: "warning",
+        });
+      }
+    } catch (error) {
+      console.error("❌ Lỗi nhận diện học sinh:", error);
+
+      setSnackbar({
+        open: true,
+        message: "Không thể tìm học sinh sau khi nhận diện giọng nói.",
+        severity: "error",
+      });
+    }
+  };
+
+  recognition.onerror = (event: any) => {
+    console.error("❌ Speech recognition error:", event);
+
+    setIsListening(false);
+
+    let message = "Không nhận diện được giọng nói.";
+
+    if (event?.error === "not-allowed") {
+      message =
+        "Trình duyệt chưa được cấp quyền sử dụng microphone.";
+    } else if (event?.error === "no-speech") {
+      message = "Không nghe thấy giọng nói. Hãy thử lại.";
+    }
+
+    setSnackbar({
+      open: true,
+      message,
+      severity: "warning",
+    });
+  };
+
+  recognition.onend = () => {
+    setIsListening(false);
+    speechRecognitionRef.current = null;
+  };
+
+  speechRecognitionRef.current = recognition;
+
+  try {
+    recognition.start();
+  } catch (error) {
+    console.error("❌ Không thể khởi động microphone:", error);
+    setIsListening(false);
+  }
+};
   // --- Load danh sách lớp (chỉ phục vụ ghi nhận)
   useEffect(() => {
     const loadClasses = async () => {
@@ -83,6 +266,15 @@ export default function RecordAttendancePage() {
     loadClasses();
   }, []);
 
+  useEffect(() => {
+  return () => {
+    speechRecognitionRef.current?.stop?.();
+    };
+  }, []);
+  // --- Tự động chọn tuần hiện tại khi mở trang
+  useEffect(() => {
+    fetchCurrentWeek();
+  }, []);
   // --- Gợi ý học sinh theo lớp
   useEffect(() => {
     if (!studentInput.trim() || !className) {
@@ -102,7 +294,55 @@ export default function RecordAttendancePage() {
     }, 300);
     return () => clearTimeout(t);
   }, [studentInput, className]);
+  
+  // --- Tự nhận diện tuần học hiện tại
+const fetchCurrentWeek = async () => {
+  try {
+    const res = await api.get("/api/academic-weeks/study-weeks");
 
+    const weeks = Array.isArray(res.data) ? res.data : [];
+
+    setStudyWeeks(weeks);
+
+    // Dùng ngày hiện tại theo múi giờ Việt Nam
+    const today = dayjs();
+
+    const currentWeekFound = weeks.find((week: any) => {
+      if (!week.startDate || !week.endDate) return false;
+
+      const start = dayjs(week.startDate).startOf("day");
+      const end = dayjs(week.endDate).endOf("day");
+
+      return (
+        today.isSame(start) ||
+        today.isSame(end) ||
+        (today.isAfter(start) && today.isBefore(end))
+      );
+    });
+
+    if (currentWeekFound) {
+      const weekNumber = Number(currentWeekFound.weekNumber);
+
+      if (Number.isInteger(weekNumber) && weekNumber > 0) {
+        setCurrentWeek(weekNumber);
+        setViewWeek(weekNumber);
+
+        console.log(
+          "📅 Tuần hiện tại:",
+          weekNumber,
+          currentWeekFound.startDate,
+          "→",
+          currentWeekFound.endDate
+        );
+      }
+    } else {
+      console.warn("⚠️ Không tìm thấy tuần học hiện tại.");
+    }
+  } catch (error) {
+    console.error("❌ Lỗi lấy tuần hiện tại:", error);
+  }
+};
+  
   // --- Lấy danh sách nghỉ học (toàn bộ, không theo lớp)
   const fetchRecords = async () => {
   try {
@@ -344,18 +584,50 @@ const handleCountConsecutiveConduct = () => {
           </TextField>
 
           {/* Học sinh */}
+          <Stack direction="row" spacing={1} alignItems="center">
           <Autocomplete
             freeSolo
             options={suggestions}
             getOptionLabel={(s) => s.name || ""}
             inputValue={studentInput}
             onInputChange={(_, v) => setStudentInput(v)}
-            onChange={(_, v) => setSelectedStudent(v)}
+            onChange={(_, v) => {
+              setSelectedStudent(v);
+        
+              if (v?.name) {
+                setStudentInput(v.name);
+              }
+            }}
             sx={{ width: 250 }}
             renderInput={(params) => (
-              <TextField {...params} label="Học sinh nghỉ học" size="small" />
+              <TextField
+                {...params}
+                label="Học sinh nghỉ học"
+                size="small"
+              />
             )}
           />
+        
+          <IconButton
+            color={isListening ? "error" : "primary"}
+            onClick={handleVoiceStudentRecognition}
+            title={
+              isListening
+                ? "Dừng nghe"
+                : "Gọi tên học sinh bằng giọng nói"
+            }
+            sx={{
+              border: "1px solid",
+              borderColor: isListening
+                ? "error.main"
+                : "primary.main",
+              width: 40,
+              height: 40,
+            }}
+          >
+            {isListening ? <MicOff /> : <Mic />}
+          </IconButton>
+        </Stack>
 
           {/* Ngày */}
           <TextField
@@ -412,20 +684,39 @@ const handleCountConsecutiveConduct = () => {
         )}
 
         {viewMode === "week" && (
-          <TextField
-            label="Chọn tuần"
-            select
-            size="small"
-            value={viewWeek || ""}
-            onChange={(e) => setViewWeek(Number(e.target.value))}
-            sx={{ width: 200 }}
-          >
-            {[...Array(20)].map((_, i) => (
-              <MenuItem key={i + 1} value={i + 1}>
-                Tuần {i + 1}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <TextField
+              label="Chọn tuần"
+              select
+              size="small"
+              value={viewWeek || ""}
+              onChange={(e) => setViewWeek(Number(e.target.value))}
+              sx={{ width: 220 }}
+            >
+              {studyWeeks.map((week: any) => (
+                <MenuItem
+                  key={week.weekNumber}
+                  value={Number(week.weekNumber)}
+                >
+                  Tuần {week.weekNumber}
+                  {Number(week.weekNumber) === currentWeek
+                    ? " ⭐ Hiện tại"
+                    : ""}
+                </MenuItem>
+              ))}
+            </TextField>
+        
+            {currentWeek && (
+              <Typography
+                sx={{
+                  fontWeight: "bold",
+                  color: "success.main",
+                }}
+              >
+                Đang xem: Tuần {currentWeek}
+              </Typography>
+            )}
+          </Stack>
         )}
       </Stack>
 
