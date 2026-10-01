@@ -45,7 +45,16 @@ interface Violation {
   handled?: boolean;
   handledBy?: string;
   studentId?: string;
-
+  
+  application?: {
+    _id: string;
+    status: "PENDING" | "APPROVED" | "REJECTED" | "OVERDUE";
+    submissionNumber?: number;
+    submissionLabel?: string;
+    note?: string;
+    isException?: boolean;
+  };
+  
   // Hình ảnh vi phạm
   images?: {
     fileId: string;
@@ -209,20 +218,56 @@ useEffect(() => {
     }
   };
 
-  const fetchViolations = async () => {
-    try {
-      const res = await api.get("/api/violations/all/all-student");
-      const data = res.data.map((v: any) => ({
-        ...v,
-        handledBy: v.handledBy || "",
-        handled: v.handled || false,
-      }));
-      setAllViolations(data);
-      applyFilters(data);
-    } catch (err) {
-      console.error("Lỗi khi lấy dữ liệu vi phạm:", err);
-    }
-  };
+const fetchViolations = async () => {
+  try {
+    const [violationRes, applicationRes] = await Promise.all([
+      api.get("/api/violations/all/all-student"),
+      api.get("/api/leave-applications/eligible"),
+    ]);
+
+    const violationData = Array.isArray(violationRes.data)
+      ? violationRes.data
+      : [];
+
+    const applicationList =
+      applicationRes.data?.data || applicationRes.data || [];
+
+    // Map: violationId -> đơn xin phép
+    const applicationMap = new Map<string, any>();
+
+    applicationList.forEach((item: any) => {
+      const application =
+        item?.application ||
+        (item?.status ? item : null);
+
+      const violationId =
+        item?.violationId ||
+        item?.application?.violationId;
+
+      if (violationId && application) {
+        applicationMap.set(
+          String(violationId),
+          application
+        );
+      }
+    });
+
+    const data: Violation[] = violationData.map((v: any) => ({
+      ...v,
+
+      handledBy: v.handledBy || "",
+      handled: v.handled || false,
+
+      application:
+        applicationMap.get(String(v._id)) || null,
+    }));
+
+    setAllViolations(data);
+    applyFilters(data);
+  } catch (err) {
+    console.error("Lỗi khi lấy dữ liệu vi phạm:", err);
+  }
+};
 
   const handleProcessViolation = async (id: string, by: "GVCN" | "PGT") => {
     try {
@@ -822,8 +867,9 @@ const loadDetailImages = async (violation: Violation) => {
               <TableCell>Điểm trừ</TableCell>
               <TableCell>Ngày</TableCell>
               <TableCell>Trạng thái</TableCell>
+              <TableCell>GVCN Xử lý</TableCell>
+              <TableCell>Ghi chú</TableCell>
               <TableCell>Chi tiết</TableCell>
-              <TableCell>Tiếp nhận xử lý</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -866,130 +912,283 @@ const loadDetailImages = async (violation: Violation) => {
                       </Box>
                     )}
                   </TableCell>
-                  {/* ============================
-                        XEM CHI TIẾT VI PHẠM
-                    ============================ */}
-                    <TableCell>
-                      <Button
-                        variant="outlined"
-                        color="info"
-                        size="small"
-                        onClick={() => handleViewViolationDetail(v)}
-                      >
-                        👁 Xem chi tiết
-                      </Button>
-                    </TableCell>
-                  {/* ✅ Button xử lý có giới hạn GVCN */}
-                  <TableCell> {v.handledBy === "PGT" ? ( 
-                    <Typography color="gray" fontStyle="italic"> 
-                      PGT đã xử lý 
-                    </Typography> 
+
+                {/* ============================
+                GVCN XỬ LÝ
+                ============================ */}
+                <TableCell>
+                  {v.handledBy === "PGT" ? (
+                    <Typography
+                      color="gray"
+                      fontStyle="italic"
+                      fontSize={13}
+                    >
+                      PGT đã xử lý
+                    </Typography>
                   ) : !v.handled ? (
-                <Button
-                  variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
-                  color="primary"
-                  size="small"
-disabled={
-  isProcessing || // ✅ khóa toàn bộ khi đang xử lý
-  (() => {
-    const currentWeek = weeks.find(
-      (w: any) =>
-        dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
-        dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
-    );
-    if (!currentWeek) return false;
-
-    const sameStudentThisWeek = allViolations.filter(
-      (item) =>
-        item._id !== v._id &&
-        item.name?.trim().toLowerCase() === v.name?.trim().toLowerCase() &&
-        item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
-        dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-        dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
-    );
-
-    const hasHandledByGVCN = sameStudentThisWeek.some(
-      (item) => item.handledBy === "GVCN"
-    );
-    if (limitGVCN && hasHandledByGVCN) return true;
-
-    const classHandledThisWeek = allViolations.filter(
-      (item) =>
-        item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
-        item.handledBy === "GVCN" &&
-        dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-        dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
-    ).length;
-
-    return classViolationLimit > 0 && classHandledThisWeek >= classViolationLimit;
-  })()
-}
-
-                  onClick={async () => {
-                    setIsProcessing(true); // ✅ chống click nhanh
-                    try {
-                      const currentWeek = weeks.find(
-                        (w: any) =>
-                          dayjs(v.time).isSameOrAfter(dayjs(w.startDate), "day") &&
-                          dayjs(v.time).isSameOrBefore(dayjs(w.endDate), "day")
-                      );
+                    <Button
+                      variant={v.handledBy === "GVCN" ? "contained" : "outlined"}
+                      color="primary"
+                      size="small"
+                      disabled={
+                        isProcessing ||
+                        v.application?.status === "PENDING" ||
+                        v.application?.status === "APPROVED" ||
+                        (() => {
+                          const currentWeek = weeks.find(
+                            (w: any) =>
+                              dayjs(v.time).isSameOrAfter(
+                                dayjs(w.startDate),
+                                "day"
+                              ) &&
+                              dayjs(v.time).isSameOrBefore(
+                                dayjs(w.endDate),
+                                "day"
+                              )
+                          );
                 
-                      if (!currentWeek) return await handleProcessViolation(v._id, "GVCN");
+                          if (!currentWeek) return false;
                 
-                      const sameStudentThisWeek = allViolations.filter(
-                        (item) =>
-                          item._id !== v._id &&
-                          item.name?.trim().toLowerCase() === v.name?.trim().toLowerCase() &&
-                          item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
-                          dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-                          dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
-                      );
+                          const sameStudentThisWeek =
+                            allViolations.filter(
+                              (item) =>
+                                item._id !== v._id &&
+                                item.name?.trim().toLowerCase() ===
+                                  v.name?.trim().toLowerCase() &&
+                                item.className?.trim().toLowerCase() ===
+                                  v.className?.trim().toLowerCase() &&
+                                dayjs(item.time).isSameOrAfter(
+                                  dayjs(currentWeek.startDate),
+                                  "day"
+                                ) &&
+                                dayjs(item.time).isSameOrBefore(
+                                  dayjs(currentWeek.endDate),
+                                  "day"
+                                )
+                            );
                 
-                      const hasHandledByGVCN = sameStudentThisWeek.some(
-                        (item) => item.handledBy === "GVCN"
-                      );
-                      if (limitGVCN && hasHandledByGVCN)
-                        return setSnackbar({
-                          open: true,
-                          message: "⚠️ Học sinh này đã được GVCN xử lý trong tuần.",
-                          severity: "warning",
-                        });
+                          const hasHandledByGVCN =
+                            sameStudentThisWeek.some(
+                              (item) => item.handledBy === "GVCN"
+                            );
                 
-                      const classHandledThisWeek = allViolations.filter(
-                        (item) =>
-                          item.className?.trim().toLowerCase() === v.className?.trim().toLowerCase() &&
-                          item.handledBy === "GVCN" &&
-                          dayjs(item.time).isSameOrAfter(dayjs(currentWeek.startDate), "day") &&
-                          dayjs(item.time).isSameOrBefore(dayjs(currentWeek.endDate), "day")
-                      ).length;
+                          if (limitGVCN && hasHandledByGVCN) {
+                            return true;
+                          }
                 
-                      if (classViolationLimit > 0 && classHandledThisWeek >= classViolationLimit)
-                        return setSnackbar({
-                          open: true,
-                          message:
-                            "⚠️ Lớp này đã đạt giới hạn xử lý vi phạm trong tuần. Không thể tiếp nhận thêm.",
-                          severity: "warning",
-                        });
+                          const classHandledThisWeek =
+                            allViolations.filter(
+                              (item) =>
+                                item.className?.trim().toLowerCase() ===
+                                  v.className?.trim().toLowerCase() &&
+                                item.handledBy === "GVCN" &&
+                                dayjs(item.time).isSameOrAfter(
+                                  dayjs(currentWeek.startDate),
+                                  "day"
+                                ) &&
+                                dayjs(item.time).isSameOrBefore(
+                                  dayjs(currentWeek.endDate),
+                                  "day"
+                                )
+                            ).length;
                 
-                      await handleProcessViolation(v._id, "GVCN");
-                    } finally {
-                      setIsProcessing(false);
-                    }
-                  }}
-                >
-                  {isProcessing ? (
-                    <CircularProgress size={20} color="inherit" />
+                          return (
+                            classViolationLimit > 0 &&
+                            classHandledThisWeek >= classViolationLimit
+                          );
+                        })()
+                      }
+                      onClick={async () => {
+                        setIsProcessing(true);
+                
+                        try {
+                          const currentWeek = weeks.find(
+                            (w: any) =>
+                              dayjs(v.time).isSameOrAfter(
+                                dayjs(w.startDate),
+                                "day"
+                              ) &&
+                              dayjs(v.time).isSameOrBefore(
+                                dayjs(w.endDate),
+                                "day"
+                              )
+                          );
+                
+                          if (!currentWeek) {
+                            await handleProcessViolation(
+                              v._id,
+                              "GVCN"
+                            );
+                            return;
+                          }
+                
+                          const sameStudentThisWeek =
+                            allViolations.filter(
+                              (item) =>
+                                item._id !== v._id &&
+                                item.name?.trim().toLowerCase() ===
+                                  v.name?.trim().toLowerCase() &&
+                                item.className?.trim().toLowerCase() ===
+                                  v.className?.trim().toLowerCase() &&
+                                dayjs(item.time).isSameOrAfter(
+                                  dayjs(currentWeek.startDate),
+                                  "day"
+                                ) &&
+                                dayjs(item.time).isSameOrBefore(
+                                  dayjs(currentWeek.endDate),
+                                  "day"
+                                )
+                            );
+                
+                          const hasHandledByGVCN =
+                            sameStudentThisWeek.some(
+                              (item) => item.handledBy === "GVCN"
+                            );
+                
+                          if (limitGVCN && hasHandledByGVCN) {
+                            setSnackbar({
+                              open: true,
+                              message:
+                                "⚠️ Học sinh này đã được GVCN xử lý trong tuần.",
+                              severity: "warning",
+                            });
+                            return;
+                          }
+                
+                          const classHandledThisWeek =
+                            allViolations.filter(
+                              (item) =>
+                                item.className?.trim().toLowerCase() ===
+                                  v.className?.trim().toLowerCase() &&
+                                item.handledBy === "GVCN" &&
+                                dayjs(item.time).isSameOrAfter(
+                                  dayjs(currentWeek.startDate),
+                                  "day"
+                                ) &&
+                                dayjs(item.time).isSameOrBefore(
+                                  dayjs(currentWeek.endDate),
+                                  "day"
+                                )
+                            ).length;
+                
+                          if (
+                            classViolationLimit > 0 &&
+                            classHandledThisWeek >= classViolationLimit
+                          ) {
+                            setSnackbar({
+                              open: true,
+                              message:
+                                "⚠️ Lớp này đã đạt giới hạn xử lý vi phạm trong tuần. Không thể tiếp nhận thêm.",
+                              severity: "warning",
+                            });
+                            return;
+                          }
+                
+                          await handleProcessViolation(
+                            v._id,
+                            "GVCN"
+                          );
+                        } finally {
+                          setIsProcessing(false);
+                        }
+                      }}
+                      sx={{
+                        minWidth: 105,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {v.application?.status === "PENDING"
+                        ? "🔒 Chờ duyệt đơn"
+                        : v.application?.status === "APPROVED"
+                        ? "🔒 Đã nộp đơn"
+                        : isProcessing
+                        ? (
+                          <CircularProgress
+                            size={20}
+                            color="inherit"
+                          />
+                        )
+                        : "GVCN Xử lý"}
+                    </Button>
                   ) : (
-                    "GVCN tiếp nhận"
+                    <Typography
+                      color="green"
+                      fontWeight="bold"
+                      fontSize={13}
+                    >
+                      ✓ GVCN đã xử lý
+                    </Typography>
                   )}
-                </Button>
-
+                </TableCell>
+                
+                {/* ============================
+                      GHI CHÚ
+                ============================ */}
+                <TableCell>
+                  {!v.application ? (
+                    <Typography
+                      color="text.secondary"
+                      fontSize={13}
+                      fontStyle="italic"
+                    >
+                      —
+                    </Typography>
+                  ) : v.application.status === "APPROVED" ? (
+                    <Typography
+                      color="success.main"
+                      fontWeight="bold"
+                      fontSize={13}
+                    >
+                      ✓{" "}
+                      {v.application.submissionLabel ||
+                        `Nộp lần ${
+                          v.application.submissionNumber || 1
+                        }/tháng`}
+                    </Typography>
+                  ) : v.application.status === "PENDING" ? (
+                    <Typography
+                      color="warning.main"
+                      fontWeight="bold"
+                      fontSize={13}
+                    >
+                      ⏳ Đang chờ duyệt
+                    </Typography>
                   ) : (
-                    <Typography color="green" fontWeight="bold"> 
-                      ✓ GVCN đã xử lý 
-                    </Typography> )} 
-                  </TableCell>
-                </TableRow>
+                    <Typography
+                      color="error.main"
+                      fontWeight="bold"
+                      fontSize={13}
+                    >
+                      ✕ Không duyệt
+                      {v.application.note
+                        ? `: ${v.application.note}`
+                        : v.application.status === "OVERDUE"
+                        ? ": Quá hạn"
+                        : ""}
+                    </Typography>
+                  )}
+                </TableCell>
+                
+                {/* ============================
+                      CHI TIẾT
+                ============================ */}
+                <TableCell>
+                  <Button
+                    variant="outlined"
+                    color="info"
+                    size="small"
+                    onClick={() =>
+                      handleViewViolationDetail(v)
+                    }
+                    sx={{
+                      minWidth: 75,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Chi tiết
+                  </Button>
+                </TableCell>
+                  
               );
             })}
           </TableBody>
