@@ -25,7 +25,7 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import { Check, Delete, Mic } from "@mui/icons-material";
+import { Check, Delete } from "@mui/icons-material";
 import dayjs from "dayjs";
 import api from "../../api/api";
 
@@ -561,73 +561,104 @@ const handleCountConsecutiveConduct = () => {
           </TextField>
 
           {/* Học sinh */}
-          
           <Stack direction="row" spacing={1} alignItems="center">
-          <TextField
-            label="Học sinh nghỉ học"
-            value={studentInput}
-            onChange={(e) =>
-              setStudentInput(e.target.value)
-            }
-            size="small"
-            sx={{ width: 250 }}
-          />
-        
-          <Button
-            variant={isListening ? "contained" : "outlined"}
-            color={isListening ? "error" : "secondary"}
-            onClick={startVoice}
-          >
-            {isListening
-              ? "🎙️ Đang nghe..."
-              : "🎤 Nói"}
-          </Button>
-        </Stack>
-            
-            {isListening ? <MicOff /> : <Mic />}
-          </IconButton>
-        </Stack>
+            <TextField
+              label="Học sinh nghỉ học"
+              value={studentInput}
+              onChange={(e) => setStudentInput(e.target.value)}
+              size="small"
+              sx={{ width: 250 }}
+            />
+          
+            <Button
+              variant={isListening ? "contained" : "outlined"}
+              color={isListening ? "error" : "secondary"}
+              onClick={startVoice}
+            >
+              {isListening ? "🎙️ Đang nghe..." : "🎤 Nói"}
+            </Button>
+          </Stack>
+          
+          {/* Gợi ý học sinh */}
           {suggestions.length > 0 && (
-  <Paper sx={{ mt: 2, p: 2, width: "100%" }}>
-    <Typography
-      variant="subtitle1"
-      gutterBottom
-    >
-      Gợi ý học sinh:
-    </Typography>
-
-    <Stack spacing={1}>
-      {suggestions.map((student: any) => (
-        <Button
-          key={student._id}
-          variant="outlined"
-          sx={{
-            justifyContent: "flex-start",
-            textTransform: "none",
-          }}
-          onClick={() => {
-            setSelectedStudent(student);
-            setStudentInput(student.name);
-
-            // Tự động lấy lớp của học sinh
-            setClassName(student.className);
-
-            // Tự động lấy khối
-            const g =
-              student.className?.match(/^\d+/)?.[0] || "";
-
-            setGrade(g);
-
-            // Đã chọn xong thì ẩn danh sách
-            setSuggestions([]);
-          }}
-        >
-          {student.name} — {student.className}
-        </Button>
-      ))}
-    </Stack>
-  </Paper>
-)}
+            <Paper sx={{ mt: 2, p: 2, width: "100%" }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Gợi ý học sinh:
+              </Typography>
+          
+              <Stack spacing={1}>
+                {suggestions.map((student: any) => (
+                  <Button
+                    key={student._id}
+                    variant="outlined"
+                    sx={{
+                      justifyContent: "flex-start",
+                      textTransform: "none",
+                    }}
+                    onClick={() => {
+                      setSelectedStudent(student);
+                      setStudentInput(student.name);
+          
+                      // Tự động lấy lớp
+                      setClassName(student.className);
+          
+                      // Tự động lấy khối
+                      const g =
+                        student.className?.match(/^\d+/)?.[0] || "";
+          
+                      setGrade(g);
+          
+                      // Ẩn danh sách sau khi chọn
+                      setSuggestions([]);
+                    }}
+                  >
+                    {student.name} — {student.className}
+                  </Button>
+                ))}
+              </Stack>
+            </Paper>
+          )}
+          {suggestions.length > 0 && (
+            <Paper sx={{ mt: 2, p: 2, width: "100%" }}>
+              <Typography
+                variant="subtitle1"
+                gutterBottom
+              >
+                Gợi ý học sinh:
+              </Typography>
+          
+              <Stack spacing={1}>
+                {suggestions.map((student: any) => (
+                  <Button
+                    key={student._id}
+                    variant="outlined"
+                    sx={{
+                      justifyContent: "flex-start",
+                      textTransform: "none",
+                    }}
+                    onClick={() => {
+                      setSelectedStudent(student);
+                      setStudentInput(student.name);
+          
+                      // Tự động lấy lớp của học sinh
+                      setClassName(student.className);
+          
+                      // Tự động lấy khối
+                      const g =
+                        student.className?.match(/^\d+/)?.[0] || "";
+          
+                      setGrade(g);
+          
+                      // Đã chọn xong thì ẩn danh sách
+                      setSuggestions([]);
+                    }}
+                  >
+                    {student.name} — {student.className}
+                  </Button>
+                ))}
+              </Stack>
+            </Paper>
+          )}
           {/* Ngày */}
           <TextField
             label="Ngày"
