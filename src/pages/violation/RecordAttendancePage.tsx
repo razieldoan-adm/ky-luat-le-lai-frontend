@@ -1,6 +1,6 @@
 
 // src/pages/violation/RecordAttendancePage.tsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -48,7 +48,7 @@ export default function RecordAttendancePage() {
   const [studentInput, setStudentInput] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  
+  const [isListening, setIsListening] = useState(false);
   // 🔹 Dữ liệu nhập ghi nhận
   const [date, setDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [session, setSession] = useState("sáng");
@@ -97,17 +97,7 @@ export default function RecordAttendancePage() {
   recognition.continuous = false;
   recognition.interimResults = true;
 }, []);
-   // Chuẩn hóa tên để so sánh không dấu
-  const normalizeName = (value: string) =>
-    value
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/đ/g, "d")
-      .replace(/\s+/g, " ")
-      .trim(); 
-
-
+  
   // --- Load danh sách lớp (chỉ phục vụ ghi nhận)
   useEffect(() => {
     const loadClasses = async () => {
