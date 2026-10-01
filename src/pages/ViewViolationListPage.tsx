@@ -774,6 +774,8 @@ const loadDetailImages = async (violation: Violation) => {
           - Nếu thầy/cô GVCN đã xử lý vi phạm của học sinh vui lòng check vào nút "GVCN tiếp nhận".
           - Phần duyệt học sinh vi phạm, mỗi học sinh chỉ được duyệt 1 lần, từ lần thứ 2 trở đi bắt buộc bị trừ điểm thi đua của lớp.
           - Về phần mỗi lớp, sau khi có 5 học sinh được GVCN tiếp nhận xử lý thì lần vi phạm thứ 6 của lớp sẽ bắt buộc trừ điểm thi đua lớp.
+          - Một số trường hợp vi phạm nếu có xin phép từ PHHS sẽ được bỏ qua không tính điểm trừ, nhưng sẽ có giới hạn số lần xin phép/nộp đơn.
+          - Tất cả các vi phạm sau khi dc GVCN xử lý hoặc nộp đơn sẽ không trừ điểm thi đua lớp nhưng vẫn bị trừ điểm rèn luyện của cá nhân HS đó. 
           * Các phần duyệt xử lý trên đã được BGH thông qua và PGT sẽ áp dụng để tính điểm thi đua.
           Cách tính điểm trên để công bằng hơn trong việc tính điểm thi đua cho các lớp ít vi phạm và nhiều vi phạm. 
             Xin cám ơn thầy/cô GVCN!`}
