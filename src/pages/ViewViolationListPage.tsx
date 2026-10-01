@@ -1172,7 +1172,7 @@ const loadDetailImages = async (violation: Violation) => {
                 {/* ============================
                       CHI TIẾT
                 ============================ */}
-                <TableCell>
+                          <TableCell>
                   <Button
                     variant="outlined"
                     color="info"
@@ -1188,7 +1188,9 @@ const loadDetailImages = async (violation: Violation) => {
                     Chi tiết
                   </Button>
                 </TableCell>
-                  
+
+                {/* ĐÓNG DÒNG */}
+                </TableRow>
               );
             })}
           </TableBody>
