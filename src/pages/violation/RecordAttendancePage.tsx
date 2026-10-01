@@ -21,6 +21,10 @@ import {
   Autocomplete,
   ToggleButtonGroup,
   ToggleButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import { Check, Delete } from "@mui/icons-material";
 import dayjs from "dayjs";
@@ -51,6 +55,20 @@ export default function RecordAttendancePage() {
     severity: "success",
   });
 
+  const [consecutiveDialogOpen, setConsecutiveDialogOpen] =
+  useState(false);
+
+  const [consecutiveInfo, setConsecutiveInfo] = useState<{
+    studentId: string;
+    studentName: string;
+    className: string;
+    dates: string[];
+    recordIds: string[];
+  } | null>(null);
+  
+  const [consecutiveProcessing, setConsecutiveProcessing] =
+    useState(false);
+    
   // --- Load danh sách lớp (chỉ phục vụ ghi nhận)
   useEffect(() => {
     const loadClasses = async () => {
@@ -136,6 +154,12 @@ useEffect(() => {
         severity: "success",
       });
 
+      await checkConsecutiveAbsence(
+        selectedStudent._id,
+        selectedStudent.name,
+        className
+      );
+      
       setSelectedStudent(null);
       setStudentInput("");
       fetchRecords();
@@ -148,6 +172,99 @@ useEffect(() => {
     }
   };
 
+
+  const checkConsecutiveAbsence = async (
+  studentId: string,
+  studentName: string,
+  className: string
+) => {
+  try {
+    const res = await api.get(
+      `/api/class-attendance-summaries/consecutive/${studentId}`
+    );
+
+    if (!res.data?.hasConsecutive3Days) {
+      return;
+    }
+
+    const records = res.data.records || [];
+
+    setConsecutiveInfo({
+      studentId,
+      studentName,
+      className,
+      dates: res.data.dates || [],
+      recordIds: records.map(
+        (record: any) => String(record._id)
+      ),
+    });
+
+    setConsecutiveDialogOpen(true);
+  } catch (error) {
+    console.error(
+      "❌ Lỗi kiểm tra nghỉ liên tục:",
+      error
+    );
+  }
+};
+
+const handleCountConsecutiveConduct = () => {
+  setConsecutiveDialogOpen(false);
+  setConsecutiveInfo(null);
+
+  setSnackbar({
+    open: true,
+    message:
+      "Đã xác nhận: các buổi nghỉ sẽ được tính vào hạnh kiểm khi duyệt.",
+    severity: "info",
+  });
+};
+
+  const handleConsecutiveException = async () => {
+  if (!consecutiveInfo) return;
+
+  try {
+    setConsecutiveProcessing(true);
+
+    for (const recordId of consecutiveInfo.recordIds) {
+      await api.put(
+        `/api/class-attendance-summaries/exception/${recordId}`,
+        {
+          isException: true,
+          exceptionNote:
+            "Nghỉ học liên tục 3 ngày - được cho phép ngoại lệ.",
+        }
+      );
+    }
+
+    setConsecutiveDialogOpen(false);
+
+    setSnackbar({
+      open: true,
+      message:
+        "Đã đánh dấu các buổi nghỉ liên tục là ngoại lệ. Các buổi này sẽ không bị trừ hạnh kiểm.",
+      severity: "success",
+    });
+
+    setConsecutiveInfo(null);
+
+    await fetchRecords();
+  } catch (error) {
+    console.error(
+      "❌ Lỗi đánh dấu ngoại lệ:",
+      error
+    );
+
+    setSnackbar({
+      open: true,
+      message: "Không thể đánh dấu ngoại lệ.",
+      severity: "error",
+    });
+  } finally {
+    setConsecutiveProcessing(false);
+  }
+};
+  
   // --- Duyệt phép
   const handleExcuse = async (id: string) => {
     try {
@@ -386,7 +503,92 @@ useEffect(() => {
           )}
         </Box>
       )}
+            {/* --- Cảnh báo nghỉ học liên tục 3 ngày --- */}
+      <Dialog
+        open={consecutiveDialogOpen}
+        onClose={() => {
+          if (!consecutiveProcessing) {
+            setConsecutiveDialogOpen(false);
+          }
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          ⚠️ CẢNH BÁO NGHỈ HỌC LIÊN TỤC
+        </DialogTitle>
 
+        <DialogContent>
+          {consecutiveInfo && (
+            <>
+              <Typography
+                sx={{
+                  fontWeight: "bold",
+                  mb: 1,
+                }}
+              >
+                {consecutiveInfo.studentName} -{" "}
+                {consecutiveInfo.className}
+              </Typography>
+
+              <Typography sx={{ mb: 1 }}>
+                Học sinh đã nghỉ học liên tục:
+              </Typography>
+
+              <Typography
+                sx={{
+                  fontWeight: "bold",
+                  mb: 2,
+                }}
+              >
+                {consecutiveInfo.dates[0]}
+                {" → "}
+                {
+                  consecutiveInfo.dates[
+                    consecutiveInfo.dates.length - 1
+                  ]
+                }
+              </Typography>
+
+              <Typography>
+                Vui lòng kiểm tra trường hợp này trước khi
+                duyệt hạnh kiểm.
+              </Typography>
+
+              <Typography
+                sx={{
+                  mt: 1,
+                  color: "warning.main",
+                  fontWeight: "bold",
+                }}
+              >
+                Nếu không cho phép ngoại lệ, các buổi nghỉ
+                không phép sẽ được tính vào N1.
+              </Typography>
+            </>
+          )}
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={handleCountConsecutiveConduct}
+            disabled={consecutiveProcessing}
+          >
+            TÍNH VÀO HẠNH KIỂM
+          </Button>
+
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={handleConsecutiveException}
+            disabled={consecutiveProcessing}
+          >
+            {consecutiveProcessing
+              ? "ĐANG XỬ LÝ..."
+              : "CHO PHÉP NGOẠI LỆ"}
+          </Button>
+        </DialogActions>
+      </Dialog>
       {/* --- Thông báo --- */}
       <Snackbar
         open={snackbar.open}
