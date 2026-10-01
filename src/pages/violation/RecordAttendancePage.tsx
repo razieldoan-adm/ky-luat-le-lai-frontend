@@ -104,16 +104,6 @@ const handleVoiceStudentRecognition = () => {
     return;
   }
 
-  // Phải chọn lớp trước
-  if (!className) {
-    setSnackbar({
-      open: true,
-      message: "Vui lòng chọn lớp trước khi gọi tên học sinh.",
-      severity: "warning",
-    });
-    return;
-  }
-
   const recognition = new SpeechRecognition();
 
   recognition.lang = "vi-VN";
@@ -145,7 +135,7 @@ const handleVoiceStudentRecognition = () => {
       const res = await api.get("/api/students/search", {
         params: {
           name: transcript,
-          className,
+          
         },
       });
 
