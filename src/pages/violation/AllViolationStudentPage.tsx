@@ -390,89 +390,99 @@ export default function AllViolationStudentPage() {
   };
 
   const createApplicationFromViolation = async (
-    mode: 'APPROVED' | 'PENDING',
-    isException = false
-  ) => {
-    if (!violationForApplication) return;
+  mode: 'APPROVED' | 'PENDING',
+  isException = false
+) => {
+  if (!violationForApplication) return;
 
-    try {
-      setApplicationSubmitting(true);
+  try {
+    setApplicationSubmitting(true);
 
-      const violation = violationForApplication;
-      const res = await api.post('/api/leave-applications', {
-        violationId: violation._id,
-        isException,
-      });
+    const violation = violationForApplication;
 
-      let newApplication = res.data?.data;
+    const res = await api.post('/api/leave-applications', {
+      violationId: violation._id,
+      isException,
+    });
 
-      if (mode === 'APPROVED') {
-        const applicationId = newApplication?._id || newApplication?.id;
+    let newApplication = res.data?.data;
 
-        if (!applicationId) {
-          throw new Error('API tạo đơn không trả về mã đơn xin phép.');
-        }
+    // Biến này phải khai báo bên ngoài IF
+    let clearedViolation: Partial<Violation> = {};
 
-        const approveRes = await api.patch(
-          `/api/leave-applications/${applicationId}/approve`
-        );
+    if (mode === 'APPROVED') {
+      const applicationId = newApplication?._id || newApplication?.id;
 
-        newApplication = approveRes.data?.data || {
-          ...newApplication,
-          status: 'APPROVED',
-        };
-          // =====================================================
-          // ĐƠN ĐÃ DUYỆT => NỘP ĐƠN LÀ CÁCH XỬ LÝ CÓ HIỆU LỰC
-          // Trả lại lượt GVCN/PGT trước đó
-          // =====================================================
-          const clearHandledRes = await api.patch(`/api/violations/${violation._id}/handle`, {
-            handled: false,
-            handledBy: "",
-            handlingMethod: "",
-          });
-          const clearedViolation = clearHandledRes.data;
+      if (!applicationId) {
+        throw new Error('API tạo đơn không trả về mã đơn xin phép.');
       }
 
-      setViolations((prev) =>
-        prev.map((v) =>
-          v._id === violation._id
-            ? {
-                ...v,
-                ...clearedViolation,
-                application: newApplication,
-              }
-            : v
-        )
-      );
+      const approveRes = await api.patch(
+        `/api/leave-applications/${applicationId}/approve`
       );
 
-      setApplicationChoiceOpen(false);
-      setApplicationLimitOpen(false);
-      setViolationForApplication(null);
-      setApplicationMode(null);
+      newApplication = approveRes.data?.data || {
+        ...newApplication,
+        status: 'APPROVED',
+      };
 
-      setSnackbar({
-        open: true,
-        message:
-          mode === 'APPROVED'
-            ? 'Đã tạo và duyệt đơn trực tiếp.'
-            : 'Đã tạo đơn. Đơn đang ở trạng thái chờ duyệt.',
-        severity: 'success',
-      });
-    } catch (error: any) {
-      console.error('Lỗi tạo đơn từ vi phạm:', error);
-      setSnackbar({
-        open: true,
-        message:
-          error?.response?.data?.message ||
-          error?.message ||
-          'Không thể tạo đơn xin phép.',
-        severity: 'error',
-      });
-    } finally {
-      setApplicationSubmitting(false);
+      // =====================================================
+      // ĐƠN ĐÃ DUYỆT
+      // Trả lại trạng thái xử lý GVCN/PGT
+      // =====================================================
+      const clearHandledRes = await api.patch(
+        `/api/violations/${violation._id}/handle`,
+        {
+          handled: false,
+          handledBy: '',
+          handlingMethod: '',
+        }
+      );
+
+      clearedViolation = clearHandledRes.data || {};
     }
-  };
+
+    // Cập nhật giao diện ngay lập tức
+    setViolations((prev) =>
+      prev.map((v) =>
+        v._id === violation._id
+          ? {
+              ...v,
+              ...clearedViolation,
+              application: newApplication,
+            }
+          : v
+      )
+    );
+
+    setApplicationChoiceOpen(false);
+    setApplicationLimitOpen(false);
+    setViolationForApplication(null);
+    setApplicationMode(null);
+
+    setSnackbar({
+      open: true,
+      message:
+        mode === 'APPROVED'
+          ? 'Đã tạo và duyệt đơn trực tiếp.'
+          : 'Đã tạo đơn. Đơn đang ở trạng thái chờ duyệt.',
+      severity: 'success',
+    });
+  } catch (error: any) {
+    console.error('Lỗi tạo đơn từ vi phạm:', error);
+
+    setSnackbar({
+      open: true,
+      message:
+        error?.response?.data?.message ||
+        error?.message ||
+        'Không thể tạo đơn xin phép.',
+      severity: 'error',
+    });
+  } finally {
+    setApplicationSubmitting(false);
+  }
+};
 
   const handleChooseApplicationMode = async (
     mode: 'APPROVED' | 'PENDING'
@@ -1050,7 +1060,7 @@ const handleSelectImages = async (
                   <TableCell>{v.description}</TableCell>
                   <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
                   <TableCell>
-                  {{v.application?.status === "APPROVED"
+                  {v.application?.status === "APPROVED"
                     ? "Đã duyệt đơn"
                     : v.handled
                     ? v.handledBy === "PGT"
