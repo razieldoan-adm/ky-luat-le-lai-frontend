@@ -1014,8 +1014,6 @@ const loadDetailImages = async (violation: Violation) => {
                       size="small"
                       disabled={
                         isProcessing ||
-                        v.application?.status === "APPROVED" ||
-                        v.application?.status === "PENDING" ||
                         (() => {
                           const currentWeek = weeks.find(
                             (w: any) =>
