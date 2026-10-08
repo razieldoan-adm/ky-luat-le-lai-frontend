@@ -1084,7 +1084,6 @@ const handleSelectImages = async (
   color="info"
   size="small"
   disabled={
-    v.application?.status === "PENDING" ||
     v.application?.status === "APPROVED"
   }
   onClick={() => handleProcessViolation(v._id, "GVCN")}
@@ -1098,7 +1097,6 @@ const handleSelectImages = async (
   color="success"
   size="small"
   disabled={
-    v.application?.status === "PENDING" ||
     v.application?.status === "APPROVED"
   }
   onClick={() => handleProcessViolation(v._id, "PGT")}
