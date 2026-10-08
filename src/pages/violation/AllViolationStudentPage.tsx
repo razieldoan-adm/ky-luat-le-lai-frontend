@@ -421,14 +421,29 @@ export default function AllViolationStudentPage() {
           ...newApplication,
           status: 'APPROVED',
         };
+          // =====================================================
+          // ĐƠN ĐÃ DUYỆT => NỘP ĐƠN LÀ CÁCH XỬ LÝ CÓ HIỆU LỰC
+          // Trả lại lượt GVCN/PGT trước đó
+          // =====================================================
+          const clearHandledRes = await api.patch(`/api/violations/${violation._id}/handle`, {
+            handled: false,
+            handledBy: "",
+            handlingMethod: "",
+          });
+          const clearedViolation = clearHandledRes.data;
       }
 
       setViolations((prev) =>
         prev.map((v) =>
           v._id === violation._id
-            ? { ...v, application: newApplication }
+            ? {
+                ...v,
+                ...clearedViolation,
+                application: newApplication,
+              }
             : v
         )
+      );
       );
 
       setApplicationChoiceOpen(false);
@@ -1035,12 +1050,14 @@ const handleSelectImages = async (
                   <TableCell>{v.description}</TableCell>
                   <TableCell>{v.time ? dayjs(v.time).format('DD/MM/YYYY') : 'Không rõ'}</TableCell>
                   <TableCell>
-  {v.handled
-    ? v.handledBy === "PGT"
-      ? "PGT đã xử lý"
-      : "GVCN đã xử lý"
-    : "Chưa xử lý"}
-</TableCell>
+                  {{v.application?.status === "APPROVED"
+                    ? "Đã duyệt đơn"
+                    : v.handled
+                    ? v.handledBy === "PGT"
+                      ? "PGT đã xử lý"
+                      : "GVCN đã xử lý"
+                    : "Chưa xử lý"}
+                  </TableCell>
                   <TableCell>{v.handledBy || ''}</TableCell>
                   <TableCell>{rules.find((r) => r.title === v.description)?.point || 0}</TableCell>
                   <TableCell>
