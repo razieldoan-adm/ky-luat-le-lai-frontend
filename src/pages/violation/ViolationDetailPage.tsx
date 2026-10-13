@@ -1908,8 +1908,7 @@ const totalConductViolations =
             color="text.secondary"
             mb={1}
           >
-            Chi tiết số lần bị trừ điểm
-            hạnh kiểm trong tuần:
+            Chi tiết số lần bị trừ điểm hạnh kiểm trong tuần:
           </Typography>
 
           <Stack
@@ -1917,40 +1916,42 @@ const totalConductViolations =
             spacing={1}
             flexWrap="wrap"
           >
-            <Chip
-              size="small"
-              label={`N1: ${
-  groupViolations.N1
-} lần`}
-            />
+            
+<Stack spacing={1.5}>
+  <Typography variant="body1" fontWeight="bold">
+    Điểm rèn luyện: {currentScore}/{maxConductScore}
+  </Typography>
 
-            <Chip
-              size="small"
-              label={`N2: ${
-                conductScore?.groupViolations?.N2 ?? 0
-              } lần`}
-            />
+  <Typography variant="body1" fontWeight="bold">
+    Xếp loại: {currentClassification}
+  </Typography>
 
-            <Chip
-              size="small"
-              label={`N3: ${
-  groupViolations.N3
-} lần`}
-            />
+  <Divider sx={{ my: 1 }} />
 
-            <Chip
-              size="small"
-              label={`N4: ${
-  groupViolations.N4
-} lần`}
-            />
+  <Typography fontWeight="bold">
+    Vi phạm lỗi thường:
+  </Typography>
 
-            <Chip
-              size="small"
-              label={`N5: ${
-  groupViolations.N5
-} lần`}
-            />
+  <Typography>
+    N1: {conductScore?.groupViolations?.N1 ?? 0} lần{" "}
+    N2: {conductScore?.groupViolations?.N2 ?? 0} lần{" "}
+    N3: {conductScore?.groupViolations?.N3 ?? 0} lần{" "}
+    N4: {conductScore?.groupViolations?.N4 ?? 0} lần{" "}
+    N5: {conductScore?.groupViolations?.N5 ?? 0} lần
+  </Typography>
+
+  <Typography fontWeight="bold">
+    Vi phạm lỗi nặng:
+  </Typography>
+
+  <Typography color="error.main">
+    S1: {conductScore?.groupViolations?.S1 ?? 0} lần
+    {(conductScore?.groupViolations?.S1 ?? 0) > 0
+      ? " — Hạ 1 bậc rèn luyện"
+      : " — Không có"}
+  </Typography>
+</Stack>
+
           </Stack>
 
           <Typography
