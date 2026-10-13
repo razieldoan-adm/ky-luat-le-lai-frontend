@@ -1815,161 +1815,91 @@ const totalConductViolations =
           THÔNG TIN HẠNH KIỂM
       ====================================================== */}
 
-      <Card
-        sx={{
-          mb: 3,
-          borderRadius: 3,
-          boxShadow: 3,
-        }}
-      >
-        <CardContent>
-          <Stack
-            direction={{
-              xs: "column",
-              md: "row",
-            }}
-            spacing={3}
-            alignItems={{
-              xs: "stretch",
-              md: "center",
-            }}
-            justifyContent="space-between"
-          >
-            <Box>
-              <Typography
-                variant="subtitle1"
-                color="text.secondary"
-              >
-                Hạnh kiểm tuần{" "}
-                {currentWeek ??
-                  "—"}
-              </Typography>
+      
+<CardContent>
+  <Stack
+    direction={{ xs: "column", md: "row" }}
+    spacing={3}
+    alignItems={{ xs: "stretch", md: "center" }}
+    justifyContent="space-between"
+  >
+    <Box>
+      <Typography variant="subtitle1" color="text.secondary">
+        Hạnh kiểm tuần {currentWeek ?? "—"}
+      </Typography>
 
-            <Stack spacing={1} sx={{ mt: 1 }}>
-              <Stack
-                direction="row"
-                alignItems="center"
-                spacing={1}
-                flexWrap="wrap"
-              >
-                <Typography variant="h6" fontWeight="bold">
-                  Điểm rèn luyện:
-                </Typography>
-                <Typography
-                  variant="h5"
-                  fontWeight="bold"
-                  color={isBelowThreshold ? "error.main" : "success.main"}
-                >
-                  {currentScore}/{maxConductScore}
-                </Typography>
-              </Stack>
-            
-              <Stack
-                direction="row"
-                alignItems="center"
-                spacing={1}
-              >
-                <Typography variant="h6" fontWeight="bold">
-                  Xếp loại:
-                </Typography>
-                <Typography
-                  variant="h6"
-                  fontWeight="bold"
-                  color="primary.main"
-                >
-                  {currentClassification}
-                </Typography>
-              </Stack>
-            </Stack>
-            </Box>
-
-            <Stack
-              direction="row"
-              spacing={1}
-              flexWrap="wrap"
-            >
-              <Chip
-                label={`Tổng lỗi HK: ${totalConductViolations}`}
-                color={
-                  totalConductViolations >
-                  0
-                    ? "warning"
-                    : "success"
-                }
-              />
-
-              {seriousViolation && (
-                <Chip
-                  label="⚠ Lỗi đặc biệt nghiêm trọng"
-                  color="error"
-                  sx={{
-                    fontWeight:
-                      "bold",
-                  }}
-                />
-              )}
-            </Stack>
-          </Stack>
-
-          <Divider sx={{ my: 2 }} />
-
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            mb={1}
-          >
-            Chi tiết số lần bị trừ điểm hạnh kiểm trong tuần:
+      <Stack spacing={1} sx={{ mt: 1 }}>
+        <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+          <Typography variant="h6" fontWeight="bold">
+            Điểm rèn luyện:
           </Typography>
-
-          <Stack
-            direction="row"
-            spacing={1}
-            flexWrap="wrap"
-          >
-            
-
-  <Divider sx={{ my: 1 }} />
-
-  <Typography fontWeight="bold">
-    Vi phạm lỗi thường:
-  </Typography>
-
-  <Typography>
-    N1: {conductScore?.groupViolations?.N1 ?? 0} lần{" "}
-    N2: {conductScore?.groupViolations?.N2 ?? 0} lần{" "}
-    N3: {conductScore?.groupViolations?.N3 ?? 0} lần{" "}
-    N4: {conductScore?.groupViolations?.N4 ?? 0} lần{" "}
-    N5: {conductScore?.groupViolations?.N5 ?? 0} lần
-  </Typography>
-
-  <Typography fontWeight="bold">
-    Vi phạm lỗi nặng:
-  </Typography>
-
-  <Typography color="error.main">
-    S1: {conductScore?.groupViolations?.S1 ?? 0} lần
-    {(conductScore?.groupViolations?.S1 ?? 0) > 0
-      ? " — Hạ 1 bậc rèn luyện"
-      : " — Không có"}
-  </Typography>
-</Stack>
-
-          </Stack>
-
           <Typography
-            variant="caption"
-            color="text.secondary"
-            display="block"
-            mt={2}
+            variant="h5"
+            fontWeight="bold"
+            color={isBelowThreshold ? "error.main" : "success.main"}
           >
-            Mỗi lỗi thuộc nhóm N1–N5 bị
-            trừ 1 điểm hạnh kiểm. Điểm
-            `point` của nội quy không dùng
-            để tính điểm hạnh kiểm.
+            {currentScore}/{maxConductScore}
           </Typography>
-        </CardContent>
-      </Card>
+        </Stack>
 
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Typography variant="h6" fontWeight="bold">
+            Xếp loại:
+          </Typography>
+          <Typography variant="h6" fontWeight="bold" color="primary.main">
+            {currentClassification}
+          </Typography>
+        </Stack>
+      </Stack>
+    </Box>
+
+    <Stack direction="row" spacing={1} flexWrap="wrap">
+      <Chip
+        label={`Tổng lỗi HK: ${totalConductViolations}`}
+        color={totalConductViolations > 0 ? "warning" : "success"}
+      />
+
+      {seriousViolation && (
+        <Chip
+          label="⚠ Lỗi đặc biệt nghiêm trọng"
+          color="error"
+          sx={{ fontWeight: "bold" }}
+        />
+      )}
+    </Stack>
+  </Stack>
+
+  <Divider sx={{ my: 2 }} />
+
+  <Stack spacing={1.5}>
+    <Box>
+      <Typography fontWeight="bold" mb={0.5}>
+        Vi phạm lỗi thường:
+      </Typography>
+      <Typography>
+        N1: {groupViolations.N1} lần{" "}
+        N2: {groupViolations.N2} lần{" "}
+        N3: {groupViolations.N3} lần{" "}
+        N4: {groupViolations.N4} lần{" "}
+        N5: {groupViolations.N5} lần
+      </Typography>
+    </Box>
+
+    <Box>
+      <Typography fontWeight="bold" mb={0.5}>
+        Vi phạm lỗi nặng:
+      </Typography>
+      <Typography color={groupViolations.S1 > 0 ? "error.main" : "text.primary"}>
+        S1: {groupViolations.S1} lần
+        {groupViolations.S1 > 0
+          ? " — Hạ 1 bậc rèn luyện"
+          : " — Không có"}
+      </Typography>
+    </Box>
+  </Stack>
+</CardContent>
+
+      
       {/* ======================================================
           GHI NHẬN LỖI
       ====================================================== */}
