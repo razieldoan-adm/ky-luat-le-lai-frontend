@@ -321,12 +321,29 @@ const getWeeklyClassification = (
   return "Chưa đạt";
 };
 
+
 const getFinalWeeklyClassification = (
   score: number,
-  _hasSeriousViolation: boolean
+  hasSeriousViolation: boolean
 ): string => {
-  return getWeeklyClassification(score);
+  const classification = getWeeklyClassification(score);
+
+  if (!hasSeriousViolation) {
+    return classification;
+  }
+
+  switch (classification) {
+    case "Tốt":
+      return "Khá";
+    case "Khá":
+      return "Đạt";
+    case "Đạt":
+      return "Chưa đạt";
+    default:
+      return "Chưa đạt";
+  }
 };
+
 
 
 const hasSeriousViolationGroup = (
