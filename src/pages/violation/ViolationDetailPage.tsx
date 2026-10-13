@@ -1815,7 +1815,16 @@ const totalConductViolations =
           THÔNG TIN HẠNH KIỂM
       ====================================================== */}
 
-      
+     <Card
+  sx={{
+    my: 3,
+    borderRadius: 3,
+    boxShadow: 2,
+    border: "1px solid",
+    borderColor: "divider",
+    backgroundColor: "background.paper",
+  }}
+> 
 <CardContent>
   <Stack
     direction={{ xs: "column", md: "row" }}
@@ -1853,19 +1862,7 @@ const totalConductViolations =
       </Stack>
     </Box>
 
-    <Stack direction="row" spacing={1} flexWrap="wrap">
-      <Chip
-        label={`Tổng lỗi HK: ${totalConductViolations}`}
-        color={totalConductViolations > 0 ? "warning" : "success"}
-      />
 
-      {seriousViolation && (
-        <Chip
-          label="⚠ Lỗi đặc biệt nghiêm trọng"
-          color="error"
-          sx={{ fontWeight: "bold" }}
-        />
-      )}
     </Stack>
   </Stack>
 
@@ -1898,7 +1895,7 @@ const totalConductViolations =
     </Box>
   </Stack>
 </CardContent>
-
+</Card>
       
       {/* ======================================================
           GHI NHẬN LỖI
