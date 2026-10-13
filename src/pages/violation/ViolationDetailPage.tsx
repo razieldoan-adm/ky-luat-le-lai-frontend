@@ -1838,26 +1838,39 @@ const totalConductViolations =
                   "—"}
               </Typography>
 
-              <Typography
-                variant="h3"
-                fontWeight="bold"
-                color={
-                  isBelowThreshold
-                    ? "error.main"
-                    : "success.main"
-                }
-              >
-                {currentScore}
-                <Typography
-                  component="span"
-                  variant="h6"
-                  color="text.secondary"
-                >
-                  {" "}
-                  /{" "}
-                  {maxConductScore}
-                </Typography>
-              </Typography>
+            <Stack
+  direction={{ xs: "column", sm: "row" }}
+  spacing={2}
+  alignItems={{ xs: "flex-start", sm: "center" }}
+>
+  <Typography variant="h6" fontWeight="bold">
+    Điểm rèn luyện:{" "}
+    <Box
+      component="span"
+      sx={{
+        color: isBelowThreshold ? "error.main" : "success.main",
+        fontSize: "1.8rem",
+      }}
+    >
+      {currentScore}/{maxConductScore}
+    </Box>
+  </Typography>
+
+  <Typography variant="h6" fontWeight="bold">
+    Xếp loại:{" "}
+    <Box component="span" sx={{ color: "primary.main" }}>
+      {currentScore >= 90
+        ? "Tốt"
+        : currentScore >= 75
+        ? "Khá"
+        : currentScore >= 50
+        ? "Đạt"
+        : "Chưa đạt"}
+    </Box>
+  </Typography>
+</Stack>
+
+              
             </Box>
 
             <Stack
@@ -2261,12 +2274,6 @@ const totalConductViolations =
 
               <TableCell>
                 <strong>
-                  Hình thức xử lý
-                </strong>
-              </TableCell>
-
-              <TableCell>
-                <strong>
                   Trạng thái
                 </strong>
               </TableCell>
@@ -2372,11 +2379,6 @@ const totalConductViolations =
                       {renderTime(
                         v.time
                       )}
-                    </TableCell>
-
-                    <TableCell>
-                      {v.handlingMethod ||
-                        "—"}
                     </TableCell>
 
                     <TableCell>
