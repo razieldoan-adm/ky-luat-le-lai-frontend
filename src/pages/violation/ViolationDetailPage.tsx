@@ -2430,7 +2430,7 @@ const totalConductViolations =
                       ) : isSerious ? (
                         <Chip
                           size="small"
-                          label="Không trừ"
+                          label="Hạ 1 bậc rèn luyện"
                           color="error"
                         />
                       ) : (
