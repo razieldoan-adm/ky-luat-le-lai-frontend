@@ -310,7 +310,7 @@ const getWeeklyClassification = (
     return "Tốt";
   }
 
-  if (score >= 70) {
+  if (score >= 75) {
     return "Khá";
   }
 
@@ -1292,9 +1292,9 @@ for (let row = 5; row < 5 + sheetData.length; row++) {
   };
 
   worksheet[`J${row}`] = {
-    t: "s",
-    f: `IF(I${row}>=90,IF(L${row}=1,"Khá","Tốt"),IF(I${row}>=70,IF(L${row}=1,"Đạt","Khá"),IF(I${row}>=50,IF(L${row}=1,"Chưa đạt","Đạt"),"Chưa đạt")))`,
-  };
+  t: "s",
+  f: `IF(I${row}>=90,"Tốt",IF(I${row}>=75,"Khá",IF(I${row}>=50,"Đạt","Chưa đạt")))`,
+};
 }
 
 // =========================================================
