@@ -321,38 +321,13 @@ const getWeeklyClassification = (
   return "Chưa đạt";
 };
 
-const lowerClassificationOneLevel = (
-  classification: string
-): string => {
-  switch (classification) {
-    case "Tốt":
-      return "Khá";
-
-    case "Khá":
-      return "Đạt";
-
-    case "Đạt":
-      return "Chưa đạt";
-
-    case "Chưa đạt":
-      return "Chưa đạt";
-
-    default:
-      return classification;
-  }
-};
 const getFinalWeeklyClassification = (
   score: number,
-  hasSeriousViolation: boolean
+  _hasSeriousViolation: boolean
 ): string => {
-  const classification = getWeeklyClassification(score);
-
-  if (hasSeriousViolation) {
-    return lowerClassificationOneLevel(classification);
-  }
-
-  return classification;
+  return getWeeklyClassification(score);
 };
+
 
 const hasSeriousViolationGroup = (
   groupViolations?: WeeklyGroups
