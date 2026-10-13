@@ -1845,39 +1845,42 @@ const totalConductViolations =
                   "—"}
               </Typography>
 
-            <Stack
-  direction={{ xs: "column", sm: "row" }}
-  spacing={2}
-  alignItems={{ xs: "flex-start", sm: "center" }}
->
-  <Typography variant="h6" fontWeight="bold">
-    Điểm rèn luyện:{" "}
-    <Box
-      component="span"
-      sx={{
-        color: isBelowThreshold ? "error.main" : "success.main",
-        fontSize: "1.8rem",
-      }}
-    >
-      {currentScore}/{maxConductScore}
-    </Box>
-  </Typography>
-
-  <Typography variant="h6" fontWeight="bold">
-    Xếp loại:{" "}
-    <Box component="span" sx={{ color: "primary.main" }}>
-      {currentScore >= 90
-        ? "Tốt"
-        : currentScore >= 75
-        ? "Khá"
-        : currentScore >= 50
-        ? "Đạt"
-        : "Chưa đạt"}
-    </Box>
-  </Typography>
-</Stack>
-
-              
+            <Stack spacing={1} sx={{ mt: 1 }}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1}
+                flexWrap="wrap"
+              >
+                <Typography variant="h6" fontWeight="bold">
+                  Điểm rèn luyện:
+                </Typography>
+                <Typography
+                  variant="h5"
+                  fontWeight="bold"
+                  color={isBelowThreshold ? "error.main" : "success.main"}
+                >
+                  {currentScore}/{maxConductScore}
+                </Typography>
+              </Stack>
+            
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1}
+              >
+                <Typography variant="h6" fontWeight="bold">
+                  Xếp loại:
+                </Typography>
+                <Typography
+                  variant="h6"
+                  fontWeight="bold"
+                  color="primary.main"
+                >
+                  {currentClassification}
+                </Typography>
+              </Stack>
+            </Stack>
             </Box>
 
             <Stack
@@ -1924,14 +1927,6 @@ const totalConductViolations =
             flexWrap="wrap"
           >
             
-<Stack spacing={1.5}>
-  <Typography variant="body1" fontWeight="bold">
-    Điểm rèn luyện: {currentScore}/{maxConductScore}
-  </Typography>
-
-  <Typography variant="body1" fontWeight="bold">
-    Xếp loại: {currentClassification}
-  </Typography>
 
   <Divider sx={{ my: 1 }} />
 
