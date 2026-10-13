@@ -1737,7 +1737,14 @@ setImagePreviews([]);
 const currentScore =
   conductScore?.finalScore ??
   maxConductScore;
-
+const currentClassification =
+  currentScore >= 90
+    ? "Tốt"
+    : currentScore >= 75
+    ? "Khá"
+    : currentScore >= 50
+    ? "Đạt"
+    : "Chưa đạt";
 const seriousViolation =
   conductScore?.hasSeriousViolation ??
   false;
