@@ -1815,7 +1815,13 @@ const totalConductViolations =
           THÔNG TIN HẠNH KIỂM
       ====================================================== */}
 
-      
+<Card
+  sx={{
+    mb: 3,
+    borderRadius: 3,
+    boxShadow: 3,
+  }}
+>
 <CardContent>
   <Stack
     direction={{ xs: "column", md: "row" }}
@@ -1898,7 +1904,7 @@ const totalConductViolations =
     </Box>
   </Stack>
 </CardContent>
-
+</Card>
       
       {/* ======================================================
           GHI NHẬN LỖI
