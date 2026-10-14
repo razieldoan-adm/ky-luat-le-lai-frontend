@@ -763,12 +763,47 @@ const getClassesByGrade = (grade: string) => {
   // DIALOG XUẤT EXCEL
   // =========================================================
 
-const openExportDialog = () => {
+
+const openExportDialog = async () => {
   setExportGrade("");
   setExportWeek("");
   setExportDialogOpen(true);
 
+  try {
+    const res = await api.get(
+      "/api/academic-weeks/current"
+    );
+
+    const currentWeek = Number(
+      res.data?.weekNumber
+    );
+
+    if (
+      Number.isInteger(currentWeek) &&
+      currentWeek > 0
+    ) {
+      setExportWeek(currentWeek);
+    } else {
+      setSnackbar({
+        open: true,
+        message: "Chưa xác định được tuần học hiện tại.",
+        severity: "warning",
+      });
+    }
+  } catch (error) {
+    console.error(
+      "Lỗi lấy tuần học hiện tại:",
+      error
+    );
+
+    setSnackbar({
+      open: true,
+      message: "Không thể lấy tuần học hiện tại.",
+      severity: "error",
+    });
+  }
 };
+
 
 const openMonthExportDialog = () => {
   setExportMonthGrade("");
