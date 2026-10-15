@@ -18,6 +18,7 @@ import {
   DialogActions,
   Alert,
   Chip,
+  MenuItem,
 } from '@mui/material';
 
 import api from '../../api/api';
@@ -42,6 +43,20 @@ interface RuleForm {
   content: string;
   active: boolean;
 }
+
+// Danh sách mã nhóm được phép chọn
+const GROUP_CODES = ['N1', 'N2', 'N3', 'N4', 'N5', 'S1'];
+
+// Tên nhóm mẫu.
+// Hãy đối chiếu với tên nhóm đang có trong MongoDB trước khi dùng.
+const GROUP_NAMES: Record<string, string> = {
+  N1: 'Nề nếp – tác phong',
+  N2: 'Chuyên cần',
+  N3: 'Học tập',
+  N4: 'Vệ sinh',
+  N5: 'Các nội dung khác',
+  S1: 'Nhóm S1',
+};
 
 const emptyForm: RuleForm = {
   groupCode: '',
@@ -104,11 +119,21 @@ export default function AdminRulesPage() {
   // ==========================================
 
   const handleAdd = () => {
-    setEditingId(null);
-    setForm(emptyForm);
-    setError('');
-    setOpenDialog(true);
-  };
+  setEditingId(null);
+
+  setForm({
+    groupCode: '',
+    groupName: '',
+    ruleCode: '',
+    title: '',
+    point: 1,
+    content: 'điểm/hs',
+    active: true,
+  });
+
+  setError('');
+  setOpenDialog(true);
+};
 
   // ==========================================
   // MỞ FORM SỬA
@@ -147,81 +172,101 @@ export default function AdminRulesPage() {
   // ==========================================
 
   const handleChange = (
-    field: keyof RuleForm,
-    value: string | number | boolean
-  ) => {
+  field: keyof RuleForm,
+  value: string | number | boolean
+) => {
+  if (field === 'groupCode') {
+    const groupCode = String(value).toUpperCase();
+
     setForm((prev) => ({
       ...prev,
-      [field]: value,
+      groupCode,
+      groupName: GROUP_NAMES[groupCode] || '',
+      ruleCode: '',
+      content: 'điểm/hs',
     }));
-  };
+
+    return;
+  }
+
+  setForm((prev) => ({
+    ...prev,
+    [field]: value,
+  }));
+};
 
   // ==========================================
   // LƯU RULE
   // ==========================================
 
-  const handleSave = async () => {
-    setError('');
+  
+const handleSave = async () => {
+  setError('');
+  setSuccess('');
 
-    if (!form.groupCode.trim()) {
-      setError('Vui lòng nhập mã nhóm');
-      return;
-    }
+  if (!form.groupCode.trim()) {
+    setError('Vui lòng chọn mã nhóm');
+    return;
+  }
 
-    if (!form.groupName.trim()) {
-      setError('Vui lòng nhập tên nhóm');
-      return;
-    }
+  if (!form.title.trim()) {
+    setError('Vui lòng nhập nội dung vi phạm');
+    return;
+  }
 
-    if (!form.ruleCode.trim()) {
-      setError('Vui lòng nhập mã lỗi');
-      return;
-    }
+  if (
+    form.point === null ||
+    !Number.isFinite(Number(form.point))
+  ) {
+    setError('Vui lòng nhập điểm trừ hợp lệ');
+    return;
+  }
 
-    if (!form.title.trim()) {
-      setError('Vui lòng nhập tên lỗi');
-      return;
-    }
+  try {
+    setLoading(true);
 
-    try {
-      setLoading(true);
-
-      if (editingId) {
-        await api.put(
-          `/api/rules/${editingId}`,
-          form,
-          {
-            headers: authHeaders,
-          }
-        );
-
-        setSuccess('Đã cập nhật nội quy');
-      } else {
-        await api.post(
-          '/api/rules',
-          form,
-          {
-            headers: authHeaders,
-          }
-        );
-
-        setSuccess('Đã thêm nội quy');
-      }
-
-      handleClose();
-
-      await fetchRules();
-    } catch (err: any) {
-      console.error(err);
-
-      setError(
-        err?.response?.data?.message ||
-        'Không thể lưu nội quy'
+    if (editingId) {
+      // Giữ nguyên chức năng cập nhật nội quy.
+      await api.put(
+        `/api/rules/${editingId}`,
+        form,
+        {
+          headers: authHeaders,
+        }
       );
-    } finally {
-      setLoading(false);
+
+      setSuccess('Đã cập nhật nội quy');
+    } else {
+      // Backend tự cấp ruleCode và groupName.
+      await api.post(
+        '/api/rules',
+        {
+          groupCode: form.groupCode,
+          title: form.title.trim(),
+          point: Number(form.point),
+        },
+        {
+          headers: authHeaders,
+        }
+      );
+
+      setSuccess('Đã thêm nội quy');
     }
-  };
+
+    handleClose();
+    await fetchRules();
+  } catch (err: any) {
+    console.error(err);
+
+    setError(
+      err?.response?.data?.message ||
+      'Không thể lưu nội quy'
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // ==========================================
   // XÓA RULE
@@ -671,44 +716,45 @@ export default function AdminRulesPage() {
             spacing={2}
             sx={{ mt: 1 }}
           >
-            <TextField
-              label="Mã nhóm"
-              value={form.groupCode}
-              onChange={(e) =>
-                handleChange(
-                  'groupCode',
-                  e.target.value.toUpperCase()
-                )
-              }
-              placeholder="Ví dụ: N1"
-              fullWidth
-            />
-
-            <TextField
-              label="Tên nhóm"
-              value={form.groupName}
-              onChange={(e) =>
-                handleChange(
-                  'groupName',
-                  e.target.value
-                )
-              }
-              placeholder="Ví dụ: Nề nếp – tác phong"
-              fullWidth
-            />
-
-            <TextField
-              label="Mã lỗi"
-              value={form.ruleCode}
-              onChange={(e) =>
-                handleChange(
-                  'ruleCode',
-                  e.target.value.toUpperCase()
-                )
-              }
-              placeholder="Ví dụ: N1-01"
-              fullWidth
-            />
+ 
+          <TextField
+            select
+            label="Mã nhóm"
+            value={form.groupCode}
+            onChange={(e) =>
+              handleChange('groupCode', e.target.value)
+            }
+            fullWidth
+            required
+          >
+            {GROUP_CODES.map((code) => (
+              <MenuItem key={code} value={code}>
+                {code}
+              </MenuItem>
+            ))}
+          </TextField>
+          
+          <TextField
+            label="Tên nhóm"
+            value={form.groupName}
+            fullWidth
+            InputProps={{ readOnly: true }}
+            helperText="Tự động theo mã nhóm đã chọn"
+          />
+          
+          <TextField
+            label="Mã nội quy"
+            value={
+              editingId
+                ? form.ruleCode
+                : form.groupCode
+                  ? 'Backend sẽ tự cấp mã khi lưu'
+                  : 'Chọn nhóm trước'
+            }
+            fullWidth
+            InputProps={{ readOnly: true }}
+            helperText="Không cần nhập mã thủ công"
+          />
 
             <TextField
               label="Tên lỗi"
@@ -739,15 +785,9 @@ export default function AdminRulesPage() {
             <TextField
               label="Ghi chú"
               value={form.content}
-              onChange={(e) =>
-                handleChange(
-                  'content',
-                  e.target.value
-                )
-              }
-              multiline
-              rows={3}
               fullWidth
+              InputProps={{ readOnly: true }}
+              helperText="Giá trị cố định: điểm/hs"
             />
 
             <FormControlLabel
