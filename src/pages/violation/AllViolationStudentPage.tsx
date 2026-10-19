@@ -902,6 +902,78 @@ const handleSelectImages = async (
   };
 
   // -------------------------
+  // Theo dõi học sinh vi phạm CÙNG MỘT LỖI từ 3 lần trở lên trong tuần.
+  // Chỉ thống kê từ Violation hiện có; KHÔNG tự tạo lỗi S1.
+  // -------------------------
+  const repeatedViolationRows = (() => {
+    type TrackingRow = {
+      key: string;
+      name: string;
+      className: string;
+      academicYear: string;
+      weekNumber: number;
+      ruleCode: string;
+      description: string;
+      count: number;
+      violations: Violation[];
+    };
+
+    const grouped = new Map<string, TrackingRow>();
+    for (const v of violations) {
+      const weekNumber = Number(v.weekNumber);
+      if (!Number.isFinite(weekNumber) || weekNumber < 1) continue;
+
+      // Ưu tiên mã lỗi cụ thể; nếu dữ liệu cũ chưa có mã thì dùng tên lỗi.
+      const ruleCode = String(v.ruleCode || '').trim().toUpperCase();
+      const descriptionKey = String(v.description || '').trim().toLocaleLowerCase('vi');
+      const specificRuleKey = ruleCode || descriptionKey;
+      if (!specificRuleKey) continue;
+
+      const nameKey = String(v.name || '').trim().toLocaleLowerCase('vi');
+      const classKey = String(v.className || '').trim().toUpperCase();
+      const academicYear = String(v.academicYear || '').trim();
+      const key = [nameKey, classKey, academicYear, weekNumber, specificRuleKey].join('|');
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.count += 1;
+        existing.violations.push(v);
+      } else {
+        const rule = rules.find((r) =>
+          (ruleCode && String(r.ruleCode || '').trim().toUpperCase() === ruleCode) ||
+          String(r.title || '').trim().toLocaleLowerCase('vi') === descriptionKey ||
+          String(r.content || '').trim().toLocaleLowerCase('vi') === descriptionKey
+        );
+        grouped.set(key, {
+          key,
+          name: v.name,
+          className: v.className,
+          academicYear,
+          weekNumber,
+          ruleCode,
+          description: rule?.title || v.description || ruleCode || 'Chưa xác định tên lỗi',
+          count: 1,
+          violations: [v],
+        });
+      }
+    }
+
+    return Array.from(grouped.values())
+      .filter((row) => row.count >= 3)
+      .filter((row) => !selectedClass || row.className === selectedClass)
+      .filter((row) => !selectedWeek || String(row.weekNumber) === selectedWeek)
+      .sort((a, b) => b.count - a.count || a.className.localeCompare(b.className));
+  })();
+
+  const getApplicationSummary = (row: { violations: Violation[] }) => {
+    const apps = row.violations.map((v) => v.application).filter((app) => app != null);
+    const approved = apps.filter((app) => app?.status === 'APPROVED').length;
+    const pending = apps.filter((app) => app?.status === 'PENDING').length;
+    const rejected = apps.filter((app) => app?.status === 'REJECTED').length;
+    const overdue = apps.filter((app) => app?.status === 'OVERDUE').length;
+    return { total: apps.length, approved, pending, rejected, overdue };
+  };
+
+  // -------------------------
   // Render
   // -------------------------
   return (
@@ -976,6 +1048,57 @@ const handleSelectImages = async (
       </Paper>
 
 
+
+      {/* Danh sách tự động theo dõi vi phạm lặp lại */}
+      <Paper elevation={3} sx={{ p: 2, borderRadius: 3, mb: 3, border: '1px solid #edc56b' }}>
+        <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
+          Danh sách học sinh cần xem xét hạ rèn luyện
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Tự động hiển thị học sinh vi phạm cùng một lỗi cụ thể từ 3 lần trở lên trong cùng tuần. Cần kiểm tra đơn xin phép trước khi quyết định; hệ thống không tự động thêm lỗi S1.
+        </Typography>
+        <Box sx={{ overflowX: 'auto' }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ backgroundColor: '#fff0c2' }}>
+                <TableCell>STT</TableCell>
+                <TableCell>Họ tên</TableCell>
+                <TableCell>Lớp</TableCell>
+                <TableCell>Năm học</TableCell>
+                <TableCell>Tuần</TableCell>
+                <TableCell>Lỗi vi phạm cụ thể</TableCell>
+                <TableCell align="center">Số lần</TableCell>
+                <TableCell>Đơn xin phép</TableCell>
+                <TableCell>Thao tác</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {repeatedViolationRows.length ? repeatedViolationRows.map((row, index) => {
+                const apps = getApplicationSummary(row);
+                return (
+                  <TableRow key={row.key} sx={{ backgroundColor: row.count >= 6 ? '#ffe0e0' : '#fffaf0' }}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{row.name}</TableCell>
+                    <TableCell>{row.className}</TableCell>
+                    <TableCell>{row.academicYear || '-'}</TableCell>
+                    <TableCell>{row.weekNumber}</TableCell>
+                    <TableCell>{row.description}</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 'bold', color: row.count >= 6 ? 'error.main' : 'warning.dark' }}>{row.count}</TableCell>
+                    <TableCell>
+                      {apps.total === 0
+                        ? 'Chưa có đơn'
+                        : `Tổng ${apps.total} · Duyệt ${apps.approved} · Chờ ${apps.pending}${apps.rejected ? ` · Từ chối ${apps.rejected}` : ''}${apps.overdue ? ` · Quá hạn ${apps.overdue}` : ''}`}
+                    </TableCell>
+                    <TableCell>Kiểm tra đơn và xem xét hạ rèn luyện</TableCell>
+                  </TableRow>
+                );
+              }) : (
+                <TableRow><TableCell colSpan={9} align="center">Chưa có học sinh nào đạt điều kiện trong phạm vi lọc.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Box>
+      </Paper>
 
       {/* Bộ lọc */}
       <Paper sx={{ p: 2, borderRadius: 3, mb: 4 }} elevation={3}>
