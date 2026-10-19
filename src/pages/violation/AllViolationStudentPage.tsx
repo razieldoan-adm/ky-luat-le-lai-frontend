@@ -129,6 +129,7 @@ export default function AllViolationStudentPage() {
 
   // Theo dõi cảnh báo học sinh mới đủ điều kiện xem xét hạ rèn luyện.
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [selectedReviewRow, setSelectedReviewRow] = useState<any | null>(null);
   const [seenReviewKeys, setSeenReviewKeys] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('seenRepeatedViolationReviewKeys');
@@ -1152,7 +1153,11 @@ const handleSelectImages = async (
                           : `Tổng ${apps.total} · Duyệt ${apps.approved} · Chờ ${apps.pending}${apps.rejected ? ` · Từ chối ${apps.rejected}` : ''}${apps.overdue ? ` · Quá hạn ${apps.overdue}` : ''}`}
                       </TableCell>
                       <TableCell sx={{ minWidth: 170 }}>
-                        <Button size="small" variant="outlined" onClick={() => setSnackbar({ open: true, message: `Đã thống kê ${row.violations.length} lần vi phạm của ${row.name}. Hãy đối chiếu đơn trước khi quyết định S1.`, severity: 'warning' })}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => setSelectedReviewRow(row)}
+                        >
                           Xem thông tin
                         </Button>
                       </TableCell>
@@ -1167,6 +1172,85 @@ const handleSelectImages = async (
         </DialogContent>
         <DialogActions sx={{ bgcolor: '#fff', borderTop: '1px solid #e0e0e0', p: 2 }}>
           <Button variant="contained" onClick={() => setReviewDialogOpen(false)}>Đóng danh sách</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={!!selectedReviewRow}
+        onClose={() => setSelectedReviewRow(null)}
+        fullWidth
+        maxWidth="lg"
+      >
+        <DialogTitle>
+          Chi tiết vi phạm và đơn xin phép
+          {selectedReviewRow && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {selectedReviewRow.name} · Lớp {selectedReviewRow.className} · Tuần {selectedReviewRow.weekNumber} · {selectedReviewRow.description}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent dividers>
+          {selectedReviewRow && (
+            <>
+              <Typography fontWeight="bold" sx={{ mb: 1 }}>
+                Các lần vi phạm ({selectedReviewRow.violations.length})
+              </Typography>
+              <Box sx={{ overflowX: 'auto', mb: 3 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      {['STT', 'Ngày giờ', 'Nội dung', 'Tình trạng xử lý', 'Đơn xin phép', 'Thao tác'].map((label) => (
+                        <TableCell key={label} sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>{label}</TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {selectedReviewRow.violations.map((v: Violation, idx: number) => (
+                      <TableRow key={v._id}>
+                        <TableCell>{idx + 1}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{v.time ? dayjs(v.time).format('DD/MM/YYYY HH:mm') : 'Không rõ'}</TableCell>
+                        <TableCell>{v.description}</TableCell>
+                        <TableCell>{v.application?.status === 'APPROVED' ? 'Đã duyệt đơn' : v.application?.status === 'PENDING' ? 'Đang chờ duyệt đơn' : v.application?.status === 'REJECTED' ? 'Đơn bị từ chối' : v.application?.status === 'OVERDUE' ? 'Đơn quá hạn' : v.handled ? `Đã xử lý (${v.handledBy || 'chưa rõ'})` : 'Chưa xử lý'}</TableCell>
+                        <TableCell>
+                          {v.application?.status === 'APPROVED' ? 'Đã nộp · Đã duyệt' : v.application?.status === 'PENDING' ? 'Đã nộp · Chờ duyệt' : v.application?.status === 'REJECTED' ? 'Đã nộp · Từ chối' : v.application?.status === 'OVERDUE' ? 'Đã nộp · Quá hạn' : 'Chưa có đơn'}
+                          {v.application?.note ? <Typography variant="caption" display="block">Ghi chú: {v.application.note}</Typography> : null}
+                        </TableCell>
+                        <TableCell sx={{ minWidth: 190 }}>
+                          <Stack direction="row" spacing={1} flexWrap="wrap">
+                            {v.application?.status === 'PENDING' && v.application?._id && (
+                              <Button size="small" variant="contained" color="success" disabled={applicationSubmitting} onClick={async () => {
+                                try {
+                                  setApplicationSubmitting(true);
+                                  const res = await api.patch(`/api/leave-applications/${v.application!._id}/approve`);
+                                  const updatedApp = res.data?.data || { ...v.application, status: 'APPROVED' as const };
+                                  setViolations(prev => prev.map(item => item._id === v._id ? { ...item, application: updatedApp, handled: false, handledBy: '' } : item));
+                                  setSelectedReviewRow((prev: any) => prev ? { ...prev, violations: prev.violations.map((item: Violation) => item._id === v._id ? { ...item, application: updatedApp, handled: false, handledBy: '' } : item) } : prev);
+                                  setSnackbar({ open: true, message: 'Đã duyệt đơn xin phép.', severity: 'success' });
+                                } catch (error: any) {
+                                  setSnackbar({ open: true, message: error?.response?.data?.message || 'Không thể duyệt đơn xin phép.', severity: 'error' });
+                                } finally { setApplicationSubmitting(false); }
+                              }}>Duyệt đơn</Button>
+                            )}
+                            {!v.application && (
+                              <Button size="small" variant="outlined" color="warning" disabled={applicationSubmitting} onClick={() => handleSubmitApplication(v)}>
+                                Nộp đơn
+                              </Button>
+                            )}
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
+              <Alert severity="warning">
+                Kiểm tra từng lần vi phạm và trạng thái đơn trước khi quyết định hạ rèn luyện. Hệ thống không tự động thêm lỗi S1.
+              </Alert>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelectedReviewRow(null)}>Đóng</Button>
         </DialogActions>
       </Dialog>
 
