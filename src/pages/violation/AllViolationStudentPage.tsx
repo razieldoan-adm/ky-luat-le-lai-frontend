@@ -127,6 +127,17 @@ export default function AllViolationStudentPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [disabledAfterSave, setDisabledAfterSave] = useState(false); // ✅ Thêm trạng thái disable sau khi lưu
 
+  // Theo dõi cảnh báo học sinh mới đủ điều kiện xem xét hạ rèn luyện.
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [seenReviewKeys, setSeenReviewKeys] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('seenRepeatedViolationReviewKeys');
+      return saved ? JSON.parse(saved) as string[] : [];
+    } catch {
+      return [];
+    }
+  });
+
   // -------------------------
   // Fetch setting
   // -------------------------
@@ -973,6 +984,8 @@ const handleSelectImages = async (
     return { total: apps.length, approved, pending, rejected, overdue };
   };
 
+  const unseenReviewRows = repeatedViolationRows.filter((row) => !seenReviewKeys.includes(row.key));
+
   // -------------------------
   // Render
   // -------------------------
@@ -1049,56 +1062,113 @@ const handleSelectImages = async (
 
 
 
-      {/* Danh sách tự động theo dõi vi phạm lặp lại */}
-      <Paper elevation={3} sx={{ p: 2, borderRadius: 3, mb: 3, border: '1px solid #edc56b' }}>
-        <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-          Danh sách học sinh cần xem xét hạ rèn luyện
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Tự động hiển thị học sinh vi phạm cùng một lỗi cụ thể từ 3 lần trở lên trong cùng tuần. Cần kiểm tra đơn xin phép trước khi quyết định; hệ thống không tự động thêm lỗi S1.
-        </Typography>
-        <Box sx={{ overflowX: 'auto' }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#fff0c2' }}>
-                <TableCell>STT</TableCell>
-                <TableCell>Họ tên</TableCell>
-                <TableCell>Lớp</TableCell>
-                <TableCell>Năm học</TableCell>
-                <TableCell>Tuần</TableCell>
-                <TableCell>Lỗi vi phạm cụ thể</TableCell>
-                <TableCell align="center">Số lần</TableCell>
-                <TableCell>Đơn xin phép</TableCell>
-                <TableCell>Thao tác</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {repeatedViolationRows.length ? repeatedViolationRows.map((row, index) => {
-                const apps = getApplicationSummary(row);
-                return (
-                  <TableRow key={row.key} sx={{ backgroundColor: row.count >= 6 ? '#ffe0e0' : '#fffaf0' }}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{row.name}</TableCell>
-                    <TableCell>{row.className}</TableCell>
-                    <TableCell>{row.academicYear || '-'}</TableCell>
-                    <TableCell>{row.weekNumber}</TableCell>
-                    <TableCell>{row.description}</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 'bold', color: row.count >= 6 ? 'error.main' : 'warning.dark' }}>{row.count}</TableCell>
-                    <TableCell>
-                      {apps.total === 0
-                        ? 'Chưa có đơn'
-                        : `Tổng ${apps.total} · Duyệt ${apps.approved} · Chờ ${apps.pending}${apps.rejected ? ` · Từ chối ${apps.rejected}` : ''}${apps.overdue ? ` · Quá hạn ${apps.overdue}` : ''}`}
-                    </TableCell>
-                    <TableCell>Kiểm tra đơn và xem xét hạ rèn luyện</TableCell>
-                  </TableRow>
-                );
-              }) : (
-                <TableRow><TableCell colSpan={9} align="center">Chưa có học sinh nào đạt điều kiện trong phạm vi lọc.</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </Box>
+      {/* Theo dõi vi phạm lặp lại: thu gọn mặc định, mở chi tiết toàn màn hình khi cần */}
+      <Paper
+        elevation={2}
+        sx={{
+          px: 2,
+          py: 1.25,
+          borderRadius: 2,
+          mb: 3,
+          border: unseenReviewRows.length ? '1px solid #ed6c02' : '1px solid #d7dce2',
+          animation: unseenReviewRows.length ? 'reviewAlertPulse 1s ease-in-out infinite' : 'none',
+          '@keyframes reviewAlertPulse': {
+            '0%, 100%': { backgroundColor: '#fff8e1', boxShadow: '0 0 0 0 rgba(237,108,2,0.15)' },
+            '50%': { backgroundColor: '#ffe0b2', boxShadow: '0 0 0 4px rgba(237,108,2,0.18)' },
+          },
+        }}
+      >
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="space-between">
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography fontWeight="bold">
+              Danh sách học sinh cần xem xét rèn luyện
+            </Typography>
+            {unseenReviewRows.length > 0 && (
+              <Box
+                component="span"
+                sx={{ bgcolor: '#d32f2f', color: '#fff', borderRadius: '12px', px: 1, py: 0.2, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}
+              >
+                {unseenReviewRows.length} mới
+              </Box>
+            )}
+          </Stack>
+          <Button
+            variant={unseenReviewRows.length ? 'contained' : 'outlined'}
+            color={unseenReviewRows.length ? 'warning' : 'primary'}
+            onClick={() => {
+              const keysToMarkSeen = repeatedViolationRows.map((row) => row.key);
+              const mergedSeen = Array.from(new Set([...seenReviewKeys, ...keysToMarkSeen]));
+              setSeenReviewKeys(mergedSeen);
+              try { localStorage.setItem('seenRepeatedViolationReviewKeys', JSON.stringify(mergedSeen)); } catch { /* storage may be unavailable */ }
+              setReviewDialogOpen(true);
+            }}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Xem chi tiết{repeatedViolationRows.length ? ` (${repeatedViolationRows.length})` : ''}
+          </Button>
+        </Stack>
       </Paper>
+
+      <Dialog
+        open={reviewDialogOpen}
+        onClose={() => setReviewDialogOpen(false)}
+        fullScreen
+        PaperProps={{ sx: { bgcolor: '#f7f9fc' } }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, borderBottom: '1px solid #e0e0e0', bgcolor: '#fff' }}>
+          <Box>
+            <Typography variant="h6" fontWeight="bold">Danh sách học sinh cần xem xét rèn luyện</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Cùng một lỗi cụ thể từ 3 lần trở lên trong cùng tuần. Kiểm tra đơn xin phép trước khi quyết định; hệ thống không tự động thêm lỗi S1.
+            </Typography>
+          </Box>
+          <Button variant="outlined" onClick={() => setReviewDialogOpen(false)}>Đóng</Button>
+        </DialogTitle>
+        <DialogContent sx={{ p: { xs: 1, md: 3 } }}>
+          <Box sx={{ overflowX: 'auto', bgcolor: '#fff', borderRadius: 2, border: '1px solid #e0e0e0' }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  {['STT', 'Họ tên', 'Lớp', 'Năm học', 'Tuần', 'Lỗi vi phạm cụ thể', 'Số lần', 'Đơn xin phép', 'Thao tác'].map((label) => (
+                    <TableCell key={label} sx={{ bgcolor: '#fff0c2', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{label}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {repeatedViolationRows.length ? repeatedViolationRows.map((row, index) => {
+                  const apps = getApplicationSummary(row);
+                  return (
+                    <TableRow key={row.key} sx={{ bgcolor: row.count >= 6 ? '#ffe0e0' : '#fffaf0' }}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.name}</TableCell>
+                      <TableCell>{row.className}</TableCell>
+                      <TableCell>{row.academicYear || '-'}</TableCell>
+                      <TableCell>{row.weekNumber}</TableCell>
+                      <TableCell sx={{ minWidth: 220 }}>{row.description}</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 'bold', color: row.count >= 6 ? 'error.main' : 'warning.dark' }}>{row.count}</TableCell>
+                      <TableCell sx={{ minWidth: 220 }}>
+                        {apps.total === 0
+                          ? 'Chưa có đơn'
+                          : `Tổng ${apps.total} · Duyệt ${apps.approved} · Chờ ${apps.pending}${apps.rejected ? ` · Từ chối ${apps.rejected}` : ''}${apps.overdue ? ` · Quá hạn ${apps.overdue}` : ''}`}
+                      </TableCell>
+                      <TableCell sx={{ minWidth: 170 }}>
+                        <Button size="small" variant="outlined" onClick={() => setSnackbar({ open: true, message: `Đã thống kê ${row.violations.length} lần vi phạm của ${row.name}. Hãy đối chiếu đơn trước khi quyết định S1.`, severity: 'warning' })}>
+                          Xem thông tin
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }) : (
+                  <TableRow><TableCell colSpan={9} align="center" sx={{ py: 5 }}>Chưa có học sinh nào đạt điều kiện trong phạm vi lọc.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ bgcolor: '#fff', borderTop: '1px solid #e0e0e0', p: 2 }}>
+          <Button variant="contained" onClick={() => setReviewDialogOpen(false)}>Đóng danh sách</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Bộ lọc */}
       <Paper sx={{ p: 2, borderRadius: 3, mb: 4 }} elevation={3}>
