@@ -72,6 +72,7 @@ export default function AdminRulesPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [openGroupDialog, setOpenGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupPrefix, setNewGroupPrefix] = useState<'N' | 'S'>('N');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -249,6 +250,16 @@ export default function AdminRulesPage() {
     }
   };
 
+  const getNextGroupCode = (prefix: 'N' | 'S') => {
+    const minimumReservedNumber = prefix === 'N' ? 5 : 2; // S2 dành riêng cho hệ thống.
+    const pattern = new RegExp(`^${prefix}(\\d+)$`, 'i');
+    const maxNumber = groups.reduce((max, group) => {
+      const match = group.groupCode.toUpperCase().match(pattern);
+      return match ? Math.max(max, Number(match[1])) : max;
+    }, minimumReservedNumber);
+    return `${prefix}${maxNumber + 1}`;
+  };
+
   const handleCreateGroup = async () => {
     setError('');
     setSuccess('');
@@ -263,11 +274,12 @@ export default function AdminRulesPage() {
       setLoading(true);
       const res = await api.post(
         '/api/rules/groups',
-        { groupName },
+        { groupName, groupPrefix: newGroupPrefix },
         { headers: authHeaders }
       );
 
       setNewGroupName('');
+      setNewGroupPrefix('N');
       setOpenGroupDialog(false);
       await fetchGroups();
 
@@ -671,8 +683,24 @@ export default function AdminRulesPage() {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Alert severity="info">
-              Hệ thống tự cấp mã nhóm tiếp theo dạng N6, N7, N8... Bạn chỉ cần
-              nhập tên nhóm. Không tạo nhóm S2 tại đây vì S2 là nhóm hệ thống.
+              Chọn loại mã nhóm bên dưới. Hệ thống sẽ tự cấp mã tiếp theo dựa
+              trên các nhóm đã lưu. S2 được dành riêng cho chức năng hệ thống,
+              vì vậy nhóm S mới bắt đầu từ S3.
+            </Alert>
+            <TextField
+              select
+              label="Loại mã nhóm"
+              value={newGroupPrefix}
+              onChange={(e) => setNewGroupPrefix(e.target.value as 'N' | 'S')}
+              fullWidth
+            >
+              <MenuItem value="N">N — Nhóm thông thường (N6, N7, N8...)</MenuItem>
+              <MenuItem value="S">S — Nhóm nghiêm trọng (S3, S4, S5...)</MenuItem>
+            </TextField>
+            <Alert severity="success">
+              Mã dự kiến được cấp: <strong>{getNextGroupCode(newGroupPrefix)}</strong>
+              <br />
+              Đây là mã dự kiến; backend sẽ xác nhận và cấp mã chính thức khi lưu.
             </Alert>
             <TextField
               label="Tên nhóm nội quy"
