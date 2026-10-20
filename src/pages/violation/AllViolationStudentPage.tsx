@@ -914,8 +914,9 @@ const handleSelectImages = async (
   };
 
   // -------------------------
-  // Theo dõi học sinh vi phạm CÙNG MỘT LỖI từ 3 lần trở lên trong tuần.
-  // Chỉ thống kê từ Violation hiện có; KHÔNG tự tạo lỗi S1.
+  // Danh sách xem xét rèn luyện: 2 điều kiện độc lập trong cùng tuần.
+  // (1) Tổng số lần vi phạm >= 5; HOẶC (2) cùng một nội quy >= 3 lần.
+  // Mỗi học sinh/lớp/năm học/tuần chỉ hiển thị một dòng.
   // -------------------------
   const repeatedViolationRows = (() => {
     type TrackingRow = {
@@ -924,53 +925,78 @@ const handleSelectImages = async (
       className: string;
       academicYear: string;
       weekNumber: number;
-      ruleCode: string;
       description: string;
       count: number;
       violations: Violation[];
+      reasons: string[];
+      matchingRules: { ruleKey: string; description: string; count: number }[];
+      eligibleByTotal: boolean;
+      eligibleByRepeatedRule: boolean;
     };
 
-    const grouped = new Map<string, TrackingRow>();
+    const studentGroups = new Map<string, TrackingRow>();
     for (const v of violations) {
+      // Không để lỗi tổng hợp S2-01 tự cộng ngược vào điều kiện xét của chính nó.
+      const isReviewSummaryViolation =
+        String(v.ruleCode || '').trim().toUpperCase() === 'S2-01' ||
+        String(v.groupCode || '').trim().toUpperCase() === 'S2' ||
+        String(v.description || '').trim().toLocaleLowerCase('vi') === 'tái vi phạm nhiều lần nội quy nhà trường';
+      if (isReviewSummaryViolation) continue;
       const weekNumber = Number(v.weekNumber);
       if (!Number.isFinite(weekNumber) || weekNumber < 1) continue;
-
-      // Ưu tiên mã lỗi cụ thể; nếu dữ liệu cũ chưa có mã thì dùng tên lỗi.
-      const ruleCode = String(v.ruleCode || '').trim().toUpperCase();
-      const descriptionKey = String(v.description || '').trim().toLocaleLowerCase('vi');
-      const specificRuleKey = ruleCode || descriptionKey;
-      if (!specificRuleKey) continue;
-
       const nameKey = String(v.name || '').trim().toLocaleLowerCase('vi');
       const classKey = String(v.className || '').trim().toUpperCase();
       const academicYear = String(v.academicYear || '').trim();
-      const key = [nameKey, classKey, academicYear, weekNumber, specificRuleKey].join('|');
-      const existing = grouped.get(key);
-      if (existing) {
-        existing.count += 1;
-        existing.violations.push(v);
-      } else {
-        const rule = rules.find((r) =>
-          (ruleCode && String(r.ruleCode || '').trim().toUpperCase() === ruleCode) ||
-          String(r.title || '').trim().toLocaleLowerCase('vi') === descriptionKey ||
-          String(r.content || '').trim().toLocaleLowerCase('vi') === descriptionKey
-        );
-        grouped.set(key, {
+      const key = [nameKey, classKey, academicYear, weekNumber].join('|');
+      const ruleCode = String(v.ruleCode || '').trim().toUpperCase();
+      const descriptionKey = String(v.description || '').trim().toLocaleLowerCase('vi');
+      const ruleKey = ruleCode || descriptionKey;
+      const rule = rules.find((r) =>
+        (ruleCode && String(r.ruleCode || '').trim().toUpperCase() === ruleCode) ||
+        String(r.title || '').trim().toLocaleLowerCase('vi') === descriptionKey ||
+        String(r.content || '').trim().toLocaleLowerCase('vi') === descriptionKey
+      );
+      const ruleDescription = rule?.title || v.description || ruleCode || 'Chưa xác định tên lỗi';
+      let row = studentGroups.get(key);
+      if (!row) {
+        row = {
           key,
           name: v.name,
           className: v.className,
           academicYear,
           weekNumber,
-          ruleCode,
-          description: rule?.title || v.description || ruleCode || 'Chưa xác định tên lỗi',
-          count: 1,
-          violations: [v],
-        });
+          description: '',
+          count: 0,
+          violations: [],
+          reasons: [],
+          matchingRules: [],
+          eligibleByTotal: false,
+          eligibleByRepeatedRule: false,
+        };
+        studentGroups.set(key, row);
       }
+      row.count += 1;
+      row.violations.push(v);
+      const matchingRule = row.matchingRules.find((item) => item.ruleKey === ruleKey);
+      if (matchingRule) matchingRule.count += 1;
+      else row.matchingRules.push({ ruleKey, description: ruleDescription, count: 1 });
     }
 
-    return Array.from(grouped.values())
-      .filter((row) => row.count >= 3)
+    return Array.from(studentGroups.values())
+      .map((row) => {
+        row.eligibleByTotal = row.count >= 5;
+        row.eligibleByRepeatedRule = row.matchingRules.some((item) => item.count >= 3);
+        row.reasons = [
+          ...(row.eligibleByTotal ? ['Tổng số lần vi phạm từ 5 lần'] : []),
+          ...(row.eligibleByRepeatedRule ? ['Cùng một nội quy từ 3 lần'] : []),
+        ];
+        row.description = row.matchingRules
+          .filter((item) => item.count >= 3)
+          .map((item) => `${item.description} (${item.count} lần)`)
+          .join('; ') || `${row.matchingRules.length} nội dung vi phạm khác nhau`;
+        return row;
+      })
+      .filter((row) => row.eligibleByTotal || row.eligibleByRepeatedRule)
       .filter((row) => !selectedClass || row.className === selectedClass)
       .filter((row) => !selectedWeek || String(row.weekNumber) === selectedWeek)
       .sort((a, b) => b.count - a.count || a.className.localeCompare(b.className));
@@ -1120,7 +1146,7 @@ const handleSelectImages = async (
           <Box>
             <Typography variant="h6" fontWeight="bold">Danh sách học sinh cần xem xét rèn luyện</Typography>
             <Typography variant="body2" color="text.secondary">
-              Cùng một lỗi cụ thể từ 3 lần trở lên trong cùng tuần. Kiểm tra đơn xin phép trước khi quyết định; hệ thống không tự động thêm lỗi S1.
+              Đưa vào danh sách nếu tổng vi phạm từ 5 lần trở lên HOẶC cùng một nội quy từ 3 lần trở lên trong cùng tuần. Đây là danh sách xem xét, không tự động hạ bậc.
             </Typography>
           </Box>
           <Button variant="outlined" onClick={() => setReviewDialogOpen(false)}>Đóng</Button>
@@ -1130,7 +1156,7 @@ const handleSelectImages = async (
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
-                  {['STT', 'Họ tên', 'Lớp', 'Năm học', 'Tuần', 'Lỗi vi phạm cụ thể', 'Số lần', 'Đơn xin phép', 'Thao tác'].map((label) => (
+                  {['STT', 'Họ tên', 'Lớp', 'Năm học', 'Tuần', 'Lý do xem xét', 'Tổng lần vi phạm', 'Đơn xin phép', 'Thao tác'].map((label) => (
                     <TableCell key={label} sx={{ bgcolor: '#fff0c2', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{label}</TableCell>
                   ))}
                 </TableRow>
@@ -1139,14 +1165,14 @@ const handleSelectImages = async (
                 {repeatedViolationRows.length ? repeatedViolationRows.map((row, index) => {
                   const apps = getApplicationSummary(row);
                   return (
-                    <TableRow key={row.key} sx={{ bgcolor: row.count >= 6 ? '#ffe0e0' : '#fffaf0' }}>
+                    <TableRow key={row.key} sx={{ bgcolor: row.count >= 5 ? '#ffe0e0' : '#fffaf0' }}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.name}</TableCell>
                       <TableCell>{row.className}</TableCell>
                       <TableCell>{row.academicYear || '-'}</TableCell>
                       <TableCell>{row.weekNumber}</TableCell>
-                      <TableCell sx={{ minWidth: 220 }}>{row.description}</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 'bold', color: row.count >= 6 ? 'error.main' : 'warning.dark' }}>{row.count}</TableCell>
+                      <TableCell sx={{ minWidth: 240 }}>{row.reasons.join(' · ')}{row.eligibleByRepeatedRule && <Typography variant="caption" display="block" color="text.secondary">{row.description}</Typography>}</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 'bold', color: row.count >= 5 ? 'error.main' : 'warning.dark' }}>{row.count}</TableCell>
                       <TableCell sx={{ minWidth: 220 }}>
                         {apps.total === 0
                           ? 'Chưa có đơn'
@@ -1244,7 +1270,7 @@ const handleSelectImages = async (
                 </Table>
               </Box>
               <Alert severity="warning">
-                Kiểm tra từng lần vi phạm và trạng thái đơn trước khi quyết định hạ rèn luyện. Hệ thống không tự động thêm lỗi S1.
+                Đây là danh sách xem xét theo 2 điều kiện: tổng vi phạm từ 5 lần hoặc cùng một nội quy từ 3 lần trong tuần. Cần kiểm tra từng lần vi phạm và quy trình xử lý trước khi xét duyệt; hệ thống không tự động thêm lỗi S1/S2.
               </Alert>
             </>
           )}
