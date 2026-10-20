@@ -47,6 +47,10 @@ interface Violation {
   academicYear?: string;
   ruleCode?: string;
   groupCode?: string;
+  s2ReviewStatus?: 'NOT_APPLICABLE' | 'PENDING' | 'APPROVED';
+  s2ApprovedBy?: string;
+  s2ApprovedAt?: string | null;
+  handlingNote?: string;
 
   application?: {
     _id: string;
@@ -130,6 +134,7 @@ export default function AllViolationStudentPage() {
   // Theo dõi cảnh báo học sinh mới đủ điều kiện xem xét hạ rèn luyện.
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedReviewRow, setSelectedReviewRow] = useState<any | null>(null);
+  const lastNotifiedReviewKeys = useRef<string[]>([]);
   const [seenReviewKeys, setSeenReviewKeys] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('seenRepeatedViolationReviewKeys');
@@ -932,6 +937,7 @@ const handleSelectImages = async (
       matchingRules: { ruleKey: string; description: string; count: number }[];
       eligibleByTotal: boolean;
       eligibleByRepeatedRule: boolean;
+      s2Violation?: Violation;
     };
 
     const studentGroups = new Map<string, TrackingRow>();
@@ -994,6 +1000,14 @@ const handleSelectImages = async (
           .filter((item) => item.count >= 3)
           .map((item) => `${item.description} (${item.count} lần)`)
           .join('; ') || `${row.matchingRules.length} nội dung vi phạm khác nhau`;
+        row.s2Violation = violations.find((item) =>
+          String(item.name || '').trim().toLocaleLowerCase('vi') === String(row.name || '').trim().toLocaleLowerCase('vi') &&
+          String(item.className || '').trim().toUpperCase() === String(row.className || '').trim().toUpperCase() &&
+          String(item.academicYear || '').trim() === row.academicYear &&
+          Number(item.weekNumber) === row.weekNumber &&
+          String(item.groupCode || '').trim().toUpperCase() === 'S2' &&
+          String(item.handlingNote || '').includes('[AUTO_S2_WEEKLY]')
+        );
         return row;
       })
       .filter((row) => row.eligibleByTotal || row.eligibleByRepeatedRule)
@@ -1012,6 +1026,60 @@ const handleSelectImages = async (
   };
 
   const unseenReviewRows = repeatedViolationRows.filter((row) => !seenReviewKeys.includes(row.key));
+
+  // Tự thông báo khi phát hiện học sinh đủ điều kiện mới (không lặp toast cho cùng một khóa).
+  useEffect(() => {
+    const newlyDetected = unseenReviewRows.filter(
+      (row) => !lastNotifiedReviewKeys.current.includes(row.key)
+    );
+    if (newlyDetected.length > 0) {
+      lastNotifiedReviewKeys.current = Array.from(new Set([
+        ...lastNotifiedReviewKeys.current,
+        ...newlyDetected.map((row) => row.key),
+      ]));
+      setSnackbar({
+        open: true,
+        message: `Phát hiện ${newlyDetected.length} học sinh đủ điều kiện xem xét hạ rèn luyện. Vui lòng mở danh sách để kiểm tra.`,
+        severity: 'warning',
+      });
+    }
+  }, [repeatedViolationRows, seenReviewKeys]);
+
+  const handleApproveS2Review = async (row: any) => {
+    try {
+      setApplicationSubmitting(true);
+      const response = await api.post('/api/violations/review-s2/approve', {
+        name: row.name,
+        className: row.className,
+        academicYear: row.academicYear,
+        weekNumber: row.weekNumber,
+      });
+      const approvedViolation = response.data?.violation;
+      if (approvedViolation) {
+        setViolations((previous) => {
+          const exists = previous.some((item) => item._id === approvedViolation._id);
+          return exists
+            ? previous.map((item) => item._id === approvedViolation._id ? { ...item, ...approvedViolation } : item)
+            : [...previous, approvedViolation];
+        });
+        setSelectedReviewRow((previous: any) => previous ? { ...previous, s2Violation: approvedViolation } : previous);
+      }
+      setSnackbar({
+        open: true,
+        message: response.data?.message || 'Đã duyệt hạ rèn luyện.',
+        severity: 'success',
+      });
+      await fetchViolations();
+    } catch (error: any) {
+      setSnackbar({
+        open: true,
+        message: error?.response?.data?.message || 'Không thể duyệt hạ rèn luyện.',
+        severity: 'warning',
+      });
+    } finally {
+      setApplicationSubmitting(false);
+    }
+  };
 
   // -------------------------
   // Render
@@ -1269,9 +1337,22 @@ const handleSelectImages = async (
                   </TableBody>
                 </Table>
               </Box>
-              <Alert severity="warning">
-                Đây là danh sách xem xét theo 2 điều kiện: tổng vi phạm từ 5 lần hoặc cùng một nội quy từ 3 lần trong tuần. Cần kiểm tra từng lần vi phạm và quy trình xử lý trước khi xét duyệt; hệ thống không tự động thêm lỗi S1/S2.
+              <Alert severity={selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' ? 'success' : 'warning'} sx={{ mb: 2 }}>
+                Điều kiện xem xét: tổng vi phạm từ 5 lần hoặc cùng một nội quy từ 3 lần trong cùng tuần.
+                {selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED'
+                  ? ` Đã duyệt hạ rèn luyện S2${selectedReviewRow.s2Violation.s2ApprovedBy ? ` bởi ${selectedReviewRow.s2Violation.s2ApprovedBy}` : ''}.`
+                  : ' S2 đang chờ duyệt không làm giảm điểm hạnh kiểm. Chỉ duyệt khi tất cả lỗi liên quan đã được PGT xử lý.'}
               </Alert>
+              <Button
+                variant="contained"
+                color="error"
+                disabled={applicationSubmitting || selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED'}
+                onClick={() => handleApproveS2Review(selectedReviewRow)}
+              >
+                {selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED'
+                  ? 'Đã duyệt hạ rèn luyện'
+                  : 'Duyệt hạ rèn luyện S2'}
+              </Button>
             </>
           )}
         </DialogContent>
