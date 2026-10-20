@@ -2265,9 +2265,7 @@ const totalConductViolations =
                     groupCode || ""
                   );
 
-                const isSerious =
-                  groupCode ===
-                  "S1";
+                const isSerious = /^S[1-9]\d*$/.test(groupCode || "");
 
                 return (
                   <TableRow
