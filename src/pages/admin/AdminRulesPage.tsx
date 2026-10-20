@@ -45,7 +45,7 @@ interface RuleForm {
 }
 
 // Danh sách mã nhóm được phép chọn
-const GROUP_CODES = ['N1', 'N2', 'N3', 'N4', 'N5', 'S1'];
+const GROUP_CODES = ['N1', 'N2', 'N3', 'N4', 'N5', 'S1', 'S2'];
 
 // Tên nhóm mẫu.
 // Hãy đối chiếu với tên nhóm đang có trong MongoDB trước khi dùng.
@@ -56,6 +56,7 @@ const GROUP_NAMES: Record<string, string> = {
   N4: 'Vệ sinh',
   N5: 'Các nội dung khác',
   S1: 'Nhóm S1',
+  S2: 'Tái phạm nghiêm trọng',
 };
 
 const emptyForm: RuleForm = {
@@ -147,7 +148,7 @@ export default function AdminRulesPage() {
       groupName: rule.groupName,
       ruleCode: rule.ruleCode,
       title: rule.title,
-      point: rule.point,
+      point: rule.groupCode === 'S2' ? 0 : rule.point,
       content: rule.content || '',
       active: rule.active,
     });
@@ -183,6 +184,7 @@ export default function AdminRulesPage() {
       groupCode,
       groupName: GROUP_NAMES[groupCode] || '',
       ruleCode: '',
+      point: groupCode === 'S2' ? 0 : (prev.groupCode === 'S2' ? 1 : prev.point),
       content: 'điểm/hs',
     }));
 
@@ -243,7 +245,7 @@ const handleSave = async () => {
         {
           groupCode: form.groupCode,
           title: form.title.trim(),
-          point: Number(form.point),
+          point: form.groupCode === 'S2' ? 0 : Number(form.point),
         },
         {
           headers: authHeaders,
@@ -772,7 +774,8 @@ const handleSave = async () => {
             <TextField
               label="Điểm trừ thi đua lớp"
               type="number"
-              value={form.point}
+              value={form.groupCode === 'S2' ? 0 : form.point}
+              disabled={form.groupCode === 'S2'}
               onChange={(e) =>
                 handleChange(
                   'point',
@@ -780,6 +783,7 @@ const handleSave = async () => {
                 )
               }
               fullWidth
+              helperText={form.groupCode === 'S2' ? 'Nhóm S2 được cố định 0 điểm trừ thi đua lớp' : undefined}
             />
 
             <TextField
