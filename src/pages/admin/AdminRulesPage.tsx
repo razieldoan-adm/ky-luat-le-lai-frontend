@@ -477,7 +477,7 @@ export default function AdminRulesPage() {
           <Chip
             key={group._id || group.groupCode}
             label={`${group.groupCode} – ${group.groupName}`}
-            color={group.groupCode === 'S2' ? 'warning' : 'default'}
+            color={group.groupCode.trim().toUpperCase().startsWith('S') ? 'error' : 'default'}
             variant="outlined"
           />
         ))}
@@ -514,7 +514,9 @@ export default function AdminRulesPage() {
                 <TableCell>{index + 1}</TableCell>
                 <TableCell>
                   <Stack spacing={0.3}>
-                    <Chip label={rule.groupCode} size="small" color="primary" />
+                    <Chip label={rule.groupCode} size="small"
+                      color={rule.groupCode.trim().toUpperCase().startsWith('S') ? 'error' : 'primary'}
+                    />
                     <Typography variant="body2">{rule.groupName}</Typography>
                   </Stack>
                 </TableCell>
