@@ -16,6 +16,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  MenuItem,
   Button,
   List,
   ListItemButton,
@@ -162,6 +163,8 @@ export default function LeaveApplicationsPage() {
   const [studentSearch, setStudentSearch] = useState('');
   const [classSearch, setClassSearch] = useState('');
   const [currentAcademicYear, setCurrentAcademicYear] = useState('2026-2027');
+  const [selectedWeekKey, setSelectedWeekKey] = useState('');
+  const [availableWeeks, setAvailableWeeks] = useState<{ weekNumber: number; academicYear: string }[]>([]);
 
   
   // =========================
@@ -427,6 +430,16 @@ export default function LeaveApplicationsPage() {
     const res = await api.get('/api/academic-weeks/study-weeks');
 
     const weeks = res.data || [];
+    setAvailableWeeks(
+      weeks
+        .map((w: any) => ({
+          weekNumber: Number(w.weekNumber),
+          academicYear: String(w.academicYear || '2026-2027'),
+        }))
+        .filter((w: { weekNumber: number; academicYear: string }) =>
+          Number.isFinite(w.weekNumber)
+        )
+    );
     const now = new Date();
 
     const currentWeekFound = weeks.find((w: any) => {
@@ -875,18 +888,50 @@ const handleSelectStudentForApplication = (
     const normalizeSearchText = (value?: string) =>
       removeVietnameseTones(String(value || '').trim().toLowerCase());
 
-    const filteredApplications = applications.filter((application) => {
-      // Chỉ hiển thị đơn thuộc tuần hiện tại.
-      if (currentWeek === null || Number(application.weekNumber) !== currentWeek) {
-        return false;
-      }
+    // Mặc định dùng tuần hiện tại; người dùng có thể chọn tuần/năm học khác.
+    const currentWeekKey =
+      currentWeek === null ? '' : `${currentAcademicYear}|${currentWeek}`;
+    const effectiveWeekKey = selectedWeekKey || currentWeekKey;
+    const [selectedAcademicYearForFilter, selectedWeekNumberForFilter] =
+      effectiveWeekKey.split('|');
+    const weekOptionsMap = new Map<string, { key: string; academicYear: string; weekNumber: number }>();
 
-      // Nếu dữ liệu tuần có năm học thì lọc thêm năm học để tránh trùng số tuần.
-      if (
-        application.academicYear &&
-        currentAcademicYear &&
-        application.academicYear !== currentAcademicYear
-      ) {
+    availableWeeks.forEach((week) => {
+      const key = `${week.academicYear}|${week.weekNumber}`;
+      weekOptionsMap.set(key, {
+        key,
+        academicYear: week.academicYear,
+        weekNumber: week.weekNumber,
+      });
+    });
+
+    applications.forEach((application) => {
+      const year = String(application.academicYear || currentAcademicYear);
+      const weekNumber = Number(application.weekNumber);
+      if (!Number.isFinite(weekNumber)) return;
+      const key = `${year}|${weekNumber}`;
+      weekOptionsMap.set(key, { key, academicYear: year, weekNumber });
+    });
+
+    if (currentWeek !== null) {
+      weekOptionsMap.set(currentWeekKey, {
+        key: currentWeekKey,
+        academicYear: currentAcademicYear,
+        weekNumber: currentWeek,
+      });
+    }
+
+    const weekOptions = Array.from(weekOptionsMap.values()).sort((a, b) => {
+      const yearCompare = b.academicYear.localeCompare(a.academicYear);
+      return yearCompare || b.weekNumber - a.weekNumber;
+    });
+
+    const filteredApplications = applications.filter((application) => {
+      if (effectiveWeekKey) {
+        const applicationYear = String(application.academicYear || currentAcademicYear);
+        const applicationWeekKey = `${applicationYear}|${Number(application.weekNumber)}`;
+        if (applicationWeekKey !== effectiveWeekKey) return false;
+      } else if (currentWeek === null || Number(application.weekNumber) !== currentWeek) {
         return false;
       }
 
@@ -1596,7 +1641,7 @@ const handleSelectStudentForApplication = (
         fontWeight="bold"
         sx={{ mb: 1 }}
       >
-        Danh sách đơn xin phép — Tuần {currentWeek ?? 'đang xác định'}
+        Danh sách đơn xin phép — Tuần {selectedWeekNumberForFilter || currentWeek || 'đang xác định'}
       </Typography>
 
       <Paper
@@ -1624,11 +1669,28 @@ const handleSelectStudentForApplication = (
             value={classSearch}
             onChange={(e) => setClassSearch(e.target.value)}
           />
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="Chọn tuần"
+            value={effectiveWeekKey}
+            onChange={(e) => setSelectedWeekKey(e.target.value)}
+            sx={{ minWidth: { sm: 190 } }}
+          >
+            {weekOptions.map((option) => (
+              <MenuItem key={option.key} value={option.key}>
+                Tuần {option.weekNumber} — {option.academicYear}
+                {option.key === currentWeekKey ? ' (Hiện tại)' : ''}
+              </MenuItem>
+            ))}
+          </TextField>
           <Button
             variant="outlined"
             onClick={() => {
               setStudentSearch('');
               setClassSearch('');
+              setSelectedWeekKey('');
             }}
             sx={{ minWidth: { sm: 120 } }}
           >
@@ -1640,8 +1702,9 @@ const handleSelectStudentForApplication = (
           color="text.secondary"
           sx={{ mt: 1 }}
         >
-          Đang hiển thị đơn của tuần hiện tại
-          {currentWeek !== null ? ` (tuần ${currentWeek})` : ''}.
+          Đang hiển thị {selectedWeekNumberForFilter
+            ? `tuần ${selectedWeekNumberForFilter} — năm học ${selectedAcademicYearForFilter}`
+            : 'tuần hiện tại'}.
           Kết quả: {filteredApplications.length} đơn.
         </Typography>
       </Paper>
@@ -1834,11 +1897,11 @@ return (
                     align="center"
                     sx={{ py: 4 }}
                   >
-                    {currentWeek === null
+                    {!effectiveWeekKey
                       ? 'Chưa xác định được tuần học hiện tại.'
                       : applications.length === 0
                         ? 'Chưa có đơn xin phép nào.'
-                        : 'Không có đơn nào khớp với tuần hiện tại hoặc điều kiện tìm kiếm.'}
+                        : 'Không có đơn nào khớp với tuần đã chọn hoặc điều kiện tìm kiếm.'}
                   </TableCell>
                 </TableRow>
               )}
