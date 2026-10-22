@@ -54,6 +54,8 @@ interface LeaveApplication {
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'OVERDUE';
   submittedAt?: string;
   deadlineAt?: string | null;
+  validityDuration?: string;
+  expiresAt?: string | null;
   processedAt?: string | null;
   processedBy?: string;
   note?: string;
@@ -164,6 +166,9 @@ export default function LeaveApplicationsPage() {
   const [classSearch, setClassSearch] = useState('');
   const [currentAcademicYear, setCurrentAcademicYear] = useState('2026-2027');
   const [selectedWeekKey, setSelectedWeekKey] = useState('');
+  const [validityDuration, setValidityDuration] = useState('DAY');
+  const [customValidityDays, setCustomValidityDays] = useState('5');
+  const [customExpiryDate, setCustomExpiryDate] = useState('');
   const [availableWeeks, setAvailableWeeks] = useState<{ weekNumber: number; academicYear: string }[]>([]);
 
   
@@ -682,6 +687,19 @@ const submitDirectApplication = async (
     return;
   }
 
+  if (validityDuration === 'CUSTOM_DAYS') {
+    const days = Number(customValidityDays);
+    if (!Number.isInteger(days) || days < 1 || days > 365) {
+      setError('Số ngày hiệu lực tùy chọn phải từ 1 đến 365 ngày.');
+      return;
+    }
+  }
+
+  if (validityDuration === 'CUSTOM_DATE' && !customExpiryDate) {
+    setError('Vui lòng chọn ngày hết hiệu lực.');
+    return;
+  }
+
   try {
     setSubmittingApplication(true);
     setError('');
@@ -708,6 +726,15 @@ const submitDirectApplication = async (
         description: selectedRule.title,
         originalPenalty: selectedRule.point,
 
+        // Thời gian hiệu lực riêng, không thay đổi hạn xử lý đơn.
+        validityDuration,
+        ...(validityDuration === 'CUSTOM_DAYS'
+          ? { customValidityDays: Number(customValidityDays) }
+          : {}),
+        ...(validityDuration === 'CUSTOM_DATE'
+          ? { customExpiryDate }
+          : {}),
+
         // ⭐ Nếu cán bộ chọn ngoại lệ
         isException,
       }
@@ -729,6 +756,9 @@ const submitDirectApplication = async (
     setStudentName('');
     setStudentSuggestions([]);
     setSelectedDirectRuleCode('');
+    setValidityDuration('DAY');
+    setCustomValidityDays('5');
+    setCustomExpiryDate('');
 
     setSubmissionCount(0);
     setOldApplicationNotice('');
@@ -1349,6 +1379,56 @@ const handleSelectStudentForApplication = (
       <strong>{selectedStudent?.className}</strong>
     </Typography>
 
+    <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+      <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
+        Thời gian hiệu lực của đơn
+      </Typography>
+      <TextField
+        select
+        fullWidth
+        size="small"
+        label="Chọn thời gian hiệu lực"
+        value={validityDuration}
+        onChange={(e) => setValidityDuration(e.target.value)}
+      >
+        <MenuItem value="DAY">Mặc định — 1 ngày</MenuItem>
+        <MenuItem value="3_DAYS">3 ngày</MenuItem>
+        <MenuItem value="7_DAYS">7 ngày</MenuItem>
+        <MenuItem value="CUSTOM_DAYS">Tùy chọn số ngày</MenuItem>
+        <MenuItem value="CUSTOM_DATE">Chọn ngày hết hiệu lực</MenuItem>
+      </TextField>
+
+      {validityDuration === 'CUSTOM_DAYS' && (
+        <TextField
+          fullWidth
+          size="small"
+          type="number"
+          label="Số ngày hiệu lực"
+          value={customValidityDays}
+          onChange={(e) => setCustomValidityDays(e.target.value)}
+          inputProps={{ min: 1, max: 365, step: 1 }}
+          sx={{ mt: 2 }}
+        />
+      )}
+
+      {validityDuration === 'CUSTOM_DATE' && (
+        <TextField
+          fullWidth
+          size="small"
+          type="date"
+          label="Ngày hết hiệu lực"
+          value={customExpiryDate}
+          onChange={(e) => setCustomExpiryDate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          inputProps={{ min: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}` }}
+          sx={{ mt: 2 }}
+        />
+      )}
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+        Thời gian hiệu lực độc lập với cột “Hạn xử lý”. Mặc định đơn có hiệu lực 1 ngày.
+      </Typography>
+    </Paper>
+
     <Typography
       variant="subtitle1"
       fontWeight={600}
@@ -1746,6 +1826,7 @@ const handleSelectStudentForApplication = (
                 <TableCell>Điểm phạt</TableCell>
                 <TableCell>Ngày nộp</TableCell>
                 <TableCell>Hạn xử lý</TableCell>
+                <TableCell>Hiệu lực đến</TableCell>
                 <TableCell>Trạng thái</TableCell>
                 <TableCell>Ghi chú</TableCell>
                 <TableCell>Thao tác</TableCell>
@@ -1832,6 +1913,10 @@ return (
                     </TableCell>
 
                     <TableCell>
+                      {formatDate(application.expiresAt)}
+                    </TableCell>
+
+                    <TableCell>
                       <Chip
                         label={getStatusLabel(application.status)}
                         color={getStatusColor(application.status)}
@@ -1893,7 +1978,7 @@ return (
              ):(
                 <TableRow>
                   <TableCell
-                    colSpan={12}
+                    colSpan={13}
                     align="center"
                     sx={{ py: 4 }}
                   >
