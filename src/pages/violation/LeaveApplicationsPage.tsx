@@ -159,6 +159,9 @@ export default function LeaveApplicationsPage() {
   const [selectedDirectRuleCode, setSelectedDirectRuleCode] = useState<string>('');
 
   const [currentWeek, setCurrentWeek] = useState<number | null>(null);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [classSearch, setClassSearch] = useState('');
+  const [currentAcademicYear, setCurrentAcademicYear] = useState('2026-2027');
 
   
   // =========================
@@ -441,6 +444,9 @@ export default function LeaveApplicationsPage() {
     const week = Number(currentWeekFound.weekNumber);
 
     setCurrentWeek(week);
+    if (currentWeekFound.academicYear) {
+      setCurrentAcademicYear(String(currentWeekFound.academicYear));
+    }
   } catch (error) {
     console.error('Lỗi khi lấy tuần hiện tại:', error);
   }
@@ -866,6 +872,34 @@ const handleSelectStudentForApplication = (
   // Không có đơn cũ → mở dialog nhận đơn
   setDirectApplicationDialogOpen(true);
 };
+    const normalizeSearchText = (value?: string) =>
+      removeVietnameseTones(String(value || '').trim().toLowerCase());
+
+    const filteredApplications = applications.filter((application) => {
+      // Chỉ hiển thị đơn thuộc tuần hiện tại.
+      if (currentWeek === null || Number(application.weekNumber) !== currentWeek) {
+        return false;
+      }
+
+      // Nếu dữ liệu tuần có năm học thì lọc thêm năm học để tránh trùng số tuần.
+      if (
+        application.academicYear &&
+        currentAcademicYear &&
+        application.academicYear !== currentAcademicYear
+      ) {
+        return false;
+      }
+
+      const nameMatches = normalizeSearchText(application.studentName).includes(
+        normalizeSearchText(studentSearch)
+      );
+      const classMatches = normalizeSearchText(application.className).includes(
+        normalizeSearchText(classSearch)
+      );
+
+      return nameMatches && classMatches;
+    });
+
     return (
       <Box sx={{ maxWidth: '100%', mx: 'auto', py: 3 }}>
         <Typography
@@ -1558,12 +1592,59 @@ const handleSelectStudentForApplication = (
         </DialogActions>
       </Dialog>
       <Typography
-        align="center"
-        color="text.secondary"
-        sx={{ mb: 3 }}
+        variant="h6"
+        fontWeight="bold"
+        sx={{ mb: 1 }}
       >
-        Danh sách đơn xin phép của học sinh
+        Danh sách đơn xin phép — Tuần {currentWeek ?? 'đang xác định'}
       </Typography>
+
+      <Paper
+        variant="outlined"
+        sx={{ p: 2, mb: 2, borderRadius: 2 }}
+      >
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+        >
+          <TextField
+            fullWidth
+            size="small"
+            label="Tìm theo tên học sinh"
+            placeholder="Nhập một phần tên, có dấu hoặc không dấu"
+            value={studentSearch}
+            onChange={(e) => setStudentSearch(e.target.value)}
+          />
+          <TextField
+            fullWidth
+            size="small"
+            label="Lọc theo lớp"
+            placeholder="Ví dụ: 6A1, 7A2"
+            value={classSearch}
+            onChange={(e) => setClassSearch(e.target.value)}
+          />
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setStudentSearch('');
+              setClassSearch('');
+            }}
+            sx={{ minWidth: { sm: 120 } }}
+          >
+            Xóa lọc
+          </Button>
+        </Stack>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mt: 1 }}
+        >
+          Đang hiển thị đơn của tuần hiện tại
+          {currentWeek !== null ? ` (tuần ${currentWeek})` : ''}.
+          Kết quả: {filteredApplications.length} đơn.
+        </Typography>
+      </Paper>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -1609,8 +1690,8 @@ const handleSelectStudentForApplication = (
             </TableHead>
 
             <TableBody>
-              {applications.length > 0 ? (
-                applications.map((application, index) => (
+              {filteredApplications.length > 0 ? (
+                filteredApplications.map((application, index) => (
                   <TableRow key={application._id}>
                     <TableCell>{index + 1}</TableCell>
 
@@ -1753,7 +1834,11 @@ return (
                     align="center"
                     sx={{ py: 4 }}
                   >
-                    Chưa có đơn xin phép.
+                    {currentWeek === null
+                      ? 'Chưa xác định được tuần học hiện tại.'
+                      : applications.length === 0
+                        ? 'Chưa có đơn xin phép nào.'
+                        : 'Không có đơn nào khớp với tuần hiện tại hoặc điều kiện tìm kiếm.'}
                   </TableCell>
                 </TableRow>
               )}
