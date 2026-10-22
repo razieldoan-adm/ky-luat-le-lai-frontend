@@ -24,6 +24,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  DialogActions,
   Chip,
   Divider,
 } from "@mui/material";
@@ -126,6 +127,10 @@ const ViolationDetailPage = () => {
   const [rules, setRules] = useState<Rule[]>([]);
 
   const [selectedRuleId, setSelectedRuleId] = useState("");
+  
+  // Đơn xin phép phù hợp cần người dùng quyết định trước khi lưu lỗi
+  const [leaveApplicationDialogOpen, setLeaveApplicationDialogOpen] = useState(false);
+  const [matchingLeaveApplication, setMatchingLeaveApplication] = useState<any | null>(null);
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -626,7 +631,10 @@ const fetchSettings = async () => {
   // ➕ GHI NHẬN LỖI
   // ==========================================================
 
-  const handleAddViolation = async () => {
+  const handleAddViolation = async (
+  skipLeaveApplicationCheck = false,
+  leaveApplicationId?: string
+  ) => {
   const selectedRule =
     rules.find(
       (r) =>
@@ -709,6 +717,64 @@ const fetchSettings = async () => {
 
       return;
     }
+    
+    // Kiểm tra đơn trực tiếp còn hiệu lực trước khi tạo Violation.
+    // Nếu tìm thấy đơn phù hợp, mở hộp thoại và chưa lưu lỗi/ảnh.
+    if (!skipLeaveApplicationCheck) {
+      const applicationsRes = await api.get(
+        "/api/leave-applications",
+        {
+          params: {
+            status: "PENDING",
+            className,
+            academicYear: year,
+            weekNumber,
+          },
+        }
+      );
+
+      const applications = Array.isArray(applicationsRes.data)
+        ? applicationsRes.data
+        : applicationsRes.data?.data || [];
+
+      const normalized = (value: unknown) =>
+        String(value || "").trim().toLocaleLowerCase();
+
+      const now = Date.now();
+
+      const matchingApplication = applications.find(
+        (application: any) => {
+          const expiresAt = application?.expiresAt
+            ? new Date(application.expiresAt).getTime()
+            : 0;
+
+          const hasNoLinkedViolation =
+            !application?.violationId ||
+            (
+              typeof application.violationId === "object" &&
+              !application.violationId?._id
+            );
+
+          return (
+            normalized(application.studentName) === normalized(name) &&
+            normalized(application.className) === normalized(className) &&
+            normalized(application.academicYear) === normalized(year) &&
+            Number(application.weekNumber) === weekNumber &&
+            normalized(application.ruleCode) ===
+              normalized(selectedRule.ruleCode) &&
+            application.status === "PENDING" &&
+            expiresAt > now &&
+            hasNoLinkedViolation
+          );
+        }
+      );
+
+      if (matchingApplication) {
+        setMatchingLeaveApplication(matchingApplication);
+        setLeaveApplicationDialogOpen(true);
+        return;
+      }
+    }
 
     const violationDate =
       getViolationDate();
@@ -757,6 +823,7 @@ const res = await api.post(
     handled: false,
 
     handledBy: "",
+    ...(leaveApplicationId ? { leaveApplicationId } : {}),
   }
 );
 
@@ -2897,6 +2964,91 @@ const totalConductViolations =
 </Dialog>
       
       
+      {/* HỘP THOẠI ĐƠN XIN PHÉP TRỰC TIẾP */}
+      <Dialog
+        open={leaveApplicationDialogOpen}
+        onClose={() => {
+          setLeaveApplicationDialogOpen(false);
+          setMatchingLeaveApplication(null);
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          Phát hiện đơn xin phép phù hợp
+        </DialogTitle>
+
+        <DialogContent>
+          <Typography>
+            Học sinh này đã có đơn xin phép còn hiệu lực
+            cho lỗi đang ghi nhận.
+          </Typography>
+
+          {matchingLeaveApplication && (
+            <Box sx={{ mt: 2 }}>
+              <Typography>
+                <strong>Học sinh:</strong>{" "}
+                {matchingLeaveApplication.studentName}
+              </Typography>
+
+              <Typography>
+                <strong>Lớp:</strong>{" "}
+                {matchingLeaveApplication.className}
+              </Typography>
+
+              <Typography>
+                <strong>Lỗi:</strong>{" "}
+                {matchingLeaveApplication.ruleCode}
+              </Typography>
+
+              <Typography>
+                <strong>Trạng thái đơn:</strong>{" "}
+                {matchingLeaveApplication.status}
+              </Typography>
+            </Box>
+          )}
+
+          <Typography sx={{ mt: 2 }}>
+            Bạn muốn bỏ qua vi phạm hay gắn đơn này vào vi phạm?
+          </Typography>
+        </DialogContent>
+
+        <DialogActions
+          sx={{
+            p: 2,
+            flexWrap: "wrap",
+            gap: 1,
+          }}
+        >
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setLeaveApplicationDialogOpen(false);
+              setMatchingLeaveApplication(null);
+            }}
+          >
+            Bỏ qua vi phạm
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={() => {
+              const applicationId =
+                matchingLeaveApplication?._id;
+
+              setLeaveApplicationDialogOpen(false);
+              setMatchingLeaveApplication(null);
+
+              if (applicationId) {
+                void handleAddViolation(true, applicationId);
+              }
+            }}
+          >
+            Gắn đơn vào vi phạm
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* ======================================================
           SNACKBAR
       ====================================================== */}
