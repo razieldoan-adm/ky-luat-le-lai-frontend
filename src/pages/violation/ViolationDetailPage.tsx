@@ -2097,11 +2097,9 @@ const totalConductViolations =
 
             <Button
               variant="contained"
-              onClick={
-                handleAddViolation
-              }
+              onClick={() => void handleAddViolation()}
               sx={{
-                minWidth: 110,
+                minWidth: 120,
               }}
             >
               Ghi nhận
