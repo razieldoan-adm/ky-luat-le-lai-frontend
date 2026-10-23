@@ -99,7 +99,6 @@ export default function StudentConductReviewPage() {
     message: '',
     severity: 'success' as 'success' | 'error' | 'warning',
   });
-  const lastNotifiedReviewKeys = useRef<string[]>([]);
   const knownReviewKeys = useRef<Set<string> | null>(null);
   const [seenReviewKeys, setSeenReviewKeys] = useState<string[]>(() => {
     try {
