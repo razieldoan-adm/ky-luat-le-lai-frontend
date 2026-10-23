@@ -1,4 +1,4 @@
-
+```tsx
 // src/pages/LoginPage.tsx
 
 import { useState, useEffect } from "react";
@@ -24,52 +24,30 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  // ======================================================
   // THÔNG BÁO
-  // ======================================================
-  const [sessionMessage, setSessionMessage] =
-    useState("");
+  const [sessionMessage, setSessionMessage] = useState("");
+  const [loginError, setLoginError] = useState("");
 
-  const [loginError, setLoginError] =
-    useState("");
-
-  // ======================================================
   // KIỂM TRA LÝ DO BỊ ĐƯA VỀ LOGIN
-  // ======================================================
   useEffect(() => {
-    const message =
-      sessionStorage.getItem(
-        "sessionExpiredMessage"
-      );
+    const message = sessionStorage.getItem(
+      "sessionExpiredMessage"
+    );
 
     if (message) {
       setSessionMessage(message);
-
-      // Đọc xong thì xóa để F5 không hiện lại
-      sessionStorage.removeItem(
-        "sessionExpiredMessage"
-      );
+      sessionStorage.removeItem("sessionExpiredMessage");
     }
   }, []);
 
-  // ======================================================
-  // NẾU ĐÃ ĐĂNG NHẬP -> ĐI ĐÚNG TRANG
-  // ======================================================
+  // NẾU ĐÃ ĐĂNG NHẬP -> VỀ DASHBOARD
   useEffect(() => {
     if (user) {
-      if (user.role === "admin") {
-        navigate("/admin");
-      } else if (user.role === "teacher") {
-        navigate("/teacher");
-      } else {
-        navigate("/student");
-      }
+      navigate("/", { replace: true });
     }
   }, [user, navigate]);
 
-  // ======================================================
   // ĐĂNG NHẬP
-  // ======================================================
   const handleLogin = async () => {
     setLoginError("");
 
@@ -81,45 +59,26 @@ export default function LoginPage() {
     }
 
     try {
-      const res = await api.post(
-        "/api/auth/login",
-        {
-          username: username.trim(),
-          password: password.trim()
-        }
-      );
+      const res = await api.post("/api/auth/login", {
+        username: username.trim(),
+        password: password.trim()
+      });
 
       const userData = {
         username: username.trim(),
         role: res.data.role
       };
 
-      // AuthContext sẽ lưu ngày đăng nhập
-      login(
-        userData,
-        res.data.token
-      );
+      // AuthContext lưu thông tin đăng nhập
+      login(userData, res.data.token);
 
-      // ==================================================
-      // ĐIỀU HƯỚNG THEO ROLE
-      // ==================================================
-      if (res.data.role === "admin") {
-        navigate("/admin");
-      } else if (res.data.role === "teacher") {
-        navigate("/teacher");
-      } else {
-        navigate("/student");
-      }
+      // ĐĂNG NHẬP THÀNH CÔNG -> DASHBOARD
+      navigate("/", { replace: true });
 
     } catch (err) {
-      console.error(
-        "Lỗi đăng nhập:",
-        err
-      );
+      console.error("Lỗi đăng nhập:", err);
 
-      setLoginError(
-        "Sai tài khoản hoặc mật khẩu."
-      );
+      setLoginError("Sai tài khoản hoặc mật khẩu.");
     }
   };
 
@@ -140,30 +99,16 @@ export default function LoginPage() {
           Đăng nhập hệ thống
         </Typography>
 
-        {/* ==================================================
-            THÔNG BÁO PHIÊN HẾT HẠN
-        ================================================== */}
+        {/* THÔNG BÁO PHIÊN HẾT HẠN */}
         {sessionMessage && (
-          <Alert
-            severity="warning"
-            sx={{
-              mb: 2
-            }}
-          >
+          <Alert severity="warning" sx={{ mb: 2 }}>
             {sessionMessage}
           </Alert>
         )}
 
-        {/* ==================================================
-            THÔNG BÁO ĐĂNG NHẬP SAI
-        ================================================== */}
+        {/* THÔNG BÁO ĐĂNG NHẬP SAI */}
         {loginError && (
-          <Alert
-            severity="error"
-            sx={{
-              mb: 2
-            }}
-          >
+          <Alert severity="error" sx={{ mb: 2 }}>
             {loginError}
           </Alert>
         )}
@@ -176,9 +121,7 @@ export default function LoginPage() {
           <TextField
             label="Tên đăng nhập"
             value={username}
-            onChange={(e) =>
-              setUsername(e.target.value)
-            }
+            onChange={(e) => setUsername(e.target.value)}
             fullWidth
           />
 
@@ -186,9 +129,7 @@ export default function LoginPage() {
             label="Mật khẩu"
             type="password"
             value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
-            }
+            onChange={(e) => setPassword(e.target.value)}
             fullWidth
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -226,4 +167,4 @@ export default function LoginPage() {
     </Container>
   );
 }
-
+```
