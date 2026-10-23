@@ -100,6 +100,7 @@ export default function StudentConductReviewPage() {
     severity: 'success' as 'success' | 'error' | 'warning',
   });
   const lastNotifiedReviewKeys = useRef<string[]>([]);
+  const knownReviewKeys = useRef<Set<string> | null>(null);
   const [seenReviewKeys, setSeenReviewKeys] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('seenRepeatedViolationReviewKeys');
@@ -243,20 +244,32 @@ export default function StudentConductReviewPage() {
     [repeatedViolationRows, seenReviewKeys],
   );
 
+  // Chỉ báo học sinh mới sau lần tải đầu; tránh báo nhầm toàn bộ danh sách cũ.
   useEffect(() => {
-    const newlyDetected = unseenReviewRows.filter((row) => !lastNotifiedReviewKeys.current.includes(row.key));
+    if (loading) return;
+    const currentKeys = new Set(allReviewRows.map((row) => row.key));
+    if (knownReviewKeys.current === null) {
+      knownReviewKeys.current = currentKeys;
+      return;
+    }
+    const newlyDetected = allReviewRows.filter((row) => !knownReviewKeys.current?.has(row.key));
+    knownReviewKeys.current = currentKeys;
     if (newlyDetected.length > 0) {
-      lastNotifiedReviewKeys.current = Array.from(new Set([
-        ...lastNotifiedReviewKeys.current,
-        ...newlyDetected.map((row) => row.key),
-      ]));
       setSnackbar({
         open: true,
-        message: `Phát hiện ${newlyDetected.length} học sinh đủ điều kiện xem xét hạ rèn luyện. Vui lòng kiểm tra danh sách.`,
+        message: `Có ${newlyDetected.length} học sinh mới đủ điều kiện xem xét rèn luyện: ${newlyDetected.slice(0, 3).map((row) => `${row.name} (${row.className})`).join(', ')}${newlyDetected.length > 3 ? '…' : ''}.`,
         severity: 'warning',
       });
     }
-  }, [unseenReviewRows]);
+  }, [allReviewRows, loading]);
+
+  // Tự kiểm tra dữ liệu mới mỗi 60 giây khi đang mở trang.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void refreshViolations().catch((error) => console.error('Lỗi tự làm mới danh sách xem xét:', error));
+    }, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const getApplicationSummary = (row: ReviewRow) => {
     const apps = row.violations.map((v) => v.application).filter((app) => app != null);
@@ -284,6 +297,24 @@ export default function StudentConductReviewPage() {
     })));
   };
 
+  const handleProcessByPGT = async (violation: Violation) => {
+    try {
+      setApplicationSubmitting(true);
+      const response = await api.patch(`/api/violations/${violation._id}/handle`, { handledBy: 'PGT' });
+      const updatedViolation = response.data || { ...violation, handled: true, handledBy: 'PGT' };
+      setViolations((previous) => previous.map((item) => item._id === violation._id ? { ...item, ...updatedViolation } : item));
+      setSelectedReviewRow((previous) => previous ? {
+        ...previous,
+        violations: previous.violations.map((item) => item._id === violation._id ? { ...item, ...updatedViolation } : item),
+      } : previous);
+      setSnackbar({ open: true, message: 'PGT đã xử lý vi phạm.', severity: 'success' });
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error?.response?.data?.message || 'Không thể xử lý vi phạm bởi PGT.', severity: 'error' });
+    } finally {
+      setApplicationSubmitting(false);
+    }
+  };
+
   const handleApproveS2Review = async (row: ReviewRow) => {
     try {
       setApplicationSubmitting(true);
@@ -295,6 +326,53 @@ export default function StudentConductReviewPage() {
       setSelectedReviewRow((previous) => previous ? { ...previous, s2Violation: response.data?.violation || previous.s2Violation } : previous);
     } catch (error: any) {
       setSnackbar({ open: true, message: error?.response?.data?.message || 'Không thể duyệt hạ rèn luyện.', severity: 'warning' });
+    } finally {
+      setApplicationSubmitting(false);
+    }
+  };
+
+  // Quy trình dành cho PGT: đánh dấu các vi phạm liên quan là PGT đã xử lý,
+  // sau đó mới gửi yêu cầu duyệt S2 cho đúng học sinh/lớp/năm học/tuần.
+  const handlePGTApproveStudent = async (row: ReviewRow) => {
+    const confirmed = window.confirm(
+      `PGT sẽ đánh dấu ${row.violations.length} vi phạm của ${row.name} (${row.className}, tuần ${row.weekNumber}) là đã xử lý bởi PGT, sau đó duyệt hạ rèn luyện S2. Bạn muốn tiếp tục?`,
+    );
+    if (!confirmed) return;
+
+    try {
+      setApplicationSubmitting(true);
+      for (const violation of row.violations) {
+        if (!(violation.handled && violation.handledBy === 'PGT')) {
+          await api.patch(`/api/violations/${violation._id}/handle`, { handledBy: 'PGT' });
+        }
+      }
+
+      const response = await api.post('/api/violations/review-s2/approve', {
+        name: row.name,
+        className: row.className,
+        academicYear: row.academicYear,
+        weekNumber: row.weekNumber,
+      });
+
+      await refreshViolations();
+      setSelectedReviewRow((previous) => previous ? {
+        ...previous,
+        violations: previous.violations.map((item) => ({ ...item, handled: true, handledBy: 'PGT' })),
+        s2Violation: response.data?.violation || previous.s2Violation,
+      } : previous);
+      setSnackbar({
+        open: true,
+        message: response.data?.message || `PGT đã xử lý các vi phạm còn thiếu và duyệt hạ rèn luyện cho ${row.name}.`,
+        severity: 'success',
+      });
+    } catch (error: any) {
+      // Nếu một bước lỗi, tải lại để giao diện phản ánh chính xác các vi phạm đã cập nhật.
+      try { await refreshViolations(); } catch { /* giữ thông báo lỗi gốc */ }
+      setSnackbar({
+        open: true,
+        message: error?.response?.data?.message || 'Không thể hoàn tất xử lý và duyệt hạ rèn luyện bởi PGT.',
+        severity: 'warning',
+      });
     } finally {
       setApplicationSubmitting(false);
     }
@@ -484,6 +562,8 @@ export default function StudentConductReviewPage() {
                 <TableCell sx={{ minWidth: 160 }}><Stack direction="row" spacing={1} flexWrap="wrap">
                   {v.application?.status === 'PENDING' && <Button size="small" variant="contained" color="success" disabled={applicationSubmitting} onClick={() => void handleApproveApplication(v)}>Duyệt đơn</Button>}
                   {!v.application && <Button size="small" variant="outlined" color="warning" disabled={applicationSubmitting} onClick={() => handleSubmitApplication(v)}>Nộp đơn</Button>}
+                  {!(v.handled && v.handledBy === 'PGT') && <Button size="small" variant="contained" color="primary" disabled={applicationSubmitting} onClick={() => void handleProcessByPGT(v)}>PGT xử lý</Button>}
+                  {v.handled && v.handledBy === 'PGT' && <Typography variant="caption" color="success.main" sx={{ alignSelf: 'center', whiteSpace: 'nowrap' }}>PGT đã xử lý ✓</Typography>}
                 </Stack></TableCell>
               </TableRow>)}</TableBody>
             </Table></Box>
@@ -491,9 +571,24 @@ export default function StudentConductReviewPage() {
               Điều kiện xem xét: tổng vi phạm từ 5 lần hoặc cùng một nội quy từ 3 lần trong cùng tuần.
               {selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' ? ` Đã duyệt hạ rèn luyện S2${selectedReviewRow.s2Violation.s2ApprovedBy ? ` bởi ${selectedReviewRow.s2Violation.s2ApprovedBy}` : ''}.` : ' S2 đang chờ duyệt không làm giảm điểm hạnh kiểm. Chỉ duyệt khi tất cả lỗi liên quan đã được PGT xử lý.'}
             </Alert>
-            <Button variant="contained" color="error" disabled={applicationSubmitting || selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED'} onClick={() => void handleApproveS2Review(selectedReviewRow)}>
-              {selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' ? 'Đã duyệt hạ rèn luyện' : 'Duyệt hạ rèn luyện S2'}
-            </Button>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              <Button
+                variant="outlined"
+                color="error"
+                disabled={applicationSubmitting || selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED'}
+                onClick={() => void handlePGTApproveStudent(selectedReviewRow)}
+              >
+                {applicationSubmitting ? 'Đang xử lý...' : 'PGT xử lý còn thiếu và duyệt'}
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                disabled={applicationSubmitting || selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' || !selectedReviewRow.violations.every((v) => v.handled && v.handledBy === 'PGT')}
+                onClick={() => void handleApproveS2Review(selectedReviewRow)}
+              >
+                {selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' ? 'Đã duyệt hạ rèn luyện' : 'Duyệt hạ rèn luyện S2'}
+              </Button>
+            </Stack>
           </>}
         </DialogContent>
         <DialogActions><Button onClick={() => setSelectedReviewRow(null)}>Đóng</Button></DialogActions>
