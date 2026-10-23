@@ -27,7 +27,7 @@ import RecordAttendancePage from './pages/violation/RecordAttendancePage.tsx';
 import EarlyLeaveInputPage from './pages/violation/EarlyLeaveInputPage.tsx';
 import EarlyLeaveListPage from './pages/violation/EarlyLeaveListPage.tsx';
 import LeaveApplicationsPage from './pages/violation/LeaveApplicationsPage.tsx';
-import StudentConductReviewPage from './pages/violation/StudentConductReviewPage';
+import StudentConductReviewPage from './pages/violation/StudentConductReviewPage.tsx';
 
 // Admin
 import AdminLayout from './layouts/AdminLayout';
