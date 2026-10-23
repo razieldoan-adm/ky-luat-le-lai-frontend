@@ -49,10 +49,16 @@ const drawerWidth = 240;
         </ListItemButton>
       </List>
       <List> Xử lý/Duyệt đơn
-          <ListItemButton onClick={() => navigate('/violation/all-violations')}>
+        <ListItemButton onClick={() => navigate('/violation/all-violations')}>
           <ListItemIcon><ClassIcon /></ListItemIcon>
           <ListItemText primary="Xử lý vi phạm" />
         </ListItemButton>
+
+        <ListItemButton onClick={() => navigate('/violation/student-conduct-review')}>
+          <ListItemIcon><ClassIcon /></ListItemIcon>
+          <ListItemText primary="Xét rèn luyện học sinh" />
+        </ListItemButton>
+        
         <ListItemButton onClick={() => navigate('/violation/leave-applications')}>
           <ListItemIcon><AssignmentTurnedInIcon /></ListItemIcon>
           <ListItemText primary="Nhận đơn xin phép" />
