@@ -108,6 +108,15 @@ export default function StudentConductReviewPage() {
       return [];
     }
   });
+  // Các trường hợp được bỏ qua lưu tại trình duyệt này để không bị hiện lại là chưa duyệt.
+  const [skippedReviewKeys, setSkippedReviewKeys] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('skippedStudentConductReviewKeys');
+      return saved ? (JSON.parse(saved) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
 
   useEffect(() => {
     let active = true;
@@ -312,6 +321,28 @@ export default function StudentConductReviewPage() {
     } finally {
       setApplicationSubmitting(false);
     }
+  };
+
+  const handleSkipReview = (row: ReviewRow) => {
+    const isAlreadySkipped = skippedReviewKeys.includes(row.key);
+    const confirmed = window.confirm(
+      isAlreadySkipped
+        ? `Khôi phục ${row.name} (${row.className}, tuần ${row.weekNumber}) vào danh sách xét hạ rèn luyện?`
+        : `Bỏ qua xét hạ rèn luyện cho ${row.name} (${row.className}, tuần ${row.weekNumber})? Trường hợp này sẽ được đánh dấu “Đã bỏ qua”, không phải “Đã duyệt”.`,
+    );
+    if (!confirmed) return;
+    const nextKeys = isAlreadySkipped
+      ? skippedReviewKeys.filter((key) => key !== row.key)
+      : [...skippedReviewKeys, row.key];
+    setSkippedReviewKeys(nextKeys);
+    try {
+      localStorage.setItem('skippedStudentConductReviewKeys', JSON.stringify(nextKeys));
+    } catch { /* storage may be unavailable */ }
+    setSnackbar({
+      open: true,
+      message: isAlreadySkipped ? 'Đã khôi phục trường hợp vào diện xét.' : 'Đã đánh dấu trường hợp bỏ qua xét hạ rèn luyện.',
+      severity: 'success',
+    });
   };
 
   const handleApproveS2Review = async (row: ReviewRow) => {
@@ -539,10 +570,10 @@ export default function StudentConductReviewPage() {
       <Paper elevation={2} sx={{ borderRadius: 2, overflowX: 'auto' }}>
         <Table size="small" stickyHeader>
           <TableHead><TableRow sx={{ '& th': { bgcolor: '#fff0c2', fontWeight: 'bold', whiteSpace: 'nowrap' } }}>
-            {['STT', 'Họ tên', 'Lớp', 'Năm học', 'Tuần', 'Lý do xem xét', 'Tổng lần vi phạm', 'Đơn xin phép', 'Thao tác'].map((label) => <TableCell key={label}>{label}</TableCell>)}
+            {['STT', 'Họ tên', 'Lớp', 'Năm học', 'Tuần', 'Lý do xem xét', 'Tổng lần vi phạm', 'Đơn xin phép', 'Trạng thái hạ rèn luyện', 'Thao tác'].map((label) => <TableCell key={label}>{label}</TableCell>)}
           </TableRow></TableHead>
           <TableBody>
-            {loading ? <TableRow><TableCell colSpan={9} align="center">Đang tải dữ liệu...</TableCell></TableRow>
+            {loading ? <TableRow><TableCell colSpan={10} align="center">Đang tải dữ liệu...</TableCell></TableRow>
               : repeatedViolationRows.length ? repeatedViolationRows.map((row, index) => {
                 const apps = getApplicationSummary(row);
                 return <TableRow key={row.key} sx={{ bgcolor: row.count >= 5 ? '#ffe0e0' : '#fffaf0' }}>
@@ -550,9 +581,18 @@ export default function StudentConductReviewPage() {
                   <TableCell sx={{ minWidth: 240 }}>{row.reasons.join(' · ')}{row.eligibleByRepeatedRule && <Typography variant="caption" display="block" color="text.secondary">{row.description}</Typography>}</TableCell>
                   <TableCell align="center" sx={{ fontWeight: 'bold', color: row.count >= 5 ? 'error.main' : 'warning.dark' }}>{row.count}</TableCell>
                   <TableCell sx={{ minWidth: 220 }}>{apps.total === 0 ? 'Chưa có đơn' : `Tổng ${apps.total} · Duyệt ${apps.approved} · Chờ ${apps.pending}${apps.rejected ? ` · Từ chối ${apps.rejected}` : ''}${apps.overdue ? ` · Quá hạn ${apps.overdue}` : ''}`}</TableCell>
-                  <TableCell><Button size="small" variant="outlined" onClick={() => setSelectedReviewRow(row)}>Xem thông tin</Button></TableCell>
+                  <TableCell sx={{ minWidth: 170 }}>
+                    <Typography fontWeight="bold" color={row.s2Violation?.s2ReviewStatus === 'APPROVED' ? 'success.main' : skippedReviewKeys.includes(row.key) ? 'text.secondary' : 'warning.dark'}>
+                      {row.s2Violation?.s2ReviewStatus === 'APPROVED' ? '✓ Đã duyệt hạ rèn luyện' : skippedReviewKeys.includes(row.key) ? '↷ Đã bỏ qua xét' : 'Chưa duyệt'}
+                    </Typography>
+                    {row.s2Violation?.s2ReviewStatus === 'APPROVED' && row.s2Violation?.s2ApprovedBy && <Typography variant="caption" display="block" color="text.secondary">Bởi {row.s2Violation.s2ApprovedBy}</Typography>}
+                  </TableCell>
+                  <TableCell><Stack direction="row" spacing={1}>
+                    <Button size="small" variant="outlined" onClick={() => setSelectedReviewRow(row)}>Xem thông tin</Button>
+                    {row.s2Violation?.s2ReviewStatus !== 'APPROVED' && <Button size="small" variant="outlined" color={skippedReviewKeys.includes(row.key) ? 'primary' : 'warning'} disabled={applicationSubmitting} onClick={() => handleSkipReview(row)}>{skippedReviewKeys.includes(row.key) ? 'Khôi phục xét' : 'Bỏ qua xét'}</Button>}
+                  </Stack></TableCell>
                 </TableRow>;
-              }) : <TableRow><TableCell colSpan={9} align="center" sx={{ py: 5 }}>Chưa có học sinh nào đạt điều kiện trong phạm vi lọc.</TableCell></TableRow>}
+              }) : <TableRow><TableCell colSpan={10} align="center" sx={{ py: 5 }}>Chưa có học sinh nào đạt điều kiện trong phạm vi lọc.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </Paper>
@@ -576,11 +616,23 @@ export default function StudentConductReviewPage() {
                 </Stack></TableCell>
               </TableRow>)}</TableBody>
             </Table></Box>
-            <Alert severity={selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' ? 'success' : 'warning'} sx={{ mb: 2 }}>
+            <Alert severity={selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' ? 'success' : skippedReviewKeys.includes(selectedReviewRow.key) ? 'info' : 'warning'} sx={{ mb: 2 }}>
               Điều kiện xem xét: tổng vi phạm từ 5 lần hoặc cùng một nội quy từ 3 lần trong cùng tuần.
-              {selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' ? ` Đã duyệt hạ rèn luyện S2${selectedReviewRow.s2Violation.s2ApprovedBy ? ` bởi ${selectedReviewRow.s2Violation.s2ApprovedBy}` : ''}.` : ' S2 đang chờ duyệt không làm giảm điểm hạnh kiểm. Chỉ cần tất cả vi phạm liên quan có trạng thái xử lý khác “Chưa xử lý” là đủ điều kiện duyệt hạ rèn luyện.'}
+              {selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED'
+                ? ` Đã duyệt hạ rèn luyện S2${selectedReviewRow.s2Violation.s2ApprovedBy ? ` bởi ${selectedReviewRow.s2Violation.s2ApprovedBy}` : ''}.`
+                : skippedReviewKeys.includes(selectedReviewRow.key)
+                  ? ' Trường hợp này đã được đánh dấu bỏ qua xét, không có nghĩa là đã duyệt hạ rèn luyện.'
+                  : ' S2 đang chờ duyệt không làm giảm điểm hạnh kiểm. Chỉ cần tất cả vi phạm liên quan có trạng thái xử lý khác “Chưa xử lý” là đủ điều kiện duyệt hạ rèn luyện.'}
             </Alert>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              {selectedReviewRow.s2Violation?.s2ReviewStatus !== 'APPROVED' && <Button
+                variant="outlined"
+                color={skippedReviewKeys.includes(selectedReviewRow.key) ? 'primary' : 'warning'}
+                disabled={applicationSubmitting}
+                onClick={() => handleSkipReview(selectedReviewRow)}
+              >
+                {skippedReviewKeys.includes(selectedReviewRow.key) ? 'Khôi phục vào diện xét' : 'Bỏ qua xét hạ rèn luyện'}
+              </Button>}
               <Button
                 variant="outlined"
                 color="error"
@@ -592,10 +644,10 @@ export default function StudentConductReviewPage() {
               <Button
                 variant="contained"
                 color="error"
-                disabled={applicationSubmitting || selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' || !selectedReviewRow.violations.every((v) => getHandlingStatus(v) !== 'Chưa xử lý')}
+                disabled={applicationSubmitting || selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' || skippedReviewKeys.includes(selectedReviewRow.key) || !selectedReviewRow.violations.every((v) => getHandlingStatus(v) !== 'Chưa xử lý')}
                 onClick={() => void handleApproveS2Review(selectedReviewRow)}
               >
-                {selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' ? 'Đã duyệt hạ rèn luyện' : 'Duyệt hạ rèn luyện S2'}
+                {selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' ? 'Đã duyệt hạ rèn luyện' : skippedReviewKeys.includes(selectedReviewRow.key) ? 'Đã bỏ qua — khôi phục để duyệt' : 'Duyệt hạ rèn luyện S2'}
               </Button>
             </Stack>
           </>}
