@@ -381,6 +381,16 @@ export default function StudentConductReviewPage() {
     if (violation.ruleCode) return violation.ruleCode;
     return rules.find((rule) => rule.title?.trim().toLowerCase() === violation.description?.trim().toLowerCase())?.ruleCode || '';
   };
+
+  // Chỉ cần trạng thái xử lý không còn là "Chưa xử lý" để đủ điều kiện duyệt hạ rèn luyện.
+  const getHandlingStatus = (violation: Violation) => {
+    if (violation.application?.status === 'APPROVED') return 'Đã duyệt đơn';
+    if (violation.application?.status === 'PENDING') return 'Đang chờ duyệt đơn';
+    if (violation.application?.status === 'REJECTED') return 'Đơn bị từ chối';
+    if (violation.application?.status === 'OVERDUE') return 'Đơn quá hạn';
+    if (violation.handled) return `Đã xử lý (${violation.handledBy || 'chưa rõ'})`;
+    return 'Chưa xử lý';
+  };
   const isViolationEligibleForLeave = (violation: Violation) => {
     const code = getViolationRuleCode(violation);
     return !!code && directLeaveRuleCodes.includes(code);
@@ -556,7 +566,7 @@ export default function StudentConductReviewPage() {
               <TableHead><TableRow>{['STT', 'Ngày giờ', 'Nội dung', 'Tình trạng xử lý', 'Đơn xin phép', 'Thao tác'].map((label) => <TableCell key={label} sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>{label}</TableCell>)}</TableRow></TableHead>
               <TableBody>{selectedReviewRow.violations.map((v, idx) => <TableRow key={v._id}>
                 <TableCell>{idx + 1}</TableCell><TableCell sx={{ whiteSpace: 'nowrap' }}>{v.time ? dayjs(v.time).format('DD/MM/YYYY HH:mm') : 'Không rõ'}</TableCell><TableCell>{v.description}</TableCell>
-                <TableCell>{v.application?.status === 'APPROVED' ? 'Đã duyệt đơn' : v.application?.status === 'PENDING' ? 'Đang chờ duyệt đơn' : v.application?.status === 'REJECTED' ? 'Đơn bị từ chối' : v.application?.status === 'OVERDUE' ? 'Đơn quá hạn' : v.handled ? `Đã xử lý (${v.handledBy || 'chưa rõ'})` : 'Chưa xử lý'}</TableCell>
+                <TableCell>{getHandlingStatus(v)}</TableCell>
                 <TableCell>{v.application?.status === 'APPROVED' ? 'Đã nộp · Đã duyệt' : v.application?.status === 'PENDING' ? 'Đã nộp · Chờ duyệt' : v.application?.status === 'REJECTED' ? 'Đã nộp · Từ chối' : v.application?.status === 'OVERDUE' ? 'Đã nộp · Quá hạn' : 'Chưa có đơn'}{v.application?.note ? <Typography variant="caption" display="block">Ghi chú: {v.application.note}</Typography> : null}</TableCell>
                 <TableCell sx={{ minWidth: 160 }}><Stack direction="row" spacing={1} flexWrap="wrap">
                   {v.application?.status === 'PENDING' && <Button size="small" variant="contained" color="success" disabled={applicationSubmitting} onClick={() => void handleApproveApplication(v)}>Duyệt đơn</Button>}
@@ -568,7 +578,7 @@ export default function StudentConductReviewPage() {
             </Table></Box>
             <Alert severity={selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' ? 'success' : 'warning'} sx={{ mb: 2 }}>
               Điều kiện xem xét: tổng vi phạm từ 5 lần hoặc cùng một nội quy từ 3 lần trong cùng tuần.
-              {selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' ? ` Đã duyệt hạ rèn luyện S2${selectedReviewRow.s2Violation.s2ApprovedBy ? ` bởi ${selectedReviewRow.s2Violation.s2ApprovedBy}` : ''}.` : ' S2 đang chờ duyệt không làm giảm điểm hạnh kiểm. Chỉ duyệt khi tất cả lỗi liên quan đã được PGT xử lý.'}
+              {selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' ? ` Đã duyệt hạ rèn luyện S2${selectedReviewRow.s2Violation.s2ApprovedBy ? ` bởi ${selectedReviewRow.s2Violation.s2ApprovedBy}` : ''}.` : ' S2 đang chờ duyệt không làm giảm điểm hạnh kiểm. Chỉ cần tất cả vi phạm liên quan có trạng thái xử lý khác “Chưa xử lý” là đủ điều kiện duyệt hạ rèn luyện.'}
             </Alert>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
               <Button
@@ -582,7 +592,7 @@ export default function StudentConductReviewPage() {
               <Button
                 variant="contained"
                 color="error"
-                disabled={applicationSubmitting || selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' || !selectedReviewRow.violations.every((v) => v.handled && v.handledBy === 'PGT')}
+                disabled={applicationSubmitting || selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' || !selectedReviewRow.violations.every((v) => getHandlingStatus(v) !== 'Chưa xử lý')}
                 onClick={() => void handleApproveS2Review(selectedReviewRow)}
               >
                 {selectedReviewRow.s2Violation?.s2ReviewStatus === 'APPROVED' ? 'Đã duyệt hạ rèn luyện' : 'Duyệt hạ rèn luyện S2'}
