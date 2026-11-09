@@ -43,6 +43,20 @@ interface Week {
   label?: string;
 }
 
+const sortByTime = (data: Violation[]) => {
+  return [...data].sort((a, b) => {
+    const timeA = dayjs(a.time).isValid()
+      ? dayjs(a.time).valueOf()
+      : Number.MAX_SAFE_INTEGER;
+
+    const timeB = dayjs(b.time).isValid()
+      ? dayjs(b.time).valueOf()
+      : Number.MAX_SAFE_INTEGER;
+
+    return timeA - timeB;
+  });
+};
+
 export default function UnhandledViolationsPage() {
   const [violations, setViolations] = useState<Violation[]>([]);
   const [filtered, setFiltered] = useState<Violation[]>([]);
@@ -80,8 +94,9 @@ export default function UnhandledViolationsPage() {
   const fetchViolations = async () => {
     try {
       const res = await api.get('/api/violations/all/all-student');
-      setViolations(res.data);
-      setFiltered(res.data);
+      const sortedData = sortByTime(res.data);
+      setViolations(sortedData);
+      setFiltered(sortedData);
     } catch (err) {
       console.error('Lỗi khi lấy dữ liệu vi phạm:', err);
     }
@@ -167,15 +182,11 @@ export default function UnhandledViolationsPage() {
       data = data.filter((v) => countMap[v.name.trim().toLowerCase()] >= 3);
     }
 
-    data.sort((a, b) => {
-      if (a.className === b.className) {
-        return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' });
-      }
-      return a.className.localeCompare(b.className, 'vi', { numeric: true });
-    });
-
+    data = sortByTime(data);
     setFiltered(data);
-  };
+    
+        setFiltered(data);
+      };
 
   const clearFilters = () => {
     setSelectedClasses([]);
@@ -183,7 +194,7 @@ export default function UnhandledViolationsPage() {
     setSearchName('');
     setSelectedWeek('all');
     setOnlyFrequent(false);
-    setFiltered(violations);
+    setFiltered(sortByTime(violations));
   };
 
   return (
@@ -304,6 +315,7 @@ export default function UnhandledViolationsPage() {
 
           <Button variant="contained" onClick={applyFilters}>Áp dụng</Button>
           <Button variant="outlined" onClick={clearFilters}>Xóa lọc</Button>
+          <Button variant="contained" color="success" onClick={handleExportExcel} disabled={filtered.length === 0} startIcon={<span>📊</span>}>Xuất Excel</Button>
         </Stack>
       </Paper>
 
