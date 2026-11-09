@@ -21,6 +21,18 @@ interface Violation {
   time: Date | string;
   handlingMethod: string;
   handled?: boolean;
+  ruleCode?: string;
+  groupCode?: string;
+}
+
+interface Rule {
+  _id: string;
+  ruleCode: string;
+  groupCode: string;
+  groupName?: string;
+  title: string;
+  point: number;
+  active?: boolean;
 }
 
 interface Week {
@@ -41,11 +53,29 @@ export default function UnhandledViolationsPage() {
   const [onlyFrequent, setOnlyFrequent] = useState(false);
   const [weekList, setWeekList] = useState<Week[]>([]);
 
+  const [ruleList, setRuleList] = useState<Rule[]>([]);
+  const [selectedRules, setSelectedRules] = useState<string[]>([]);
+  
   useEffect(() => {
     fetchViolations();
     fetchClasses();
     fetchWeeks();
+    fetchRules();
   }, []);
+
+  const fetchRules = async () => {
+    try {
+      const res = await api.get('/api/rules');
+  
+      const activeRules = res.data.filter(
+        (rule: Rule) => rule.active !== false
+      );
+  
+      setRuleList(activeRules);
+    } catch (err) {
+      console.error('Lỗi khi lấy danh sách nội quy:', err);
+    }
+  };
 
   const fetchViolations = async () => {
     try {
@@ -83,7 +113,24 @@ export default function UnhandledViolationsPage() {
     if (selectedClasses.length > 0) {
       data = data.filter((v) => selectedClasses.includes(v.className));
     }
-
+    // Lọc theo lỗi vi phạm từ danh sách nội quy
+    if (selectedRules.length > 0) {
+      const selectedRuleTitles = ruleList
+        .filter((rule) =>
+          selectedRules.includes(rule.ruleCode)
+        )
+        .map((rule) => rule.title);
+    
+      data = data.filter((v) => {
+        // Ưu tiên đối chiếu bằng ruleCode
+        if (v.ruleCode) {
+          return selectedRules.includes(v.ruleCode);
+        }
+    
+        // Hỗ trợ dữ liệu vi phạm cũ chưa có ruleCode
+        return selectedRuleTitles.includes(v.description);
+      });
+    }
     if (selectedWeek !== 'all' && selectedWeek !== '') {
       const week = weekList.find(
         (w) =>
@@ -132,6 +179,7 @@ export default function UnhandledViolationsPage() {
 
   const clearFilters = () => {
     setSelectedClasses([]);
+    setSelectedRules([]);
     setSearchName('');
     setSelectedWeek('all');
     setOnlyFrequent(false);
@@ -198,14 +246,57 @@ export default function UnhandledViolationsPage() {
               );
             })}
           </TextField>
-
+          
           <TextField
             label="Tìm theo tên học sinh"
             value={searchName}
             onChange={(e) => setSearchName(e.target.value)}
             sx={{ minWidth: 200 }}
           />
-
+          <TextField
+            label="Chọn lỗi vi phạm"
+            select
+            SelectProps={{
+              multiple: true,
+              renderValue: (selected: any) => {
+                if (!selected || selected.length === 0) {
+                  return 'Tất cả lỗi';
+                }
+          
+                return ruleList
+                  .filter((rule) =>
+                    selected.includes(rule.ruleCode)
+                  )
+                  .map((rule) => rule.title)
+                  .join(', ');
+              },
+            }}
+            value={selectedRules}
+            onChange={(e) =>
+              setSelectedRules(
+                typeof e.target.value === 'string'
+                  ? e.target.value.split(',')
+                  : (e.target.value as string[])
+              )
+            }
+            sx={{ minWidth: 260 }}
+          >
+            {ruleList.map((rule) => (
+              <MenuItem
+                key={rule.ruleCode}
+                value={rule.ruleCode}
+              >
+                <Checkbox
+                  checked={selectedRules.includes(rule.ruleCode)}
+                />
+          
+                <ListItemText
+                  primary={rule.title}
+                  secondary={`${rule.ruleCode} - ${rule.groupCode}`}
+                />
+              </MenuItem>
+            ))}
+          </TextField>
           <FormControlLabel
             control={<Checkbox checked={onlyFrequent} onChange={(e) => setOnlyFrequent(e.target.checked)} />}
             label="Chỉ học sinh >= 3 vi phạm"
