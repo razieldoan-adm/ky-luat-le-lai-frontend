@@ -197,6 +197,186 @@ export default function UnhandledViolationsPage() {
     setFiltered(sortByTime(violations));
   };
 
+  const handleExportExcel = async () => {
+  try {
+    if (filtered.length === 0) {
+      alert('Không có dữ liệu để xuất Excel!');
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+
+    workbook.creator = 'Hệ thống quản lý học sinh';
+    workbook.created = new Date();
+
+    const worksheet = workbook.addWorksheet('Học sinh vi phạm');
+
+    // Tiêu đề
+    worksheet.mergeCells('A1:G1');
+
+    const title = worksheet.getCell('A1');
+    title.value = 'DANH SÁCH HỌC SINH VI PHẠM';
+
+    title.font = {
+      name: 'Times New Roman',
+      size: 16,
+      bold: true,
+    };
+
+    title.alignment = {
+      horizontal: 'center',
+      vertical: 'middle',
+    };
+
+    worksheet.getRow(1).height = 30;
+
+    // Thông tin xuất báo cáo
+    worksheet.mergeCells('A2:G2');
+
+    worksheet.getCell('A2').value =
+      `Ngày xuất: ${dayjs().format('DD/MM/YYYY HH:mm')}`;
+
+    worksheet.getCell('A2').font = {
+      name: 'Times New Roman',
+      italic: true,
+      size: 11,
+    };
+
+    // Tiêu đề cột
+    worksheet.columns = [
+      { header: 'STT', key: 'stt', width: 8 },
+      { header: 'Họ tên', key: 'name', width: 28 },
+      { header: 'Lớp', key: 'className', width: 12 },
+      { header: 'Lỗi vi phạm', key: 'description', width: 55 },
+      { header: 'Thời gian', key: 'time', width: 18 },
+      { header: 'Hình thức xử lý', key: 'handlingMethod', width: 25 },
+      { header: 'Trạng thái', key: 'status', width: 18 },
+    ];
+
+    const headerRow = worksheet.getRow(4);
+
+    headerRow.values = [
+      'STT',
+      'Họ tên',
+      'Lớp',
+      'Lỗi vi phạm',
+      'Thời gian',
+      'Hình thức xử lý',
+      'Trạng thái',
+    ];
+
+    headerRow.height = 25;
+
+    headerRow.eachCell((cell) => {
+      cell.font = {
+        name: 'Times New Roman',
+        bold: true,
+        size: 12,
+      };
+
+      cell.alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+        wrapText: true,
+      };
+
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF87CAFE' },
+      };
+
+      cell.border = {
+        top: { style: 'thin' },
+        bottom: { style: 'thin' },
+        left: { style: 'thin' },
+        right: { style: 'thin' },
+      };
+    });
+
+    // Xuất dữ liệu đã lọc, theo thứ tự thời gian cũ nhất trước
+    const exportData = sortByTime(filtered);
+
+    exportData.forEach((v, index) => {
+      const row = worksheet.addRow([
+        index + 1,
+        v.name,
+        v.className,
+        v.description,
+        dayjs(v.time).isValid()
+          ? dayjs(v.time).toDate()
+          : 'Không rõ',
+        v.handlingMethod || '-',
+        v.handled ? 'Đã xử lý' : 'Chưa xử lý',
+      ]);
+
+      row.font = {
+        name: 'Times New Roman',
+        size: 12,
+      };
+
+      row.alignment = {
+        vertical: 'middle',
+        wrapText: true,
+      };
+
+      row.height = 22;
+
+      row.eachCell((cell, colNumber) => {
+        cell.border = {
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+          left: { style: 'thin' },
+          right: { style: 'thin' },
+        };
+
+        if ([1, 3, 5, 7].includes(colNumber)) {
+          cell.alignment = {
+            horizontal: 'center',
+            vertical: 'middle',
+            wrapText: true,
+          };
+        }
+
+        if (colNumber === 5 && cell.value instanceof Date) {
+          cell.numFmt = 'dd/mm/yyyy';
+        }
+      });
+    });
+
+    // Bộ lọc Excel
+    worksheet.autoFilter = {
+      from: 'A4',
+      to: 'G4',
+    };
+
+    // Cố định tiêu đề
+    worksheet.views = [
+      { state: 'frozen', ySplit: 4 },
+    ];
+
+    // Tạo file
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    const blob = new Blob([buffer as BlobPart], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+
+    const url = window.URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `BaoCao_HocSinhViPham_${dayjs().format('DDMMYYYY_HHmm')}.xlsx`;
+
+    link.click();
+
+    window.URL.revokeObjectURL(url);
+
+  } catch (error) {
+    console.error('Lỗi xuất Excel:', error);
+    alert('Không thể xuất file Excel!');
+  }
+};
   return (
     <Box sx={{ maxWidth: '100%', mx: 'auto', py: 4 }}>
       <Typography variant="h4" fontWeight="bold" align="center" gutterBottom>
