@@ -2,8 +2,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CssBaseline, } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 
-
-
 import ProtectedRoute from './components/ProtectedRoute';
 
 import MainLayout from "./layouts/MainLayout";
@@ -28,6 +26,7 @@ import EarlyLeaveInputPage from './pages/violation/EarlyLeaveInputPage.tsx';
 import EarlyLeaveListPage from './pages/violation/EarlyLeaveListPage.tsx';
 import LeaveApplicationsPage from './pages/violation/LeaveApplicationsPage.tsx';
 import StudentConductReviewPage from './pages/violation/StudentConductReviewPage.tsx';
+import StudentNotesPage from './pages/student-notes/StudentNotesPage';
 
 // Admin
 import AdminLayout from './layouts/AdminLayout';
@@ -114,7 +113,7 @@ function AppContent() {
                       <Route path="early-leave-student-input" element={<EarlyLeaveInputPage />} />
                       <Route path="early-leave-student-list" element={<EarlyLeaveListPage />} />
                       <Route path="leave-applications" element={<LeaveApplicationsPage />} />
-                  
+                      <Route path="student-notes" element={<StudentNotesPage />} />
                     </Route>
         {/* General app routes (with global header/sidebar) */}
         <Route element={<MainLayout />}>
