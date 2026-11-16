@@ -10,7 +10,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import MenuBook from '@mui/icons-material/MenuBook';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ClassIcon from '@mui/icons-material/Class';
-
+import NotesIcon from '@mui/icons-material/Notes';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuth } from '../contexts/AuthContext'; // nếu đang dùng AuthContext
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
@@ -47,6 +47,12 @@ const drawerWidth = 240;
           <ListItemIcon><MenuBook /></ListItemIcon>
           <ListItemText primary="Chuyên cần" />
         </ListItemButton>
+        <ListItemButton onClick={() => navigate('/violation/student-notes')}>
+        <ListItemIcon>
+          <NotesIcon />
+        </ListItemIcon>
+        <ListItemText primary="Ghi chú" />
+      </ListItemButton>
       </List>
       <List> Xử lý/Duyệt đơn
         <ListItemButton onClick={() => navigate('/violation/all-violations')}>
